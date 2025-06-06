@@ -58,10 +58,13 @@ export async function _addScrapeJobToBullMQ(
     webScraperOptions &&
     webScraperOptions.team_id
   ) {
-    if (webScraperOptions.crawl_id && webScraperOptions.crawlerOptions?.delay) {
-      await pushCrawlConcurrencyLimitActiveJob(webScraperOptions.crawl_id, jobId, 60 * 1000);
-    } else {
-      await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
+    await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
+
+    if (webScraperOptions.crawl_id) {
+      const sc = await getCrawl(webScraperOptions.crawl_id);
+      if (webScraperOptions.crawlerOptions?.delay || sc?.maxConcurrency) {
+        await pushCrawlConcurrencyLimitActiveJob(webScraperOptions.crawl_id, jobId, 60 * 1000);
+      }
     }
   }
 
@@ -243,7 +246,7 @@ export async function addScrapeJobs(
       const crawl = await getCrawl(crawlID);
       const concurrencyLimit = !crawl
         ? null
-        : crawl.crawlerOptions.delay === undefined && crawl.maxConcurrency === undefined
+        : crawl.crawlerOptions?.delay === undefined && crawl.maxConcurrency === undefined
           ? null
           : crawl.maxConcurrency ?? 1;
         

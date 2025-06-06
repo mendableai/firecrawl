@@ -10,14 +10,22 @@ import request from "supertest";
 
 const TEST_URL = "http://127.0.0.1:3002";
 
+export type Identity = {
+    apiKey: string;
+}
+
+export const defaultIdentity: Identity = {
+    apiKey: process.env.TEST_API_KEY!,
+};
+
 // =========================================
 // Scrape API
 // =========================================
 
-async function scrapeRaw(body: ScrapeRequestInput) {
+async function scrapeRaw(body: ScrapeRequestInput, identity = defaultIdentity) {
     return await request(TEST_URL)
         .post("/v1/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send(body);
 }
@@ -34,8 +42,8 @@ function expectScrapeToFail(response: Awaited<ReturnType<typeof scrapeRaw>>) {
     expect(typeof response.body.error).toBe("string");
 }
 
-export async function scrape(body: ScrapeRequestInput): Promise<Document> {
-    const raw = await scrapeRaw(body);
+export async function scrape(body: ScrapeRequestInput, identity = defaultIdentity): Promise<Document> {
+    const raw = await scrapeRaw(body, identity);
     expectScrapeToSucceed(raw);
     if (body.proxy === "stealth") {
         expect(raw.body.data.metadata.proxyUsed).toBe("stealth");
@@ -45,24 +53,24 @@ export async function scrape(body: ScrapeRequestInput): Promise<Document> {
     return raw.body.data;
 }
 
-export async function scrapeWithFailure(body: ScrapeRequestInput): Promise<{
+export async function scrapeWithFailure(body: ScrapeRequestInput, identity = defaultIdentity): Promise<{
     success: false;
     error: string;
 }> {
-    const raw = await scrapeRaw(body);
+    const raw = await scrapeRaw(body, identity);
     expectScrapeToFail(raw);
     return raw.body;
 }
 
-export async function scrapeStatusRaw(jobId: string) {
+export async function scrapeStatusRaw(jobId: string, identity = defaultIdentity) {
     return await request(TEST_URL)
         .get("/v1/scrape/" + encodeURIComponent(jobId))
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
-export async function scrapeStatus(jobId: string): Promise<Document> {
-    const raw = await scrapeStatusRaw(jobId);
+export async function scrapeStatus(jobId: string, identity = defaultIdentity): Promise<Document> {
+    const raw = await scrapeStatusRaw(jobId, identity);
     expect(raw.statusCode).toBe(200);
     expect(raw.body.success).toBe(true);
     expect(typeof raw.body.data).toBe("object");
@@ -75,30 +83,30 @@ export async function scrapeStatus(jobId: string): Promise<Document> {
 // Crawl API
 // =========================================
 
-async function crawlStart(body: CrawlRequestInput) {
+async function crawlStart(body: CrawlRequestInput, identity = defaultIdentity) {
     return await request(TEST_URL)
         .post("/v1/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send(body);
 }
 
-async function crawlStatus(id: string) {
+async function crawlStatus(id: string, identity = defaultIdentity) {
     return await request(TEST_URL)
         .get("/v1/crawl/" + encodeURIComponent(id))
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
-async function crawlOngoingRaw() {
+async function crawlOngoingRaw(identity = defaultIdentity) {
     return await request(TEST_URL)
         .get("/v1/crawl/ongoing")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
-export async function crawlOngoing(): Promise<Exclude<OngoingCrawlsResponse, ErrorResponse>> {
-    const res = await crawlOngoingRaw();
+export async function crawlOngoing(identity = defaultIdentity): Promise<Exclude<OngoingCrawlsResponse, ErrorResponse>> {
+    const res = await crawlOngoingRaw(identity);
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
     return res.body;
@@ -120,17 +128,17 @@ function expectCrawlToSucceed(response: Awaited<ReturnType<typeof crawlStatus>>)
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function asyncCrawl(body: CrawlRequestInput): Promise<Exclude<CrawlResponse, ErrorResponse>> {
-    const cs = await crawlStart(body);
+export async function asyncCrawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlResponse, ErrorResponse>> {
+    const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
     return cs.body;
 }
 
-export async function asyncCrawlWaitForFinish(id: string): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+export async function asyncCrawlWaitForFinish(id: string, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
     let x;
 
     do {
-        x = await crawlStatus(id);
+        x = await crawlStatus(id, identity);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
     } while (x.body.status === "scraping");
@@ -139,14 +147,14 @@ export async function asyncCrawlWaitForFinish(id: string): Promise<Exclude<Crawl
     return x.body;
 }
 
-export async function crawl(body: CrawlRequestInput): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
-    const cs = await crawlStart(body);
+export async function crawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+    const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
 
     let x;
 
     do {
-        x = await crawlStatus(cs.body.id);
+        x = await crawlStatus(cs.body.id, identity);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
     } while (x.body.status === "scraping");
@@ -159,18 +167,18 @@ export async function crawl(body: CrawlRequestInput): Promise<Exclude<CrawlStatu
 // Batch Scrape API
 // =========================================
 
-async function batchScrapeStart(body: BatchScrapeRequestInput) {
+async function batchScrapeStart(body: BatchScrapeRequestInput, identity = defaultIdentity) {
     return await request(TEST_URL)
         .post("/v1/batch/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send(body);
 }
 
-async function batchScrapeStatus(id: string) {
+async function batchScrapeStatus(id: string, identity = defaultIdentity) {
     return await request(TEST_URL)
         .get("/v1/batch/scrape/" + encodeURIComponent(id))
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
@@ -190,14 +198,14 @@ function expectBatchScrapeToSucceed(response: Awaited<ReturnType<typeof batchScr
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function batchScrape(body: BatchScrapeRequestInput): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
-    const bss = await batchScrapeStart(body);
+export async function batchScrape(body: BatchScrapeRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+    const bss = await batchScrapeStart(body, identity);
     expectBatchScrapeStartToSucceed(bss);
 
     let x;
 
     do {
-        x = await batchScrapeStatus(bss.body.id);
+        x = await batchScrapeStatus(bss.body.id, identity);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
     } while (x.body.status === "scraping");
@@ -210,10 +218,10 @@ export async function batchScrape(body: BatchScrapeRequestInput): Promise<Exclud
 // Map API
 // =========================================
 
-export async function map(body: MapRequestInput) {
+export async function map(body: MapRequestInput, identity = defaultIdentity) {
     return await request(TEST_URL)
         .post("/v1/map")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send(body);
 }
@@ -229,18 +237,18 @@ export function expectMapToSucceed(response: Awaited<ReturnType<typeof map>>) {
 // Extract API
 // =========================================
 
-async function extractStart(body: ExtractRequestInput) {
+async function extractStart(body: ExtractRequestInput, identity = defaultIdentity) {
     return await request(TEST_URL)
         .post("/v1/extract")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send(body);
 }
 
-async function extractStatus(id: string) {
+async function extractStatus(id: string, identity = defaultIdentity) {
     return await request(TEST_URL)
         .get("/v1/extract/" + encodeURIComponent(id))
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
@@ -259,14 +267,14 @@ function expectExtractToSucceed(response: Awaited<ReturnType<typeof extractStatu
     expect(response.body).toHaveProperty("data");
 }
 
-export async function extract(body: ExtractRequestInput): Promise<ExtractResponse> {
-    const es = await extractStart(body);
+export async function extract(body: ExtractRequestInput, identity = defaultIdentity): Promise<ExtractResponse> {
+    const es = await extractStart(body, identity);
     expectExtractStartToSucceed(es);
 
     let x;
 
     do {
-        x = await extractStatus(es.body.id);
+        x = await extractStatus(es.body.id, identity);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
     } while (x.body.status === "processing");
@@ -279,10 +287,10 @@ export async function extract(body: ExtractRequestInput): Promise<ExtractRespons
 // Search API
 // =========================================
 
-async function searchRaw(body: SearchRequestInput) {
+async function searchRaw(body: SearchRequestInput, identity = defaultIdentity) {
     return await request(TEST_URL)
         .post("/v1/search")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send(body);
 }
@@ -295,8 +303,8 @@ function expectSearchToSucceed(response: Awaited<ReturnType<typeof searchRaw>>) 
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function search(body: SearchRequestInput): Promise<Document[]> {
-    const raw = await searchRaw(body);
+export async function search(body: SearchRequestInput, identity = defaultIdentity): Promise<Document[]> {
+    const raw = await searchRaw(body, identity);
     expectSearchToSucceed(raw);
     return raw.body.data;
 }
@@ -305,10 +313,10 @@ export async function search(body: SearchRequestInput): Promise<Document[]> {
 // Billing API
 // =========================================
 
-export async function creditUsage(): Promise<{ remaining_credits: number }> {
+export async function creditUsage(identity = defaultIdentity): Promise<{ remaining_credits: number }> {
     const req = (await request(TEST_URL)
     .get("/v1/team/credit-usage")
-    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    .set("Authorization", `Bearer ${identity.apiKey}`)
     .set("Content-Type", "application/json"));
 
     if (req.status !== 200) {
@@ -318,10 +326,10 @@ export async function creditUsage(): Promise<{ remaining_credits: number }> {
     return req.body.data;
 }
 
-export async function tokenUsage(): Promise<{ remaining_tokens: number }> {
+export async function tokenUsage(identity = defaultIdentity): Promise<{ remaining_tokens: number }> {
     return (await request(TEST_URL)
         .get("/v1/team/token-usage")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")).body.data;
 }
 
@@ -329,10 +337,10 @@ export async function tokenUsage(): Promise<{ remaining_tokens: number }> {
 // Concurrency API
 // =========================================
 
-export async function concurrencyCheck(): Promise<{ concurrency: number, maxConcurrency: number }> {
+export async function concurrencyCheck(identity = defaultIdentity): Promise<{ concurrency: number, maxConcurrency: number }> {
     const x = (await request(TEST_URL)
         .get("/v1/concurrency-check")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json"));
     
     expect(x.statusCode).toBe(200);
@@ -340,25 +348,48 @@ export async function concurrencyCheck(): Promise<{ concurrency: number, maxConc
     return x.body;
 }
 
-export async function crawlWithConcurrencyTracking(body: CrawlRequestInput): Promise<{
+export async function crawlWithConcurrencyTracking(body: CrawlRequestInput, identity = defaultIdentity): Promise<{
     crawl: Exclude<CrawlStatusResponse, ErrorResponse>;
     concurrencies: number[];
 }> {
-    const cs = await crawlStart(body);
+    const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
 
     let x, concurrencies: number[] = [];
 
     do {
-        x = await crawlStatus(cs.body.id);
+        x = await crawlStatus(cs.body.id, identity);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
-        concurrencies.push((await concurrencyCheck()).concurrency);
+        concurrencies.push((await concurrencyCheck(identity)).concurrency);
     } while (x.body.status === "scraping");
 
     expectCrawlToSucceed(x);
     return {
         crawl: x.body,
+        concurrencies,
+    };
+}
+
+export async function batchScrapeWithConcurrencyTracking(body: BatchScrapeRequestInput, identity = defaultIdentity): Promise<{
+    batchScrape: Exclude<CrawlStatusResponse, ErrorResponse>;
+    concurrencies: number[];
+}> {
+    const cs = await batchScrapeStart(body, identity);
+    expectBatchScrapeStartToSucceed(cs);
+
+    let x, concurrencies: number[] = [];
+
+    do {
+        x = await batchScrapeStatus(cs.body.id, identity);
+        expect(x.statusCode).toBe(200);
+        expect(typeof x.body.status).toBe("string");
+        concurrencies.push((await concurrencyCheck(identity)).concurrency);
+    } while (x.body.status === "scraping");
+
+    expectBatchScrapeToSucceed(x);
+    return {
+        batchScrape: x.body,
         concurrencies,
     };
 }
@@ -376,18 +407,18 @@ async function deepResearchStart(body: {
   formats?: string[];
   topic?: string;
   jsonOptions?: any;
-}) {
+}, identity = defaultIdentity) {
   return await request(TEST_URL)
     .post("/v1/deep-research")
-    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    .set("Authorization", `Bearer ${identity.apiKey}`)
     .set("Content-Type", "application/json")
     .send(body);
 }
 
-async function deepResearchStatus(id: string) {
+async function deepResearchStatus(id: string, identity = defaultIdentity) {
   return await request(TEST_URL)
     .get("/v1/deep-research/" + encodeURIComponent(id))
-    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    .set("Authorization", `Bearer ${identity.apiKey}`)
     .send();
 }
 
@@ -407,14 +438,14 @@ export async function deepResearch(body: {
   formats?: string[];
   topic?: string;
   jsonOptions?: any;
-}) {
-  const ds = await deepResearchStart(body);
+}, identity = defaultIdentity) {
+  const ds = await deepResearchStart(body, identity);
   expectDeepResearchStartToSucceed(ds);
 
   let x;
   
   do {
-    x = await deepResearchStatus(ds.body.id);
+    x = await deepResearchStatus(ds.body.id, identity);
     expect(x.statusCode).toBe(200);
     expect(typeof x.body.status).toBe("string");
   } while (x.body.status === "processing");

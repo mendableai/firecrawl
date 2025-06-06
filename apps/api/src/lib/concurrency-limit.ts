@@ -2,8 +2,9 @@ import { RateLimiterMode } from "../types";
 import { redisEvictConnection } from "../services/redis";
 import type { Job, JobsOptions } from "bullmq";
 import { getACUCTeam } from "../controllers/auth";
-import { getCrawl } from "./crawl-redis";
+import { getCrawl, StoredCrawl } from "./crawl-redis";
 import { getScrapeQueue } from "../services/queue-service";
+import { logger } from "./logger";
 
 const constructKey = (team_id: string) => "concurrency-limiter:" + team_id;
 const constructQueueKey = (team_id: string) =>
@@ -170,6 +171,10 @@ async function getNextConcurrentJob(teamId: string): Promise<{
     timeout: number;
   } | null = null;
 
+  const crawlCache = new Map<string, StoredCrawl>();
+
+  const debugMaxTeamConcurrency = (await getConcurrencyLimitActiveJobs(teamId)).length;
+
   while (finalJob === null) {
     const res = await takeConcurrencyLimitedJobAndTimeout(teamId);
     if (res === null) {
@@ -178,20 +183,26 @@ async function getNextConcurrentJob(teamId: string): Promise<{
 
     // If the job is associated with a crawl ID, we need to check if the crawl has a max concurrency limit
     if (res.job.data.crawl_id) {
-      const sc = await getCrawl(res.job.data.crawl_id);
+      const sc = crawlCache.get(res.job.data.crawl_id) ?? await getCrawl(res.job.data.crawl_id);
+      if (sc !== null) {
+        crawlCache.set(res.job.data.crawl_id, sc);
+      }
+
       const maxCrawlConcurrency = sc === null
         ? null
-        : sc.crawlerOptions.delay !== undefined
+        : (typeof sc.crawlerOptions?.delay === "number")
           ? 1
           : sc.maxConcurrency ?? null;
-      
+            
       if (maxCrawlConcurrency !== null) {
         // If the crawl has a max concurrency limit, we need to check if the crawl has reached the limit
         const currentActiveConcurrency = (await getCrawlConcurrencyLimitActiveJobs(res.job.data.crawl_id)).length;
         if (currentActiveConcurrency < maxCrawlConcurrency) {
+          logger.debug("Crawl " + res.job.data.crawl_id.slice(-1) + " concurrency is " + currentActiveConcurrency + " of " + maxCrawlConcurrency + " (team concurrency: " + debugMaxTeamConcurrency + "), picking job");
           // If we're under the max concurrency limit, we can run the job
           finalJob = res;
         } else {
+          logger.debug("Crawl " + res.job.data.crawl_id.slice(-1) + " concurrency is " + currentActiveConcurrency + " of " + maxCrawlConcurrency + " (team concurrency: " + debugMaxTeamConcurrency + "), ignoring job");
           // If we're at the max concurrency limit, we need to ignore the job
           ignoredJobs.push({
             job: res.job,
@@ -199,10 +210,12 @@ async function getNextConcurrentJob(teamId: string): Promise<{
           });
         }
       } else {
+        logger.debug("Crawl " + res.job.data.crawl_id.slice(-1) + " has no max concurrency limit (team concurrency: " + debugMaxTeamConcurrency + "), picking job");
         // If the crawl has no max concurrency limit, we can run the job
         finalJob = res;
       }
     } else {
+      logger.debug("Job is not associated with a crawl ID (team concurrency: " + debugMaxTeamConcurrency + "), picking job");
       // If the job is not associated with a crawl ID, we can run the job
       finalJob = res;
     }
