@@ -82,7 +82,7 @@ async function takeConcurrencyLimitedJobAndTimeout(
 
   return {
     job: JSON.parse(res[1][0][0]),
-    timeout: parseFloat(res[1][0][1]),
+    timeout: res[1][0][1] === "inf" ? Infinity : parseFloat(res[1][0][1]),
   };
 }
 
