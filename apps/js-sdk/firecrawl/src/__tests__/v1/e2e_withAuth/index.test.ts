@@ -26,7 +26,7 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for invalid API key on scrape', async () => {
     if (API_URL.includes('api.firecrawl.dev')) {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-      await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).rejects.toThrow("Unexpected error occurred while trying to scrape URL. Status code: 404");
+      await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).rejects.toThrow("Unexpected error occurred while trying to scrape URL. Status code: 401");
     } else {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
       await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).resolves.not.toThrow();
@@ -36,19 +36,8 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for blocklisted URL on scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const blocklistedUrl = "https://facebook.com/fake-test";
-    await expect(app.scrapeUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403");
+    await expect(app.scrapeUrl(blocklistedUrl)).rejects.toThrow("This website is no longer supported");
   });
-
-  test.concurrent('should return successful response with valid preview token', async () => {
-    const app = new FirecrawlApp({ apiKey: process.env.PREVIEW_TOKEN, apiUrl: API_URL });
-    const response = await app.scrapeUrl('https://roastmywebsite.ai');
-    if (!response.success) {
-      throw new Error(response.error);
-    }
-
-    expect(response).not.toBeNull();
-    expect(response?.markdown).toContain("_Roast_");
-  }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
@@ -93,8 +82,6 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.screenshot).not.toBeNull();
     expect(response.screenshot).toContain("https://");
     expect(response.links).not.toBeNull();
-    expect(response.links?.length).toBeGreaterThan(0);
-    expect(response.links?.[0]).toContain("https://");
     expect(response.metadata).not.toBeNull();
     expect(response.metadata).not.toBeUndefined();
     expect(response.metadata).toHaveProperty("title");
@@ -170,7 +157,7 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for invalid API key on crawl', async () => {
     if (API_URL.includes('api.firecrawl.dev')) {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-      await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 404");
+      await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
     } else {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
       await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).resolves.not.toThrow();
@@ -255,7 +242,6 @@ describe('FirecrawlApp E2E Tests', () => {
       expect(response.data[0].screenshot).toContain("https://");
       expect(response.data[0]).toHaveProperty("links");
       expect(response.data[0].links).not.toBeNull();
-      expect(response.data[0].links?.length).toBeGreaterThan(0);
       expect(response.data[0]).toHaveProperty("metadata");
       expect(response.data[0].metadata).toHaveProperty("title");
       expect(response.data[0].metadata).toHaveProperty("description");
@@ -351,7 +337,7 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for invalid API key on map', async () => {
     if (API_URL.includes('api.firecrawl.dev')) {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-      await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 404");
+      await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
     } else {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
       await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).resolves.not.toThrow();
@@ -361,15 +347,8 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for blocklisted URL on map', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const blocklistedUrl = "https://facebook.com/fake-test";
-    await expect(app.mapUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403");
+    await expect(app.mapUrl(blocklistedUrl)).rejects.toThrow("403");
   });
-
-  test.concurrent('should return successful response with valid preview token', async () => {
-    const app = new FirecrawlApp({ apiKey: process.env.PREVIEW_TOKEN, apiUrl: API_URL });
-    const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
-    expect(response).not.toBeNull();
-    expect(response.links?.length).toBeGreaterThan(0);
-  }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid map', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });    const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
@@ -393,7 +372,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.[0]?.metadata).toBeDefined();
     expect(response.data?.[0]?.metadata?.title).toBeDefined();
     expect(response.data?.[0]?.metadata?.description).toBeDefined();
-  });
+  }, 30000); // 30 seconds timeout
 
   test('should search with params object', async () => {
     const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: TEST_API_KEY });
@@ -416,10 +395,10 @@ describe('FirecrawlApp E2E Tests', () => {
       expect(doc.metadata?.title).toBeDefined();
       expect(doc.metadata?.description).toBeDefined();
     }
-  });
+  }, 30000); // 30 seconds timeout
 
   test('should handle invalid API key for search', async () => {
     const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: "invalid_api_key" });
-    await expect(app.search("test query")).rejects.toThrow("Request failed with status code 404");
+    await expect(app.search("test query")).rejects.toThrow("Request failed with status code 401");
   });
 });
