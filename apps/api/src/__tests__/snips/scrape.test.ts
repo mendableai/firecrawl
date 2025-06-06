@@ -479,18 +479,22 @@ describe("Scrape tests", () => {
           timeout: 60000,
         });
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response1 = await scrape({
           url,
           timeout: 60000,
-          maxAge: 120000,
+          maxAge: 120000 + 17000,
         });
 
         expect(response1.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           timeout: 60000,
-          maxAge: 180000,
+          maxAge: 180000 + 2*17000,
         });
 
         expect(response2.metadata.cacheState).toBe("miss");
@@ -500,7 +504,7 @@ describe("Scrape tests", () => {
         const response3 = await scrape({
           url,
           timeout: 60000,
-          maxAge: 240000,
+          maxAge: 240000 + 3 * 17000,
         });
 
         expect(response3.metadata.cacheState).toBe("hit");
