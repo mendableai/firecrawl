@@ -326,6 +326,44 @@ export async function tokenUsage(): Promise<{ remaining_tokens: number }> {
 }
 
 // =========================================
+// Concurrency API
+// =========================================
+
+export async function concurrencyCheck(): Promise<{ concurrency: number, maxConcurrency: number }> {
+    const x = (await request(TEST_URL)
+        .get("/v1/concurrency-check")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json"));
+    
+    expect(x.statusCode).toBe(200);
+    expect(x.body.success).toBe(true);
+    return x.body;
+}
+
+export async function crawlWithConcurrencyTracking(body: CrawlRequestInput): Promise<{
+    crawl: Exclude<CrawlStatusResponse, ErrorResponse>;
+    concurrencies: number[];
+}> {
+    const cs = await crawlStart(body);
+    expectCrawlStartToSucceed(cs);
+
+    let x, concurrencies: number[] = [];
+
+    do {
+        x = await crawlStatus(cs.body.id);
+        expect(x.statusCode).toBe(200);
+        expect(typeof x.body.status).toBe("string");
+        concurrencies.push((await concurrencyCheck()).concurrency);
+    } while (x.body.status === "scraping");
+
+    expectCrawlToSucceed(x);
+    return {
+        crawl: x.body,
+        concurrencies,
+    };
+}
+
+// =========================================
 // =========================================
 
 async function deepResearchStart(body: {

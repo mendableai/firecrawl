@@ -50,15 +50,8 @@ import { getJobs } from "..//controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
 import { scrapeOptions } from "../controllers/v1/types";
 import {
-  cleanOldConcurrencyLimitEntries,
-  cleanOldCrawlConcurrencyLimitEntries,
-  getConcurrencyLimitActiveJobs,
+  concurrentJobDone,
   pushConcurrencyLimitActiveJob,
-  pushCrawlConcurrencyLimitActiveJob,
-  removeConcurrencyLimitActiveJob,
-  removeCrawlConcurrencyLimitActiveJob,
-  takeConcurrencyLimitedJob,
-  takeCrawlConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
@@ -803,71 +796,7 @@ const workerFun = async (
           runningJobs.delete(job.id);
         }
 
-        const sc = job.data.crawl_id ? await getCrawl(job.data.crawl_id) : null;
-
-        if (job.id && job.data.crawl_id && sc?.maxConcurrency) {
-          await removeCrawlConcurrencyLimitActiveJob(job.data.crawl_id, job.id);
-          cleanOldCrawlConcurrencyLimitEntries(job.data.crawl_id);
-
-          if (job.data.crawlerOptions?.delay) {
-            const delayInSeconds = job.data.crawlerOptions.delay;
-            const delayInMs = delayInSeconds * 1000;
-
-            await new Promise(resolve => setTimeout(resolve, delayInMs));
-          }
-
-          const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
-          if (nextCrawlJob !== null) {
-            await pushCrawlConcurrencyLimitActiveJob(job.data.crawl_id, nextCrawlJob.id, 60 * 1000);
-
-            await queue.add(
-              nextCrawlJob.id,
-              {
-                ...nextCrawlJob.data,
-              },
-              {
-                ...nextCrawlJob.opts,
-                jobId: nextCrawlJob.id,
-                priority: nextCrawlJob.priority,
-              },
-            );
-          }
-        }
-
-        if (job.id && job.data && job.data.team_id) {
-          const maxConcurrency = (await getACUCTeam(job.data.team_id, false, true, job.data.is_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
-
-          await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
-          await cleanOldConcurrencyLimitEntries(job.data.team_id);
-
-          // Check if we're under the concurrency limit before adding a new job
-          const currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(job.data.team_id)).length;
-          const concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
-
-          if (!concurrencyLimited) {
-            const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
-            if (nextJob !== null) {
-              await pushConcurrencyLimitActiveJob(
-                job.data.team_id,
-                nextJob.id,
-                60 * 1000,
-              ); // 60s initial timeout
-
-              await queue.add(
-                nextJob.id,
-                {
-                  ...nextJob.data,
-                  concurrencyLimitHit: true,
-                },
-                {
-                  ...nextJob.opts,
-                  jobId: nextJob.id,
-                  priority: nextJob.priority,
-                },
-              );
-            }
-          }
-        }
+        await concurrentJobDone(job);
       }
 
       if (job.data && job.data.sentry && Sentry.isInitialized()) {
