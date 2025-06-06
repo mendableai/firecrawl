@@ -803,14 +803,18 @@ const workerFun = async (
           runningJobs.delete(job.id);
         }
 
-        if (job.id && job.data.crawl_id && job.data.crawlerOptions?.delay) {
+        const sc = job.data.crawl_id ? await getCrawl(job.data.crawl_id) : null;
+
+        if (job.id && job.data.crawl_id && sc?.maxConcurrency) {
           await removeCrawlConcurrencyLimitActiveJob(job.data.crawl_id, job.id);
           cleanOldCrawlConcurrencyLimitEntries(job.data.crawl_id);
 
-          const delayInSeconds = job.data.crawlerOptions.delay;
-          const delayInMs = delayInSeconds * 1000;
+          if (job.data.crawlerOptions?.delay) {
+            const delayInSeconds = job.data.crawlerOptions.delay;
+            const delayInMs = delayInSeconds * 1000;
 
-          await new Promise(resolve => setTimeout(resolve, delayInMs));
+            await new Promise(resolve => setTimeout(resolve, delayInMs));
+          }
 
           const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
           if (nextCrawlJob !== null) {
