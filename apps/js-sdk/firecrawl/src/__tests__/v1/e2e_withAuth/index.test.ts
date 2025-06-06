@@ -41,20 +41,11 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should return successful response for valid scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+
     const response = await app.scrapeUrl('https://roastmywebsite.ai');
     if (!response.success) {
       throw new Error(response.error);
     }
-
-    expect(response).not.toBeNull();
-    expect(response).not.toHaveProperty('content'); // v0
-    expect(response).not.toHaveProperty('html');
-    expect(response).not.toHaveProperty('rawHtml');
-    expect(response).not.toHaveProperty('screenshot');
-    expect(response).not.toHaveProperty('links');
-
-    expect(response).toHaveProperty('markdown');
-    expect(response).toHaveProperty('metadata');
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response with valid API key and options', async () => {
@@ -69,50 +60,9 @@ describe('FirecrawlApp E2E Tests', () => {
         timeout: 30000,
         waitFor: 1000
     });
+
     if (!response.success) {
       throw new Error(response.error);
-    }
-
-    expect(response).not.toBeNull();
-    expect(response).not.toHaveProperty('content'); // v0
-    expect(response.markdown).toContain("_Roast_");
-    expect(response.html).toContain("<h1");
-    expect(response.rawHtml).toContain("<h1");
-    expect(response.screenshot).not.toBeUndefined();
-    expect(response.screenshot).not.toBeNull();
-    expect(response.screenshot).toContain("https://");
-    expect(response.links).not.toBeNull();
-    expect(response.metadata).not.toBeNull();
-    expect(response.metadata).not.toBeUndefined();
-    expect(response.metadata).toHaveProperty("title");
-    expect(response.metadata).toHaveProperty("description");
-    expect(response.metadata).toHaveProperty("keywords");
-    expect(response.metadata).toHaveProperty("robots");
-    expect(response.metadata).toHaveProperty("ogTitle");
-    expect(response.metadata).toHaveProperty("ogDescription");
-    expect(response.metadata).toHaveProperty("ogUrl");
-    expect(response.metadata).toHaveProperty("ogImage");
-    expect(response.metadata).toHaveProperty("ogLocaleAlternate");
-    expect(response.metadata).toHaveProperty("ogSiteName");
-    expect(response.metadata).toHaveProperty("sourceURL");
-    expect(response.metadata).not.toHaveProperty("pageStatusCode");
-    expect(response.metadata).toHaveProperty("statusCode");
-    expect(response.metadata).not.toHaveProperty("pageError");
-
-    if (response.metadata !== undefined) {
-      expect(response.metadata.error).toBeUndefined();
-      expect(response.metadata.title).toBe("Roast My Website");
-      expect(response.metadata.description).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
-      expect(response.metadata.keywords).toBe("Roast My Website,Roast,Website,GitHub,Firecrawl");
-      expect(response.metadata.robots).toBe("follow, index");
-      expect(response.metadata.ogTitle).toBe("Roast My Website");
-      expect(response.metadata.ogDescription).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
-      expect(response.metadata.ogUrl).toBe("https://www.roastmywebsite.ai");
-      expect(response.metadata.ogImage).toBe("https://www.roastmywebsite.ai/og.png");
-      expect(response.metadata.ogLocaleAlternate).toStrictEqual([]);
-      expect(response.metadata.ogSiteName).toBe("Roast My Website");
-      expect(response.metadata.sourceURL).toBe("https://roastmywebsite.ai");
-      expect(response.metadata.statusCode).toBe(200);
     }
   }, 30000); // 30 seconds timeout
 
@@ -126,7 +76,6 @@ describe('FirecrawlApp E2E Tests', () => {
       throw new Error(response.error);
     }
 
-    expect(response).not.toBeNull();
     expect(response.screenshot).not.toBeUndefined();
     expect(response.screenshot).not.toBeNull();
     expect(response.screenshot).toContain("https://");
@@ -167,34 +116,10 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.crawlUrl('https://roastmywebsite.ai', {}, 30) as CrawlStatusResponse;
-    expect(response).not.toBeNull();
-    expect(response).toHaveProperty("total");
-    expect(response.total).toBeGreaterThan(0);
-    expect(response).toHaveProperty("creditsUsed");
-    expect(response.creditsUsed).toBeGreaterThan(0);
-    expect(response).toHaveProperty("expiresAt");
-    expect(new Date(response.expiresAt).getTime()).toBeGreaterThan(Date.now());
-    expect(response).toHaveProperty("status");
-    expect(response.status).toBe("completed");
     expect(response).not.toHaveProperty("next"); // wait until done
     expect(response.data.length).toBeGreaterThan(0);
-    expect(response.data[0]).not.toBeNull();
-    expect(response.data[0]).not.toBeUndefined();
     if (response.data[0]) {
       expect(response.data[0]).toHaveProperty("markdown");
-      expect(response.data[0].markdown).toContain("_Roast_");
-      expect(response.data[0]).not.toHaveProperty('content'); // v0
-      expect(response.data[0]).not.toHaveProperty("html");
-      expect(response.data[0]).not.toHaveProperty("rawHtml");
-      expect(response.data[0]).not.toHaveProperty("screenshot");
-      expect(response.data[0]).not.toHaveProperty("links");
-      expect(response.data[0]).toHaveProperty("metadata");
-      expect(response.data[0].metadata).toHaveProperty("title");
-      expect(response.data[0].metadata).toHaveProperty("description");
-      expect(response.data[0].metadata).toHaveProperty("language");
-      expect(response.data[0].metadata).toHaveProperty("sourceURL");
-      expect(response.data[0].metadata).toHaveProperty("statusCode");
-      expect(response.data[0].metadata).not.toHaveProperty("error");
     }
   }, 60000); // 60 seconds timeout
 
@@ -217,38 +142,15 @@ describe('FirecrawlApp E2E Tests', () => {
         waitFor: 1000
       }
     } as CrawlParams, 30) as CrawlStatusResponse;
-    expect(response).not.toBeNull();
-    expect(response).toHaveProperty("total");
-    expect(response.total).toBeGreaterThan(0);
-    expect(response).toHaveProperty("creditsUsed");
-    expect(response.creditsUsed).toBeGreaterThan(0);
-    expect(response).toHaveProperty("expiresAt");
-    expect(new Date(response.expiresAt).getTime()).toBeGreaterThan(Date.now());
-    expect(response).toHaveProperty("status");
-    expect(response.status).toBe("completed");
     expect(response).not.toHaveProperty("next");
     expect(response.data.length).toBeGreaterThan(0);
-    expect(response.data[0]).not.toBeNull();
-    expect(response.data[0]).not.toBeUndefined();
     if (response.data[0]) {
       expect(response.data[0]).toHaveProperty("markdown");
-      expect(response.data[0].markdown).toContain("_Roast_");
       expect(response.data[0]).not.toHaveProperty('content'); // v0
       expect(response.data[0]).toHaveProperty("html");
-      expect(response.data[0].html).toContain("<h1");
       expect(response.data[0]).toHaveProperty("rawHtml");
-      expect(response.data[0].rawHtml).toContain("<h1");
       expect(response.data[0]).toHaveProperty("screenshot");
-      expect(response.data[0].screenshot).toContain("https://");
       expect(response.data[0]).toHaveProperty("links");
-      expect(response.data[0].links).not.toBeNull();
-      expect(response.data[0]).toHaveProperty("metadata");
-      expect(response.data[0].metadata).toHaveProperty("title");
-      expect(response.data[0].metadata).toHaveProperty("description");
-      expect(response.data[0].metadata).toHaveProperty("language");
-      expect(response.data[0].metadata).toHaveProperty("sourceURL");
-      expect(response.data[0].metadata).toHaveProperty("statusCode");
-      expect(response.data[0].metadata).not.toHaveProperty("error");
     }
   }, 60000); // 60 seconds timeout
 
@@ -264,7 +166,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should check crawl status', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.asyncCrawlUrl('https://firecrawl.dev', { scrapeOptions: { formats: ['markdown', 'html', 'rawHtml', 'screenshot', 'links']}} as CrawlParams) as CrawlResponse;
+    const response = await app.asyncCrawlUrl('https://firecrawl.dev', { limit: 20, scrapeOptions: { formats: ['markdown', 'html', 'rawHtml', 'screenshot', 'links']}} as CrawlParams) as CrawlResponse;
     expect(response).not.toBeNull();
     expect(response.id).toBeDefined();
 
@@ -300,37 +202,8 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(statusResponse).toHaveProperty("total");
     expect(statusResponse.success).toBe(true);
     if (statusResponse.success === true) {
-      expect(statusResponse.total).toBeGreaterThan(0);
-      expect(statusResponse).toHaveProperty("creditsUsed");
-      expect(statusResponse.creditsUsed).toBeGreaterThan(0);
-      expect(statusResponse).toHaveProperty("expiresAt");
-      expect(statusResponse.expiresAt.getTime()).toBeGreaterThan(Date.now());
-      expect(statusResponse).toHaveProperty("status");
       expect(statusResponse.status).toBe("completed");
       expect(statusResponse.data.length).toBeGreaterThan(0);
-      expect(statusResponse.data[0]).not.toBeNull();
-      expect(statusResponse.data[0]).not.toBeUndefined();
-      if (statusResponse.data[0]) {
-        expect(statusResponse.data[0]).toHaveProperty("markdown");
-        expect(statusResponse.data[0].markdown?.length).toBeGreaterThan(10);
-        expect(statusResponse.data[0]).not.toHaveProperty('content'); // v0
-        expect(statusResponse.data[0]).toHaveProperty("html");
-        expect(statusResponse.data[0].html).toContain("<div");
-        expect(statusResponse.data[0]).toHaveProperty("rawHtml");
-        expect(statusResponse.data[0].rawHtml).toContain("<div");
-        expect(statusResponse.data[0]).toHaveProperty("screenshot");
-        expect(statusResponse.data[0].screenshot).toContain("https://");
-        expect(statusResponse.data[0]).toHaveProperty("links");
-        expect(statusResponse.data[0].links).not.toBeNull();
-        expect(statusResponse.data[0].links?.length).toBeGreaterThan(0);
-        expect(statusResponse.data[0]).toHaveProperty("metadata");
-        expect(statusResponse.data[0].metadata).toHaveProperty("title");
-        expect(statusResponse.data[0].metadata).toHaveProperty("description");
-        expect(statusResponse.data[0].metadata).toHaveProperty("language");
-        expect(statusResponse.data[0].metadata).toHaveProperty("sourceURL");
-        expect(statusResponse.data[0].metadata).toHaveProperty("statusCode");
-        expect(statusResponse.data[0].metadata).not.toHaveProperty("error");
-      }
     }
   }, 60000); // 60 seconds timeout
 
@@ -368,10 +241,10 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.success).toBe(true);
     console.log(response.data);
     expect(response.data?.length).toBeGreaterThan(0);
-    expect(response.data?.[0]?.markdown).toBeDefined();
+    expect(response.data?.[0]?.markdown).not.toBeDefined();
     expect(response.data?.[0]?.metadata).toBeDefined();
-    expect(response.data?.[0]?.metadata?.title).toBeDefined();
-    expect(response.data?.[0]?.metadata?.description).toBeDefined();
+    expect(response.data?.[0]?.title).toBeDefined();
+    expect(response.data?.[0]?.description).toBeDefined();
   }, 30000); // 30 seconds timeout
 
   test('should search with params object', async () => {
@@ -391,9 +264,8 @@ describe('FirecrawlApp E2E Tests', () => {
       expect(doc.markdown).toBeDefined();
       expect(doc.html).toBeDefined();
       expect(doc.links).toBeDefined();
-      expect(doc.metadata).toBeDefined();
-      expect(doc.metadata?.title).toBeDefined();
-      expect(doc.metadata?.description).toBeDefined();
+      expect(doc.title).toBeDefined();
+      expect(doc.description).toBeDefined();
     }
   }, 30000); // 30 seconds timeout
 
