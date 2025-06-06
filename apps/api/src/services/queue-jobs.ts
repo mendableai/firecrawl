@@ -82,37 +82,56 @@ async function addScrapeJobRaw(
   jobPriority: number,
   directToBullMQ: boolean = false,
 ) {
-  let concurrencyLimited = false;
+  let concurrencyLimited: "yes" | "yes-crawl" | "no" | null = null;
   let currentActiveConcurrency = 0;
   let maxConcurrency = 0;
 
-  if (
-    webScraperOptions &&
-    webScraperOptions.team_id
-  ) {
-    const now = Date.now();
-    maxConcurrency = (await getACUCTeam(webScraperOptions.team_id, false, true, webScraperOptions.is_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
-    cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
-    currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
-    concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
+  if (directToBullMQ) {
+    concurrencyLimited = "no";
+  } else {
+    if (webScraperOptions.crawl_id) {
+      const crawl = await getCrawl(webScraperOptions.crawl_id);
+      const concurrencyLimit = !crawl
+        ? null
+        : crawl.crawlerOptions?.delay === undefined && crawl.maxConcurrency === undefined
+          ? null
+          : crawl.maxConcurrency ?? 1;
+      
+      if (concurrencyLimit !== null) {
+        const crawlConcurrency = (await getCrawlConcurrencyLimitActiveJobs(webScraperOptions.crawl_id)).length;
+        const freeSlots = Math.max(concurrencyLimit - crawlConcurrency, 0);
+        if (freeSlots === 0) {
+          concurrencyLimited = "yes-crawl";
+        }
+      }
+    }
+
+    if (concurrencyLimited === null) {
+      const now = Date.now();
+      const maxConcurrency = (await getACUCTeam(webScraperOptions.team_id, false, true, webScraperOptions.is_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
+      await cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
+      const currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
+      concurrencyLimited = currentActiveConcurrency >= maxConcurrency ? "yes" : "no";
+    }
   }
 
-  const concurrencyQueueJobs = await getConcurrencyQueueJobsCount(webScraperOptions.team_id);
+  if (concurrencyLimited === "yes" || concurrencyLimited === "yes-crawl") {
+    if (concurrencyLimited === "yes") {
+      // Detect if they hit their concurrent limit
+      // If above by 2x, send them an email
+      // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
+      const concurrencyQueueJobs = await getConcurrencyQueueJobsCount(webScraperOptions.team_id);
+      if(concurrencyQueueJobs > maxConcurrency) {
+        // logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
 
-  if (concurrencyLimited && !directToBullMQ) {
-    // Detect if they hit their concurrent limit
-    // If above by 2x, send them an email
-    // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
-    if(concurrencyQueueJobs > maxConcurrency) {
-      // logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
-
-      // Only send notification if it's not a crawl or batch scrape
-        const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
-        if (shouldSendNotification) {
-          sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
-            logger.error("Error sending notification (concurrency limit reached)", { error });
-          });
-        }
+        // Only send notification if it's not a crawl or batch scrape
+          const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
+          if (shouldSendNotification) {
+            sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
+              logger.error("Error sending notification (concurrency limit reached)", { error });
+            });
+          }
+      }
     }
 
     webScraperOptions.concurrencyLimited = true;
