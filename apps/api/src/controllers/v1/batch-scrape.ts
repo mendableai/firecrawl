@@ -24,9 +24,7 @@ import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { billTeam } from "../../services/billing/credit_billing";
-import { logJob } from "../../services/logging/log_job";
-import { calculateBatchScrapeCredits } from "../../lib/scrape-billing";  
+  
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
@@ -169,33 +167,6 @@ export async function batchScrapeController(
   );
   logger.debug("Adding scrape jobs to BullMQ...");
   await addScrapeJobs(jobs);
-
-  const creditsToBeBilled = calculateBatchScrapeCredits(urls.length);
-
-  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch((error) => {
-    logger.error(
-      `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
-    );
-  });
-
-  logJob({
-    job_id: id,
-    success: true,
-    message: "Batch scrape started",
-    num_docs: urls.length,
-    docs: urls,
-    time_taken: 0,
-    team_id: req.auth.team_id,
-    mode: "batch_scrape",
-    url: urls[0] || "",
-    crawlerOptions: null,
-    scrapeOptions: scrapeOptions,
-    origin: req.body.origin ?? "api",
-    integration: req.body.integration,
-    crawl_id: id,
-    num_tokens: 0,
-    credits_billed: creditsToBeBilled,
-  });
 
   if (req.body.webhook) {
     logger.debug("Calling webhook with batch_scrape.started...", {
