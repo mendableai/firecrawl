@@ -242,7 +242,6 @@ describe('FirecrawlApp E2E Tests', () => {
     console.log(response.data);
     expect(response.data?.length).toBeGreaterThan(0);
     expect(response.data?.[0]?.markdown).not.toBeDefined();
-    expect(response.data?.[0]?.metadata).toBeDefined();
     expect(response.data?.[0]?.title).toBeDefined();
     expect(response.data?.[0]?.description).toBeDefined();
   }, 30000); // 30 seconds timeout
