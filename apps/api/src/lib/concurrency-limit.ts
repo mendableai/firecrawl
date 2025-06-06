@@ -173,8 +173,6 @@ async function getNextConcurrentJob(teamId: string): Promise<{
 
   const crawlCache = new Map<string, StoredCrawl>();
 
-  const debugMaxTeamConcurrency = (await getConcurrencyLimitActiveJobs(teamId)).length;
-
   while (finalJob === null) {
     const res = await takeConcurrencyLimitedJobAndTimeout(teamId);
     if (res === null) {
@@ -198,11 +196,9 @@ async function getNextConcurrentJob(teamId: string): Promise<{
         // If the crawl has a max concurrency limit, we need to check if the crawl has reached the limit
         const currentActiveConcurrency = (await getCrawlConcurrencyLimitActiveJobs(res.job.data.crawl_id)).length;
         if (currentActiveConcurrency < maxCrawlConcurrency) {
-          logger.debug("Crawl " + res.job.data.crawl_id.slice(-1) + " concurrency is " + currentActiveConcurrency + " of " + maxCrawlConcurrency + " (team concurrency: " + debugMaxTeamConcurrency + "), picking job");
           // If we're under the max concurrency limit, we can run the job
           finalJob = res;
         } else {
-          logger.debug("Crawl " + res.job.data.crawl_id.slice(-1) + " concurrency is " + currentActiveConcurrency + " of " + maxCrawlConcurrency + " (team concurrency: " + debugMaxTeamConcurrency + "), ignoring job");
           // If we're at the max concurrency limit, we need to ignore the job
           ignoredJobs.push({
             job: res.job,
@@ -210,12 +206,10 @@ async function getNextConcurrentJob(teamId: string): Promise<{
           });
         }
       } else {
-        logger.debug("Crawl " + res.job.data.crawl_id.slice(-1) + " has no max concurrency limit (team concurrency: " + debugMaxTeamConcurrency + "), picking job");
         // If the crawl has no max concurrency limit, we can run the job
         finalJob = res;
       }
     } else {
-      logger.debug("Job is not associated with a crawl ID (team concurrency: " + debugMaxTeamConcurrency + "), picking job");
       // If the job is not associated with a crawl ID, we can run the job
       finalJob = res;
     }
