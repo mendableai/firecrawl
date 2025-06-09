@@ -220,6 +220,13 @@ v1Router.get(
   wrap(ongoingCrawlsController),
 );
 
+// Public facing, same as ongoing
+v1Router.get(
+  "/crawl/active",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(ongoingCrawlsController),
+);
+
 v1Router.get(
   "/crawl/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
