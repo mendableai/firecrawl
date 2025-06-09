@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/winkk-dev/firecrawl
+  repository: ghcr.io/mendableai/firecrawl
   tag: "latest"
   pullPolicy: Always
   dockerSecretEnabled: true
