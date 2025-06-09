@@ -7,7 +7,7 @@ image:
   dockerSecretEnabled: true
 
 playwright:
-  repository: ghcr.io/winkk-dev/firecrawl-playwright
+  repository: ghcr.io/mendableai/playwright-service
   tag: "latest"
   pullPolicy: Always
 
