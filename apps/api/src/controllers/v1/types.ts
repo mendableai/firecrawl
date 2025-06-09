@@ -9,6 +9,8 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import Ajv from "ajv";
+import type { CostTracking } from "../../lib/extract/extraction-service";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -448,10 +450,12 @@ export type ScrapeOptions = BaseScrapeOptions & {
   },
 };
 
-import Ajv from "ajv";
-import type { CostTracking } from "../../lib/extract/extraction-service";
-
-const ajv = new Ajv();
+// Enhanced AJV configuration with better error handling
+const ajv = new Ajv({ 
+  strict: false,      // Allow additional properties that aren't in the schema
+  allErrors: true,    // Collect all errors instead of stopping at first
+  verbose: true       // Include more information in error messages
+});
 
 export const extractV1Options = z
   .object({
@@ -467,15 +471,31 @@ export const extractV1Options = z
       .refine(
         (val) => {
           if (!val) return true; // Allow undefined schema
+          
+          // Check if this is an unconverted Zod schema
+          if (val && typeof val === 'object' && val._def) {
+            console.error('Schema validation error: Detected unconverted Zod schema with _def property:', {
+              type: val._def?.typeName,
+              keys: Object.keys(val),
+              hasZodProperties: !!(val._def || val.parse || val.safeParse)
+            });
+            return false;
+          }
+          
           try {
             const validate = ajv.compile(val);
             return typeof validate === "function";
           } catch (e) {
+            console.error('AJV schema compilation failed:', {
+              error: e.message,
+              schema: val,
+              schemaKeys: val && typeof val === 'object' ? Object.keys(val) : 'not_object'
+            });
             return false;
           }
         },
         {
-          message: "Invalid JSON schema.",
+          message: "Invalid JSON schema. The schema must be a valid JSON Schema object, not a Zod schema. If using the JS SDK, ensure Zod schemas are properly converted to JSON schema format.",
         },
       ),
     limit: z.number().int().positive().finite().safe().optional(),

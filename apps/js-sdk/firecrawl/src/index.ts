@@ -4,6 +4,52 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { TypedEventTarget } from "typescript-event-target";
 
 /**
+ * Safely converts a Zod schema to JSON schema with optimized options for AJV compatibility
+ */
+function safeZodToJsonSchema(schema: zt.ZodSchema): any {
+  try {
+    return zodToJsonSchema(schema, {
+      target: "jsonSchema7",    // Use JSON Schema Draft 7 for better compatibility
+      strictUnions: true,       // Handle unions more strictly
+      $refStrategy: "none",     // Avoid $ref usage that can cause AJV issues
+    });
+  } catch (error: any) {
+    console.warn('Zod to JSON schema conversion failed, using fallback:', error?.message || error);
+    // Return a basic valid JSON schema as fallback
+    return {
+      type: "object",
+      additionalProperties: true,
+      description: "Fallback schema due to conversion error"
+    };
+  }
+}
+
+/**
+ * Cleans a JSON schema to remove properties that cause AJV validation issues
+ */
+function cleanJsonSchemaForAjv(schema: any): any {
+  if (!schema || typeof schema !== 'object') return schema;
+  
+  const cleaned = { ...schema };
+  
+  // Remove problematic properties that AJV doesn't handle well
+  delete cleaned.$schema;
+  delete cleaned.definitions;
+  delete cleaned.$defs;
+  delete cleaned.$ref;
+  
+  return cleaned;
+}
+
+/**
+ * Converts Zod schema to AJV-compatible JSON schema with error handling
+ */
+function convertZodSchemaToAjvCompatible(schema: zt.ZodSchema): any {
+  const jsonSchema = safeZodToJsonSchema(schema);
+  return cleanJsonSchemaForAjv(jsonSchema);
+}
+
+/**
  * Configuration interface for FirecrawlApp.
  * @param apiKey - Optional API key for authentication.
  * @param apiUrl - Optional base URL of the API; defaults to 'https://api.firecrawl.dev'.
@@ -621,9 +667,9 @@ export default class FirecrawlApp {
     if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
-      // Try parsing the schema as a Zod schema
+      // Try parsing the schema as a Zod schema with safe conversion
       try {
-        schema = zodToJsonSchema(schema);
+        schema = convertZodSchemaToAjvCompatible(schema);
       } catch (error) {
         
       }
@@ -638,9 +684,9 @@ export default class FirecrawlApp {
 
     if (jsonData?.jsonOptions?.schema) {
       let schema = jsonData.jsonOptions.schema;
-      // Try parsing the schema as a Zod schema
+      // Try parsing the schema as a Zod schema with safe conversion
       try {
-        schema = zodToJsonSchema(schema);
+        schema = convertZodSchemaToAjvCompatible(schema);
       } catch (error) {
         
       }
@@ -707,9 +753,9 @@ export default class FirecrawlApp {
     if (jsonData?.scrapeOptions?.extract?.schema) {
       let schema = jsonData.scrapeOptions.extract.schema;
 
-      // Try parsing the schema as a Zod schema
+      // Try parsing the schema as a Zod schema with safe conversion
       try {
-        schema = zodToJsonSchema(schema);
+        schema = convertZodSchemaToAjvCompatible(schema);
       } catch (error) {
         
       }
@@ -1018,9 +1064,9 @@ export default class FirecrawlApp {
     if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
-      // Try parsing the schema as a Zod schema
+      // Try parsing the schema as a Zod schema with safe conversion
       try {
-        schema = zodToJsonSchema(schema);
+        schema = convertZodSchemaToAjvCompatible(schema);
       } catch (error) {
         
       }
@@ -1035,9 +1081,9 @@ export default class FirecrawlApp {
     if (jsonData?.jsonOptions?.schema) {
       let schema = jsonData.jsonOptions.schema;
 
-      // Try parsing the schema as a Zod schema
+      // Try parsing the schema as a Zod schema with safe conversion
       try {
-        schema = zodToJsonSchema(schema);
+        schema = convertZodSchemaToAjvCompatible(schema);
       } catch (error) {
         
       }
@@ -1241,8 +1287,8 @@ export default class FirecrawlApp {
     try {
       if (!params?.schema) {
         jsonSchema = undefined;
-      } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
-        jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+              } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
+          jsonSchema = convertZodSchemaToAjvCompatible(params.schema as zt.ZodType);
       } else {
         jsonSchema = params.schema;
       }
@@ -1310,7 +1356,7 @@ export default class FirecrawlApp {
 
     try {
       if (params?.schema instanceof zt.ZodType) {
-        jsonSchema = zodToJsonSchema(params.schema);
+        jsonSchema = convertZodSchemaToAjvCompatible(params.schema);
       } else {
         jsonSchema = params?.schema;
       }
@@ -1623,9 +1669,9 @@ export default class FirecrawlApp {
 
     if (jsonData?.jsonOptions?.schema) {
       let schema = jsonData.jsonOptions.schema;
-      // Try parsing the schema as a Zod schema
+      // Try parsing the schema as a Zod schema with safe conversion
       try {
-        schema = zodToJsonSchema(schema);
+        schema = convertZodSchemaToAjvCompatible(schema);
       } catch (error) {
         // Ignore error if schema can't be parsed as Zod
       }
