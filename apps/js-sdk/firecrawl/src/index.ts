@@ -1287,7 +1287,7 @@ export default class FirecrawlApp {
     try {
       if (!params?.schema) {
         jsonSchema = undefined;
-              } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
+      } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
           jsonSchema = convertZodSchemaToAjvCompatible(params.schema as zt.ZodType);
       } else {
         jsonSchema = params.schema;

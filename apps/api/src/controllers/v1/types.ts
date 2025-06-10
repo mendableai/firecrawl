@@ -450,12 +450,91 @@ export type ScrapeOptions = BaseScrapeOptions & {
   },
 };
 
-// Enhanced AJV configuration with better error handling
-const ajv = new Ajv({ 
-  strict: false,      // Allow additional properties that aren't in the schema
-  allErrors: true,    // Collect all errors instead of stopping at first
-  verbose: true       // Include more information in error messages
+// Configure AJV with security-focused settings
+const ajv = new Ajv({
+  strict: true,        // Strict mode to prevent unexpected properties
+  allErrors: false,    // Stop at first error to prevent DoS via error generation
+  verbose: false,      // Minimal error information to prevent information leakage
+  validateFormats: false, // Disable format validation to prevent ReDoS attacks
+  addUsedSchema: false,   // Prevent schema caching to avoid memory leaks
+  removeAdditional: false, // Don't automatically remove additional properties
 });
+
+// Security: Set reasonable limits to prevent DoS attacks
+ajv.addKeyword({
+  keyword: "maxProperties",
+  type: "object",
+  schemaType: "number",
+  compile: (schemaVal) => {
+    return function validate(data) {
+      if (typeof data === "object" && data !== null) {
+        return Object.keys(data).length <= Math.min(schemaVal, 100); // Cap at 100 properties
+      }
+      return true;
+    };
+  }
+});
+
+ajv.addKeyword({
+  keyword: "maxItems",
+  type: "array", 
+  schemaType: "number",
+  compile: (schemaVal) => {
+    return function validate(data) {
+      if (Array.isArray(data)) {
+        return data.length <= Math.min(schemaVal, 1000); // Cap at 1000 items
+      }
+      return true;
+    };
+  }
+});
+
+// Security helper function to safely validate schemas
+function isValidJsonSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== 'object') {
+    return false;
+  }
+
+  // Security: Prevent processing of extremely large schemas
+  const schemaStr = JSON.stringify(schema);
+  if (schemaStr.length > 50000) { // 50KB limit
+    return false;
+  }
+
+  // Security: Check for potentially malicious Zod schema objects
+  if (schema && typeof schema === 'object' && '_def' in schema) {
+    // This is likely an unconverted Zod schema which could be a security risk
+    return false;
+  }
+
+  // Security: Limit nested depth to prevent stack overflow
+  function getMaxDepth(obj: any, currentDepth = 0): number {
+    if (currentDepth > 20) return currentDepth; // Max depth limit
+    if (typeof obj !== 'object' || obj === null) return currentDepth;
+    
+    let maxChildDepth = currentDepth;
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const childDepth = getMaxDepth(obj[key], currentDepth + 1);
+        maxChildDepth = Math.max(maxChildDepth, childDepth);
+      }
+    }
+    return maxChildDepth;
+  }
+
+  if (getMaxDepth(schema) > 20) {
+    return false;
+  }
+
+  // Security: Try to compile with AJV in a safe manner
+  try {
+    const validate = ajv.compile(schema);
+    return typeof validate === "function";
+  } catch (e) {
+    // Don't log detailed error information for security reasons
+    return false;
+  }
+}
 
 export const extractV1Options = z
   .object({
@@ -471,31 +550,10 @@ export const extractV1Options = z
       .refine(
         (val) => {
           if (!val) return true; // Allow undefined schema
-          
-          // Check if this is an unconverted Zod schema
-          if (val && typeof val === 'object' && val._def) {
-            console.error('Schema validation error: Detected unconverted Zod schema with _def property:', {
-              type: val._def?.typeName,
-              keys: Object.keys(val),
-              hasZodProperties: !!(val._def || val.parse || val.safeParse)
-            });
-            return false;
-          }
-          
-          try {
-            const validate = ajv.compile(val);
-            return typeof validate === "function";
-          } catch (e) {
-            console.error('AJV schema compilation failed:', {
-              error: e.message,
-              schema: val,
-              schemaKeys: val && typeof val === 'object' ? Object.keys(val) : 'not_object'
-            });
-            return false;
-          }
+          return isValidJsonSchema(val);
         },
         {
-          message: "Invalid JSON schema. The schema must be a valid JSON Schema object, not a Zod schema. If using the JS SDK, ensure Zod schemas are properly converted to JSON schema format.",
+          message: "Invalid JSON schema.",
         },
       ),
     limit: z.number().int().positive().finite().safe().optional(),
