@@ -357,17 +357,21 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       const num_docs = await getDoneJobsOrderedLength(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
 
-      const creditsRpc = await supabase_service
-        .rpc("credits_billed_by_crawl_id_1", {
-          i_crawl_id: job.data.crawl_id,
-        });
+      let credits_billed = null;
 
-      const credits_billed = creditsRpc.data?.[0]?.credits_billed ?? null;
+      if (process.env.USE_DB_AUTHENTICATION === "true") {
+        const creditsRpc = await supabase_service
+          .rpc("credits_billed_by_crawl_id_1", {
+            i_crawl_id: job.data.crawl_id,
+          });
 
-      if (credits_billed === null) {
-        logger.warn("Credits billed is null", {
-          error: creditsRpc.error,
-        });
+        credits_billed = creditsRpc.data?.[0]?.credits_billed ?? null;
+
+        if (credits_billed === null) {
+          logger.warn("Credits billed is null", {
+            error: creditsRpc.error,
+          });
+        }
       }
       
       await logJob(
