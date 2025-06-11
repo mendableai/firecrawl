@@ -242,6 +242,7 @@ export async function performGenerateLlmsTxt(
       tokens_billed: 0,
       sources: {},
       cost_tracking: costTracking,
+      credits_billed: urls.length,
     });
 
     // Bill team for usage

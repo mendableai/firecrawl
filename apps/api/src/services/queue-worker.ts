@@ -310,7 +310,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         )
         .filter((x) => x !== null);
 
-      logger.info("Logging crawl NOW!");
       await logJob({
         job_id: job.data.crawl_id,
         success: jobStatus === "completed",
@@ -326,7 +325,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         origin: job.data.origin,
         integration: job.data.integration,
       }, false, job.data.internalOptions?.bypassBilling ?? false);
-      logger.info("Logged crawl!");
 
       const data = {
         success: jobStatus !== "failed",
@@ -359,6 +357,23 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       const num_docs = await getDoneJobsOrderedLength(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
 
+      let credits_billed = null;
+
+      if (process.env.USE_DB_AUTHENTICATION === "true") {
+        const creditsRpc = await supabase_service
+          .rpc("credits_billed_by_crawl_id_1", {
+            i_crawl_id: job.data.crawl_id,
+          });
+
+        credits_billed = creditsRpc.data?.[0]?.credits_billed ?? null;
+
+        if (credits_billed === null) {
+          logger.warn("Credits billed is null", {
+            error: creditsRpc.error,
+          });
+        }
+      }
+      
       await logJob(
         {
           job_id: job.data.crawl_id,
@@ -376,6 +391,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           crawlerOptions: sc.crawlerOptions,
           origin: job.data.origin,
           integration: job.data.integration,
+          credits_billed,
         },
         true,
         job.data.internalOptions?.bypassBilling ?? false,
