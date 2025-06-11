@@ -392,6 +392,7 @@ export async function mapController(
     origin: req.body.origin ?? "api",
     integration: req.body.integration,
     num_tokens: 0,
+    credits_billed: 1,
   });
 
   const response = {
