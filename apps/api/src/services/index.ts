@@ -166,7 +166,7 @@ export function normalizeURLForIndex(url: string): string {
     return urlObj.toString();
 }
 
-export async function hashURL(url: string): Promise<string> {
+export function hashURL(url: string): string {
     return "\\x" + crypto.createHash("sha256").update(url).digest("hex");
 }
 
@@ -260,6 +260,68 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
     // If we get less than 1000 links from the query, we're done
     if (data.length < 1000) {
       return [...links].slice(0, limit);
+    }
+
+    iteration++;
+  }
+}
+
+export async function indexPrecog(url: string, limit: number, maxAge: number): Promise<{
+  id: string;
+  originalUrl: string;
+  createdAt: string;
+  status: number;
+}[]> {
+  if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
+    return [];
+  }
+
+  const urlObj = new URL(url);
+  urlObj.search = "";
+
+  const urlSplitHash = hashURL(generateURLSplits(urlObj.href)[0]);
+
+  let hits: {
+    id: string;
+    originalUrl: string;
+    createdAt: string;
+    status: number;
+  }[] = [];
+  let iteration = 0;
+
+  while (true) {
+    // Query the index for the next set of links
+    console.log("Querying index", urlSplitHash, new Date(Date.now() - maxAge).toISOString());
+    const { data: _data, error } = await index_supabase_service
+      .rpc("precog_1", {
+        i_url_hash: urlSplitHash,
+        i_newer_than: new Date(Date.now() - maxAge).toISOString(),
+      })
+      .range(iteration * 1000, (iteration + 1) * 1000)
+
+    // If there's an error, return the links we have
+    if (error) {
+      _logger.warn("Error querying index", { error, url, limit, module: "index", method: "indexPrecog" });
+      return hits.slice(0, limit);
+    }
+
+    // Add the hits to the set
+    const data = _data ?? [];
+    data.forEach((x) => hits.push({
+      id: x.id,
+      originalUrl: x.original_url,
+      createdAt: x.created_at,
+      status: x.status,
+    }));
+
+    // If we have enough links, return them
+    if (hits.length >= limit) {
+      return hits.slice(0, limit);
+    }
+
+    // If we get less than 1000 links from the query, we're done
+    if (data.length < 1000) {
+      return hits.slice(0, limit);
     }
 
     iteration++;

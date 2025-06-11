@@ -87,9 +87,11 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
 import { calculateCreditsToBeBilled } from "../lib/scrape-billing";
 import { redisEvictConnection } from "./redis";
-import { generateURLSplits, queryIndexAtSplitLevel } from "./index";
+import { generateURLSplits, getIndexFromGCS, indexPrecog, queryIndexAtSplitLevel } from "./index";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import type { Logger } from "winston";
+import { buildMetaObject } from "../scraper/scrapeURL";
+import { executeTransformers } from "../scraper/scrapeURL/transformers";
 
 configDotenv();
 
@@ -447,7 +449,7 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
           await job.moveToCompleted(null, token, false);
         } catch (e) {}
       } else {
-        logger.debug("Job failed", { result, mode: job.data.mode });
+        logger.warn("Job failed", { result, mode: job.data.mode });
         await job.moveToFailed((result as any).error, token, false);
       }
     } else {
@@ -972,6 +974,127 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   try {
     const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
     const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
+
+    if (job.data.crawlerOptions.precog && job.data.scrapeOptions.maxAge) {
+      const pLogger = logger.child({
+        method: "processKickoffJob/precog",
+      });
+      const hits = await indexPrecog(job.data.url, sc.crawlerOptions?.limit ?? 10000, job.data.scrapeOptions.maxAge);
+
+      if (hits.length > 0) {
+        pLogger.debug("Using index hits of length " + hits.length, {
+          indexHitsLength: hits.length,
+        });
+
+        const hitsWithScrapeId = hits.map(x => ({
+          ...x,
+          scrapeId: uuidv4(),
+        }));
+
+        const filteredURLs = hitsWithScrapeId.map((hit) => crawler.filterURL(hit.originalUrl, job.data.url)).filter(x => x !== null);
+        console.log("Filtered URLs", filteredURLs.length);
+
+        const validUrls1 = crawler.filterLinks(
+          filteredURLs,
+          sc.crawlerOptions?.limit ?? 10000,
+          sc.crawlerOptions?.maxDepth ?? 10,
+          false,
+        ).map(x => ({ id: hitsWithScrapeId.find(y => y.originalUrl === x)!.scrapeId, url: x }));
+
+        console.log("Valid URLs 1", validUrls1.length);
+
+        const validUrls2 = await lockURLsIndividually(job.data.crawl_id, sc, validUrls1.map((x) => ({ id: x.id, url: x.url })));
+
+        console.log("Valid URLs 2", validUrls2.length);
+
+        const validHits = validUrls2.map((x) => hitsWithScrapeId.find((y) => y.scrapeId === x.id)!).filter(x => x !== undefined);
+
+        pLogger.debug("Valid hits", {
+          validHitsLength: validHits.length,
+        });
+
+        await addCrawlJobs(job.data.crawl_id, validHits.map((x) => x.scrapeId));
+
+        if (validHits.length > 0) {
+          for (let i = 0; i < Math.ceil(validHits.length / 100); i++) {
+            const currentHits = validHits.slice(i * 100, (i + 1) * 100);
+
+            await Promise.all(currentHits.map(async (hit) => {
+              const start = Date.now();
+              const costTracking = new CostTracking();
+              const phLogger = pLogger.child({
+                scrapeId: hit.scrapeId,
+                scrapeURL: hit.originalUrl,
+              });
+              const fakeMeta = await buildMetaObject(hit.scrapeId, hit.originalUrl, job.data.scrapeOptions, sc.internalOptions, costTracking);
+              const engineResult = await getIndexFromGCS(`${hit.id}.json`, phLogger)!;
+
+              if (engineResult === null) {
+                phLogger.warn("Engine result not found", {
+                  scrapeId: hit.scrapeId,
+                });
+                return;
+              }
+              
+              let document: Document = {
+                markdown: engineResult.markdown,
+                rawHtml: engineResult.html,
+                screenshot: engineResult.screenshot,
+                actions: engineResult.actions,
+                metadata: {
+                  sourceURL: hit.originalUrl,
+                  url: engineResult.url,
+                  statusCode: engineResult.statusCode,
+                  error: engineResult.error,
+                  numPages: engineResult.numPages,
+                  contentType: engineResult.contentType,
+                  proxyUsed: "basic", // TODO: REAL DATA
+                  cacheState: "hit",
+                  cachedAt: hit.createdAt,
+                }
+              };
+
+              fakeMeta.winnerEngine = "index";
+
+              document = await executeTransformers(fakeMeta, document);
+
+              const credits_billed = await billScrapeJob(job, document, phLogger, costTracking);
+
+              await logJob({
+                job_id: hit.scrapeId,
+                success: true,
+                num_docs: 1,
+                docs: [document],
+                time_taken: Date.now() - start,
+                team_id: job.data.team_id,
+                mode: "single_urls",
+                url: hit.originalUrl,
+                crawlerOptions: sc.crawlerOptions,
+                scrapeOptions: job.data.scrapeOptions,
+                origin: job.data.origin,
+                integration: job.data.integration,
+                crawl_id: job.data.crawl_id,
+                cost_tracking: costTracking,
+                pdf_num_pages: document.metadata.numPages,
+                credits_billed,
+                change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+              }, true, job.data.internalOptions?.bypassBilling ?? false);
+
+              await addCrawlJobDone(job.data.crawl_id, hit.scrapeId, true);
+            }));
+          }
+
+          await finishCrawlKickoff(job.data.crawl_id);
+          await finishCrawlIfNeeded(job, sc);
+
+          return { success: true };
+        } else {
+          return { success: false, error: "No valid hits" };
+        }
+      } else {
+        return { success: false, error: "No index hits" };
+      }
+    }
 
     logger.debug("Locking URL...");
     await lockURL(job.data.crawl_id, sc, job.data.url);

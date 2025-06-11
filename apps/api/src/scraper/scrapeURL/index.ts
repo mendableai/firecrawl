@@ -132,7 +132,7 @@ function buildFeatureFlags(
 // The meta object is usually immutable, except for the logs array, and in edge cases (e.g. a new feature is suddenly required)
 // Having a meta object that is treated as immutable helps the code stay clean and easily tracable,
 // while also retaining the benefits that WebScraper had from its OOP design.
-async function buildMetaObject(
+export async function buildMetaObject(
   id: string,
   url: string,
   options: ScrapeOptions,
