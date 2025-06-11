@@ -11,6 +11,7 @@ import {
   getCrawlJobs,
   getDoneJobsOrdered,
   getDoneJobsOrderedLength,
+  isCrawlFinished,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -165,13 +166,15 @@ export async function crawlStatusController(
   const validJobStatuses: [string, JobState | "unknown"][] = [];
   const validJobIDs: string[] = [];
 
+  const cFinished = await isCrawlFinished(req.params.jobId);
+
   for (const [id, status] of jobStatuses) {
     if (throttledJobsSet.has(id)) {
       validJobStatuses.push([id, "prioritized"]);
       validJobIDs.push(id);
     } else if (
       status !== "failed" &&
-      status !== "unknown"
+      (!cFinished || status !== "unknown") // hack for precog
     ) {
       validJobStatuses.push([id, status]);
       validJobIDs.push(id);

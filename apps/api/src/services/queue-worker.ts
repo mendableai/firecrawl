@@ -40,7 +40,7 @@ import {
   saveCrawl,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
-import { addScrapeJob, addScrapeJobs } from "./queue-jobs";
+import { _addScrapeJobToBullMQ, addScrapeJob, addScrapeJobs } from "./queue-jobs";
 import {
   addJobPriority,
   deleteJobPriority,
@@ -432,7 +432,7 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
       extensionTime: jobLockExtensionTime,
     });
 
-    if (job.data?.mode !== "kickoff" && job.data?.team_id) {
+    if (job.data?.mode !== "kickoff" && job.data?.mode !== "precog_batch" && job.data?.team_id) {
       await pushConcurrencyLimitActiveJob(job.data.team_id, job.id, 60 * 1000); // 60s lock renew, just like in the queue
     }
 
@@ -450,6 +450,15 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
         } catch (e) {}
       } else {
         logger.warn("Job failed", { result, mode: job.data.mode });
+        await job.moveToFailed((result as any).error, token, false);
+      }
+    } else if (job.data?.mode === "precog_batch") {
+      const result = await processPrecogBatchJob(job, token);
+      if (result.success) {
+        try {
+          await job.moveToCompleted(null, token, false);
+        } catch (e) {}
+      } else {
         await job.moveToFailed((result as any).error, token, false);
       }
     } else {
@@ -961,6 +970,93 @@ async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: s
   return validIndexLinks;
 }
 
+async function processPrecogBatchJob(job: Job & { id: string }, token: string) {
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "processPrecogBatchJob",
+    jobId: job.id,
+  });
+
+
+  const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
+  const hits: {
+    scrapeId: any;
+    id: string;
+    originalUrl: string;
+    createdAt: string;
+    status: number;
+  }[] = job.data.hits;
+
+  await Promise.all(hits.map(async (hit) => {
+    const start = Date.now();
+    const costTracking = new CostTracking();
+    const phLogger = logger.child({
+      scrapeId: hit.scrapeId,
+      scrapeURL: hit.originalUrl,
+    });
+    const fakeMeta = await buildMetaObject(hit.scrapeId, hit.originalUrl, job.data.scrapeOptions, sc.internalOptions, costTracking);
+    const engineResult = await getIndexFromGCS(`${hit.id}.json`, phLogger)!;
+
+    if (engineResult === null) {
+      phLogger.warn("Engine result not found", {
+        scrapeId: hit.scrapeId,
+      });
+      return;
+    }
+    
+    let document: Document = {
+      markdown: engineResult.markdown,
+      rawHtml: engineResult.html,
+      screenshot: engineResult.screenshot,
+      actions: engineResult.actions,
+      metadata: {
+        sourceURL: hit.originalUrl,
+        url: engineResult.url,
+        statusCode: engineResult.statusCode,
+        error: engineResult.error,
+        numPages: engineResult.numPages,
+        contentType: engineResult.contentType,
+        proxyUsed: "basic", // TODO: REAL DATA
+        cacheState: "hit",
+        cachedAt: hit.createdAt,
+      }
+    };
+
+    fakeMeta.winnerEngine = "index";
+
+    document = await executeTransformers(fakeMeta, document);
+
+    const credits_billed = await billScrapeJob(job, document, phLogger, costTracking);
+
+    await logJob({
+      job_id: hit.scrapeId,
+      success: true,
+      num_docs: 1,
+      docs: [document],
+      time_taken: Date.now() - start,
+      team_id: job.data.team_id,
+      mode: "single_urls",
+      url: hit.originalUrl,
+      crawlerOptions: sc.crawlerOptions,
+      scrapeOptions: job.data.scrapeOptions,
+      origin: job.data.origin,
+      integration: job.data.integration,
+      crawl_id: job.data.crawl_id,
+      cost_tracking: costTracking,
+      pdf_num_pages: document.metadata.numPages,
+      credits_billed,
+      change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+    }, true, job.data.internalOptions?.bypassBilling ?? false);
+
+    await addCrawlJobDone(job.data.crawl_id, hit.scrapeId, true);
+  }));
+  
+  await finishCrawlIfNeeded(job, sc);
+
+  return { success: true };
+}
+
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
     module: "queue-worker",
@@ -1013,75 +1109,31 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
           validHitsLength: validHits.length,
         });
 
-        await addCrawlJobs(job.data.crawl_id, validHits.map((x) => x.scrapeId));
-
         if (validHits.length > 0) {
-          for (let i = 0; i < Math.ceil(validHits.length / 100); i++) {
-            const currentHits = validHits.slice(i * 100, (i + 1) * 100);
+          await addCrawlJobs(job.data.crawl_id, validHits.map((x) => x.scrapeId));
 
-            await Promise.all(currentHits.map(async (hit) => {
-              const start = Date.now();
-              const costTracking = new CostTracking();
-              const phLogger = pLogger.child({
-                scrapeId: hit.scrapeId,
-                scrapeURL: hit.originalUrl,
-              });
-              const fakeMeta = await buildMetaObject(hit.scrapeId, hit.originalUrl, job.data.scrapeOptions, sc.internalOptions, costTracking);
-              const engineResult = await getIndexFromGCS(`${hit.id}.json`, phLogger)!;
+          for (let i = 0; i < Math.ceil(validHits.length / 50); i++) {
+            const currentHits = validHits.slice(i * 50, (i + 1) * 50);
 
-              if (engineResult === null) {
-                phLogger.warn("Engine result not found", {
-                  scrapeId: hit.scrapeId,
-                });
-                return;
-              }
-              
-              let document: Document = {
-                markdown: engineResult.markdown,
-                rawHtml: engineResult.html,
-                screenshot: engineResult.screenshot,
-                actions: engineResult.actions,
-                metadata: {
-                  sourceURL: hit.originalUrl,
-                  url: engineResult.url,
-                  statusCode: engineResult.statusCode,
-                  error: engineResult.error,
-                  numPages: engineResult.numPages,
-                  contentType: engineResult.contentType,
-                  proxyUsed: "basic", // TODO: REAL DATA
-                  cacheState: "hit",
-                  cachedAt: hit.createdAt,
-                }
-              };
-
-              fakeMeta.winnerEngine = "index";
-
-              document = await executeTransformers(fakeMeta, document);
-
-              const credits_billed = await billScrapeJob(job, document, phLogger, costTracking);
-
-              await logJob({
-                job_id: hit.scrapeId,
-                success: true,
-                num_docs: 1,
-                docs: [document],
-                time_taken: Date.now() - start,
+            await _addScrapeJobToBullMQ(
+              {
+                url: job.data.url,
+                mode: "precog_batch" as const,
                 team_id: job.data.team_id,
-                mode: "single_urls",
-                url: hit.originalUrl,
-                crawlerOptions: sc.crawlerOptions,
-                scrapeOptions: job.data.scrapeOptions,
+                crawlerOptions: job.data.crawlerOptions,
+                scrapeOptions: sc.scrapeOptions,
+                internalOptions: sc.internalOptions,
                 origin: job.data.origin,
                 integration: job.data.integration,
                 crawl_id: job.data.crawl_id,
-                cost_tracking: costTracking,
-                pdf_num_pages: document.metadata.numPages,
-                credits_billed,
-                change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
-              }, true, job.data.internalOptions?.bypassBilling ?? false);
-
-              await addCrawlJobDone(job.data.crawl_id, hit.scrapeId, true);
-            }));
+                webhook: job.data.webhook,
+                v1: true,
+                hits: currentHits,
+              },
+              {},
+              crypto.randomUUID(),
+              10,
+            );
           }
 
           await finishCrawlKickoff(job.data.crawl_id);
