@@ -47,7 +47,7 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
 
-  if (!bullJob && !dbJob) return null;
+  if (!bullJob && !dbJob && !gcsJob) return null;
 
   const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
   if (gcsJob === null && data) {
@@ -58,15 +58,15 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
   const job: PseudoJob<any> = {
     id,
-    getState: bullJob ? bullJob.getState : (() => dbJob!.success ? "completed" : "failed"),
+    getState: gcsJob ? (() => "completed") : bullJob ? bullJob.getState : (() => dbJob!.success ? "completed" : "failed"),
     returnvalue: Array.isArray(data)
       ? data[0]
       : data,
     data: {
-      scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
+      scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob?.page_options,
     },
-    timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
-    failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
+    timestamp: bullJob ? bullJob.timestamp : new Date(dbJob?.date_added ?? new Date()).valueOf(),
+    failedReason: (bullJob ? bullJob.failedReason : dbJob?.message) || undefined,
   }
 
   return job;
@@ -102,7 +102,7 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
     const dbJob = dbJobMap.get(id);
     const gcsJob = gcsJobMap.get(id);
 
-    if (!bullJob && !dbJob) continue;
+    if (!bullJob && !dbJob && !gcsJob) continue;
 
     const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
     if (gcsJob === null && data) {
@@ -113,15 +113,15 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
 
     const job: PseudoJob<any> = {
       id,
-      getState: bullJob ? (() => bullJob.getState()) : (() => dbJob!.success ? "completed" : "failed"),
+      getState: gcsJob ? (() => "completed") : bullJob ? (() => bullJob.getState()) : (() => dbJob!.success ? "completed" : "failed"),
       returnvalue: Array.isArray(data)
         ? data[0]
         : data,
       data: {
-        scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
+        scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob?.page_options,
       },
-      timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
-      failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
+      timestamp: bullJob ? bullJob.timestamp : new Date(dbJob?.date_added ?? new Date()).valueOf(),
+      failedReason: (bullJob ? bullJob.failedReason : dbJob?.message) || undefined,
     }
 
     jobs.push(job);
