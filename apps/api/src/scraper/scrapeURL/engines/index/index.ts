@@ -59,8 +59,6 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                     id: indexId,
                     url: normalizedURL,
                     url_hash: urlHash,
-                    url_splits: urlSplits,
-                    url_splits_hash: urlSplitsHash,
                     original_url: document.metadata.sourceURL ?? meta.url,
                     resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
                     has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
