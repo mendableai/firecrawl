@@ -42,14 +42,15 @@ export const url = z.preprocess(
       x = `http://${x}`;
     }
     
-    try {
-      const urlObj = new URL(x as string);
-      if (urlObj.search) {
-        const searchParams = new URLSearchParams(urlObj.search.substring(1));
-        return `${urlObj.origin}${urlObj.pathname}?${searchParams.toString()}`;
-      }
-    } catch (e) {
-    }
+    // transforming the query parameters is breaking certain sites, so we're not doing it - mogery
+    // try {
+    //   const urlObj = new URL(x as string);
+    //   if (urlObj.search) {
+    //     const searchParams = new URLSearchParams(urlObj.search.substring(1));
+    //     return `${urlObj.origin}${urlObj.pathname}?${searchParams.toString()}`;
+    //   }
+    // } catch (e) {
+    // }
     
     return x;
   },
