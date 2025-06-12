@@ -334,7 +334,7 @@ importers:
         specifier: ^6.3.3
         version: 6.3.4
       ts-jest:
-        specifier: ^29.1.1
+        specifier: ^29.1.4
         version: 29.1.4(@babel/core@7.24.6)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.24.6))(jest@29.7.0(@types/node@20.14.1)(ts-node@10.9.2(@types/node@20.14.1)(typescript@5.8.3)))(typescript@5.8.3)
       ts-node:
         specifier: ^10.9.1

@@ -1,3 +1,5 @@
+import { supabase_service } from "../supabase";
+
 import { logger } from "../../lib/logger";
 import Stripe from "stripe";
 
@@ -9,6 +11,13 @@ async function getCustomerDefaultPaymentMethod(customerId: string) {
   });
   return paymentMethods.data[0] ?? null;
 }
+
+export const SUBSCRIPTION_STATUSES = {
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+  PAST_DUE: 'past_due'
+} as const;
+
 
 type ReturnStatus = "succeeded" | "requires_action" | "failed";
 export async function createPaymentIntent(
@@ -55,5 +64,68 @@ export async function createPaymentIntent(
     );
     console.error(error);
     return { return_status: "failed", charge_id: "" };
+  }
+}
+export async function checkExistingSubscription(
+  team_id: string,
+  price_id: string
+): Promise<boolean> {
+  const { data: subscription } = await supabase_service
+    .from("subscriptions")
+    .select("status")
+    .eq("team_id", team_id)
+    .eq("price_id", price_id)
+    .in("status", [SUBSCRIPTION_STATUSES.ACTIVE, SUBSCRIPTION_STATUSES.PAUSED, SUBSCRIPTION_STATUSES.PAST_DUE])
+    .single();
+
+  return !!subscription;
+}
+export async function createSubscription(
+  team_id: string,
+  customer_id: string,
+  price_id: string
+): Promise<{ success: boolean; message: string }> {
+  if (price_id === process.env.STRIPE_CREDIT_PACK_PRICE_ID) {
+    return { success: true, message: "Credit pack purchase allowed" };
+  }
+
+  const hasExistingSubscription = await checkExistingSubscription(team_id, price_id);
+  if (hasExistingSubscription) {
+    return { 
+      success: false, 
+      message: "You already have an active/paused/past due subscription for this plan. Please update your payment method if needed."
+    };
+  }
+
+  const defaultPaymentMethod = await getCustomerDefaultPaymentMethod(customer_id);
+  if (!defaultPaymentMethod) {
+    return {
+      success: false,
+      message: "Please add a payment method before subscribing"
+    };
+  }
+
+  return { success: true, message: "Subscription created successfully" };
+}
+
+
+export async function handlePaymentMethodUpdate(
+  customer_id: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const defaultPaymentMethod = await getCustomerDefaultPaymentMethod(customer_id);
+    if (!defaultPaymentMethod) {
+      return {
+        success: false,
+        message: "Please contact help@firecrawl.com if you continue to experience issues"
+      };
+    }
+    return { success: true, message: "Payment method updated successfully" };
+  } catch (error) {
+    logger.error("Failed to update payment method", { customer_id, error });
+    return {
+      success: false,
+      message: "Please contact help@firecrawl.com if you continue to experience issues"
+    };
   }
 }

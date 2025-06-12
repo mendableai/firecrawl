@@ -1,3 +1,8 @@
+import { supabase_service } from "../../services/supabase";
+import { SUBSCRIPTION_STATUSES, createSubscription, handlePaymentMethodUpdate } from "../../services/billing/stripe";
+import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+
 import { batchScrape, crawl, creditUsage, extract, map, scrape, search, tokenUsage } from "./lib";
 
 const sleep = (ms: number) => new Promise(x => setTimeout(() => x(true), ms));
@@ -208,4 +213,40 @@ describe("Billing tests", () => {
             expect(rc1 - rc2).toBe(305);
         }, 300000);
     }
+it("prevents duplicate subscriptions for the same plan", async () => {
+    const team_id = "test_team";
+    const customer_id = "test_customer";
+    const price_id = "test_price";
+
+    await supabase_service.from("subscriptions").insert({
+        team_id,
+        price_id,
+        status: SUBSCRIPTION_STATUSES.ACTIVE,
+    });
+
+    const result = await createSubscription(team_id, customer_id, price_id);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("You already have an active/paused/past due subscription for this plan.");
+});
+
+it("allows multiple CREDIT pack purchases", async () => {
+    const team_id = "test_team";
+    const customer_id = "test_customer";
+    const price_id = process.env.STRIPE_CREDIT_PACK_PRICE_ID || "default_credit_pack_price_id";
+
+    const result = await createSubscription(team_id, customer_id, price_id);
+    expect(result.success).toBe(true);
+    expect(result.message).toContain("Credit pack purchase allowed");
+});
+
+it("handles payment method updates", async () => {
+    const customer_id = "test_customer";
+
+    jest.spyOn(stripe.customers, 'listPaymentMethods').mockResolvedValueOnce({ data: [], has_more: false, object: "list", url: "" } as any);
+
+    const result = await handlePaymentMethodUpdate(customer_id);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("Please contact help@firecrawl.com if you continue to experience issues");
+});
+
 });
