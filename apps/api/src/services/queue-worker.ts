@@ -6,7 +6,6 @@ import {
   getScrapeQueue,
   getExtractQueue,
   getDeepResearchQueue,
-  getIndexQueue,
   redisConnection,
   getGenerateLlmsTxtQueue,
   getBillingQueue,
@@ -64,7 +63,6 @@ import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
 import { billTeam } from "./billing/credit_billing";
-import { saveCrawlMap } from "./indexing/crawl-maps-index";
 import { updateDeepResearch } from "../lib/deep-research/deep-research-redis";
 import { performDeepResearch } from "../lib/deep-research/deep-research-service";
 import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-service";
@@ -252,35 +250,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
     logger.info("Finishing crawl");
     await finishCrawl(job.data.crawl_id);
-
-    (async () => {
-      const originUrl = sc.originUrl
-        ? normalizeUrlOnlyHostname(sc.originUrl)
-        : undefined;
-      // Get all visited unique URLs from Redis
-      const visitedUrls = await redisEvictConnection.smembers(
-        "crawl:" + job.data.crawl_id + ":visited_unique",
-      );
-      // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
-      if (
-        visitedUrls.length > 0 &&
-        job.data.crawlerOptions !== null &&
-        originUrl &&
-        process.env.USE_DB_AUTHENTICATION === "true"
-      ) {
-        // Queue the indexing job instead of doing it directly
-        await getIndexQueue().add(
-          job.data.crawl_id,
-          {
-            originUrl,
-            visitedUrls,
-          },
-          {
-            priority: 10,
-          },
-        );
-      }
-    })();
 
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);

@@ -23,8 +23,6 @@ import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
 import { logger } from "../../lib/logger";
 import Redis from "ioredis";
-import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
-import { getIndexQueue } from "../../services/queue-service";
 import { generateURLSplits, queryIndexAtDomainSplitLevel, queryIndexAtSplitLevel } from "../../services/index";
 
 configDotenv();
@@ -188,8 +186,7 @@ export async function getMapResults({
     }
 
     // Parallelize sitemap index query with search results
-    const [sitemapIndexResult, indexResults, ...searchResults] = await Promise.all([
-      querySitemapIndex(url, abort),
+    const [indexResults, ...searchResults] = await Promise.all([
       queryIndex(url, limit, useIndex),
       ...(cachedResult ? [] : pagePromises),
     ]);
@@ -202,10 +199,10 @@ export async function getMapResults({
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
     // If sitemap is not ignored and either we have few URLs (<100) or the data is stale (>2 days old), fetch fresh sitemap
+    // TODO: We should always soft-fetch the sitemaps from just the index, which fails very fast if there's no result. - mogery
     if (
       !ignoreSitemap &&
-      (sitemapIndexResult.urls.length < 100 ||
-        new Date(sitemapIndexResult.lastUpdated) < twoDaysAgo)
+      (indexResults.length < 100)
     ) {
       try {
         await crawler.tryGetSitemap(
@@ -249,9 +246,6 @@ export async function getMapResults({
         });
       }
     }
-
-    // Add sitemap-index URLs
-    links.push(...sitemapIndexResult.urls);
 
     // Perform cosine similarity between the search query and the list of links
     if (search) {
@@ -307,19 +301,6 @@ export async function getMapResults({
   const linksToReturn = crawlerOptions.sitemapOnly
     ? links
     : links.slice(0, limit);
-
-  //
-
-  await getIndexQueue().add(
-    id,
-    {
-      originUrl: url,
-      visitedUrls: linksToReturn.filter(link => link !== url),
-    },
-    {
-      priority: 10,
-    },
-  );
 
   return {
     success: true,

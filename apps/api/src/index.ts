@@ -7,7 +7,6 @@ import cors from "cors";
 import {
   getExtractQueue,
   getScrapeQueue,
-  getIndexQueue,
   getGenerateLlmsTxtQueue,
   getDeepResearchQueue,
   getBillingQueue,
@@ -57,7 +56,6 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [
     new BullAdapter(getScrapeQueue()),
     new BullAdapter(getExtractQueue()),
-    new BullAdapter(getIndexQueue()),
     new BullAdapter(getGenerateLlmsTxtQueue()),
     new BullAdapter(getDeepResearchQueue()),
     new BullAdapter(getBillingQueue()),

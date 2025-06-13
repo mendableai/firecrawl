@@ -60,24 +60,6 @@ export function getExtractQueue() {
   return extractQueue;
 }
 
-export function getIndexQueue() {
-  if (!indexQueue) {
-    indexQueue = new Queue(indexQueueName, {
-      connection: redisConnection,
-      defaultJobOptions: {
-        removeOnComplete: {
-          age: 3600, // 1 hour
-        },
-        removeOnFail: {
-          age: 3600, // 1 hour
-        },
-      },
-    });
-    logger.info("Index queue created");
-  }
-  return indexQueue;
-}
-
 export function getGenerateLlmsTxtQueue() {
   if (!generateLlmsTxtQueue) {
     generateLlmsTxtQueue = new Queue(generateLlmsTxtQueueName, {

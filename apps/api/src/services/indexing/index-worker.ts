@@ -5,12 +5,8 @@ import { Job, Queue, Worker } from "bullmq";
 import { logger as _logger, logger } from "../../lib/logger";
 import {
   redisConnection,
-  indexQueueName,
-  getIndexQueue,
-  billingQueueName,
   getBillingQueue,
 } from "../queue-service";
-import { saveCrawlMap } from "./crawl-maps-index";
 import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing } from "../billing/batch_billing";
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
@@ -32,39 +28,6 @@ const connectionMonitorInterval =
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 const runningJobs: Set<string> = new Set();
-
-const processJobInternal = async (token: string, job: Job) => {
-  if (!job.id) {
-    throw new Error("Job has no ID");
-  }
-
-  const logger = _logger.child({
-    module: "index-worker",
-    method: "processJobInternal",
-    jobId: job.id,
-  });
-
-  const extendLockInterval = setInterval(async () => {
-    logger.info(`🔄 Worker extending lock on job ${job.id}`);
-    await job.extendLock(token, jobLockExtensionTime);
-  }, jobLockExtendInterval);
-
-  let err = null;
-  try {
-    const { originUrl, visitedUrls } = job.data;
-    await saveCrawlMap(originUrl, visitedUrls);
-    await job.moveToCompleted({ success: true }, token, false);
-  } catch (error) {
-    logger.error("Error processing index job", { error });
-    Sentry.captureException(error);
-    err = error;
-    await job.moveToFailed(error, token, false);
-  } finally {
-    clearInterval(extendLockInterval);
-  }
-
-  return err;
-};
 
 // Create a processor for billing jobs
 const processBillingJobInternal = async (token: string, job: Job) => {
@@ -233,9 +196,6 @@ const WEBHOOK_INSERT_INTERVAL = 15000;
 
 // Start the workers
 (async () => {
-  // Start index worker
-  const indexWorkerPromise = workerFun(getIndexQueue(), processJobInternal);
-  
   // Start billing worker and batch processing
   startBillingBatchProcessing();
   const billingWorkerPromise = workerFun(getBillingQueue(), processBillingJobInternal);
@@ -255,8 +215,8 @@ const WEBHOOK_INSERT_INTERVAL = 15000;
     await processWebhookInsertJobs();
   }, WEBHOOK_INSERT_INTERVAL);
 
-  // Wait for both workers to complete (which should only happen on shutdown)
-  await Promise.all([indexWorkerPromise, billingWorkerPromise]);
+  // Wait for all workers to complete (which should only happen on shutdown)
+  await Promise.all([billingWorkerPromise]);
 
   clearInterval(indexInserterInterval);
   clearInterval(webhookInserterInterval);
