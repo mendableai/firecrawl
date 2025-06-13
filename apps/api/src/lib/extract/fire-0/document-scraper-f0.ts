@@ -46,6 +46,7 @@ export async function scrapeDocument_F0(
         internalOptions: {
           useCache: true,
           teamId: options.teamId,
+          bypassBilling: true,
         },
         origin: options.origin,
         is_scrape: true,
