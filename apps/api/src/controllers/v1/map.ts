@@ -42,7 +42,7 @@ interface MapResult {
   mapResults: MapDocument[];
 }
 
-async function queryIndex(url: string, limit: number, useIndex: boolean): Promise<string[]> {
+async function queryIndex(url: string, limit: number, useIndex: boolean, includeSubdomains: boolean): Promise<string[]> {
   if (!useIndex) {
     return [];
   }
@@ -52,8 +52,8 @@ async function queryIndex(url: string, limit: number, useIndex: boolean): Promis
     const urlObj = new URL(url);
     const hostname = urlObj.hostname;
 
-    // TEMP: this can be removed in 2 days
-    const domainLinks = await queryIndexAtDomainSplitLevel(hostname, limit);
+    // TEMP: this should be altered on June 15th 2025 7AM PT - mogery
+    const domainLinks = includeSubdomains ? await queryIndexAtDomainSplitLevel(hostname, limit) : [];
     const splitLinks = await queryIndexAtSplitLevel(url, limit);
 
     return Array.from(new Set([...domainLinks, ...splitLinks]));
@@ -187,7 +187,7 @@ export async function getMapResults({
 
     // Parallelize sitemap index query with search results
     const [indexResults, ...searchResults] = await Promise.all([
-      queryIndex(url, limit, useIndex),
+      queryIndex(url, limit, useIndex, includeSubdomains),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
