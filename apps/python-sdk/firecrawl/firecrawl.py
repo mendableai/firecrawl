@@ -1210,6 +1210,8 @@ class FirecrawlApp:
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> BatchScrapeStatusResponse:
@@ -1294,6 +1296,10 @@ class FirecrawlApp:
             scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
+        if store_in_cache is not None:
+            scrape_params['storeInCache'] = store_in_cache
 
         # Add any additional kwargs
         scrape_params.update(kwargs)
@@ -3000,6 +3006,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> BatchScrapeStatusResponse:
@@ -3084,6 +3092,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
+        if store_in_cache is not None:
+            scrape_params['storeInCache'] = store_in_cache
 
         # Add any additional kwargs
         scrape_params.update(kwargs)
@@ -3138,6 +3150,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> BatchScrapeResponse:
@@ -3222,6 +3236,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
+        if store_in_cache is not None:
+            scrape_params['storeInCache'] = store_in_cache
 
         # Add any additional kwargs
         scrape_params.update(kwargs)
