@@ -168,6 +168,7 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           timeout: 60000,
+          maxAge: 120000,
         });
         
         expect(response1.metadata.cacheState).toBe("miss");
@@ -177,6 +178,7 @@ describe("Scrape tests", () => {
         const response2 = await scrape({
           url,
           timeout: 60000,
+          maxAge: 120000,
         });
 
         expect(response2.metadata.cacheState).toBe("hit");
