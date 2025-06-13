@@ -25,7 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
-import { queryIndexAtSplitLevel } from "../../services/index";
+import { generateURLSplits, queryIndexAtDomainSplitLevel, queryIndexAtSplitLevel } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -49,7 +49,19 @@ async function queryIndex(url: string, limit: number, useIndex: boolean): Promis
     return [];
   }
 
-  return await queryIndexAtSplitLevel(url, limit);
+  const urlSplits = generateURLSplits(url);
+  if (urlSplits.length === 1) {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+
+    // TEMP: this can be removed in 2 days
+    const domainLinks = await queryIndexAtDomainSplitLevel(hostname, limit);
+    const splitLinks = await queryIndexAtSplitLevel(url, limit);
+
+    return Array.from(new Set([...domainLinks, ...splitLinks]));
+  } else {
+    return await queryIndexAtSplitLevel(url, limit);
+  }
 }
 
 export async function getMapResults({
