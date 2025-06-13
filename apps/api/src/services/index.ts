@@ -237,7 +237,7 @@ export async function getIndexInsertQueueLength(): Promise<number> {
   return await redisEvictConnection.llen(INDEX_INSERT_QUEUE_KEY) ?? 0;
 }
 
-export async function queryIndexAtSplitLevel(url: string, limit: number): Promise<string[]> {
+export async function queryIndexAtSplitLevel(url: string, limit: number, maxAge = 2 * 24 * 60 * 60 * 1000): Promise<string[]> {
   if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
     return [];
   }
@@ -258,7 +258,7 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
       .rpc("query_index_at_split_level", {
         i_level: level,
         i_url_hash: urlSplitsHash[level],
-        i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        i_newer_than: new Date(Date.now() - maxAge).toISOString(),
       })
       .range(iteration * 1000, (iteration + 1) * 1000)
 
@@ -286,7 +286,7 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
   }
 }
 
-export async function queryIndexAtDomainSplitLevel(hostname: string, limit: number): Promise<string[]> {
+export async function queryIndexAtDomainSplitLevel(hostname: string, limit: number, maxAge = 2 * 24 * 60 * 60 * 1000): Promise<string[]> {
   if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
     return [];
   }
@@ -307,7 +307,7 @@ export async function queryIndexAtDomainSplitLevel(hostname: string, limit: numb
       .rpc("query_index_at_domain_split_level", {
         i_level: level,
         i_domain_hash: domainSplitsHash[level],
-        i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        i_newer_than: new Date(Date.now() - maxAge).toISOString(),
       })
       .range(iteration * 1000, (iteration + 1) * 1000)
 
