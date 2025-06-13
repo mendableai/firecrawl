@@ -7,7 +7,6 @@ import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
     const shouldCache = meta.options.storeInCache
-        && meta.winnerEngine !== "cache"
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
         && (

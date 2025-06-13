@@ -7,7 +7,6 @@ import { extractMetadata } from "../lib/extractMetadata";
 import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
-import { saveToCache } from "./cache";
 import { performAgent } from "./agent";
 
 import { deriveDiff } from "./diff";
@@ -202,7 +201,6 @@ export function coerceFieldsToFormats(
 
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
-  saveToCache,
   deriveHTMLFromRawHTML,
   deriveMarkdownFromHTML,
   deriveLinksFromHTML,
