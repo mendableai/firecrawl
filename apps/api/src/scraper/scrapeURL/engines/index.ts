@@ -9,7 +9,6 @@ import {
 import { scrapePDF } from "./pdf";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
-import { scrapeCache } from "./cache";
 import { scrapeURLWithIndex } from "./index/index";
 import { useIndex } from "../../../services";
 
@@ -26,7 +25,6 @@ export type Engine =
   | "fetch"
   | "pdf"
   | "docx"
-  | "cache"
   | "index"
   | "index;documents";
 
@@ -36,12 +34,8 @@ const useFireEngine =
 const usePlaywright =
   process.env.PLAYWRIGHT_MICROSERVICE_URL !== "" &&
   process.env.PLAYWRIGHT_MICROSERVICE_URL !== undefined;
-const useCache =
-  process.env.CACHE_REDIS_URL !== "" &&
-  process.env.CACHE_REDIS_URL !== undefined;
 
 export const engines: Engine[] = [
-  ...(useCache ? ["cache" as const] : []),
   ...(useIndex ? ["index" as const, "index;documents" as const] : []),
   ...(useFireEngine
     ? [
@@ -132,7 +126,6 @@ const engineHandlers: {
     timeToRun: number | undefined,
   ) => Promise<EngineScrapeResult>;
 } = {
-  cache: scrapeCache,
   index: scrapeURLWithIndex,
   "index;documents": scrapeURLWithIndex,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
@@ -159,24 +152,6 @@ export const engineOptions: {
     quality: number;
   };
 } = {
-  cache: {
-    features: {
-      actions: false,
-      waitFor: true,
-      screenshot: false,
-      "screenshot@fullScreen": false,
-      pdf: false, // TODO: figure this out
-      docx: false, // TODO: figure this out
-      atsv: false,
-      location: false,
-      mobile: false,
-      skipTlsVerification: false,
-      useFastMode: false,
-      stealthProxy: false,
-      disableAdblock: false,
-    },
-    quality: 1000, // cache should always be tried first
-  },
   index: {
     features: {
       actions: false,
@@ -193,7 +168,7 @@ export const engineOptions: {
       stealthProxy: false,
       disableAdblock: true,
     },
-    quality: 999, // index should always be tried second ? - MG
+    quality: 1000, // index should always be tried first
   },
   "fire-engine;chrome-cdp": {
     features: {
@@ -441,13 +416,6 @@ export function buildFallbackList(meta: Meta): {
     // enable fire-engine in self-hosted testing environment when mocks are supplied
     ...((!useFireEngine && meta.mock !== null) ? ["fire-engine;chrome-cdp", "fire-engine(retry);chrome-cdp", "fire-engine;chrome-cdp;stealth", "fire-engine(retry);chrome-cdp;stealth", "fire-engine;playwright", "fire-engine;tlsclient", "fire-engine;playwright;stealth", "fire-engine;tlsclient;stealth"] as Engine[] : [])
   ];
-
-  if (meta.internalOptions.useCache !== true) {
-    const cacheIndex = _engines.indexOf("cache");
-    if (cacheIndex !== -1) {
-      _engines.splice(cacheIndex, 1);
-    }
-  }
 
   const shouldUseIndex =
     useIndex

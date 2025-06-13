@@ -41,10 +41,9 @@ export async function scrapeDocument_F0(
         team_id: options.teamId,
         scrapeOptions: scrapeOptions.parse({
           ...internalScrapeOptions,
-          maxAge: 4 * 60 * 60 * 1000, // 4 hours, same as useCache
+          maxAge: 4 * 60 * 60 * 1000,
         }),
         internalOptions: {
-          useCache: true,
           teamId: options.teamId,
           bypassBilling: true,
         },

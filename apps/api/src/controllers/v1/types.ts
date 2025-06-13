@@ -328,7 +328,6 @@ const baseScrapeOptions = z
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
     maxAge: z.number().int().gte(0).safe().default(0),
     storeInCache: z.boolean().default(true),
-    __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
   })
   .strict(strictMessage);

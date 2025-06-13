@@ -131,9 +131,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             removeBase64Images: false,
             fastMode: false,
             blockAds: false,
-            maxAge: 0,
+            maxAge: 4 * 60 * 60 * 1000,
             storeInCache: true,
-            __experimental_cache: true,
           },
         }, logger, costTracking, acuc?.flags ?? null);
         return response.length > 0 ? response : [];
