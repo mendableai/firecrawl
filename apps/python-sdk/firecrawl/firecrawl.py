@@ -295,7 +295,6 @@ class MapParams(pydantic.BaseModel):
     sitemapOnly: Optional[bool] = None
     limit: Optional[int] = None
     timeout: Optional[int] = None
-    useIndex: Optional[bool] = None
 
 class MapResponse(pydantic.BaseModel):
     """Response from mapping operations."""
@@ -1112,7 +1111,6 @@ class FirecrawlApp:
             sitemap_only: Optional[bool] = None,
             limit: Optional[int] = None,
             timeout: Optional[int] = None,
-            use_index: Optional[bool] = None,
             **kwargs) -> MapResponse:
         """
         Map and discover links from a URL.
@@ -1155,8 +1153,6 @@ class FirecrawlApp:
             map_params['limit'] = limit
         if timeout is not None:
             map_params['timeout'] = timeout
-        if use_index is not None:
-            map_params['useIndex'] = use_index
         
         # Add any additional kwargs
         map_params.update(kwargs)

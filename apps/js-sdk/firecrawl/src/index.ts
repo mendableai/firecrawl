@@ -292,7 +292,6 @@ export interface MapParams {
   sitemapOnly?: boolean;
   limit?: number;
   timeout?: number;
-  useIndex?: boolean;
 }
 
 /**
