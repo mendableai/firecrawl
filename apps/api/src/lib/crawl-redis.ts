@@ -14,6 +14,7 @@ export type StoredCrawl = {
   robots?: string;
   cancelled?: boolean;
   createdAt: number;
+  maxConcurrency?: number;
 };
 
 export async function saveCrawl(id: string, crawl: StoredCrawl) {
