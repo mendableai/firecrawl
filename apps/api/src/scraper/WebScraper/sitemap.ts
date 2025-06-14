@@ -12,10 +12,12 @@ export async function getLinksFromSitemap(
     sitemapUrl,
     urlsHandler,
     mode = "axios",
+    maxAge = 0,
   }: {
     sitemapUrl: string;
     urlsHandler(urls: string[]): unknown;
     mode?: "axios" | "fire-engine";
+    maxAge?: number;
   },
   logger: Logger,
   crawlId: string,
@@ -40,9 +42,10 @@ export async function getLinksFromSitemap(
       const response = await scrapeURL(
         "sitemap;" + crawlId,
         sitemapUrl,
-        scrapeOptions.parse({ formats: ["rawHtml"], useMock: mock }),
+        scrapeOptions.parse({ formats: ["rawHtml"], useMock: mock, maxAge }),
         {
           forceEngine: [
+            ...(maxAge > 0 ? ["index" as const] : []),
             "fetch",
             ...((mode === "fire-engine" && useFireEngine) ? ["fire-engine;tlsclient" as const] : []),
           ],
