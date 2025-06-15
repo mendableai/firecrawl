@@ -5,6 +5,7 @@ import { ApiError, Storage } from "@google-cloud/storage";
 import crypto from "crypto";
 import { redisEvictConnection } from "./redis";
 import type { Logger } from "winston";
+import psl from "psl";
 configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
@@ -166,7 +167,7 @@ export function normalizeURLForIndex(url: string): string {
     return urlObj.toString();
 }
 
-export async function hashURL(url: string): Promise<string> {
+export function hashURL(url: string): string {
     return "\\x" + crypto.createHash("sha256").update(url).digest("hex");
 }
 
@@ -185,6 +186,25 @@ export function generateURLSplits(url: string): string[] {
   urls.push(url);
 
   return [...new Set(urls.map(x => normalizeURLForIndex(x)))];
+}
+
+export function generateDomainSplits(hostname: string): string[] {
+  const parsed = psl.parse(hostname);
+  if (parsed === null) {
+    return [];
+  }
+
+  const subdomains: string[] = (parsed.subdomain ?? "").split(".").filter(x => x !== "");
+  if (subdomains.length === 1 && subdomains[0] === "www") {
+    return [parsed.domain];
+  }
+
+  const domains: string[] = [];
+  for (let i = subdomains.length; i >= 0; i--) {
+    domains.push(subdomains.slice(i).concat([parsed.domain]).join("."));
+  }
+
+  return domains;
 }
 
 const INDEX_INSERT_QUEUE_KEY = "index-insert-queue";
@@ -245,6 +265,55 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
     // If there's an error, return the links we have
     if (error) {
       _logger.warn("Error querying index", { error, url, limit });
+      return [...links].slice(0, limit);
+    }
+
+    // Add the links to the set
+    const data = _data ?? [];
+    data.forEach((x) => links.add(x.resolved_url));
+
+    // If we have enough links, return them
+    if (links.size >= limit) {
+      return [...links].slice(0, limit);
+    }
+
+    // If we get less than 1000 links from the query, we're done
+    if (data.length < 1000) {
+      return [...links].slice(0, limit);
+    }
+
+    iteration++;
+  }
+}
+
+export async function queryIndexAtDomainSplitLevel(hostname: string, limit: number): Promise<string[]> {
+  if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
+    return [];
+  }
+
+  const domainSplitsHash = generateDomainSplits(hostname).map(x => hashURL(x));
+
+  const level = domainSplitsHash.length - 1;
+  if (domainSplitsHash.length === 0) {
+    return [];
+  }
+
+  let links: Set<string> = new Set();
+  let iteration = 0;
+
+  while (true) {
+    // Query the index for the next set of links
+    const { data: _data, error } = await index_supabase_service
+      .rpc("query_index_at_domain_split_level", {
+        i_level: level,
+        i_domain_hash: domainSplitsHash[level],
+        i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .range(iteration * 1000, (iteration + 1) * 1000)
+
+    // If there's an error, return the links we have
+    if (error) {
+      _logger.warn("Error querying index", { error, hostname, limit });
       return [...links].slice(0, limit);
     }
 

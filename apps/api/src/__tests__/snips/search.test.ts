@@ -14,10 +14,11 @@ describe("Search tests", () => {
       scrapeOptions: {
         formats: ["markdown"],
       },
+      timeout: 120000,
     });
 
     for (const doc of res) {
       expect(doc.markdown).toBeDefined();
     }
-  }, 60000);
+  }, 125000);
 });

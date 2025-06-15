@@ -99,7 +99,10 @@ async function scrapeSearchResult(
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
-        scrapeOptions: options.scrapeOptions,
+        scrapeOptions: {
+          ...options.scrapeOptions,
+          maxAge: 4 * 60 * 60 * 1000, // 4 hours, same as useCache
+        },
         internalOptions: { teamId: options.teamId, useCache: true, bypassBilling: true },
         origin: options.origin,
         is_scrape: true,

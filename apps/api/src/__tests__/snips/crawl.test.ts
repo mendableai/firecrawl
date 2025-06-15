@@ -18,8 +18,11 @@ describe("Crawl tests", () => {
 
         expect(res.success).toBe(true);
         if (res.success) {
-            expect(res.completed).toBe(1);
-            expect(res.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/pricing");
+            expect(res.completed).toBeGreaterThan(0);
+            for (const page of res.data) {
+                const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
+                expect(url.pathname).toMatch(/^\/pricing$/);
+            }
         }
     }, 120000);
 

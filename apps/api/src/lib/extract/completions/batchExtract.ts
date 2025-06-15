@@ -74,8 +74,8 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-    retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+    model: getModel("gemini-2.5-pro", "vertex"),
+    retryModel: getModel("gemini-2.5-pro", "google"),
     costTrackingOptions: {
       costTracking: options.costTracking,
       metadata: {
