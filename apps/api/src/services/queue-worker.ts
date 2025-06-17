@@ -196,13 +196,13 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           : sc.crawlerOptions.limit -
             (await getDoneJobsOrderedLength(job.data.crawl_id));
 
-      if (univistedUrls.length !== 0 && addableJobCount > 0) {
+      if (univistedUrls.links.length !== 0 && addableJobCount > 0) {
         logger.info("Adding jobs", {
-          univistedUrls: univistedUrls.length,
+          univistedUrls: univistedUrls.links.length,
           addableJobCount,
         });
 
-        const jobs = univistedUrls.slice(0, addableJobCount).map((url) => {
+        const jobs = univistedUrls.links.slice(0, addableJobCount).map((url) => {
           const uuid = uuidv4();
           return {
             name: uuid,
@@ -949,12 +949,13 @@ async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: s
     sc.crawlerOptions.limit ?? 10000,
   );
 
-  const validIndexLinks = crawler.filterLinks(
-    index.filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
+  const validIndexLinksResult = crawler.filterLinks(
+    index.filter(x => crawler.filterURL(x, trimmedURL.href).allowed),
     sc.crawlerOptions.limit ?? 10000,
     sc.crawlerOptions.maxDepth ?? 10,
     false,
   );
+  const validIndexLinks = validIndexLinksResult.links;
 
   return validIndexLinks;
 }
@@ -1308,14 +1309,10 @@ async function processJob(job: Job & { id: string }, token: string) {
         job.data.crawlerOptions !== null // only on crawls, don't care on batch scrape
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
-        if (
-          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
-            null &&
-          !job.data.isCrawlSourceScrape
-        ) {
-          throw new Error(
-            "Redirected target URL is not allowed by crawlOptions",
-          ); // TODO: make this its own error type that is ignored by error tracking
+        const filterResult = crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL);
+        if (!filterResult.allowed && !job.data.isCrawlSourceScrape) {
+          const reason = filterResult.denialReason || "Redirected target URL is not allowed by crawlOptions";
+          throw new Error(reason);
         }
 
         // Only re-set originUrl if it's different from the current hostname
@@ -1379,11 +1376,11 @@ async function processJob(job: Job & { id: string }, token: string) {
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10,
           );
-          logger.debug("Discovered " + links.length + " links...", {
-            linksLength: links.length,
+          logger.debug("Discovered " + links.links.length + " links...", {
+            linksLength: links.links.length,
           });
 
-          for (const link of links) {
+          for (const link of links.links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
               // This seems to work really welel
               const jobPriority = await getJobPriority({
@@ -1442,17 +1439,17 @@ async function processJob(job: Job & { id: string }, token: string) {
           }
 
           // Only run check after adding new jobs for discovery - mogery
-          if (
-            job.data.isCrawlSourceScrape &&
-            crawler.filterLinks(
+          if (job.data.isCrawlSourceScrape) {
+            const filterResult = crawler.filterLinks(
               [doc.metadata.url ?? doc.metadata.sourceURL!],
               1,
               sc.crawlerOptions?.maxDepth ?? 10,
-            ).length === 0
-          ) {
-            throw new Error(
-              "Source URL is not allowed by includePaths/excludePaths rules",
             );
+            if (filterResult.links.length === 0) {
+              const url = doc.metadata.url ?? doc.metadata.sourceURL!;
+              const reason = filterResult.denialReasons.get(url) || "Source URL is not allowed by crawl configuration";
+              throw new Error(reason);
+            }
           }
         }
       }
