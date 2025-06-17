@@ -13,6 +13,7 @@
     "build:nosentry": "tsc",
     "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
     "test:local-no-auth": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_withAuth/*'",
+    "test:search": "npx jest src/__tests__/snips/search.test.ts --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false",
     "test:full": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='(src/__tests__/e2e_noAuth|src/__tests__/e2e_withAuth)'",
     "test:prod": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='(src/__tests__/e2e_noAuth|src/__tests__/e2e_full_withAuth|src/scraper/scrapeURL)'",
     "test:snips": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false src/__tests__/snips/*.test.ts",
@@ -142,6 +143,7 @@
     "winston-transport": "^4.8.0",
     "wordpos": "^2.1.0",
     "ws": "^8.18.0",
+    "x402-express": "^0.4.0",
     "xml2js": "^0.6.2",
     "zod": "^3.24.2"
   },

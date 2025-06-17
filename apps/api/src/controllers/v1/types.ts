@@ -795,6 +795,12 @@ export type ErrorResponse = {
   success: false;
   error: string;
   details?: any;
+  payment?: {
+    amount: string;
+    currency: string;
+    protocol: string;
+    transaction_id?: string;
+  };
 };
 
 export type ScrapeResponse =
@@ -1267,6 +1273,12 @@ export type SearchResponse =
       success: true;
       warning?: string;
       data: Document[];
+      payment?: {
+        amount: string;
+        currency: string;
+        protocol: string;
+        transaction_id?: string;
+      };
     };
 
 export type TokenUsage = {

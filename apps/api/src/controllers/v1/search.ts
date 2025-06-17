@@ -160,12 +160,37 @@ export async function searchController(
   req: RequestWithAuth<{}, SearchResponse, SearchRequest>,
   res: Response<SearchResponse>,
 ) {
+  console.log("searchController", req.body);
   const jobId = uuidv4();
   let logger = _logger.child({
     jobId,
     teamId: req.auth.team_id,
     module: "search",
     method: "searchController",
+  });
+
+  const isX402Enabled = process.env.X402_ENABLED === 'true';
+  const isX402Paid = req.headers['x-payment-verified'] === 'true';
+
+  if (isX402Enabled && !isX402Paid) {
+    logger.warn("Payment required but not verified", {
+      teamId: req.auth.team_id,
+      endpoint: "/search",
+    });
+    return res.status(402).json({
+      success: false,
+      error: "Payment required",
+      payment: {
+        amount: "0.001",
+        currency: "USD",
+        protocol: "x402"
+      }
+    });
+  }
+
+  logger.info("Payment verified or not required", {
+    teamId: req.auth.team_id,
+    endpoint: "/search",
   });
 
   let responseData: SearchResponse = {
@@ -319,7 +344,17 @@ export async function searchController(
       isSearchPreview,
     );
 
-    return res.status(200).json(responseData);
+    // const responsePayment = isX402Enabled && isX402Paid ? {
+    //   amount: "0.001",
+    //   currency: "USD",
+    //   protocol: "x402",
+    //   transaction_id: req.headers['x-payment-transaction-id'] as string
+    // } : undefined;
+
+    return res.status(200).json({
+      ...responseData,
+      // payment: responsePayment
+    });
   } catch (error) {
     if (
       error instanceof Error &&

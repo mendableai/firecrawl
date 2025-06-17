@@ -297,8 +297,27 @@ function expectSearchToSucceed(response: Awaited<ReturnType<typeof searchRaw>>) 
 
 export async function search(body: SearchRequestInput): Promise<Document[]> {
     const raw = await searchRaw(body);
-    expectSearchToSucceed(raw);
+    if (raw.statusCode === 200) {
+        expectSearchToSucceed(raw);
+    } else {
+        expectSearchToFail(raw);
+    }
     return raw.body.data;
+}
+
+function expectSearchToFail(response: Awaited<ReturnType<typeof searchRaw>>) {
+    expect(response.statusCode).not.toBe(200);
+    expect(response.body.success).toBe(false);
+    expect(typeof response.body.error).toBe("string");
+}
+
+export async function searchWithFailure(body: SearchRequestInput): Promise<{
+    success: false;
+    error: string;
+}> {
+    const raw = await searchRaw(body);
+    expectSearchToFail(raw);
+    return raw.body;
 }
 
 // =========================================
