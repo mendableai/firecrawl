@@ -98,7 +98,7 @@ async function scrapePDFWithRunPodMU(
   // testing the new version
   robustFetch({
     url:
-      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MUV3_POD_ID + "/runsync",
+      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
