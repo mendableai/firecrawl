@@ -60,6 +60,27 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                 return document;
             }
 
+            let title = document.metadata.title ?? document.metadata.ogTitle ?? null;
+            let description = document.metadata.description ?? document.metadata.ogDescription ?? document.metadata.dcDescription ?? null;
+
+            if (typeof title === "string") {
+                title = title.trim();
+                if (title.length > 60) {
+                    title = title.slice(0, 57) + "...";
+                }
+            } else {
+                title = null;
+            }
+
+            if (typeof description === "string") {
+                description = description.trim();
+                if (description.length > 160) {
+                    description = description.slice(0, 157) + "...";
+                }
+            } else {
+                description = null;
+            }
+
             try {
                 await addIndexInsertJob({
                     id: indexId,
@@ -82,6 +103,8 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                         ...a,
                         [`domain_splits_${i}_hash`]: x,
                     }), {})),
+                    ...(title ? { title } : {}),
+                    ...(description ? { description } : {}),
                 });
             } catch (error) {
                 meta.logger.error("Failed to add document to index insert queue", {
