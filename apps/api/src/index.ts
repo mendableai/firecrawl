@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
+import { v2alphaRouter } from "./routes/v2alpha";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -80,6 +81,7 @@ app.get("/test", async (req, res) => {
 // register router
 app.use(v0Router);
 app.use("/v1", v1Router);
+app.use("/v2alpha", v2alphaRouter);
 app.use(adminRouter);
 
 const DEFAULT_PORT = process.env.PORT ?? 3002;
