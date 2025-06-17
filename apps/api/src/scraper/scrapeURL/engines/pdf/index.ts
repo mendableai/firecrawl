@@ -94,6 +94,39 @@ async function scrapePDFWithRunPodMU(
     abort,
   });
 
+
+  // testing the new version
+  robustFetch({
+    url:
+      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
+    },
+    body: {
+      input: {
+        file_content: base64Content,
+        filename: path.basename(tempFilePath) + ".pdf",
+        timeout,
+        created_at: Date.now(),
+      },
+    },
+    logger: meta.logger.child({
+      method: "scrapePDFWithRunPodMU/runsync/robustFetch",
+    }),
+    schema: z.object({
+      id: z.string(),
+      status: z.string(),
+      output: z
+        .object({
+          markdown: z.string(),
+        })
+        .optional(),
+    }),
+    mock: meta.mock,
+    abort,
+  });
+
   let status: string = podStart.status;
   let result: { markdown: string } | undefined = podStart.output;
 
