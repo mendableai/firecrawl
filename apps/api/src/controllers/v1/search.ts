@@ -168,6 +168,21 @@ export async function searchController(
     method: "searchController",
   });
 
+  const isX402Enabled = process.env.X402_ENABLED === 'true';
+  const isX402Paid = req.headers['x-payment-verified'] === 'true';
+  
+  if (isX402Enabled && !isX402Paid) {
+    return res.status(402).json({
+      success: false,
+      error: "Payment required",
+      payment: {
+        amount: "0.001",
+        currency: "USD",
+        protocol: "x402"
+      }
+    });
+  }
+
   let responseData: SearchResponse = {
     success: true,
     data: [],
@@ -319,7 +334,17 @@ export async function searchController(
       isSearchPreview,
     );
 
-    return res.status(200).json(responseData);
+    const responsePayment = isX402Enabled && isX402Paid ? {
+      amount: "0.001",
+      currency: "USD",
+      protocol: "x402",
+      transaction_id: req.headers['x-payment-transaction-id'] as string
+    } : undefined;
+
+    return res.status(200).json({
+      ...responseData,
+      payment: responsePayment
+    });
   } catch (error) {
     if (
       error instanceof Error &&
