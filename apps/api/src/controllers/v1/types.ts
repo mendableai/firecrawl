@@ -844,7 +844,7 @@ export interface ExtractResponse {
   sources?: {
     [key: string]: string[];
   };
-  tokensBilled?: number;
+  tokensUsed?: number;
 }
 
 export interface ExtractResponseRequestTest {

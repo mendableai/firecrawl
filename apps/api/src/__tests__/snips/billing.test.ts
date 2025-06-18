@@ -213,7 +213,7 @@ describe("Billing tests", () => {
                 origin: "api-sdk",
             });
 
-            expect(extractResult.tokensBilled).toBe(305);
+            expect(extractResult.tokensUsed).toBe(305);
 
             await sleepForBatchBilling();
             
