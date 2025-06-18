@@ -1462,6 +1462,8 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
 
+      doc.metadata.creditsUsed = credits_billed ?? undefined;
+
       logger.debug("Logging job to DB...");
       await logJob(
         {
@@ -1514,6 +1516,8 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
 
       const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+
+      doc.metadata.creditsUsed = credits_billed ?? undefined;
 
       await logJob({
         job_id: job.id,

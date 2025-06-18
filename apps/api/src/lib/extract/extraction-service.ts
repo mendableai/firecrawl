@@ -1025,6 +1025,7 @@ export async function performExtraction(
         status: "completed",
         llmUsage,
         sources,
+        tokensBilled: tokensToBill,
         // costTracking,
       }).catch((error) => {
         logger.error(
