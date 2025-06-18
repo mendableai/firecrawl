@@ -86,32 +86,6 @@ export async function scrapeController(
     logger.error(`Error in scrapeController`, {
       startTime,
     });
-    
-    let creditsToBeBilled = 0;
-
-    if (req.body.agent?.model?.toLowerCase() === "fire-1" || req.body.extract?.agent?.model?.toLowerCase() === "fire-1" || req.body.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
-      if (process.env.USE_DB_AUTHENTICATION === "true") {
-        // @Nick this is a hack pushed at 2AM pls help - mogery
-        const job = await supabaseGetJobById(jobId);
-        if (!job?.cost_tracking) {
-          logger.warn("No cost tracking found for job");
-        }
-        creditsToBeBilled = Math.ceil((job?.cost_tracking?.totalCost ?? 1) * 1800);
-      } else {
-        creditsToBeBilled = 150;
-      }
-    }
-  
-    if (creditsToBeBilled > 0) {
-      billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
-        (error) => {
-          logger.error(
-            `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
-          );
-          // Optionally, you could notify an admin or add to a retry queue here
-        },
-      );
-    }
 
     if (
       e instanceof Error &&
