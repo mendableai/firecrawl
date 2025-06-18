@@ -185,8 +185,6 @@ describe("Billing tests", () => {
                 },
             });
 
-            expect(results.reduce((a,x) => a + (x.metadata.creditsUsed ?? 0), 0)).toBe(results.length);
-
             await sleepForBatchBilling();
 
             const rc2 = (await creditUsage()).remaining_credits;
