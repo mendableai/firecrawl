@@ -614,7 +614,8 @@ const crawlerOptions = z
     maxDepth: z.number().default(10), // default?
     maxDiscoveryDepth: z.number().optional(),
     limit: z.number().default(10000), // default?
-    allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
+    allowBackwardLinks: z.boolean().default(false), // DEPRECATED: use followInternalLinks
+    followInternalLinks: z.boolean().optional(),
     allowExternalLinks: z.boolean().default(false),
     allowSubdomains: z.boolean().default(false),
     ignoreRobotsTxt: z.boolean().default(false),
@@ -631,7 +632,8 @@ const crawlerOptions = z
 //   excludePaths?: string[];
 //   maxDepth?: number;
 //   limit?: number;
-//   allowBackwardLinks?: boolean; // >> TODO: CHANGE THIS NAME???
+//   allowBackwardLinks?: boolean; // DEPRECATED: use followInternalLinks
+//   followInternalLinks?: boolean;
 //   allowExternalLinks?: boolean;
 //   ignoreSitemap?: boolean;
 // };
@@ -650,10 +652,15 @@ export const crawlRequestSchema = crawlerOptions
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
-  .transform((x) => ({
-    ...x,
-    scrapeOptions: extractTransform(x.scrapeOptions),
-  }));
+  .transform((x) => {
+    if (x.followInternalLinks !== undefined) {
+      x.allowBackwardLinks = x.followInternalLinks;
+    }
+    return {
+      ...x,
+      scrapeOptions: extractTransform(x.scrapeOptions),
+    };
+  });
 
 // export type CrawlRequest = {
 //   url: string;
@@ -1039,7 +1046,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     maxDepth: x.maxDepth,
     limit: x.limit,
     generateImgAltText: false,
-    allowBackwardCrawling: x.allowBackwardLinks,
+    allowBackwardCrawling: x.followInternalLinks ?? x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
@@ -1060,6 +1067,7 @@ export function toNewCrawlerOptions(x: any): CrawlerOptions {
     limit: x.limit,
     maxDepth: x.maxDepth,
     allowBackwardLinks: x.allowBackwardCrawling,
+    followInternalLinks: x.allowBackwardCrawling,
     allowExternalLinks: x.allowExternalContentLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
@@ -1083,6 +1091,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
       limit: x.maxCrawledLinks ?? x.limit,
       maxDepth: x.maxDepth,
       allowBackwardLinks: x.allowBackwardCrawling,
+      followInternalLinks: x.allowBackwardCrawling,
       allowExternalLinks: x.allowExternalContentLinks,
       allowSubdomains: x.allowSubdomains,
       ignoreRobotsTxt: x.ignoreRobotsTxt,

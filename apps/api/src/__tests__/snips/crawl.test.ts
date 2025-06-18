@@ -100,4 +100,44 @@ describe("Crawl tests", () => {
     //         }
     //     }
     // }, 300000);
+
+    it.concurrent("followInternalLinks parameter works", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev",
+            followInternalLinks: true,
+            limit: 5,
+        });
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            expect(res.completed).toBeGreaterThan(0);
+        }
+    }, 120000);
+
+    it.concurrent("followInternalLinks takes precedence over allowBackwardLinks", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev",
+            allowBackwardLinks: false,
+            followInternalLinks: true,
+            limit: 5,
+        });
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            expect(res.completed).toBeGreaterThan(0);
+        }
+    }, 120000);
+
+    it.concurrent("backward compatibility - allowBackwardLinks still works", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev",
+            allowBackwardLinks: true,
+            limit: 5,
+        });
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            expect(res.completed).toBeGreaterThan(0);
+        }
+    }, 120000);
 });
