@@ -1919,7 +1919,7 @@ class FirecrawlApp:
         params = GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
-            cache=True,
+            cache=cache,
             __experimental_stream=experimental_stream
         )
 
@@ -1927,7 +1927,7 @@ class FirecrawlApp:
             url,
             max_urls=max_urls,
             show_full_text=show_full_text,
-            cache=True,
+            cache=cache,
             experimental_stream=experimental_stream
         )
         
@@ -1987,7 +1987,7 @@ class FirecrawlApp:
         params = GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
-            cache=True,
+            cache=cache,
             __experimental_stream=experimental_stream
         )
 
@@ -4042,7 +4042,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             url,
             max_urls=max_urls,
             show_full_text=show_full_text,
-            cache=True,
+            cache=cache,
             experimental_stream=experimental_stream
         )
         if not response.get('success') or 'id' not in response:
@@ -4101,7 +4101,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         params = GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
-            cache=True,
+            cache=cache,
             __experimental_stream=experimental_stream
         )
 
