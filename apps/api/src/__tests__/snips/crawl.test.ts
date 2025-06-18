@@ -101,10 +101,10 @@ describe("Crawl tests", () => {
     //     }
     // }, 300000);
 
-    it.concurrent("followInternalLinks parameter works", async () => {
+    it.concurrent("crawlEntireDomain parameter works", async () => {
         const res = await crawl({
             url: "https://firecrawl.dev",
-            followInternalLinks: true,
+            crawlEntireDomain: true,
             limit: 5,
         });
 
@@ -114,11 +114,11 @@ describe("Crawl tests", () => {
         }
     }, 120000);
 
-    it.concurrent("followInternalLinks takes precedence over allowBackwardLinks", async () => {
+    it.concurrent("crawlEntireDomain takes precedence over allowBackwardLinks", async () => {
         const res = await crawl({
             url: "https://firecrawl.dev",
             allowBackwardLinks: false,
-            followInternalLinks: true,
+            crawlEntireDomain: true,
             limit: 5,
         });
 

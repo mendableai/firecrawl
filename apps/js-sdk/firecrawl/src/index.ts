@@ -209,7 +209,7 @@ export interface CrawlParams {
   maxDiscoveryDepth?: number;
   limit?: number;
   allowBackwardLinks?: boolean;
-  followInternalLinks?: boolean;
+  crawlEntireDomain?: boolean;
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
