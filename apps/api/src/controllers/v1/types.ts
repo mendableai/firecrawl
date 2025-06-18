@@ -782,6 +782,7 @@ export type Document = {
     proxyUsed: "basic" | "stealth";
     cacheState?: "hit" | "miss";
     cachedAt?: string;
+    creditsUsed?: number;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
@@ -843,6 +844,7 @@ export interface ExtractResponse {
   sources?: {
     [key: string]: string[];
   };
+  tokensBilled?: number;
 }
 
 export interface ExtractResponseRequestTest {
