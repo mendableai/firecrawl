@@ -7,13 +7,10 @@ import {
   scrapeRequestSchema,
   ScrapeResponse,
 } from "./types";
-import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
-import { supabaseGetJobById } from "../../lib/supabase-jobs";
-import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
