@@ -1152,11 +1152,11 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   }
 }
 
-async function billScrapeJob(job: Job & { id: string }, document: Document, logger: Logger, costTracking?: CostTracking) {
+async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking) {
   let creditsToBeBilled: number | null = null;
 
   if (job.data.is_scrape !== true && !job.data.internalOptions?.bypassBilling) {
-    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, job.id, costTracking);
+    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, costTracking);
 
     if (
       job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! &&
@@ -1610,6 +1610,8 @@ async function processJob(job: Job & { id: string }, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
+    const credits_billed = await billScrapeJob(job, null, logger, costTracking);
+
     logger.debug("Logging job to DB...");
     await logJob(
       {
@@ -1632,6 +1634,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         integration: job.data.integration,
         crawl_id: job.data.crawl_id,
         cost_tracking: costTracking,
+        credits_billed,
       },
       true,
       job.data.internalOptions?.bypassBilling ?? false,
