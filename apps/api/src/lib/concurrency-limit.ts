@@ -216,8 +216,7 @@ async function getNextConcurrentJob(teamId: string): Promise<{
   }
 
   for (const ignoredJob of ignoredJobs) {
-    const timeout = ignoredJob.timeout - Date.now();
-    await pushConcurrencyLimitedJob(teamId, ignoredJob.job, timeout);
+    await pushConcurrencyLimitedJob(teamId, ignoredJob.job, ignoredJob.timeout);
   }
 
   return finalJob;
