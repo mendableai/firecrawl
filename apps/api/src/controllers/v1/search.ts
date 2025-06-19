@@ -21,7 +21,6 @@ import * as Sentry from "@sentry/node";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
-import { getJobFromGCS } from "../../lib/gcs-jobs";
 import { CostTracking } from "../../lib/extract/extraction-service";
 
 // Used for deep research
@@ -100,7 +99,10 @@ async function scrapeSearchResult(
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
-        scrapeOptions: options.scrapeOptions,
+        scrapeOptions: {
+          ...options.scrapeOptions,
+          maxAge: 4 * 60 * 60 * 1000, // 4 hours, same as useCache
+        },
         internalOptions: { teamId: options.teamId, useCache: true, bypassBilling: true },
         origin: options.origin,
         is_scrape: true,
@@ -268,18 +270,20 @@ export async function searchController(
       }
     }
 
+    const credits_billed = responseData.data.reduce((a, x) => {
+      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
+        return a + x.metadata.numPages;
+      } else {
+        return a + 1;
+      }
+    }, 0)
+
     // Bill team once for all successful results
     if (!isSearchPreview) {
       billTeam(
         req.auth.team_id,
         req.acuc?.sub_id,
-        responseData.data.reduce((a, x) => {
-          if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
-            return a + x.metadata.numPages;
-          } else {
-            return a + 1;
-          }
-        }, 0),
+        credits_billed,
       ).catch((error) => {
         logger.error(
           `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
@@ -309,6 +313,7 @@ export async function searchController(
         origin: req.body.origin,
         integration: req.body.integration,
         cost_tracking: costTracking,
+        credits_billed,
       },
       false,
       isSearchPreview,

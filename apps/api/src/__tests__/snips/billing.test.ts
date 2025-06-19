@@ -20,7 +20,7 @@ describe("Billing tests", () => {
             const rc1 = (await creditUsage()).remaining_credits;
             
             // Run all scrape operations in parallel with Promise.all
-            await Promise.all([
+            const [scrape1, scrape2, scrape3] = await Promise.all([
                 // scrape 1: regular fc.dev scrape (1 credit)
                 scrape({
                     url: "https://firecrawl.dev"
@@ -46,6 +46,10 @@ describe("Billing tests", () => {
                     },
                 })
             ]);
+
+            expect(scrape1.metadata.creditsUsed).toBe(1);
+            expect(scrape2.metadata.creditsUsed).toBe(1);
+            expect(scrape3.metadata.creditsUsed).toBe(5);
             
             // sum: 7 credits
 
@@ -89,6 +93,12 @@ describe("Billing tests", () => {
                     },
                 })
             ]);
+
+            expect(scrape1.data[0].metadata.creditsUsed).toBe(1);
+            expect(scrape1.data[1].metadata.creditsUsed).toBe(1);
+
+            expect(scrape2.data[0].metadata.creditsUsed).toBe(5);
+            expect(scrape2.data[1].metadata.creditsUsed).toBe(5);
             
             // sum: 12 credits
 
@@ -185,7 +195,7 @@ describe("Billing tests", () => {
         it("bills extract correctly", async () => {
             const rc1 = (await tokenUsage()).remaining_tokens;
             
-            await extract({
+            const extractResult = await extract({
                 urls: ["https://firecrawl.dev"],
                 schema: {
                     "type": "object",
@@ -200,6 +210,8 @@ describe("Billing tests", () => {
                 },
                 origin: "api-sdk",
             });
+
+            expect(extractResult.tokensUsed).toBe(305);
 
             await sleepForBatchBilling();
             

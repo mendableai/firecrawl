@@ -200,8 +200,7 @@ export function calculateCost(
   let modelCost = modelCosts[model] || { input_cost: 0, output_cost: 0 };
   //gemini-2.5-pro-exp-03-25 pricing
   if (
-    model === "gemini-2.5-pro-exp-03-25" ||
-    model === "gemini-2.5-pro-preview-03-25"
+    model.includes("gemini-2.5-pro")
   ) {
     let inputCost = 0;
     let outputCost = 0;

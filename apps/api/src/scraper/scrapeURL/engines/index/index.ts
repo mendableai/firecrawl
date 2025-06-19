@@ -1,7 +1,7 @@
 import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob } from "../../../../services";
+import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits } from "../../../../services";
 import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
@@ -31,10 +31,16 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
     (async () => {
         try {
             const normalizedURL = normalizeURLForIndex(meta.url);
-            const urlHash = await hashURL(normalizedURL);
+            const urlHash = hashURL(normalizedURL);
 
             const urlSplits = generateURLSplits(normalizedURL);
-            const urlSplitsHash = await Promise.all(urlSplits.map(split => hashURL(split)));
+            const urlSplitsHash = urlSplits.map(split => hashURL(split));
+
+            const urlObj = new URL(normalizedURL);
+            const hostname = urlObj.hostname;
+
+            const domainSplits = generateDomainSplits(hostname);
+            const domainSplitsHash = domainSplits.map(split => hashURL(split));
 
             const indexId = crypto.randomUUID();
 
@@ -54,13 +60,32 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                 return document;
             }
 
+            let title = document.metadata.title ?? document.metadata.ogTitle ?? null;
+            let description = document.metadata.description ?? document.metadata.ogDescription ?? document.metadata.dcDescription ?? null;
+
+            if (typeof title === "string") {
+                title = title.trim();
+                if (title.length > 60) {
+                    title = title.slice(0, 57) + "...";
+                }
+            } else {
+                title = null;
+            }
+
+            if (typeof description === "string") {
+                description = description.trim();
+                if (description.length > 160) {
+                    description = description.slice(0, 157) + "...";
+                }
+            } else {
+                description = null;
+            }
+
             try {
                 await addIndexInsertJob({
                     id: indexId,
                     url: normalizedURL,
                     url_hash: urlHash,
-                    url_splits: urlSplits,
-                    url_splits_hash: urlSplitsHash,
                     original_url: document.metadata.sourceURL ?? meta.url,
                     resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
                     has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
@@ -74,6 +99,12 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                         ...a,
                         [`url_split_${i}_hash`]: x,
                     }), {})),
+                    ...(domainSplitsHash.slice(0, 5).reduce((a,x,i) => ({
+                        ...a,
+                        [`domain_splits_${i}_hash`]: x,
+                    }), {})),
+                    ...(title ? { title } : {}),
+                    ...(description ? { description } : {}),
                 });
             } catch (error) {
                 meta.logger.error("Failed to add document to index insert queue", {
@@ -94,7 +125,7 @@ const errorCountToRegister = 3;
 
 export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult> {
     const normalizedURL = normalizeURLForIndex(meta.url);
-    const urlHash = await hashURL(normalizedURL);
+    const urlHash = hashURL(normalizedURL);
 
     let selector = index_supabase_service
         .from("index")

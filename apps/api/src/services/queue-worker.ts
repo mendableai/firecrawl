@@ -196,13 +196,13 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           : sc.crawlerOptions.limit -
             (await getDoneJobsOrderedLength(job.data.crawl_id));
 
-      if (univistedUrls.length !== 0 && addableJobCount > 0) {
+      if (univistedUrls.links.length !== 0 && addableJobCount > 0) {
         logger.info("Adding jobs", {
-          univistedUrls: univistedUrls.length,
+          univistedUrls: univistedUrls.links.length,
           addableJobCount,
         });
 
-        const jobs = univistedUrls.slice(0, addableJobCount).map((url) => {
+        const jobs = univistedUrls.links.slice(0, addableJobCount).map((url) => {
           const uuid = uuidv4();
           return {
             name: uuid,
@@ -310,7 +310,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         )
         .filter((x) => x !== null);
 
-      logger.info("Logging crawl NOW!");
       await logJob({
         job_id: job.data.crawl_id,
         success: jobStatus === "completed",
@@ -326,7 +325,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         origin: job.data.origin,
         integration: job.data.integration,
       }, false, job.data.internalOptions?.bypassBilling ?? false);
-      logger.info("Logged crawl!");
 
       const data = {
         success: jobStatus !== "failed",
@@ -359,6 +357,23 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       const num_docs = await getDoneJobsOrderedLength(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
 
+      let credits_billed = null;
+
+      if (process.env.USE_DB_AUTHENTICATION === "true") {
+        const creditsRpc = await supabase_service
+          .rpc("credits_billed_by_crawl_id_1", {
+            i_crawl_id: job.data.crawl_id,
+          });
+
+        credits_billed = creditsRpc.data?.[0]?.credits_billed ?? null;
+
+        if (credits_billed === null) {
+          logger.warn("Credits billed is null", {
+            error: creditsRpc.error,
+          });
+        }
+      }
+      
       await logJob(
         {
           job_id: job.data.crawl_id,
@@ -376,6 +391,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           crawlerOptions: sc.crawlerOptions,
           origin: job.data.origin,
           integration: job.data.integration,
+          credits_billed,
         },
         true,
         job.data.internalOptions?.bypassBilling ?? false,
@@ -933,12 +949,13 @@ async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: s
     sc.crawlerOptions.limit ?? 10000,
   );
 
-  const validIndexLinks = crawler.filterLinks(
-    index.filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
+  const validIndexLinksResult = crawler.filterLinks(
+    index.filter(x => crawler.filterURL(x, trimmedURL.href).allowed),
     sc.crawlerOptions.limit ?? 10000,
     sc.crawlerOptions.maxDepth ?? 10,
     false,
   );
+  const validIndexLinks = validIndexLinksResult.links;
 
   return validIndexLinks;
 }
@@ -1135,11 +1152,11 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   }
 }
 
-async function billScrapeJob(job: Job & { id: string }, document: Document, logger: Logger, costTracking?: CostTracking) {
+async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking) {
   let creditsToBeBilled: number | null = null;
 
   if (job.data.is_scrape !== true && !job.data.internalOptions?.bypassBilling) {
-    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, job.id, costTracking);
+    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, costTracking);
 
     if (
       job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! &&
@@ -1292,14 +1309,10 @@ async function processJob(job: Job & { id: string }, token: string) {
         job.data.crawlerOptions !== null // only on crawls, don't care on batch scrape
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
-        if (
-          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
-            null &&
-          !job.data.isCrawlSourceScrape
-        ) {
-          throw new Error(
-            "Redirected target URL is not allowed by crawlOptions",
-          ); // TODO: make this its own error type that is ignored by error tracking
+        const filterResult = crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL);
+        if (!filterResult.allowed && !job.data.isCrawlSourceScrape) {
+          const reason = filterResult.denialReason || "Redirected target URL is not allowed by crawlOptions";
+          throw new Error(reason);
         }
 
         // Only re-set originUrl if it's different from the current hostname
@@ -1363,11 +1376,11 @@ async function processJob(job: Job & { id: string }, token: string) {
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10,
           );
-          logger.debug("Discovered " + links.length + " links...", {
-            linksLength: links.length,
+          logger.debug("Discovered " + links.links.length + " links...", {
+            linksLength: links.links.length,
           });
 
-          for (const link of links) {
+          for (const link of links.links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
               // This seems to work really welel
               const jobPriority = await getJobPriority({
@@ -1426,17 +1439,17 @@ async function processJob(job: Job & { id: string }, token: string) {
           }
 
           // Only run check after adding new jobs for discovery - mogery
-          if (
-            job.data.isCrawlSourceScrape &&
-            crawler.filterLinks(
+          if (job.data.isCrawlSourceScrape) {
+            const filterResult = crawler.filterLinks(
               [doc.metadata.url ?? doc.metadata.sourceURL!],
               1,
               sc.crawlerOptions?.maxDepth ?? 10,
-            ).length === 0
-          ) {
-            throw new Error(
-              "Source URL is not allowed by includePaths/excludePaths rules",
             );
+            if (filterResult.links.length === 0) {
+              const url = doc.metadata.url ?? doc.metadata.sourceURL!;
+              const reason = filterResult.denialReasons.get(url) || "Source URL is not allowed by crawl configuration";
+              throw new Error(reason);
+            }
           }
         }
       }
@@ -1448,6 +1461,8 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
 
       const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+
+      doc.metadata.creditsUsed = credits_billed ?? undefined;
 
       logger.debug("Logging job to DB...");
       await logJob(
@@ -1501,6 +1516,8 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
 
       const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+
+      doc.metadata.creditsUsed = credits_billed ?? undefined;
 
       await logJob({
         job_id: job.id,
@@ -1597,6 +1614,8 @@ async function processJob(job: Job & { id: string }, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
+    const credits_billed = await billScrapeJob(job, null, logger, costTracking);
+
     logger.debug("Logging job to DB...");
     await logJob(
       {
@@ -1619,6 +1638,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         integration: job.data.integration,
         crawl_id: job.data.crawl_id,
         cost_tracking: costTracking,
+        credits_billed,
       },
       true,
       job.data.internalOptions?.bypassBilling ?? false,

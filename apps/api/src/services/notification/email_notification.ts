@@ -44,7 +44,9 @@ const emailTemplates: Record<
     <br/>
     <p>We've improved our system by transitioning to concurrency limits, allowing faster scraping by default and eliminating* the often rate limit errors.</p>
     <p>You're hitting the concurrency limit for your plan quite often, which means Firecrawl can't scrape as fast as it could. But don't worry, it is not failing your requests and you are still getting your results.</p>
-    <p>This is just to let you know that you could be scraping faster. Consider upgrading your plan at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a>.</p><br/>Thanks,<br/>Firecrawl Team<br/>`,
+    <p>This is just to let you know that you could be scraping faster by having more concurrent browsers. Consider upgrading your plan at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a>.</p>
+    <p>You can modify your notification settings anytime at <a href='https://www.firecrawl.dev/app/account-settings'>firecrawl.dev/app/account-settings</a>.</p>
+    <br/>Thanks,<br/>Firecrawl Team<br/>`,
   },
 };
 

@@ -866,6 +866,7 @@ import { getACUCTeam } from "../../../controllers/auth";
         status: "completed",
         llmUsage,
         sources,
+        tokensBilled: tokensToBill,
       }).catch((error) => {
         logger.error(
           `Failed to update extract ${extractId} status to completed: ${error}`,

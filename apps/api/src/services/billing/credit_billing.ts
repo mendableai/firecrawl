@@ -132,6 +132,12 @@ export async function supaCheckTeamCredits(
     chunk.remaining_credits < autoRechargeThreshold &&
     !chunk.is_extract
   ) {
+    logger.info("Auto-recharge triggered", {
+      team_id,
+      teamId: team_id,
+      autoRechargeThreshold,
+      remainingCredits: chunk.remaining_credits,
+    });
     const autoChargeResult = await autoCharge(chunk, autoRechargeThreshold);
     if (autoChargeResult.success) {
       return {
