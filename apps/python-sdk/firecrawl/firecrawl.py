@@ -4007,7 +4007,6 @@ class AsyncFirecrawlApp(FirecrawlApp):
             *,
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
-            cache: Optional[bool] = None,
             experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and monitor until completion.
