@@ -17,6 +17,7 @@ import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
 import { getPageCount } from "../../../../lib/pdf-parser";
+import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
@@ -33,7 +34,26 @@ async function scrapePDFWithRunPodMU(
     tempFilePath,
   });
 
-  const timeout = timeToRun;
+  const preCacheCheckStartTime = Date.now();
+
+  try {
+    const cachedResult = await getPdfResultFromCache(base64Content);
+    if (cachedResult) {
+      meta.logger.info("Using cached RunPod MU result for PDF", {
+        tempFilePath,
+      });
+      return cachedResult;
+    }
+  } catch (error) {
+    meta.logger.warn("Error checking PDF cache, proceeding with RunPod MU", {
+      error,
+      tempFilePath,
+    });
+  }
+
+  const timeout = timeToRun
+    ? timeToRun - (Date.now() - preCacheCheckStartTime)
+    : undefined;
   if (timeout && timeout < 0) {
     throw new TimeoutError("MU PDF parser already timed out before call");
   }
@@ -118,6 +138,15 @@ async function scrapePDFWithRunPodMU(
     markdown: result.markdown,
     html: await marked.parse(result.markdown, { async: true }),
   };
+
+  try {
+    await savePdfResultToCache(base64Content, processorResult);
+  } catch (error) {
+    meta.logger.warn("Error saving PDF to cache", {
+      error,
+      tempFilePath,
+    });
+  }
 
   return processorResult;
 }
