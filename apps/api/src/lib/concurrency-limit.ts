@@ -248,6 +248,11 @@ export async function concurrentJobDone(job: Job) {
 
         if (nextJob.job.data.crawl_id) {
           await pushCrawlConcurrencyLimitActiveJob(nextJob.job.data.crawl_id, nextJob.job.id, 60 * 1000);
+
+          const sc = await getCrawl(nextJob.job.data.crawl_id);
+          if (sc !== null && typeof sc.crawlerOptions?.delay === "number") {
+            await new Promise(resolve => setTimeout(resolve, sc.crawlerOptions.delay * 1000));
+          }
         }
 
         (await getScrapeQueue()).add(
