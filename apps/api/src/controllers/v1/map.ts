@@ -195,9 +195,6 @@ export async function getMapResults({
       links.push(...indexResults);
     }
 
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
     // If sitemap is not ignored, fetch sitemap
     // This will attempt to find it in the index at first, or fetch a fresh one if it's older than 2 days
     if (
