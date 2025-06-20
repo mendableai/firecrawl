@@ -154,6 +154,7 @@ async function buildMetaObject(
     module: "ScrapeURL",
     scrapeId: id,
     scrapeURL: url,
+    zeroDataRetention: internalOptions.zeroDataRetention,
   });
   const logs: any[] = [];
 
