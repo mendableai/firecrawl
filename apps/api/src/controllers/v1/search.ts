@@ -270,8 +270,9 @@ export async function searchController(
       }
     }
 
+    // TODO: This is horrid. Fix soon - mogery
     const credits_billed = responseData.data.reduce((a, x) => {
-      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
+      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0 && req.body.scrapeOptions?.parsePDF !== false) {
         return a + x.metadata.numPages;
       } else {
         return a + 1;
