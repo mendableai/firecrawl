@@ -104,6 +104,32 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
     }
 }
 
+export async function removeJobFromGCS(jobId: string): Promise<void> {
+    try {
+        if (!process.env.GCS_BUCKET_NAME) {
+            return;
+        }
+
+        const storage = new Storage({ credentials });
+        const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
+        const blob = bucket.file(`${jobId}.json`);
+        await blob.delete({
+            ignoreNotFound: true,
+        });
+    } catch (error) {
+        if (error instanceof ApiError && error.code === 404 && error.message.includes("No such object:")) {
+            // Object does not exist
+            return;
+        }
+        
+        logger.error(`Error removing job from GCS`, {
+            error,
+            jobId,
+            scrapeId: jobId,
+        });
+    }
+}
+
 // TODO: fix the any type (we have multiple Document types in the codebase)
 export async function getDocFromGCS(url: string): Promise<any | null> {
 //   logger.info(`Getting f-engine document from GCS`, {
