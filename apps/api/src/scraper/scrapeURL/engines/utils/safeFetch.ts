@@ -3,6 +3,8 @@ import type { TLSSocket } from "tls";
 import * as undici from "undici";
 import { Address6 } from "ip-address";
 import { cacheableLookup } from "../../lib/cacheableLookup";
+import { CookieJar } from "tough-cookie";
+import { cookie } from "http-cookie-agent/undici";
 
 export class InsecureConnectionError extends Error {
   constructor() {
@@ -53,7 +55,7 @@ export function makeSecureDispatcher(
     ...options,
   };
 
-  const agent = process.env.PROXY_SERVER
+  const baseAgent = process.env.PROXY_SERVER
     ? new undici.ProxyAgent({
       uri: process.env.PROXY_SERVER.includes("://") ? process.env.PROXY_SERVER : ("http://" + process.env.PROXY_SERVER),
       token: process.env.PROXY_USERNAME
@@ -62,6 +64,11 @@ export function makeSecureDispatcher(
       ...agentOpts,
     })
     : new undici.Agent(agentOpts);
+
+  const cookieJar = new CookieJar();
+
+  const agent = baseAgent
+    .compose(cookie({ jar: cookieJar }));
 
   agent.on("connect", (_, targets) => {
     const client: undici.Client = targets.slice(-1)[0] as undici.Client;

@@ -149,6 +149,9 @@ importers:
       gpt3-tokenizer:
         specifier: ^1.1.5
         version: 1.1.5
+      http-cookie-agent:
+        specifier: ^7.0.1
+        version: 7.0.1(tough-cookie@5.1.2)(undici@7.10.0)
       ioredis:
         specifier: ^5.4.1
         version: 5.4.1
@@ -248,6 +251,9 @@ importers:
       tldts:
         specifier: ^6.1.75
         version: 6.1.75
+      tough-cookie:
+        specifier: ^5.1.2
+        version: 5.1.2
       turndown:
         specifier: ^7.1.3
         version: 7.2.0
@@ -258,8 +264,8 @@ importers:
         specifier: ^1.5.4
         version: 1.8.2(@babel/runtime@7.24.6)
       undici:
-        specifier: ^6.20.1
-        version: 6.20.1
+        specifier: ^7.10.0
+        version: 7.10.0
       unstructured-client:
         specifier: ^0.11.3
         version: 0.11.3(zod@3.24.2)
@@ -1921,10 +1927,6 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
 
-  agent-base@7.1.1:
-    resolution: {integrity: sha512-H0TSyFNDMomMNJQBn8wFV5YC/2eJ+VXECwOadZJT554xP6cODZHPX3H9QMQECxvrgiSOP1pHjy1sMWQVYJOUOA==}
-    engines: {node: '>= 14'}
-
   agent-base@7.1.3:
     resolution: {integrity: sha512-jRR5wdylq8CkOe6hei19GGZnxM6rBGwFl3Bg0YItGDimvjGtAvdZk4Pu6Cl4u4Igsws4a1fd1Vq3ezrhn4KmFw==}
     engines: {node: '>= 14'}
@@ -2980,6 +2982,16 @@ packages:
 
   htmlparser2@8.0.2:
     resolution: {integrity: sha512-GYdjWKDkbRLkZ5geuHs5NY1puJ+PXwP7+fHPRz06Eirsb9ugf6d8kkXav6ADhcODhFFPMIXyxkxSuMf3D6NCFA==}
+
+  http-cookie-agent@7.0.1:
+    resolution: {integrity: sha512-lZHFZUdPTw64PdksQac5xbUd4NWjUbyDYnvR//2sbLpcC4UqEUW0x/6O+rDntVzJzJ07QvhtL5XZSC+c5EK+IQ==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      tough-cookie: ^4.0.0 || ^5.0.0
+      undici: ^7.0.0
+    peerDependenciesMeta:
+      undici:
+        optional: true
 
   http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
@@ -4523,8 +4535,8 @@ packages:
     resolution: {integrity: sha512-r0eojU4bI8MnHr8c5bNo7lJDdI2qXlWWJk6a9EAFG7vbhTjElYhBVS3/miuE0uOuoLdb8Mc/rVfsmm6eo5o9GA==}
     hasBin: true
 
-  tough-cookie@5.1.1:
-    resolution: {integrity: sha512-Ek7HndSVkp10hmHP9V4qZO1u+pn1RU5sI0Fw+jCU3lyvuMZcgqsNgc6CmJJZyByK4Vm/qotGRJlfgAX8q+4JiA==}
+  tough-cookie@5.1.2:
+    resolution: {integrity: sha512-FVDYdxtnj0G6Qm/DhNPSb8Ju59ULcup3tuJxkFb5K8Bv2pUXILbf0xZWU8PX8Ov19OXljbUyveOFwRMwkXzO+A==}
     engines: {node: '>=16'}
 
   tr46@0.0.3:
@@ -4627,9 +4639,9 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
-  undici@6.20.1:
-    resolution: {integrity: sha512-AjQF1QsmqfJys+LXfGTNum+qw4S88CojRInG/6t31W/1fk6G59s92bnAvGz5Cmur+kQv2SURXEvvudLmbrE8QA==}
-    engines: {node: '>=18.17'}
+  undici@7.10.0:
+    resolution: {integrity: sha512-u5otvFBOBZvmdjWLVW+5DAc9Nkq8f24g0O9oY7qw2JVIF1VocIFoyz9JFkuVOS2j41AufeO0xnlweJ2RLT8nGw==}
+    engines: {node: '>=20.18.1'}
 
   union@0.5.0:
     resolution: {integrity: sha512-N6uOhuW6zO95P3Mel2I2zMsbsanvvtgn6jVqJv4vbVcz/JN0OkL9suomjQGmWtxJQXOCqUJvquc1sMeNz/IwlA==}
@@ -7213,12 +7225,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  agent-base@7.1.1:
-    dependencies:
-      debug: 4.3.5
-    transitivePeerDependencies:
-      - supports-color
-
   agent-base@7.1.3: {}
 
   agentkeepalive@4.5.0:
@@ -8373,6 +8379,13 @@ snapshots:
       domutils: 3.1.0
       entities: 4.5.0
 
+  http-cookie-agent@7.0.1(tough-cookie@5.1.2)(undici@7.10.0):
+    dependencies:
+      agent-base: 7.1.3
+      tough-cookie: 5.1.2
+    optionalDependencies:
+      undici: 7.10.0
+
   http-errors@2.0.0:
     dependencies:
       depd: 2.0.0
@@ -8391,7 +8404,7 @@ snapshots:
 
   http-proxy-agent@7.0.2:
     dependencies:
-      agent-base: 7.1.1
+      agent-base: 7.1.3
       debug: 4.3.5
     transitivePeerDependencies:
       - supports-color
@@ -8432,14 +8445,14 @@ snapshots:
 
   https-proxy-agent@7.0.4:
     dependencies:
-      agent-base: 7.1.1
+      agent-base: 7.1.3
       debug: 4.3.5
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@7.0.5:
     dependencies:
-      agent-base: 7.1.1
+      agent-base: 7.1.3
       debug: 4.3.5
     transitivePeerDependencies:
       - supports-color
@@ -8987,7 +9000,7 @@ snapshots:
       rrweb-cssom: 0.8.0
       saxes: 6.0.0
       symbol-tree: 3.2.4
-      tough-cookie: 5.1.1
+      tough-cookie: 5.1.2
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 7.0.0
       whatwg-encoding: 3.1.1
@@ -9462,7 +9475,7 @@ snapshots:
   pac-proxy-agent@7.0.2:
     dependencies:
       '@tootallnate/quickjs-emscripten': 0.23.0
-      agent-base: 7.1.1
+      agent-base: 7.1.3
       debug: 4.3.5
       get-uri: 6.0.3
       http-proxy-agent: 7.0.2
@@ -9665,7 +9678,7 @@ snapshots:
 
   proxy-agent@6.4.0:
     dependencies:
-      agent-base: 7.1.1
+      agent-base: 7.1.3
       debug: 4.3.5
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.5
@@ -9995,7 +10008,7 @@ snapshots:
 
   socks-proxy-agent@8.0.4:
     dependencies:
-      agent-base: 7.1.1
+      agent-base: 7.1.3
       debug: 4.3.5
       socks: 2.8.3
     transitivePeerDependencies:
@@ -10222,7 +10235,7 @@ snapshots:
 
   touch@3.1.1: {}
 
-  tough-cookie@5.1.1:
+  tough-cookie@5.1.2:
     dependencies:
       tldts: 6.1.75
 
@@ -10314,7 +10327,7 @@ snapshots:
 
   undici-types@5.26.5: {}
 
-  undici@6.20.1: {}
+  undici@7.10.0: {}
 
   union@0.5.0:
     dependencies:

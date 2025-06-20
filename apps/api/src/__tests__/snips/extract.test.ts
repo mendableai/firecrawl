@@ -20,6 +20,9 @@ describe("Extract tests", () => {
                         "is_open_source"
                     ]
                 },
+                scrapeOptions: {
+                    timeout: 75000,
+                },
                 origin: "api-sdk",
             });
 
@@ -28,7 +31,7 @@ describe("Extract tests", () => {
             expect(res.data).toHaveProperty("is_open_source");
             expect(typeof res.data.is_open_source).toBe("boolean");
             expect(res.data.is_open_source).toBe(true);
-        }, 60000);
+        }, 90000);
 
         it.concurrent("works with unsupported JSON schema parameters", async () => {
             const res = await extract({
@@ -45,12 +48,15 @@ describe("Extract tests", () => {
                         "company_name"
                     ]
                 },
+                scrapeOptions: {
+                    timeout: 75000,
+                },
                 origin: "api-sdk",
             });
 
             expect(res.data).toHaveProperty("company_name");
             expect(typeof res.data.company_name).toBe("string")
-        }, 60000);
+        }, 90000);
     } else {
         it.concurrent("dummy test", () => {
             expect(true).toBe(true);
