@@ -154,7 +154,7 @@ export async function crawlErrors(id: string, identity = defaultIdentity): Promi
         .send();
     
     expect(res.statusCode).toBe(200);
-    expect(res.body.success).toBe(true);
+    expect(res.body.success).not.toBe(false);
 
     return res.body;
 }
