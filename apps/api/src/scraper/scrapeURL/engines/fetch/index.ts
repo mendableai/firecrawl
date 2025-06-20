@@ -17,7 +17,7 @@ export async function scrapeURLWithFetch(
   const timeout = timeToRun ?? 300000;
 
   const mockOptions = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
 
     // irrelevant
     method: "GET",

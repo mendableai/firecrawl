@@ -181,14 +181,14 @@ export async function scrapePDF(
         "base64",
       );
       return {
-        url: meta.pdfPrefetch.url ?? meta.url,
+        url: meta.pdfPrefetch.url ?? meta.rewrittenUrl ?? meta.url,
         statusCode: meta.pdfPrefetch.status,
 
         html: content,
         markdown: content,
       };
     } else {
-      const file = await fetchFileToBuffer(meta.url, {
+      const file = await fetchFileToBuffer(meta.rewrittenUrl ?? meta.url, {
         headers: meta.options.headers,
       });
 
@@ -212,7 +212,7 @@ export async function scrapePDF(
   const { response, tempFilePath } =
     meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null
       ? { response: meta.pdfPrefetch, tempFilePath: meta.pdfPrefetch.filePath }
-      : await downloadFile(meta.id, meta.url, {
+      : await downloadFile(meta.id, meta.rewrittenUrl ?? meta.url, {
           headers: meta.options.headers,
         });
 
@@ -298,7 +298,7 @@ export async function scrapePDF(
   await unlink(tempFilePath);
 
   return {
-    url: response.url ?? meta.url,
+    url: response.url ?? meta.rewrittenUrl ?? meta.url,
     statusCode: response.status,
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",

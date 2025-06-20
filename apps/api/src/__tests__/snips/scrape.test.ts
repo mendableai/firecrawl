@@ -745,6 +745,15 @@ describe("Scrape tests", () => {
         // text on the last page
         expect(response.markdown).toContain("Redistribution and use in source and binary forms, with or without modification");
       }, 310000);
+
+      it.concurrent("scrapes Google Docs links as PDFs", async () => {
+        const response = await scrape({
+          url: "https://docs.google.com/document/d/1H-hOLYssS8xXl2o5hxj4ipE7yyhZAX1s7ADYM1Hdlzo/view",
+          timeout: 300000,
+        });
+
+        expect(response.markdown).toContain("This is a test to confirm Google Docs scraping abilities.");
+      }, 310000);
     });
   }
 
