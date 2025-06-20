@@ -51,7 +51,12 @@ export async function scrapeController(
       url: req.body.url,
       mode: "single_urls",
       team_id: req.auth.team_id,
-      scrapeOptions: req.body,
+      scrapeOptions: {
+        ...req.body,
+        ...(req.body.__experimental_cache ? {
+          maxAge: req.body.maxAge ?? 4 * 60 * 60 * 1000, // 4 hours
+        } : {}),
+      },
       internalOptions: {
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
