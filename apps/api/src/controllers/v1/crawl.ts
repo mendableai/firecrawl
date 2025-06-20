@@ -87,6 +87,7 @@ export async function crawlController(
     }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
+    maxConcurrency: req.body.maxConcurrency !== undefined ? Math.min(req.body.maxConcurrency, req.acuc.concurrency) : undefined,
   };
 
   const crawler = crawlToCrawler(id, sc, req.acuc?.flags ?? null);

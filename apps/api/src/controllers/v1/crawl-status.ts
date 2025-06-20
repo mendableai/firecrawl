@@ -22,7 +22,7 @@ import { configDotenv } from "dotenv";
 import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
-import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
+import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitActiveJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
@@ -162,9 +162,8 @@ export async function crawlStatusController(
       ),
     );
 
-    const teamThrottledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
-    const crawlThrottledJobsSet = sc.crawlerOptions?.delay ? await getCrawlConcurrencyLimitedJobs(req.params.jobId) : new Set();
-    const throttledJobsSet = new Set([...teamThrottledJobsSet, ...crawlThrottledJobsSet]);
+    const throttledJobsSet = new Set(await getConcurrencyLimitedJobs(req.auth.team_id));
+    const activeJobsSet = new Set(await getCrawlConcurrencyLimitActiveJobs(req.params.jobId));
 
     const validJobStatuses: [string, JobState | "unknown"][] = [];
     const validJobIDs: string[] = [];
@@ -172,6 +171,9 @@ export async function crawlStatusController(
     for (const [id, status] of jobStatuses) {
       if (throttledJobsSet.has(id)) {
         validJobStatuses.push([id, "prioritized"]);
+        validJobIDs.push(id);
+      } else if (status === "unknown" && activeJobsSet.has(id)) {
+        validJobStatuses.push([id, "active"]);
         validJobIDs.push(id);
       } else if (
         status !== "failed" &&
