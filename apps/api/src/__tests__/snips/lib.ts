@@ -1,7 +1,7 @@
 import { configDotenv } from "dotenv";
 configDotenv();
 
-import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse, CrawlResponse, OngoingCrawlsResponse, ErrorResponse } from "../../controllers/v1/types";
+import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse, CrawlResponse, OngoingCrawlsResponse, ErrorResponse, CrawlErrorsResponse } from "../../controllers/v1/types";
 import request from "supertest";
 
 // =========================================
@@ -147,6 +147,18 @@ export async function asyncCrawlWaitForFinish(id: string, identity = defaultIden
     return x.body;
 }
 
+export async function crawlErrors(id: string, identity = defaultIdentity): Promise<Exclude<CrawlErrorsResponse, ErrorResponse>> {
+    const res = await request(TEST_URL)
+        .get("/v1/crawl/" + id + "/errors")
+        .set("Authorization", `Bearer ${identity.apiKey}`)
+        .send();
+    
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).not.toBe(false);
+
+    return res.body;
+}
+
 export async function crawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
     const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
@@ -158,6 +170,11 @@ export async function crawl(body: CrawlRequestInput, identity = defaultIdentity)
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
     } while (x.body.status === "scraping");
+
+    const errors = await crawlErrors(cs.body.id, identity);
+    if (errors.errors.length > 0) {
+        console.warn("Crawl ", cs.body.id, " had errors:", errors.errors);
+    }
 
     expectCrawlToSucceed(x);
     return x.body;
