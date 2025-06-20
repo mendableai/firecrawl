@@ -99,6 +99,8 @@ export async function getMapResults({
   let links: string[] = [url];
   let mapResults: MapDocument[] = [];
 
+  const zeroDataRetention = flags?.zeroDataRetention ?? false;
+
   const sc: StoredCrawl = {
     originUrl: url,
     crawlerOptions: {
@@ -182,7 +184,9 @@ export async function getMapResults({
       );
       allResults = await Promise.all(pagePromises);
 
-      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+      if (!zeroDataRetention) {
+        await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+      }
     }
 
     // Parallelize sitemap index query with search results

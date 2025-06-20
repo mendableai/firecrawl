@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { extractOptions, RequestWithAuth } from "./types";
+import { ErrorResponse, extractOptions, RequestWithAuth } from "./types";
 import { getDeepResearchQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveDeepResearch } from "../../lib/deep-research/deep-research-redis";
@@ -31,7 +31,7 @@ export const deepResearchRequestSchema = z.object({
 
 export type DeepResearchRequest = z.infer<typeof deepResearchRequestSchema>;
 
-export type DeepResearchResponse = {
+export type DeepResearchResponse = ErrorResponse | {
   success: boolean;
   id: string;
 };
@@ -46,6 +46,10 @@ export async function deepResearchController(
   req: RequestWithAuth<{}, DeepResearchResponse, DeepResearchRequest>,
   res: Response<DeepResearchResponse>,
 ) {
+  if (req.acuc?.flags?.zeroDataRetention) {
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on deep research. Please contact support@firecrawl.com to unblock this feature." });
+  }
+
   req.body = deepResearchRequestSchema.parse(req.body);
 
   const researchId = crypto.randomUUID();

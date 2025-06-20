@@ -24,6 +24,7 @@ export async function scrapeController(
     scrapeId: jobId,
     teamId: req.auth.team_id,
     team_id: req.auth.team_id,
+    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
   });
  
   logger.debug("Scrape " + jobId + " starting", {
@@ -62,6 +63,7 @@ export async function scrapeController(
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
         bypassBilling: isDirectToBullMQ,
+        zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
       },
       origin,
       integration: req.body.integration,
@@ -87,6 +89,10 @@ export async function scrapeController(
     logger.error(`Error in scrapeController`, {
       startTime,
     });
+
+    if (req.acuc?.flags?.zeroDataRetention) {
+      await getScrapeQueue().remove(jobId);
+    }
 
     if (
       e instanceof Error &&

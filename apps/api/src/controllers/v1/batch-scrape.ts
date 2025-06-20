@@ -44,6 +44,7 @@ export async function batchScrapeController(
     module: "api/v1",
     method: "batchScrapeController",
     teamId: req.auth.team_id,
+    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
   });
 
   let urls = req.body.urls;
