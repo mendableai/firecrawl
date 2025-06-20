@@ -1002,6 +1002,7 @@ export type AuthCreditUsageChunk = {
 export type TeamFlags = {
   ignoreRobots?: boolean;
   unblockedDomains?: string[];
+  zeroDataRetention?: boolean;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
