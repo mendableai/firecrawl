@@ -1120,6 +1120,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     scrapeId: job.id,
     crawlId: job.data?.crawl_id ?? undefined,
     teamId: job.data?.team_id ?? undefined,
+    zeroDataRetention: job.data?.internalOptions?.zeroDataRetention ?? false,
   });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
   const start = job.data.startTime ?? Date.now();
