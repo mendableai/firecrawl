@@ -163,6 +163,11 @@ async function buildMetaObject(
     if (id) {
       rewrittenUrl = `https://docs.google.com/document/d/${id}/export?format=pdf`;
     }
+  } else if (url.startsWith("https://docs.google.com/presentation/d/") || url.startsWith("http://docs.google.com/presentation/d/")) {
+    const id = url.match(/\/presentation\/d\/([-\w]+)/)?.[1];
+    if (id) {
+      rewrittenUrl = `https://docs.google.com/presentation/d/${id}/export?format=pdf`;
+    }
   }
 
   return {
