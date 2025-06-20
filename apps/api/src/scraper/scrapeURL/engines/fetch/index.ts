@@ -17,7 +17,7 @@ export async function scrapeURLWithFetch(
   const timeout = timeToRun ?? 300000;
 
   const mockOptions = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
 
     // irrelevant
     method: "GET",
@@ -55,8 +55,8 @@ export async function scrapeURLWithFetch(
   } else {
     try {
       const x = await Promise.race([
-        undici.fetch(meta.url, {
-          dispatcher: await makeSecureDispatcher(meta.url),
+        undici.fetch(meta.rewrittenUrl ?? meta.url, {
+          dispatcher: await makeSecureDispatcher(meta.rewrittenUrl ?? meta.url),
           redirect: "follow",
           headers: meta.options.headers,
           signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),

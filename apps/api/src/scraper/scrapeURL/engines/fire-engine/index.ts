@@ -209,7 +209,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
     engine: "chrome-cdp",
     instantReturn: true,
     skipTlsVerification: meta.options.skipTlsVerification,
@@ -298,7 +298,7 @@ export async function scrapeURLWithFireEnginePlaywright(
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
     engine: "playwright",
     instantReturn: true,
 
@@ -359,7 +359,7 @@ export async function scrapeURLWithFireEngineTLSClient(
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
     engine: "tlsclient",
     instantReturn: true,
 

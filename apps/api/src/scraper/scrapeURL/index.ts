@@ -48,6 +48,7 @@ export type ScrapeUrlResponse = (
 export type Meta = {
   id: string;
   url: string;
+  rewrittenUrl?: string;
   options: ScrapeOptions;
   internalOptions: InternalOptions;
   logger: Logger;
@@ -156,9 +157,18 @@ async function buildMetaObject(
   });
   const logs: any[] = [];
 
+  let rewrittenUrl: string | undefined;
+  if (url.startsWith("https://docs.google.com/document/d/") || url.startsWith("http://docs.google.com/document/d/")) {
+    const id = url.match(/\/document\/d\/([-\w]+)/)?.[1];
+    if (id) {
+      rewrittenUrl = `https://docs.google.com/document/d/${id}/export?format=pdf`;
+    }
+  }
+
   return {
     id,
     url,
+    rewrittenUrl,
     options,
     internalOptions,
     logger,
@@ -233,7 +243,7 @@ function safeguardCircularError<T>(error: T): T {
 }
 
 async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
-  meta.logger.info(`Scraping URL ${JSON.stringify(meta.url)}...`);
+  meta.logger.info(`Scraping URL ${JSON.stringify(meta.rewrittenUrl ?? meta.url)}...`);
 
   // TODO: handle sitemap data, see WebScraper/index.ts:280
   // TODO: ScrapeEvents
@@ -441,6 +451,11 @@ export async function scrapeURL(
   costTracking: CostTracking,
 ): Promise<ScrapeUrlResponse> {
   const meta = await buildMetaObject(id, url, options, internalOptions, costTracking);
+
+  if (meta.rewrittenUrl) {
+    meta.logger.info("Rewriting URL");
+  }
+
   try {
     while (true) {
       try {

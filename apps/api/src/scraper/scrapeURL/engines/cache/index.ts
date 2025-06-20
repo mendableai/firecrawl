@@ -4,7 +4,7 @@ import { Meta } from "../..";
 import { EngineError, IndexMissError } from "../../error";
 
 export async function scrapeCache(meta: Meta): Promise<EngineScrapeResult> {
-  const key = cacheKey(meta.url, meta.options, meta.internalOptions);
+  const key = cacheKey(meta.rewrittenUrl ?? meta.url, meta.options, meta.internalOptions);
   if (key === null) throw new EngineError("Scrape not eligible for caching");
 
   const entry = await getEntryFromCache(key);
