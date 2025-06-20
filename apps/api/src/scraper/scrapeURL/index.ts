@@ -200,6 +200,7 @@ export type InternalOptions = {
 
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
   bypassBilling?: boolean;
+  zeroDataRetention?: boolean;
 };
 
 export type EngineResultsTracker = {

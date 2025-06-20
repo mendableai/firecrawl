@@ -5,6 +5,7 @@ import "dotenv/config";
 import { logger as _logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 import { saveJobToGCS } from "../../lib/gcs-jobs";
+import { getACUCTeam } from "../../controllers/auth";
 configDotenv();
 
 function cleanOfNull<T>(x: T): T {
@@ -36,6 +37,12 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
     }) : {}),
   });
 
+  let zeroDataRetention = false;
+  if (job.team_id !== "preview" && !job.team_id.startsWith("preview_")) {
+    const acuc = await getACUCTeam(job.team_id);
+    zeroDataRetention = acuc?.flags?.zeroDataRetention ?? false;
+  }
+
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (!useDbAuthentication) {
@@ -60,17 +67,17 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
     const jobColumn = {
       job_id: job.job_id ? job.job_id : null,
       success: job.success,
-      message: job.message,
+      message: zeroDataRetention ? null : job.message,
       num_docs: job.num_docs,
-      docs: ((job.mode === "single_urls" || job.mode === "scrape") && process.env.GCS_BUCKET_NAME) ? null : cleanOfNull(job.docs),
+      docs: zeroDataRetention ? null : ((job.mode === "single_urls" || job.mode === "scrape") && process.env.GCS_BUCKET_NAME) ? null : cleanOfNull(job.docs),
       time_taken: job.time_taken,
       team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
       mode: job.mode,
-      url: job.url,
-      crawler_options: job.crawlerOptions,
-      page_options: job.scrapeOptions,
-      origin: job.origin,
-      integration: job.integration ?? null,
+      url: zeroDataRetention ? "<redacted due to zero data retention>" : job.url,
+      crawler_options: zeroDataRetention ? null : job.crawlerOptions,
+      page_options: zeroDataRetention ? null : job.scrapeOptions,
+      origin: zeroDataRetention ? null : job.origin,
+      integration: zeroDataRetention ? null : job.integration ?? null,
       num_tokens: job.num_tokens,
       retry: !!job.retry,
       crawl_id: job.crawl_id,
@@ -79,7 +86,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
       cost_tracking: job.cost_tracking,
       pdf_num_pages: job.pdf_num_pages ?? null,
       credits_billed: job.credits_billed ?? null,
-      change_tracking_tag: job.change_tracking_tag ?? null,
+      change_tracking_tag: zeroDataRetention ? null : job.change_tracking_tag ?? null,
     };
 
     if (process.env.GCS_BUCKET_NAME) {

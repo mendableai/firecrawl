@@ -58,6 +58,7 @@ export class WebCrawler {
   private sitemapsHit: Set<string> = new Set();
   private maxDiscoveryDepth: number | undefined;
   private currentDiscoveryDepth: number;
+  private zeroDataRetention: boolean;
 
   constructor({
     jobId,
@@ -76,6 +77,7 @@ export class WebCrawler {
     regexOnFullURL = false,
     maxDiscoveryDepth,
     currentDiscoveryDepth,
+    zeroDataRetention,
   }: {
     jobId: string;
     initialUrl: string;
@@ -93,6 +95,7 @@ export class WebCrawler {
     regexOnFullURL?: boolean;
     maxDiscoveryDepth?: number;
     currentDiscoveryDepth?: number;
+    zeroDataRetention?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -111,7 +114,8 @@ export class WebCrawler {
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
     this.regexOnFullURL = regexOnFullURL ?? false;
-    this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
+    this.zeroDataRetention = zeroDataRetention ?? false;
+    this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler", zeroDataRetention: this.zeroDataRetention });
     this.maxDiscoveryDepth = maxDiscoveryDepth;
     this.currentDiscoveryDepth = currentDiscoveryDepth ?? 0;
   }

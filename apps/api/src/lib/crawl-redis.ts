@@ -279,35 +279,20 @@ export async function lockURL(
   sc: StoredCrawl,
   url: string,
 ): Promise<boolean> {
-  let logger = _logger.child({
-    crawlId: id,
-    module: "crawl-redis",
-    method: "lockURL",
-    preNormalizedURL: url,
-    teamId: sc.team_id,
-  });
-
   if (typeof sc.crawlerOptions?.limit === "number") {
     if (
       (await redisEvictConnection.scard("crawl:" + id + ":visited_unique")) >=
       sc.crawlerOptions.limit
     ) {
-      // logger.debug(
-      //   "Crawl has already hit visited_unique limit, not locking URL.",
-      // );
       return false;
     }
   }
-
-  url = normalizeURL(url, sc);
-  logger = logger.child({ url });
 
   let res: boolean;
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
     res = (await redisEvictConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
   } else {
     const permutations = generateURLPermutations(url).map((x) => x.href);
-    // logger.debug("Adding URL permutations for URL " + JSON.stringify(url) + "...", { permutations });
     const x = await redisEvictConnection.sadd(
       "crawl:" + id + ":visited",
       ...permutations,
@@ -325,9 +310,6 @@ export async function lockURL(
     );
   }
 
-  // logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-  //   res,
-  // });
   return res;
 }
 
@@ -421,6 +403,7 @@ export function crawlToCrawler(
     regexOnFullURL: sc.crawlerOptions?.regexOnFullURL ?? false,
     maxDiscoveryDepth: sc.crawlerOptions?.maxDiscoveryDepth,
     currentDiscoveryDepth: crawlerOptions?.currentDiscoveryDepth ?? 0,
+    zeroDataRetention: teamFlags?.zeroDataRetention ?? false,
   });
 
   if (sc.robots !== undefined) {
