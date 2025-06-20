@@ -36,6 +36,9 @@ describe("Webhook tests", () => {
                 url: `http://localhost:${WEBHOOK_PORT_CRAWL}/webhook`,
             },
         });
+
+        // wait to settle the webhook calls
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         server.close();
 
@@ -91,6 +94,9 @@ describe("Webhook tests", () => {
                 url: `http://localhost:${WEBHOOK_PORT_BATCH_SCRAPE}/webhook`,
             },
         });
+
+        // wait to settle the webhook calls
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         server.close();
 
