@@ -25,6 +25,7 @@ class RustHTMLTransformer {
   private _transformHtml: KoffiFunction;
   private _freeString: KoffiFunction;
   private _getInnerJSON: KoffiFunction;
+  private _htmlToMarkdown: KoffiFunction;
 
   private constructor() {
     const lib = koffi.load(rustExecutablePath);
@@ -35,6 +36,7 @@ class RustHTMLTransformer {
     this._extractMetadata = lib.func("extract_metadata", freedResultString, ["string"]);
     this._transformHtml = lib.func("transform_html", freedResultString, ["string"]);
     this._getInnerJSON = lib.func("get_inner_json", freedResultString, ["string"]);
+    this._htmlToMarkdown = lib.func("html_to_markdown", freedResultString, ["string"]);
   }
 
   public static async getInstance(): Promise<RustHTMLTransformer> {
@@ -104,6 +106,22 @@ class RustHTMLTransformer {
       });
     });
   }
+
+  public async htmlToMarkdown(html: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      this._htmlToMarkdown.async(html, (err: Error, res: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          if (res === "RUSTFC:ERROR") {
+            reject(new Error("Something went wrong on the Rust side."));
+          } else {
+            resolve(res);
+          }
+        }
+      });
+    });
+  }
 }
 
 export async function extractLinks(
@@ -140,4 +158,11 @@ export async function getInnerJSON(
 ): Promise<string> {
   const converter = await RustHTMLTransformer.getInstance();
   return await converter.getInnerJSON(html);
+}
+
+export async function htmlToMarkdown(
+  html: string,
+): Promise<string> {
+  const converter = await RustHTMLTransformer.getInstance();
+  return await converter.htmlToMarkdown(html);
 }

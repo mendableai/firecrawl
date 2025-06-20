@@ -6,6 +6,8 @@ import * as Sentry from "@sentry/node";
 import dotenv from "dotenv";
 import { logger } from "./logger";
 import { stat } from "fs/promises";
+import { htmlToMarkdown } from "./html-transformer";
+
 dotenv.config();
 
 // TODO: add a timeout to the Go parser
@@ -59,8 +61,14 @@ export async function parseMarkdown(
 
   try {
     if (process.env.USE_GO_MARKDOWN_PARSER == "true") {
-      const converter = await GoMarkdownConverter.getInstance();
-      let markdownContent = await converter.convertHTMLToMarkdown(html);
+      let markdownContent;
+      try {
+        markdownContent = await htmlToMarkdown(html);
+      } catch (error) {
+        logger.warn("Error converting HTML to Markdown with Rust parser, falling back to Go parser", { error });
+        const converter = await GoMarkdownConverter.getInstance();
+        markdownContent = await converter.convertHTMLToMarkdown(html);
+      }
 
       markdownContent = processMultiLineLinks(markdownContent);
       markdownContent = removeSkipToContentLinks(markdownContent);

@@ -397,6 +397,26 @@ pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc:
     CString::new(out).unwrap().into_raw()
 }
 
+fn _html_to_markdown(html: &str) -> Result<String, ()> {
+    htmd::convert(html).map_err(|_| ())
+}
+
+/// For JSON pages retrieved by browser engines, this function can be used to transform it back into valid JSON.
+/// 
+/// # Safety
+/// Input must be a C HTML string. Output will be an HTML string. Output string must be freed with free_string.
+#[no_mangle]
+pub unsafe extern "C" fn html_to_markdown(html: *const libc::c_char) -> *mut libc::c_char {
+    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
+
+    let out = match _html_to_markdown(html) {
+        Ok(x) => x,
+        Err(_) => "RUSTFC:ERROR".to_string(),
+    };
+
+    CString::new(out).unwrap().into_raw()
+}
+
 /// Frees a string allocated in Rust-land.
 /// 
 /// # Safety
