@@ -687,6 +687,7 @@ class FirecrawlApp:
         max_discovery_depth: Optional[int] = None,
         limit: Optional[int] = None,
         allow_backward_links: Optional[bool] = None,
+        crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
         scrape_options: Optional[ScrapeOptions] = None,
@@ -710,7 +711,8 @@ class FirecrawlApp:
             max_depth (Optional[int]): Maximum crawl depth
             max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
             limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
             scrape_options (Optional[ScrapeOptions]): Page scraping configuration
@@ -749,7 +751,9 @@ class FirecrawlApp:
             crawl_params['maxDiscoveryDepth'] = max_discovery_depth
         if limit is not None:
             crawl_params['limit'] = limit
-        if allow_backward_links is not None:
+        if crawl_entire_domain is not None:
+            crawl_params['crawlEntireDomain'] = crawl_entire_domain
+        elif allow_backward_links is not None:
             crawl_params['allowBackwardLinks'] = allow_backward_links
         if allow_external_links is not None:
             crawl_params['allowExternalLinks'] = allow_external_links
@@ -802,6 +806,7 @@ class FirecrawlApp:
         max_discovery_depth: Optional[int] = None,
         limit: Optional[int] = None,
         allow_backward_links: Optional[bool] = None,
+        crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
         scrape_options: Optional[ScrapeOptions] = None,
@@ -823,7 +828,8 @@ class FirecrawlApp:
             max_depth (Optional[int]): Maximum crawl depth
             max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
             limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
             scrape_options (Optional[ScrapeOptions]): Page scraping configuration
@@ -862,7 +868,9 @@ class FirecrawlApp:
             crawl_params['maxDiscoveryDepth'] = max_discovery_depth
         if limit is not None:
             crawl_params['limit'] = limit
-        if allow_backward_links is not None:
+        if crawl_entire_domain is not None:
+            crawl_params['crawlEntireDomain'] = crawl_entire_domain
+        elif allow_backward_links is not None:
             crawl_params['allowBackwardLinks'] = allow_backward_links
         if allow_external_links is not None:
             crawl_params['allowExternalLinks'] = allow_external_links
@@ -1051,6 +1059,7 @@ class FirecrawlApp:
             max_discovery_depth: Optional[int] = None,
             limit: Optional[int] = None,
             allow_backward_links: Optional[bool] = None,
+            crawl_entire_domain: Optional[bool] = None,
             allow_external_links: Optional[bool] = None,
             ignore_sitemap: Optional[bool] = None,
             scrape_options: Optional[ScrapeOptions] = None,
@@ -1073,7 +1082,8 @@ class FirecrawlApp:
             max_depth (Optional[int]): Maximum crawl depth
             max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
             limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
             scrape_options (Optional[ScrapeOptions]): Page scraping configuration
@@ -2811,7 +2821,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             * limit - Maximum pages to crawl
 
             Link Following:
-            * allowBackwardLinks - Follow parent directory links
+            * allowBackwardLinks - DEPRECATED: Use crawlEntireDomain instead
+            * crawlEntireDomain - Follow parent directory links
             * allowExternalLinks - Follow external domain links  
             * ignoreSitemap - Skip sitemap.xml processing
 
@@ -3290,6 +3301,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         max_discovery_depth: Optional[int] = None,
         limit: Optional[int] = None,
         allow_backward_links: Optional[bool] = None,
+        crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
         scrape_options: Optional[ScrapeOptions] = None,
@@ -3312,7 +3324,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             max_depth (Optional[int]): Maximum crawl depth
             max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
             limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
             scrape_options (Optional[ScrapeOptions]): Page scraping configuration
@@ -3350,7 +3363,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_params['maxDiscoveryDepth'] = max_discovery_depth
         if limit is not None:
             crawl_params['limit'] = limit
-        if allow_backward_links is not None:
+        if crawl_entire_domain is not None:
+            crawl_params['crawlEntireDomain'] = crawl_entire_domain
+        elif allow_backward_links is not None:
             crawl_params['allowBackwardLinks'] = allow_backward_links
         if allow_external_links is not None:
             crawl_params['allowExternalLinks'] = allow_external_links
@@ -3402,6 +3417,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         max_discovery_depth: Optional[int] = None,
         limit: Optional[int] = None,
         allow_backward_links: Optional[bool] = None,
+        crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
         scrape_options: Optional[ScrapeOptions] = None,
@@ -3424,7 +3440,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             max_depth (Optional[int]): Maximum crawl depth
             max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
             limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
             scrape_options (Optional[ScrapeOptions]): Page scraping configuration
@@ -3458,7 +3475,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_params['maxDiscoveryDepth'] = max_discovery_depth
         if limit is not None:
             crawl_params['limit'] = limit
-        if allow_backward_links is not None:
+        if crawl_entire_domain is not None:
+            crawl_params['crawlEntireDomain'] = crawl_entire_domain
+        elif allow_backward_links is not None:
             crawl_params['allowBackwardLinks'] = allow_backward_links
         if allow_external_links is not None:
             crawl_params['allowExternalLinks'] = allow_external_links
