@@ -26,7 +26,7 @@ const logFormat = winston.format.printf(
 
 // Filter function to prevent logging when zeroDataRetention is true
 const zeroDataRetentionFilter = winston.format((info) => {
-  if (info.metadata?.zeroDataRetention === true) {
+  if (info.metadata?.zeroDataRetention === true || info.zeroDataRetention === true) {
     return false; // Don't log this message
   }
   return info;
