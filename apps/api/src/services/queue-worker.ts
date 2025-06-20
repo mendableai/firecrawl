@@ -54,7 +54,7 @@ import {
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
-import { Document } from "../controllers/v1/types";
+import { Document, TeamFlags } from "../controllers/v1/types";
 import {
   ExtractResult,
   performExtraction,
@@ -1059,11 +1059,11 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   }
 }
 
-async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking) {
+async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking, flags: TeamFlags) {
   let creditsToBeBilled: number | null = null;
 
   if (job.data.is_scrape !== true && !job.data.internalOptions?.bypassBilling) {
-    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, costTracking);
+    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, job.data.internalOptions, document, costTracking, flags);
 
     if (
       job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! &&
@@ -1368,7 +1368,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         throw new Error("timeout");
       }
 
-      const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+      const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
       doc.metadata.creditsUsed = credits_billed ?? undefined;
 
@@ -1423,7 +1423,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         throw new Error("timeout");
       }
 
-      const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+      const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
       doc.metadata.creditsUsed = credits_billed ?? undefined;
 
@@ -1522,7 +1522,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const credits_billed = await billScrapeJob(job, null, logger, costTracking);
+    const credits_billed = await billScrapeJob(job, null, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
     logger.debug("Logging job to DB...");
     await logJob(

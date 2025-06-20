@@ -91,6 +91,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
       pdf_num_pages: zeroDataRetention ? null : job.pdf_num_pages ?? null,
       credits_billed: job.credits_billed ?? null,
       change_tracking_tag: zeroDataRetention ? null : job.change_tracking_tag ?? null,
+      zdr_cleaned_up: zeroDataRetention && job.crawl_id ? false : null,
     };
 
     if (process.env.GCS_BUCKET_NAME) {

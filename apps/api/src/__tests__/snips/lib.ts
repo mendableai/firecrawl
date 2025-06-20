@@ -228,7 +228,10 @@ export async function crawl(body: CrawlRequestInput, identity: Identity): Promis
     }
 
     expectCrawlToSucceed(x);
-    return x.body;
+    return {
+        ...x.body,
+        id: cs.body.id,
+    };
 }
 
 // =========================================
@@ -279,7 +282,10 @@ export async function batchScrape(body: BatchScrapeRequestInput, identity: Ident
     } while (x.body.status === "scraping");
 
     expectBatchScrapeToSucceed(x);
-    return x.body;
+    return {
+        ...x.body,
+        id: bss.body.id,
+    };
 }
 
 // =========================================
