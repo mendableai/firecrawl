@@ -381,7 +381,7 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url,
-          location: { country: "BR" },
+          location: { country: "DE" },
           maxAge: scrapeTimeout * 2,
           timeout: scrapeTimeout,
         });
@@ -392,7 +392,7 @@ describe("Scrape tests", () => {
 
         const response2 = await scrape({
           url,
-          location: { country: "BR" },
+          location: { country: "DE" },
           timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3,
         });
