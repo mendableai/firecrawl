@@ -684,7 +684,7 @@ export async function performLLMExtract(
     const { extractedDataArray, warning, costLimitExceededTokenUsage } =
       await extractData({
         extractOptions: generationOptions,
-        urls: [meta.url],
+        urls: [meta.rewrittenUrl ?? meta.url],
         useAgent: false,
         scrapeId: meta.id,
       });
@@ -760,7 +760,7 @@ export async function performLLMExtract(
     //   // if (shouldUseSmartscrape && smartscrape_prompt) {
     //   //   meta.logger.info("Triggering SmartScrape refinement...", { reason: smartscrape_reasoning, prompt: smartscrape_prompt });
     //   //   // Call the smartScrape function (which needs to be implemented/imported)
-    //   //   // const smartScrapedDocs = await smartScrape(meta.url, smartscrape_prompt);
+    //   //   // const smartScrapedDocs = await smartScrape(meta.rewrittenUrl ?? meta.url, smartscrape_prompt);
     //   //   // Process/merge smartScrapedDocs with extractedData
     //   //   // ... potentially update finalExtract ...
     //   // } else {

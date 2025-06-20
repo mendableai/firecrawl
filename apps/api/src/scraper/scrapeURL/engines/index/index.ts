@@ -87,7 +87,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                     url: normalizedURL,
                     url_hash: urlHash,
                     original_url: document.metadata.sourceURL ?? meta.url,
-                    resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+                    resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
                     has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
                     has_screenshot_fullscreen: document.screenshot !== undefined && meta.featureFlags.has("screenshot@fullScreen"),
                     is_mobile: meta.options.mobile,

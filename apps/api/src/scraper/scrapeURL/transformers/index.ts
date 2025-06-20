@@ -48,7 +48,7 @@ export async function deriveHTMLFromRawHTML(
 
   document.html = await htmlTransform(
     document.rawHtml,
-    document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+    document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
     meta.options,
   );
   return document;
@@ -88,7 +88,7 @@ export async function deriveLinksFromHTML(meta: Meta, document: Document): Promi
       );
     }
 
-    document.links = await extractLinks(document.html, meta.url);
+    document.links = await extractLinks(document.html, document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url);
   }
 
   return document;
