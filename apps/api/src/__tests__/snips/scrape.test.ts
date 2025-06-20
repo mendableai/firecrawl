@@ -777,6 +777,15 @@ describe("Scrape tests", () => {
 
         expect(response.markdown).toContain("This is a test to confirm Google Docs scraping abilities.");
       }, 310000);
+
+      it.concurrent("scrapes Google Slides links as PDFs", async () => {
+        const response = await scrape({
+          url: "https://docs.google.com/presentation/d/1pDKL1UULpr6siq_eVWE1hjqt5MKCgSSuKS_MWahnHAQ/view",
+          timeout: 300000,
+        });
+
+        expect(response.markdown).toContain("This is a test to confirm Google Slides scraping abilities.");
+      }, 310000);
     });
   }
 
