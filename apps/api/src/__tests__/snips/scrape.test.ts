@@ -161,6 +161,29 @@ describe("Scrape tests", () => {
         expect(response4.metadata.cacheState).toBe("miss");
       }, 150000 + 2 * 17000);
 
+      it.concurrent("caches PDFs properly", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://www.orimi.com/pdf-test.pdf?testId=" + id;
+        
+        const response1 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+        
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("hit");
+      }, 150000 + 2 * 17000);
+
       it.concurrent("respects screenshot", async () => {
         const id = crypto.randomUUID();
         const url = "https://firecrawl.dev/?testId=" + id;

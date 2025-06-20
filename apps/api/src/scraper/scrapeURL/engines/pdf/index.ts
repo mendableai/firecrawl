@@ -16,11 +16,8 @@ import {
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
-import {
-  getPdfResultFromCache,
-  savePdfResultToCache,
-} from "../../../../lib/gcs-pdf-cache";
 import { getPageCount } from "../../../../lib/pdf-parser";
+import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
