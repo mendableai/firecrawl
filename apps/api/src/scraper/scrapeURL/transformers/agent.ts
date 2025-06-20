@@ -11,6 +11,11 @@ export async function performAgent(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
+  if (meta.internalOptions.zeroDataRetention) {
+    document.warning = "Agent is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
+    return document;
+  }
+
   if (meta.options.agent?.prompt) {
     const url: string | undefined = document.url || document.metadata.sourceURL
 
