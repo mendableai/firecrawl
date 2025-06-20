@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
-import { mapController } from "../controllers/v2alpha/map";
+import { crawlController } from "../controllers/v2alpha/crawl";
 import {
   isAgentExtractModelValid,
   RequestWithACUC,
@@ -153,9 +153,10 @@ expressWs(express());
 export const v2alphaRouter = express.Router();
 
 v2alphaRouter.post(
-  "/map",
-  authMiddleware(RateLimiterMode.Map),
-  checkCreditsMiddleware(1),
+  "/crawl",
+  authMiddleware(RateLimiterMode.Crawl),
+  checkCreditsMiddleware(),
   blocklistMiddleware,
-  wrap(mapController),
+  idempotencyMiddleware,
+  wrap(crawlController),
 );
