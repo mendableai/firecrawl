@@ -198,11 +198,10 @@ export async function getMapResults({
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-    // If sitemap is not ignored and either we have few URLs (<100) or the data is stale (>2 days old), fetch fresh sitemap
-    // TODO: We should always soft-fetch the sitemaps from just the index, which fails very fast if there's no result. - mogery
+    // If sitemap is not ignored, fetch sitemap
+    // This will attempt to find it in the index at first, or fetch a fresh one if it's older than 2 days
     if (
-      !ignoreSitemap &&
-      (indexResults.length < 100)
+      !ignoreSitemap
     ) {
       try {
         await crawler.tryGetSitemap(

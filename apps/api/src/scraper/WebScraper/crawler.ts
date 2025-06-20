@@ -351,7 +351,7 @@ export class WebCrawler {
 
     // Allow sitemaps to be cached for 48 hours if they are requested from /map
     // - mogery
-    const maxAge = fromMap ? 48 * 60 * 60 * 1000 : 0;
+    const maxAge = (fromMap && !onlySitemap) ? 48 * 60 * 60 * 1000 : 0;
 
     try {
       let count = (await Promise.race([
