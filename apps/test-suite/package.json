@@ -12,12 +12,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3",
+    "@anthropic-ai/sdk": "^0.54.0",
     "@dqbd/tiktoken": "^1.0.14",
     "@supabase/supabase-js": "^2.43.1",
     "dotenv": "^16.4.5",
-    "jest": "^29.7.0",
-    "openai": "^4.40.2",
+    "jest": "^30.0.0",
+    "openai": "^5.3.0",
     "playwright": "^1.43.1",
     "supertest": "^7.0.0",
     "ts-jest": "^29.1.2"
