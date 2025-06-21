@@ -36,6 +36,7 @@ import { deepResearchController } from "../controllers/v1/deep-research";
 import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 import { tokenUsageController } from "../controllers/v1/token-usage";
 import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
+import { x402SearchMiddleware } from "../middleware/x402";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -202,6 +203,7 @@ v1Router.post(
 v1Router.post(
   "/search",
   authMiddleware(RateLimiterMode.Search),
+  ...(process.env.X402_ENABLED === 'true' ? [x402SearchMiddleware] : []),
   checkCreditsMiddleware(),
   wrap(searchController),
 );
