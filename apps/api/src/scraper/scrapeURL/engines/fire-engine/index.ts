@@ -225,8 +225,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
-    saveScrapeResultToGCS: meta.internalOptions.saveScrapeResultToGCS,
-    // TODO: scrollXPaths
+    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
   let response = await performFireEngineScrape(
@@ -312,6 +312,8 @@ export async function scrapeURLWithFireEnginePlaywright(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
+    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
   let response = await performFireEngineScrape(
@@ -372,6 +374,8 @@ export async function scrapeURLWithFireEngineTLSClient(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
+    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
   let response = await performFireEngineScrape(

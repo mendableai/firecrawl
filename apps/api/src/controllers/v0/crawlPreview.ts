@@ -30,6 +30,10 @@ export async function crawlPreviewController(req: Request, res: Response) {
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
+    
+    if (auth.chunk?.flags?.zeroDataRetention) {
+      return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
+    }
 
     let url = req.body.url;
     if (!url) {

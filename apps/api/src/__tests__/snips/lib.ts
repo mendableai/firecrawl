@@ -159,7 +159,7 @@ export async function crawlErrors(id: string, identity = defaultIdentity): Promi
     return res.body;
 }
 
-export async function crawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+export async function crawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse & { id: string }, ErrorResponse>> {
     const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
 
@@ -177,7 +177,10 @@ export async function crawl(body: CrawlRequestInput, identity = defaultIdentity)
     }
 
     expectCrawlToSucceed(x);
-    return x.body;
+    return {
+        ...x.body,
+        id: cs.body.id,
+    };
 }
 
 // =========================================
@@ -215,7 +218,7 @@ function expectBatchScrapeToSucceed(response: Awaited<ReturnType<typeof batchScr
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function batchScrape(body: BatchScrapeRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+export async function batchScrape(body: BatchScrapeRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse> & { id: string }> {
     const bss = await batchScrapeStart(body, identity);
     expectBatchScrapeStartToSucceed(bss);
 
@@ -228,7 +231,10 @@ export async function batchScrape(body: BatchScrapeRequestInput, identity = defa
     } while (x.body.status === "scraping");
 
     expectBatchScrapeToSucceed(x);
-    return x.body;
+    return {
+        ...x.body,
+        id: bss.body.id,
+    };
 }
 
 // =========================================

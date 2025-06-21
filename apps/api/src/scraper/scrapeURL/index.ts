@@ -172,6 +172,7 @@ async function buildMetaObject(
     module: "ScrapeURL",
     scrapeId: id,
     scrapeURL: url,
+    zeroDataRetention: internalOptions.zeroDataRetention,
   });
   const logs: any[] = [];
 
@@ -210,6 +211,7 @@ export type InternalOptions = {
 
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
   bypassBilling?: boolean;
+  zeroDataRetention?: boolean;
 };
 
 export type EngineResultsTracker = {
