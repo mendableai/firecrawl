@@ -9,6 +9,8 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import Ajv from "ajv";
+import type { CostTracking } from "../../lib/extract/extraction-service";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -450,10 +452,91 @@ export type ScrapeOptions = BaseScrapeOptions & {
   },
 };
 
-import Ajv from "ajv";
-import type { CostTracking } from "../../lib/extract/extraction-service";
+// Configure AJV with security-focused settings
+const ajv = new Ajv({
+  strict: true,        // Strict mode to prevent unexpected properties
+  allErrors: false,    // Stop at first error to prevent DoS via error generation
+  verbose: false,      // Minimal error information to prevent information leakage
+  validateFormats: false, // Disable format validation to prevent ReDoS attacks
+  addUsedSchema: false,   // Prevent schema caching to avoid memory leaks
+  removeAdditional: false, // Don't automatically remove additional properties
+});
 
-const ajv = new Ajv();
+// Security: Set reasonable limits to prevent DoS attacks
+ajv.addKeyword({
+  keyword: "maxProperties",
+  type: "object",
+  schemaType: "number",
+  compile: (schemaVal) => {
+    return function validate(data) {
+      if (typeof data === "object" && data !== null) {
+        return Object.keys(data).length <= Math.min(schemaVal, 100); // Cap at 100 properties
+      }
+      return true;
+    };
+  }
+});
+
+ajv.addKeyword({
+  keyword: "maxItems",
+  type: "array", 
+  schemaType: "number",
+  compile: (schemaVal) => {
+    return function validate(data) {
+      if (Array.isArray(data)) {
+        return data.length <= Math.min(schemaVal, 1000); // Cap at 1000 items
+      }
+      return true;
+    };
+  }
+});
+
+// Security helper function to safely validate schemas
+function isValidJsonSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== 'object') {
+    return false;
+  }
+
+  // Security: Prevent processing of extremely large schemas
+  const schemaStr = JSON.stringify(schema);
+  if (schemaStr.length > 50000) { // 50KB limit
+    return false;
+  }
+
+  // Security: Check for potentially malicious Zod schema objects
+  if (schema && typeof schema === 'object' && '_def' in schema) {
+    // This is likely an unconverted Zod schema which could be a security risk
+    return false;
+  }
+
+  // Security: Limit nested depth to prevent stack overflow
+  function getMaxDepth(obj: any, currentDepth = 0): number {
+    if (currentDepth > 20) return currentDepth; // Max depth limit
+    if (typeof obj !== 'object' || obj === null) return currentDepth;
+    
+    let maxChildDepth = currentDepth;
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const childDepth = getMaxDepth(obj[key], currentDepth + 1);
+        maxChildDepth = Math.max(maxChildDepth, childDepth);
+      }
+    }
+    return maxChildDepth;
+  }
+
+  if (getMaxDepth(schema) > 20) {
+    return false;
+  }
+
+  // Security: Try to compile with AJV in a safe manner
+  try {
+    const validate = ajv.compile(schema);
+    return typeof validate === "function";
+  } catch (e) {
+    // Don't log detailed error information for security reasons
+    return false;
+  }
+}
 
 export const extractV1Options = z
   .object({
@@ -469,12 +552,7 @@ export const extractV1Options = z
       .refine(
         (val) => {
           if (!val) return true; // Allow undefined schema
-          try {
-            const validate = ajv.compile(val);
-            return typeof validate === "function";
-          } catch (e) {
-            return false;
-          }
+          return isValidJsonSchema(val);
         },
         {
           message: "Invalid JSON schema.",
