@@ -136,11 +136,11 @@ export async function crawlStatusController(
   isBatch = false,
 ) {
   const start =
-      typeof req.query.skip === "string" ? parseInt(req.query.skip, 10) : 0;
-    const end =
-      typeof req.query.limit === "string"
-        ? start + parseInt(req.query.limit, 10) - 1
-        : undefined;
+    typeof req.query.skip === "string" ? parseInt(req.query.skip, 10) : 0;
+  const end =
+    typeof req.query.limit === "string"
+      ? start + parseInt(req.query.limit, 10) - 1
+      : undefined;
   
   const sc = await getCrawl(req.params.jobId);
 
