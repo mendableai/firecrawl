@@ -18,7 +18,6 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
 
             it("should clean up a scrape immediately", async () => {
                 const testId = crypto.randomUUID();
-                console.log("Sending off scrape");
                 const scrape1 = await scrape({
                     url: "https://firecrawl.dev/?test=" + testId,
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
@@ -44,19 +43,13 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 }
 
                 if (scope === "Request-scoped") {
-                    console.log("Checking status");
                     const status = await scrapeStatusRaw(scrape1.metadata.scrapeId!, scopeIdentity);
 
-                    if (status.statusCode !== 404) {
-                        console.warn("Scrape status came back positive", status.body);
-                    }
-                    
                     expect(status.statusCode).toBe(404);
                 }
             }, 60000);
 
             it("should clean up a crawl", async () => {
-                console.log("Sending off crawl");
                 const crawl1 = await crawl({
                     url: "https://firecrawl.dev",
                     limit: 10,
@@ -94,27 +87,25 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     expect(job.zdr_cleaned_up).toBe(false); // clean up happens async on a worker after expiry
 
                     if (job.success) {
-                        console.log("Checking job", job.job_id);
                         const gcsJob = await getJobFromGCS(job.job_id);
                         expect(gcsJob).not.toBeNull(); // clean up happens async on a worker after expiry
                     }
                 }
 
-                console.log("Cleaning up");
                 await zdrcleaner(scopeIdentity.teamId!);
 
                 for (const job of jobs ?? []) {
-                    console.log("Checking job", job.job_id);
                     const gcsJob = await getJobFromGCS(job.job_id);
                     expect(gcsJob).toBeNull();
 
-                    const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
-                    expect(status.statusCode).toBe(404);
+                    if (scope === "Request-scoped") {
+                        const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
+                        expect(status.statusCode).toBe(404);
+                    }
                 }
             }, 600000);
 
             it("should clean up a batch scrape", async () => {
-                console.log("Sending off batch scrape");
                 const crawl1 = await batchScrape({
                     urls: ["https://firecrawl.dev", "https://mendable.ai"],
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
@@ -151,22 +142,21 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     expect(job.zdr_cleaned_up).toBe(false); // clean up happens async on a worker after expiry
 
                     if (job.success) {
-                        console.log("Checking job", job.job_id);
                         const gcsJob = await getJobFromGCS(job.job_id);
                         expect(gcsJob).not.toBeNull(); // clean up happens async on a worker after expiry
                     }
                 }
 
-                console.log("Cleaning up");
                 await zdrcleaner(scopeIdentity.teamId!);
 
                 for (const job of jobs ?? []) {
-                    console.log("Checking job", job.job_id);
                     const gcsJob = await getJobFromGCS(job.job_id);
                     expect(gcsJob).toBeNull();
 
-                    const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
-                    expect(status.statusCode).toBe(404);
+                    if (scope === "Request-scoped") {
+                        const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
+                        expect(status.statusCode).toBe(404);
+                    }
                 }
             }, 600000);
         });

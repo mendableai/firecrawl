@@ -110,7 +110,6 @@ export async function removeJobFromGCS(jobId: string): Promise<void> {
             return;
         }
 
-        const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${jobId}.json`);
         await blob.delete({

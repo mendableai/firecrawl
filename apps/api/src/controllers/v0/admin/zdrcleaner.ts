@@ -34,21 +34,24 @@ async function cleanUpTeam(teamId: string, _logger: Logger, overrideDateCheck: b
             if (jobs?.length === 0) {
                 break;
             }
-    
-            await Promise.allSettled(jobs?.map(async (job) => {
-                try {
-                    await cleanUpJob(job.job_id);
-                    cleanedUp.push(job.id);
-                } catch (error) {
-                    logger.error(`Error cleaning up job`, {
-                        method: "cleanUpJob",
-                        jobId: job.job_id,
-                        scrapeId: job.job_id,
-                        error,
-                    });
-                    throw error;
-                }
-            }) ?? []);
+
+            for (let i = 0; i < Math.ceil((jobs?.length ?? 0) / 50); i++) {
+                const theseJobs = (jobs ?? []).slice(i * 50, (i + 1) * 50);
+                await Promise.allSettled(theseJobs.map(async (job) => {
+                    try {
+                        await cleanUpJob(job.job_id);
+                        cleanedUp.push(job.id);
+                    } catch (error) {
+                        logger.error(`Error cleaning up job`, {
+                            method: "cleanUpJob",
+                            jobId: job.job_id,
+                            scrapeId: job.job_id,
+                            error,
+                        });
+                        throw error;
+                    }
+                }) ?? []);
+            }
     
             if ((jobs ?? []).length < 1000) {
                 break;
@@ -84,6 +87,7 @@ export async function zdrcleanerController(req: Request, res: Response) {
 
     if (req.query.teamId) {
         await cleanUpTeam(req.query.teamId as string, logger, true);
+        logger.info("ZDR Cleaner finished!");
         res.json({ ok: true })
         return;
     }
