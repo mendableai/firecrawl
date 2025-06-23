@@ -1,6 +1,6 @@
 # Pick your baseUrl here:
-# @baseUrl = http://localhost:3002
-@baseUrl = https://api.firecrawl.dev
+@baseUrl = http://localhost:3002
+# @baseUrl = https://api.firecrawl.dev
 
 ### Scrape Website
 # @name scrape
@@ -98,7 +98,7 @@ content-type: application/json
 ### Generate LLMs TXT
 # @name generateLlmsTxt
 POST {{baseUrl}}/v1/llmstxt HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
+Authorization: Bearer fc-d92e07754ee744648c9d86dcb226556f
 content-type: application/json
 
 {
@@ -113,16 +113,16 @@ content-type: application/json
 @generateLlmsTxtId = {{generateLlmsTxt.response.body.$.id}}
 # @name generateLlmsTxtStatus
 GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
+Authorization: Bearer fc-d92e07754ee744648c9d86dcb226556f
 
 
 ### Search
 # @name search
 POST {{baseUrl}}/v1/search HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
+Authorization: Bearer fc-d92e07754ee744648c9d86dcb226556f
 content-type: application/json
 
 {
   "query": "firecrawl",
-  "limit": 50
+  "limit": 2
 }

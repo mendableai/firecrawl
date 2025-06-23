@@ -20,7 +20,7 @@ import http from "node:http";
 import https from "node:https";
 import { v1Router } from "./routes/v1";
 import expressWs from "express-ws";
-import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
+import { ErrorResponse, ResponseWithSentry, url } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
@@ -30,6 +30,8 @@ import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
+import { paymentMiddleware } from 'x402-express';
+
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 logger.info(`Number of CPUs: ${numCPUs} available`);
@@ -83,6 +85,30 @@ app.get("/test", async (req, res) => {
 app.use(v0Router);
 app.use("/v1", v1Router);
 app.use(adminRouter);
+
+// Configure the x402 payment middleware
+app.use(
+  paymentMiddleware(
+    '0x0C543731442FfffD8c9Ac9F5a41e21A610CD4c69',
+    {
+      "GET /api/weather-update": {
+        price: "$0.01",
+        network: "base-sepolia",
+      },
+      url: 'https://x402.org/facilitator' as '${string)://${string}',
+    }
+  ));
+
+app.get ("/api/weather-update", (req, res) => {
+  res.send ({
+    report: {
+      location: "California",
+      weather: "clear skies, gentle breeze",
+      temperature: "28°C"
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 const DEFAULT_PORT = process.env.PORT ?? 3002;
 const HOST = process.env.HOST ?? "localhost";
