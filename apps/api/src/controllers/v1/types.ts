@@ -610,6 +610,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
     ignoreInvalidURLs: z.boolean().default(false),
+    maxConcurrency: z.number().positive().int().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
