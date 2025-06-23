@@ -41,7 +41,7 @@ describe("Crawl tests", () => {
         }
     }, 120000);
 
-    it.only("delay parameter works", async () => {
+    it.concurrent("delay parameter works", async () => {
         await crawl({
             url: "https://firecrawl.dev",
             limit: 3,
