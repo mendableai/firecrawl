@@ -235,25 +235,14 @@ app.use(
     }
 
     const id = res.sentry ?? uuidv4();
-    let verbose = JSON.stringify(err);
-    if (verbose === "{}") {
-      if (err instanceof Error) {
-        verbose = JSON.stringify({
-          message: err.message,
-          name: err.name,
-          stack: err.stack,
-        });
-      }
-    }
 
     logger.error(
       "Error occurred in request! (" +
         req.path +
         ") -- ID " +
         id +
-        " -- " +
-        verbose,
-    );
+        " -- ",
+    { error: err });
     res.status(500).json({
       success: false,
       error:
