@@ -4,6 +4,7 @@ import { logger } from "./logger";
 import { Document } from "../controllers/v1/types";
 
 const credentials = process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined;
+const storage = new Storage({ credentials });
 
 export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
     try {
@@ -11,7 +12,6 @@ export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
             return;
         }
 
-        const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${job.job_id}.json`);
         for (let i = 0; i < 3; i++) {
@@ -84,7 +84,6 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
             return null;
         }
 
-        const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${jobId}.json`);
         const [content] = await blob.download();
@@ -115,7 +114,6 @@ export async function getDocFromGCS(url: string): Promise<any | null> {
           return null;
       }
 
-      const storage = new Storage({ credentials });
       const bucket = storage.bucket(process.env.GCS_FIRE_ENGINE_BUCKET_NAME);
       const blob = bucket.file(`${url}`);
       const [exists] = await blob.exists();
