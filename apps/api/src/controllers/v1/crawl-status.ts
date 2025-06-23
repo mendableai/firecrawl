@@ -222,32 +222,41 @@ export async function crawlStatusController(
         : 1
     )
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const scrapeJobCount = await supabase_rr_service
+    const { count: scrapeJobCount, error: scrapeJobError } = await supabase_rr_service
       .from("firecrawl_jobs")
       .select("*", { count: "exact", head: true })
       .eq("crawl_id", req.params.jobId)
       .eq("team_id", req.auth.team_id)
-      .eq("success", true)
-      .throwOnError();
+      .eq("success", true);
 
-    const crawlJobQuery = await supabase_rr_service
+    if (scrapeJobError) {
+      logger.error("Error getting scrape job count", { error: scrapeJobError });
+      throw scrapeJobError;
+    }
+
+    const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
       .from("firecrawl_jobs")
       .select("*")
       .eq("job_id", req.params.jobId)
       .limit(1)
       .throwOnError();
+    
+    if (crawlJobError) {
+      logger.error("Error getting crawl job", { error: crawlJobError });
+      throw crawlJobError;
+    }
 
-    if (!crawlJobQuery.data || crawlJobQuery.data.length === 0) {
-      if (scrapeJobCount.count === 0) {
+    if (!crawlJobs || crawlJobs.length === 0) {
+      if (scrapeJobCount === 0 || scrapeJobCount === null) {
         return res.status(404).json({ success: false, error: "Job not found" });
       } else {
         status = "completed"; // fake completed to cut the losses
       }
     } else {
-      status = crawlJobQuery.data[0].success ? "completed" : "failed";
+      status = crawlJobs[0].success ? "completed" : "failed";
     }
 
-    const crawlJob = crawlJobQuery.data?.[0];
+    const crawlJob = crawlJobs[0];
 
     if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
       return res.status(403).json({ success: false, error: "Forbidden" });
@@ -260,7 +269,7 @@ export async function crawlStatusController(
       return res.status(404).json({ success: false, error: "Job expired" });
     }
 
-    doneJobsLength = scrapeJobCount.count!;
+    doneJobsLength = scrapeJobCount!;
     doneJobsOrder = [];
 
     const step = 1000;
@@ -298,7 +307,7 @@ export async function crawlStatusController(
       i++
     }
 
-    totalCount = scrapeJobCount.count ?? 0;
+    totalCount = scrapeJobCount ?? 0;
     creditsUsed = crawlJob?.credits_billed ?? totalCount;
   } else {
     return res.status(404).json({ success: false, error: "Job not found" });
