@@ -222,17 +222,16 @@ export async function crawlStatusController(
         : 1
     )
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const { count: scrapeJobCount, error: scrapeJobError } = await supabase_rr_service
-      .from("firecrawl_jobs")
-      .select("*", { count: "exact", head: true })
-      .eq("crawl_id", req.params.jobId)
-      .eq("team_id", req.auth.team_id)
-      .eq("success", true);
+    // TODO: move to read replica
+    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_service
+      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
 
-    if (scrapeJobError) {
+    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
       logger.error("Error getting scrape job count", { error: scrapeJobError });
       throw scrapeJobError;
     }
+
+    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
 
     const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
       .from("firecrawl_jobs")
@@ -247,7 +246,7 @@ export async function crawlStatusController(
     }
 
     if (!crawlJobs || crawlJobs.length === 0) {
-      if (scrapeJobCount === 0 || scrapeJobCount === null) {
+      if (scrapeJobCount === 0) {
         return res.status(404).json({ success: false, error: "Job not found" });
       } else {
         status = "completed"; // fake completed to cut the losses
