@@ -84,7 +84,7 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     expect(job.docs).toBeNull();
                     expect(job.page_options).toBeNull();
                     expect(job.crawler_options).toBeNull();
-                    expect(job.zdr_cleaned_up).toBe(false); // clean up happens async on a worker after expiry
+                    expect(typeof job.dr_clean_by).toBe("string"); // clean up happens async on a worker after expiry
 
                     if (job.success) {
                         const gcsJob = await getJobFromGCS(job.job_id);
@@ -139,7 +139,7 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     expect(job.docs).toBeNull();
                     expect(job.page_options).toBeNull();
                     expect(job.crawler_options).toBeNull();
-                    expect(job.zdr_cleaned_up).toBe(false); // clean up happens async on a worker after expiry
+                    expect(typeof job.dr_clean_by).toBe("string"); // clean up happens async on a worker after expiry
 
                     if (job.success) {
                         const gcsJob = await getJobFromGCS(job.job_id);

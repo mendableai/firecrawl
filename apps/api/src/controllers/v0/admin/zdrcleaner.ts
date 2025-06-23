@@ -9,25 +9,26 @@ async function cleanUpJob(jobId: string) {
     await removeJobFromGCS(jobId);
 }
 
-async function cleanUpTeam(teamId: string, _logger: Logger, overrideDateCheck: boolean) {
+async function cleanUp(specificTeamId: string | null, _logger: Logger) {
     const logger = _logger.child({
-        teamId,
-        method: "cleanUpTeam",
-    });
-
-    logger.info(`Cleaning up team`, {
-        teamId,
+        ...(specificTeamId ? { teamId: specificTeamId } : {}),
+        method: "cleanUp",
     });
 
     const cleanedUp: number[] = [];
 
     try {
         for (let i = 0; ; i++) {
-            const { data: jobs } = await supabase_service.from("firecrawl_jobs")
-                .select("id, job_id")
-                .eq("team_id", teamId)
-                .lte("date_added", (overrideDateCheck ? new Date() : new Date(Date.now() - 1000 * 60 * 60 * 24)).toISOString())
-                .eq("zdr_cleaned_up", false)
+            let selector = supabase_service.from("firecrawl_jobs")
+                .select("id, job_id");
+            
+            if (specificTeamId) {
+                selector = selector.eq("team_id", specificTeamId).not("dr_clean_by", "is", null);
+            } else {
+                selector = selector.lte("dr_clean_by", new Date().toISOString())
+            }
+
+            const { data: jobs } = await selector
                 .range(i * 1000, (i + 1) * 1000)
                 .throwOnError();
     
@@ -67,7 +68,7 @@ async function cleanUpTeam(teamId: string, _logger: Logger, overrideDateCheck: b
         try {
             await supabase_service.from("firecrawl_jobs")
                 .update({
-                    zdr_cleaned_up: true,
+                    dr_clean_by: null,
                 })
                 .in("id", cleanedUp)
                 .throwOnError();
@@ -85,21 +86,7 @@ export async function zdrcleanerController(req: Request, res: Response) {
         method: "zdrcleanerController",
     });
 
-    if (req.query.teamId) {
-        await cleanUpTeam(req.query.teamId as string, logger, true);
-        logger.info("ZDR Cleaner finished!");
-        res.json({ ok: true })
-        return;
-    }
-
-    const { data: teams } = await supabase_service.from("teams")
-        .select("id, name")
-        .eq("flags->>zeroDataRetention", true)
-        .throwOnError();
-
-    for (const team of teams ?? []) {
-        await cleanUpTeam(team.id, logger, false);
-    }
+    await cleanUp((req.query.teamId as string | undefined) ?? null, logger);
 
     logger.info("ZDR Cleaner finished!");
 

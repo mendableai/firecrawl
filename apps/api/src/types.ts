@@ -110,7 +110,7 @@ export interface FirecrawlJob {
   pdf_num_pages?: number;
   credits_billed?: number | null;
   change_tracking_tag?: string | null;
-  zdr_cleaned_up?: boolean;
+  dr_clean_by?: string | null;
 
   zeroDataRetention: boolean;
 }
