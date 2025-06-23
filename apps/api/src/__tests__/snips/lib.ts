@@ -18,6 +18,10 @@ export const defaultIdentity: Identity = {
     apiKey: process.env.TEST_API_KEY!,
 };
 
+// Due to the limited resources of the CI runner, we need to set a longer timeout for the many many scrape tests
+export const scrapeTimeout = 75000;
+export const indexCooldown = 30000;
+
 // =========================================
 // Scrape API
 // =========================================
