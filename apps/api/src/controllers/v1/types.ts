@@ -23,6 +23,7 @@ export enum IntegrationEnum {
   MAKE = "make",
   FLOWISE = "flowise",
   METAGPT = "metagpt",
+  RELEVANCEAI = 'relevanceai',
 }
 
 export type Format =
