@@ -27,7 +27,7 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
     } 
 
     if (internalOptions.zeroDataRetention) {
-        creditsToBeBilled += (flags?.zdrExtraCost ?? 0);
+        creditsToBeBilled += (flags?.zdrExtraCost ?? 1);
     }
     
     if (document.metadata.numPages !== undefined && document.metadata.numPages > 1) {

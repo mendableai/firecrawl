@@ -31,6 +31,8 @@ export async function batchScrapeController(
 ) {
   const preNormalizedBody = { ...req.body };
 
+  const zeroDataRetention = req.acuc?.flags?.zeroDataRetention || req.body.zeroDataRetention;
+
   if (req.body?.ignoreInvalidURLs === true) {
     req.body = batchScrapeRequestSchemaNoURLValidation.parse(req.body);
   } else {
@@ -44,7 +46,7 @@ export async function batchScrapeController(
     module: "api/v1",
     method: "batchScrapeController",
     teamId: req.auth.team_id,
-    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+    zeroDataRetention,
   });
 
   let urls = req.body.urls;

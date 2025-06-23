@@ -19,13 +19,15 @@ export async function crawlController(
   const preNormalizedBody = req.body;
   req.body = crawlRequestSchema.parse(req.body);
 
+  const zeroDataRetention = req.acuc?.flags?.zeroDataRetention || req.body.zeroDataRetention;
+
   const id = uuidv4();
   const logger = _logger.child({
     crawlId: id,
     module: "api/v1",
     method: "crawlController",
     teamId: req.auth.team_id,
-    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+    zeroDataRetention,
   });
 
   logger.debug("Crawl " + id + " starting", {
@@ -86,7 +88,7 @@ export async function crawlController(
       disableSmartWaitCache: true,
       teamId: req.auth.team_id,
       saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
-      zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+      zeroDataRetention,
     }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),

@@ -25,6 +25,7 @@ import {
   PDFInsufficientTimeError,
   IndexMissError,
   DNSResolutionError,
+  ZDRViolationError,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -255,6 +256,20 @@ function safeguardCircularError<T>(error: T): T {
 
 async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   meta.logger.info(`Scraping URL ${JSON.stringify(meta.rewrittenUrl ?? meta.url)}...`);
+
+  if (meta.internalOptions.zeroDataRetention) {
+    if (meta.featureFlags.has("screenshot")) {
+      throw new ZDRViolationError("screenshot");
+    }
+
+    if (meta.featureFlags.has("screenshot@fullScreen")) {
+      throw new ZDRViolationError("screenshot@fullScreen");
+    }
+
+    if (meta.options.actions && meta.options.actions.find(x => x.type === "screenshot")) {
+      throw new ZDRViolationError("screenshot action");
+    }
+  }
 
   // TODO: handle sitemap data, see WebScraper/index.ts:280
   // TODO: ScrapeEvents

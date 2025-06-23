@@ -18,13 +18,16 @@ export async function scrapeController(
 ) {
   const jobId = uuidv4();
   const preNormalizedBody = { ...req.body };
+
+  const zeroDataRetention = req.acuc?.flags?.zeroDataRetention || req.body.zeroDataRetention;
+
   const logger = _logger.child({
     method: "scrapeController",
     jobId,
     scrapeId: jobId,
     teamId: req.auth.team_id,
     team_id: req.auth.team_id,
-    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+    zeroDataRetention,
   });
  
   logger.debug("Scrape " + jobId + " starting", {
@@ -63,7 +66,7 @@ export async function scrapeController(
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
         bypassBilling: isDirectToBullMQ,
-        zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+        zeroDataRetention,
       },
       origin,
       integration: req.body.integration,
@@ -90,7 +93,7 @@ export async function scrapeController(
       startTime,
     });
 
-    if (req.acuc?.flags?.zeroDataRetention) {
+    if (zeroDataRetention) {
       await getScrapeQueue().remove(jobId);
     }
 
