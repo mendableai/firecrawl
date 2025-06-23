@@ -22,12 +22,11 @@ import {
   UnsupportedFileError,
 } from "../../error";
 import * as Sentry from "@sentry/node";
-import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
-import { TimeoutSignal } from "../../../../controllers/v1/types";
+import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -283,6 +282,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
             screenshots: response.screenshots ?? [],
             scrapes: response.actionContent ?? [],
             javascriptReturns: (response.actionResults ?? []).filter(x => x.type === "executeJavascript").map(x => JSON.parse((x.result as any as { return: string }).return)),
+            pdfs: (response.actionResults ?? []).filter(x => x.type === "pdf").map(x => JSON.parse((x.result as any as { link: string }).link)),
           },
         }
       : {}),
