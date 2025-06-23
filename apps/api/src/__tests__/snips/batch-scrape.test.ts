@@ -1,4 +1,4 @@
-import { batchScrape } from "./lib";
+import { batchScrape, scrapeTimeout } from "./lib";
 
 describe("Batch scrape tests", () => {
     it.concurrent("works", async () => {
@@ -8,7 +8,7 @@ describe("Batch scrape tests", () => {
         
         expect(response.data[0]).toHaveProperty("markdown");
         expect(response.data[0].markdown).toContain("Firecrawl");
-    }, 180000);
+    }, scrapeTimeout);
 
     if (!process.env.TEST_SUITE_SELF_HOSTED) {
         describe("JSON format", () => {
@@ -55,5 +55,5 @@ describe("Batch scrape tests", () => {
         });
     
         expect(response.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
-    }, 35000);
+    }, scrapeTimeout);
 });

@@ -1,4 +1,4 @@
-import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing } from "./lib";
+import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
 
 describe("Crawl tests", () => {
@@ -7,7 +7,7 @@ describe("Crawl tests", () => {
             url: "https://firecrawl.dev",
             limit: 10,
         });
-    }, 120000);
+    }, 10 * scrapeTimeout);
 
     it.concurrent("filters URLs properly", async () => {
         const res = await crawl({
@@ -24,7 +24,7 @@ describe("Crawl tests", () => {
                 expect(url.pathname).toMatch(/^\/pricing$/);
             }
         }
-    }, 120000);
+    }, 10 * scrapeTimeout);
 
     it.concurrent("filters URLs properly when using regexOnFullURL", async () => {
         const res = await crawl({
@@ -39,7 +39,7 @@ describe("Crawl tests", () => {
             expect(res.completed).toBe(1);
             expect(res.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/pricing");
         }
-    }, 120000);
+    }, 10 * scrapeTimeout);
 
     it.concurrent("delay parameter works", async () => {
         await crawl({
@@ -47,7 +47,7 @@ describe("Crawl tests", () => {
             limit: 3,
             delay: 5,
         });
-    }, 300000);
+    }, 3 * scrapeTimeout + 3 * 5000);
 
     it.concurrent("ongoing crawls endpoint works", async () => {
         const res = await asyncCrawl({
@@ -64,7 +64,7 @@ describe("Crawl tests", () => {
         const ongoing2 = await crawlOngoing();
 
         expect(ongoing2.crawls.find(x => x.id === res.id)).toBeUndefined();
-    }, 120000);
+    }, 3 * scrapeTimeout);
     
     // TEMP: Flaky
     // it.concurrent("discovers URLs properly when origin is not included", async () => {
@@ -112,7 +112,7 @@ describe("Crawl tests", () => {
         if (res.success) {
             expect(res.completed).toBeGreaterThan(0);
         }
-    }, 120000);
+    }, 5 * scrapeTimeout);
 
     it.concurrent("crawlEntireDomain takes precedence over allowBackwardLinks", async () => {
         const res = await crawl({
@@ -126,7 +126,7 @@ describe("Crawl tests", () => {
         if (res.success) {
             expect(res.completed).toBeGreaterThan(0);
         }
-    }, 120000);
+    }, 5 * scrapeTimeout);
 
     it.concurrent("backward compatibility - allowBackwardLinks still works", async () => {
         const res = await crawl({
@@ -139,5 +139,5 @@ describe("Crawl tests", () => {
         if (res.success) {
             expect(res.completed).toBeGreaterThan(0);
         }
-    }, 120000);
+    }, 5 * scrapeTimeout);
 });

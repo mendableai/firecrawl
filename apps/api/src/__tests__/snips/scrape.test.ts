@@ -1,9 +1,5 @@
-import { scrape, scrapeStatus, scrapeWithFailure } from "./lib";
+import { scrape, scrapeStatus, scrapeWithFailure, scrapeTimeout, indexCooldown } from "./lib";
 import crypto from "crypto";
-
-// Due to the limited resources of the CI runner, we need to set a longer timeout for the many many scrape tests
-const scrapeTimeout = 75000;
-const indexCooldown = 30000;
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
