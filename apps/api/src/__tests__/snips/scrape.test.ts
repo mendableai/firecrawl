@@ -121,7 +121,7 @@ describe("Scrape tests", () => {
     //   }, 30000);
     // });
     
-    describe.only("Index", () => {
+    describe("Index", () => {
       it.concurrent("caches properly", async () => {
         const id = crypto.randomUUID();
         const url = "https://firecrawl.dev/?testId=" + id;
@@ -369,7 +369,7 @@ describe("Scrape tests", () => {
         expect(response2.metadata.cacheState).toBe("miss");
       }, scrapeTimeout * 2 + 1 * indexCooldown);
 
-      it.only("respects location", async () => {
+      it.concurrent("respects location", async () => {
         const id = crypto.randomUUID();
         const url = "https://firecrawl.dev/?testId=" + id;
 

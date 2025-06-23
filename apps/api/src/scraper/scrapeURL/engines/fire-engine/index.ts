@@ -282,7 +282,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
             screenshots: response.screenshots ?? [],
             scrapes: response.actionContent ?? [],
             javascriptReturns: (response.actionResults ?? []).filter(x => x.type === "executeJavascript").map(x => JSON.parse((x.result as any as { return: string }).return)),
-            pdfs: (response.actionResults ?? []).filter(x => x.type === "pdf").map(x => JSON.parse((x.result as any as { link: string }).link)),
+            pdfs: (response.actionResults ?? []).filter(x => x.type === "pdf").map(x => x.result.link),
           },
         }
       : {}),
