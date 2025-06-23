@@ -39,6 +39,13 @@ export async function scrapeStatusController(req: any, res: any) {
   const data = Array.isArray(jobData?.returnvalue)
     ? jobData?.returnvalue[0]
     : jobData?.returnvalue;
+  
+  if (!data) {
+    return res.status(404).json({
+      success: false,
+      error: "Job not found.",
+    });
+  }
 
   return res.status(200).json({
     success: true,

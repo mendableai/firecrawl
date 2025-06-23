@@ -25,6 +25,7 @@ export type IdmuxRequest = {
     credits?: number,
     tokens?: number,
     flags?: any,
+    teamId?: string;
 }
 
 export async function idmux(req: IdmuxRequest): Promise<Identity> {
@@ -466,6 +467,19 @@ export async function batchScrapeWithConcurrencyTracking(body: BatchScrapeReques
         batchScrape: x.body,
         concurrencies,
     };
+}
+
+// =========================================
+// ZDR API
+// =========================================
+
+export async function zdrcleaner(teamId: string) {
+    const res =  await request(TEST_URL)
+        .get(`/admin/${process.env.BULL_AUTH_KEY}/zdrcleaner`)
+        .query({ teamId });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.ok).toBe(true);
 }
 
 // =========================================

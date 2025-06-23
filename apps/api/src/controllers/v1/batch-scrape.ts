@@ -49,7 +49,7 @@ export async function batchScrapeController(
     zeroDataRetention,
   });
 
-  let urls = req.body.urls;
+  let urls: string[] = req.body.urls;
   let unnormalizedURLs = preNormalizedBody.urls;
   let invalidURLs: string[] | undefined = undefined;
 
@@ -102,10 +102,12 @@ export async function batchScrapeController(
           disableSmartWaitCache: true,
           teamId: req.auth.team_id,
           saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+          zeroDataRetention,
         }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
         maxConcurrency: req.body.maxConcurrency,
+        zeroDataRetention,
       };
 
   if (!req.body.appendToId) {
@@ -129,8 +131,7 @@ export async function batchScrapeController(
   delete (scrapeOptions as any).urls;
   delete (scrapeOptions as any).appendToId;
 
-  const jobs = urls.map((x, i) => {
-    return {
+  const jobs = urls.map(x => ({
       data: {
         url: x,
         mode: "single_urls" as const,
@@ -143,17 +144,14 @@ export async function batchScrapeController(
         sitemapped: true,
         v1: true,
         webhook: req.body.webhook,
-        internalOptions: {
-          saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
-          unnormalizedSourceURL: unnormalizedURLs[i],
-        },
+        internalOptions: sc.internalOptions,
+        zeroDataRetention,
       },
       opts: {
         jobId: uuidv4(),
         priority: 20,
       },
-    };
-  });
+  }));
 
   await finishCrawlKickoff(id);
 
@@ -162,11 +160,13 @@ export async function batchScrapeController(
     id,
     sc,
     jobs.map((x) => x.data.url),
+    logger,
   );
   logger.debug("Adding scrape jobs to Redis...");
   await addCrawlJobs(
     id,
     jobs.map((x) => x.opts.jobId),
+    logger,
   );
   logger.debug("Adding scrape jobs to BullMQ...");
   await addScrapeJobs(jobs);

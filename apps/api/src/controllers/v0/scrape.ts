@@ -84,6 +84,7 @@ export async function scrapeHelper(
       integration: req.body.integration,
       is_scrape: true,
       startTime: Date.now(),
+      zeroDataRetention: false, // not supported on v0
     },
     {},
     jobId,

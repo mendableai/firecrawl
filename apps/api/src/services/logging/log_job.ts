@@ -5,7 +5,6 @@ import "dotenv/config";
 import { logger as _logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 import { saveJobToGCS } from "../../lib/gcs-jobs";
-import { getACUCTeam } from "../../controllers/auth";
 configDotenv();
 
 function cleanOfNull<T>(x: T): T {
@@ -37,11 +36,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
     }) : {}),
   });
 
-  let zeroDataRetention = false;
-  if (job.team_id !== "preview" && !job.team_id.startsWith("preview_")) {
-    const acuc = await getACUCTeam(job.team_id);
-    zeroDataRetention = acuc?.flags?.zeroDataRetention ?? false;
-  }
+  const zeroDataRetention = job.zeroDataRetention ?? false;
 
   logger = logger.child({
     zeroDataRetention,

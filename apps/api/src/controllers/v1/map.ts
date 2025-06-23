@@ -318,6 +318,10 @@ export async function mapController(
 ) {
   const originalRequest = req.body;
   req.body = mapRequestSchema.parse(req.body);
+  
+  if (req.acuc?.flags?.zeroDataRetention) {
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature." });
+  }
 
   logger.info("Map request", {
     request: req.body,
@@ -386,6 +390,7 @@ export async function mapController(
     integration: req.body.integration,
     num_tokens: 0,
     credits_billed: 1,
+    zeroDataRetention: false, // not supported
   });
 
   const response = {

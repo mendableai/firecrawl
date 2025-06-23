@@ -1,9 +1,10 @@
 import { supabase_service } from "../../services/supabase";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
-import { scrape, Identity, crawl, batchScrape, defaultIdentity, scrapeStatusRaw } from "./lib";
+import { scrape, Identity, crawl, batchScrape, defaultIdentity, scrapeStatusRaw, zdrcleaner } from "./lib";
 
 const zdrIdentity: Identity = {
     apiKey: process.env.TEST_API_KEY_ZDR!,
+    teamId: process.env.TEST_TEAM_ID_ZDR!,
 };
 
 if (process.env.TEST_SUITE_SELF_HOSTED) {
@@ -15,8 +16,9 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
         describe.each(["Team-scoped", "Request-scoped"] as const)("%s", (scope) => {
             const scopeIdentity = scope === "Team-scoped" ? zdrIdentity : defaultIdentity;
 
-            it.concurrent("should clean up a scrape immediately", async () => {
+            it("should clean up a scrape immediately", async () => {
                 const testId = crypto.randomUUID();
+                console.log("Sending off scrape");
                 const scrape1 = await scrape({
                     url: "https://firecrawl.dev/?test=" + testId,
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
@@ -42,15 +44,22 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 }
 
                 if (scope === "Request-scoped") {
+                    console.log("Checking status");
                     const status = await scrapeStatusRaw(scrape1.metadata.scrapeId!, scopeIdentity);
+
+                    if (status.statusCode !== 404) {
+                        console.warn("Scrape status came back positive", status.body);
+                    }
+                    
                     expect(status.statusCode).toBe(404);
                 }
             }, 60000);
 
-            it.concurrent("should partially clean up a crawl immediately", async () => {
+            it("should clean up a crawl", async () => {
+                console.log("Sending off crawl");
                 const crawl1 = await crawl({
                     url: "https://firecrawl.dev",
-                    limit: 100,
+                    limit: 10,
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
                 }, scopeIdentity);
 
@@ -85,13 +94,27 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     expect(job.zdr_cleaned_up).toBe(false); // clean up happens async on a worker after expiry
 
                     if (job.success) {
+                        console.log("Checking job", job.job_id);
                         const gcsJob = await getJobFromGCS(job.job_id);
                         expect(gcsJob).not.toBeNull(); // clean up happens async on a worker after expiry
                     }
                 }
+
+                console.log("Cleaning up");
+                await zdrcleaner(scopeIdentity.teamId!);
+
+                for (const job of jobs ?? []) {
+                    console.log("Checking job", job.job_id);
+                    const gcsJob = await getJobFromGCS(job.job_id);
+                    expect(gcsJob).toBeNull();
+
+                    const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
+                    expect(status.statusCode).toBe(404);
+                }
             }, 600000);
 
-            it.concurrent("should partially clean up a batch scrape immediately", async () => {
+            it("should clean up a batch scrape", async () => {
+                console.log("Sending off batch scrape");
                 const crawl1 = await batchScrape({
                     urls: ["https://firecrawl.dev", "https://mendable.ai"],
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
@@ -128,9 +151,22 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     expect(job.zdr_cleaned_up).toBe(false); // clean up happens async on a worker after expiry
 
                     if (job.success) {
+                        console.log("Checking job", job.job_id);
                         const gcsJob = await getJobFromGCS(job.job_id);
                         expect(gcsJob).not.toBeNull(); // clean up happens async on a worker after expiry
                     }
+                }
+
+                console.log("Cleaning up");
+                await zdrcleaner(scopeIdentity.teamId!);
+
+                for (const job of jobs ?? []) {
+                    console.log("Checking job", job.job_id);
+                    const gcsJob = await getJobFromGCS(job.job_id);
+                    expect(gcsJob).toBeNull();
+
+                    const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
+                    expect(status.statusCode).toBe(404);
                 }
             }, 600000);
         });

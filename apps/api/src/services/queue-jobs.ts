@@ -49,7 +49,7 @@ async function _addScrapeJobToConcurrencyQueue(
 }
 
 export async function _addScrapeJobToBullMQ(
-  webScraperOptions: any,
+  webScraperOptions: WebScraperOptions,
   options: any,
   jobId: string,
   jobPriority: number,
@@ -76,7 +76,7 @@ export async function _addScrapeJobToBullMQ(
 }
 
 async function addScrapeJobRaw(
-  webScraperOptions: any,
+  webScraperOptions: WebScraperOptions,
   options: any,
   jobId: string,
   jobPriority: number,

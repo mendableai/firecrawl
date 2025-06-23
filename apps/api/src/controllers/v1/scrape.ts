@@ -71,6 +71,7 @@ export async function scrapeController(
       origin,
       integration: req.body.integration,
       startTime,
+      zeroDataRetention,
     },
     {},
     jobId,

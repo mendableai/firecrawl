@@ -202,7 +202,7 @@ export async function crawlController(req: Request, res: Response) {
               name: uuid,
               data: {
                 url,
-                mode: "single_urls",
+                mode: "single_urls" as const,
                 crawlerOptions,
                 scrapeOptions,
                 internalOptions,
@@ -211,6 +211,7 @@ export async function crawlController(req: Request, res: Response) {
                 integration: req.body.integration,
                 crawl_id: id,
                 sitemapped: true,
+                zeroDataRetention: false, // not supported on v0
               },
               opts: {
                 jobId: uuid,
@@ -223,14 +224,16 @@ export async function crawlController(req: Request, res: Response) {
             id,
             sc,
             jobs.map((x) => x.data.url),
+            logger,
           );
           await addCrawlJobs(
             id,
             jobs.map((x) => x.opts.jobId),
+            logger,
           );
           for (const job of jobs) {
             // add with sentry instrumentation
-            await addScrapeJob(job.data as any, {}, job.opts.jobId);
+            await addScrapeJob(job.data, {}, job.opts.jobId);
           }
         });
 
@@ -252,13 +255,14 @@ export async function crawlController(req: Request, res: Response) {
           origin: req.body.origin ?? defaultOrigin,
           integration: req.body.integration,
           crawl_id: id,
+          zeroDataRetention: false, // not supported on v0
         },
         {
           priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
         },
         jobId,
       );
-      await addCrawlJob(id, jobId);
+      await addCrawlJob(id, jobId, logger);
     }
 
     res.json({ jobId: id });

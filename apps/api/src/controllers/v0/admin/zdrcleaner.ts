@@ -9,7 +9,7 @@ async function cleanUpJob(jobId: string) {
     await removeJobFromGCS(jobId);
 }
 
-async function cleanUpTeam(teamId: string, _logger: Logger) {
+async function cleanUpTeam(teamId: string, _logger: Logger, overrideDateCheck: boolean) {
     const logger = _logger.child({
         teamId,
         method: "cleanUpTeam",
@@ -26,7 +26,7 @@ async function cleanUpTeam(teamId: string, _logger: Logger) {
             const { data: jobs } = await supabase_service.from("firecrawl_jobs")
                 .select("id, job_id")
                 .eq("team_id", teamId)
-                .lte("date_added", new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString())
+                .lte("date_added", (overrideDateCheck ? new Date() : new Date(Date.now() - 1000 * 60 * 60 * 24)).toISOString())
                 .eq("zdr_cleaned_up", false)
                 .range(i * 1000, (i + 1) * 1000)
                 .throwOnError();
@@ -82,13 +82,19 @@ export async function zdrcleanerController(req: Request, res: Response) {
         method: "zdrcleanerController",
     });
 
+    if (req.query.teamId) {
+        await cleanUpTeam(req.query.teamId as string, logger, true);
+        res.json({ ok: true })
+        return;
+    }
+
     const { data: teams } = await supabase_service.from("teams")
         .select("id, name")
         .eq("flags->>zeroDataRetention", true)
         .throwOnError();
 
     for (const team of teams ?? []) {
-        await cleanUpTeam(team.id, logger);
+        await cleanUpTeam(team.id, logger, false);
     }
 
     logger.info("ZDR Cleaner finished!");

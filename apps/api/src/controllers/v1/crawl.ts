@@ -93,6 +93,7 @@ export async function crawlController(
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     maxConcurrency: req.body.maxConcurrency !== undefined ? Math.min(req.body.maxConcurrency, req.acuc.concurrency) : undefined,
+    zeroDataRetention,
   };
 
   const crawler = crawlToCrawler(id, sc, req.acuc?.flags ?? null);
@@ -124,6 +125,7 @@ export async function crawlController(
       crawl_id: id,
       webhook: req.body.webhook,
       v1: true,
+      zeroDataRetention: zeroDataRetention || false,
     },
     {},
     crypto.randomUUID(),

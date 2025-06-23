@@ -137,11 +137,12 @@ export async function crawlPreviewController(req: Request, res: Response) {
                 origin: "website-preview",
                 crawl_id: id,
                 sitemapped: true,
+                zeroDataRetention: false, // not supported on v0
               },
               {},
               jobId,
             );
-            await addCrawlJob(id, jobId);
+            await addCrawlJob(id, jobId, logger);
           }
         });
 
@@ -158,11 +159,12 @@ export async function crawlPreviewController(req: Request, res: Response) {
           internalOptions,
           origin: "website-preview",
           crawl_id: id,
+          zeroDataRetention: false, // not supported on v0
         },
         {},
         jobId,
       );
-      await addCrawlJob(id, jobId);
+      await addCrawlJob(id, jobId, logger);
     }
 
     res.json({ jobId: id });

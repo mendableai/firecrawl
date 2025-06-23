@@ -365,6 +365,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       tokens_billed: 0,
       cost_tracking: costTracking,
       credits_billed,
+      zeroDataRetention: false, // not supported
     });
     await updateDeepResearch(researchId, {
       status: "completed",

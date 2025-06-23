@@ -110,6 +110,7 @@ async function scrapeSearchResult(
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
+        zeroDataRetention,
       },
       {},
       jobId,
@@ -323,6 +324,7 @@ export async function searchController(
         integration: req.body.integration,
         cost_tracking: costTracking,
         credits_billed,
+        zeroDataRetention: false, // not supported
       },
       false,
       isSearchPreview,
