@@ -38,9 +38,10 @@ import { tokenUsageController } from "../controllers/v1/token-usage";
 import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
 
 function checkCreditsMiddleware(
-  minimum?: number,
+  _minimum?: number,
 ): (req: RequestWithAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
+    let minimum = _minimum;
     (async () => {
       if (!minimum && req.body) {
         minimum =
