@@ -73,6 +73,13 @@ const successSchema = z.object({
         return: z.string(),
       }),
     }),
+    z.object({
+      idx: z.number(),
+      type: z.literal("pdf"),
+      result: z.object({
+        link: z.string(),
+      }),
+    }),
   ]).array().optional(),
 
   // chrome-cdp only -- file download handler

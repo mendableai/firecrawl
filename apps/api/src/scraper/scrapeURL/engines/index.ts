@@ -109,6 +109,7 @@ export type EngineScrapeResult = {
       type: string;
       value: unknown
     }[];
+    pdfs: string[];
   };
 
   numPages?: number;

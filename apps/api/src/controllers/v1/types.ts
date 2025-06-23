@@ -170,55 +170,64 @@ function calculateTotalWaitTime(
   return waitFor + actionWaitTime;
 }
 
-export const actionsSchema = z
-  .array(
-    z.union([
-      z
-        .object({
-          type: z.literal("wait"),
-          milliseconds: z.number().int().positive().finite().optional(),
-          selector: z.string().optional(),
-        })
-        .refine(
-          (data) =>
-            (data.milliseconds !== undefined || data.selector !== undefined) &&
-            !(data.milliseconds !== undefined && data.selector !== undefined),
-          {
-            message:
-              "Either 'milliseconds' or 'selector' must be provided, but not both.",
-          },
-        ),
-      z.object({
-        type: z.literal("click"),
-        selector: z.string(),
-        all: z.boolean().default(false),
-      }),
-      z.object({
-        type: z.literal("screenshot"),
-        fullPage: z.boolean().default(false),
-      }),
-      z.object({
-        type: z.literal("write"),
-        text: z.string(),
-      }),
-      z.object({
-        type: z.literal("press"),
-        key: z.string(),
-      }),
-      z.object({
-        type: z.literal("scroll"),
-        direction: z.enum(["up", "down"]).optional().default("down"),
+export const actionSchema = z
+  .union([
+    z
+      .object({
+        type: z.literal("wait"),
+        milliseconds: z.number().int().positive().finite().optional(),
         selector: z.string().optional(),
-      }),
-      z.object({
-        type: z.literal("scrape"),
-      }),
-      z.object({
-        type: z.literal("executeJavascript"),
-        script: z.string(),
-      }),
-    ]),
-  )
+      })
+      .refine(
+        (data) =>
+          (data.milliseconds !== undefined || data.selector !== undefined) &&
+          !(data.milliseconds !== undefined && data.selector !== undefined),
+        {
+          message:
+            "Either 'milliseconds' or 'selector' must be provided, but not both.",
+        },
+      ),
+    z.object({
+      type: z.literal("click"),
+      selector: z.string(),
+      all: z.boolean().default(false),
+    }),
+    z.object({
+      type: z.literal("screenshot"),
+      fullPage: z.boolean().default(false),
+    }),
+    z.object({
+      type: z.literal("write"),
+      text: z.string(),
+    }),
+    z.object({
+      type: z.literal("press"),
+      key: z.string(),
+    }),
+    z.object({
+      type: z.literal("scroll"),
+      direction: z.enum(["up", "down"]).optional().default("down"),
+      selector: z.string().optional(),
+    }),
+    z.object({
+      type: z.literal("scrape"),
+    }),
+    z.object({
+      type: z.literal("executeJavascript"),
+      script: z.string(),
+    }),
+    z.object({
+      type: z.literal("pdf"),
+      landscape: z.boolean().default(false),
+      scale: z.number().default(1),
+      format: z.enum(['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'Letter', 'Legal', 'Tabloid', 'Ledger']).default("Letter"),
+    }),
+  ]);
+
+export type Action = z.infer<typeof actionSchema>;
+
+export const actionsSchema = z
+  .array(actionSchema)
   .refine((actions) => actions.length <= MAX_ACTIONS, {
     message: `Number of actions cannot exceed ${MAX_ACTIONS}`,
   })
@@ -725,6 +734,7 @@ export type Document = {
       type: string;
       value: unknown;
     }[];
+    pdfs?: string[];
   };
   changeTracking?: {
     previousScrapeAt: string | null;

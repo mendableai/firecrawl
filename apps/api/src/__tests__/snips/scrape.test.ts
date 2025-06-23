@@ -677,7 +677,7 @@ describe("Scrape tests", () => {
       }, scrapeTimeout);
     });
 
-    describe("Screenshot (f-e/sb dependant)", () => {
+    describe("Screenshot (f-e dependant)", () => {
       it.concurrent("screenshot format works", async () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
@@ -696,6 +696,21 @@ describe("Scrape tests", () => {
         });
     
         expect(typeof response.screenshot).toBe("string");
+      }, scrapeTimeout);
+    });
+
+    describe("PDF generation (f-e dependant)", () => {
+      it.concurrent("works", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          timeout: scrapeTimeout,
+          actions: [{ type: "pdf" }],
+        });
+
+        expect(response.actions?.pdfs).toBeDefined();
+        expect(response.actions?.pdfs?.length).toBe(1);
+        expect(response.actions?.pdfs?.[0]).toBeDefined();
+        expect(typeof response.actions?.pdfs?.[0]).toBe("string");
       }, scrapeTimeout);
     });
   
