@@ -19,7 +19,7 @@ import http from "node:http";
 import https from "node:https";
 import { v1Router } from "./routes/v1";
 import expressWs from "express-ws";
-import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
+import { ErrorResponse, RequestWithMaybeACUC, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
@@ -219,7 +219,7 @@ Sentry.setupExpressErrorHandler(app);
 app.use(
   (
     err: unknown,
-    req: Request<{}, ErrorResponse, undefined>,
+    req: RequestWithMaybeACUC<{}, ErrorResponse, undefined>,
     res: ResponseWithSentry<ErrorResponse>,
     next: NextFunction,
   ) => {
@@ -242,7 +242,7 @@ app.use(
         ") -- ID " +
         id +
         " -- ",
-    { error: err });
+    { error: err, errorId: id, path: req.path, teamId: req.acuc?.team_id, team_id: req.acuc?.team_id });
     res.status(500).json({
       success: false,
       error:
