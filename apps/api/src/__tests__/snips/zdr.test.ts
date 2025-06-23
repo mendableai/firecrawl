@@ -16,14 +16,14 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
     async function getServerLogs() {
         if (!process.env.GITHUB_ACTIONS) {
             try {
-                await stat("server.log");
+                await stat("api.log");
             } catch (error) {
                 console.warn("Server log file not found");
                 return [];
             }
         }
 
-        const logs = await readFile("server.log", "utf-8");
+        const logs = await readFile("api.log", "utf-8");
         return logs.split("\n").filter(line => line.trim().length > 0);
     }
 
