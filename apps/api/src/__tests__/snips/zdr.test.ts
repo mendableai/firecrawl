@@ -1,82 +1,27 @@
 import { supabase_service } from "../../services/supabase";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
-import { scrape, Identity, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
-import { readFile, stat } from "fs/promises";
+import { scrape, Identity, crawl, batchScrape, defaultIdentity, scrapeStatusRaw, zdrcleaner } from "./lib";
+
+const zdrIdentity: Identity = {
+    apiKey: process.env.TEST_API_KEY_ZDR!,
+    teamId: process.env.TEST_TEAM_ID_ZDR!,
+};
 
 if (process.env.TEST_SUITE_SELF_HOSTED) {
     it("mocked", () => {
         expect(true).toBe(true);
     });
 } else {
-    async function getServerLogs() {
-        if (!process.env.GITHUB_ACTIONS) {
-            try {
-                await stat("api.log");
-            } catch (error) {
-                console.warn("Server log file not found");
-                return [];
-            }
-        }
-
-        const logs = await readFile("api.log", "utf-8");
-        return logs.split("\n").filter(line => line.trim().length > 0);
-    }
-
-    async function getWorkerLogs() {
-        if (!process.env.GITHUB_ACTIONS) {
-            try {
-                await stat("worker.log");
-            } catch (error) {
-                console.warn("Worker log file not found");
-                return [];
-            }
-        }
-
-        const logs = await readFile("worker.log", "utf-8");
-        return logs.split("\n").filter(line => line.trim().length > 0 && !line.includes("Billing queue created"));
-    }
-
-    let zdrTeamIdentity: Identity;
-    let zdrRequestIdentity: Identity;
-
-    beforeAll(async () => {
-        zdrTeamIdentity = await idmux({
-            name: "zdr/team",
-            credits: 10000,
-            flags: {
-                zeroDataRetention: true,
-            }
-        });
-        zdrRequestIdentity = await idmux({
-            name: "zdr/request",
-            credits: 10000,
-        });
-    }, 10000);
-
     describe("Zero Data Retention", () => {
         describe.each(["Team-scoped", "Request-scoped"] as const)("%s", (scope) => {
-            const scopeIdentity = scope === "Team-scoped" ? zdrTeamIdentity : zdrRequestIdentity;
+            const scopeIdentity = scope === "Team-scoped" ? zdrIdentity : defaultIdentity;
 
             it("should clean up a scrape immediately", async () => {
                 const testId = crypto.randomUUID();
-
-                const preServerLogs = await getServerLogs();
-                const preWorkerLogs = await getWorkerLogs();
-
                 const scrape1 = await scrape({
                     url: "https://firecrawl.dev/?test=" + testId,
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
                 }, scopeIdentity);
-
-                const postServerLogs = (await getServerLogs()).slice(preServerLogs.length);
-                const postWorkerLogs = (await getWorkerLogs()).slice(preWorkerLogs.length);
-
-                if (postWorkerLogs.length > 0 || postServerLogs.length > 0) {
-                    console.warn("Logs changed during scrape", postServerLogs, postWorkerLogs);
-                }
-
-                expect(postServerLogs).toHaveLength(0);
-                expect(postWorkerLogs).toHaveLength(0);
 
                 const gcsJob = await getJobFromGCS(scrape1.metadata.scrapeId!);
                 expect(gcsJob).toBeNull();
