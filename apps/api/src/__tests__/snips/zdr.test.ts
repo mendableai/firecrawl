@@ -1,20 +1,59 @@
 import { supabase_service } from "../../services/supabase";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
-import { scrape, Identity, crawl, batchScrape, defaultIdentity, scrapeStatusRaw, zdrcleaner } from "./lib";
-
-const zdrIdentity: Identity = {
-    apiKey: process.env.TEST_API_KEY_ZDR!,
-    teamId: process.env.TEST_TEAM_ID_ZDR!,
-};
+import { scrape, Identity, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
+import { readFile, stat } from "node:fs/promises";
 
 if (process.env.TEST_SUITE_SELF_HOSTED) {
     it("mocked", () => {
         expect(true).toBe(true);
     });
 } else {
+    async function getServerLogs() {
+        if (!process.env.GITHUB_ACTIONS) {
+            try {
+                await stat("api.log");
+            } catch (e) {
+                console.warn("No api.log file found");
+                return [];
+            }
+        }
+        const logs = await readFile("api.log", "utf8");
+        return logs.split("\n").filter(x => x.trim().length > 0);
+    }
+
+    async function getWorkerLogs() {
+        if (!process.env.GITHUB_ACTIONS) {
+            try {
+                await stat("worker.log");
+            } catch (e) {
+                console.warn("No worker.log file found");
+                return [];
+            }
+        }
+        const logs = await readFile("worker.log", "utf8");
+        return logs.split("\n").filter(x => x.trim().length > 0 && !x.includes("Billing queue created"));
+    }
+
     describe("Zero Data Retention", () => {
+        let zdrTeamIdentity: Identity;
+        let zdrRequestIdentity: Identity;
+
+        beforeAll(async () => {
+            zdrTeamIdentity = await idmux({
+                name: "zdr/team",
+                credits: 10000,
+                flags: {
+                    zeroDataRetention: true,
+                }
+            });
+            zdrRequestIdentity = await idmux({
+                name: "zdr/request",
+                credits: 10000,
+            });
+        }, 10000);
+
         describe.each(["Team-scoped", "Request-scoped"] as const)("%s", (scope) => {
-            const scopeIdentity = scope === "Team-scoped" ? zdrIdentity : defaultIdentity;
+            const scopeIdentity = scope === "Team-scoped" ? zdrTeamIdentity : zdrRequestIdentity;
 
             it("should clean up a scrape immediately", async () => {
                 const testId = crypto.randomUUID();
