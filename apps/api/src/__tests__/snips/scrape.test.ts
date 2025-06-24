@@ -10,12 +10,14 @@ beforeAll(async () => {
     credits: 1000000,
   });
 
-  // Needed for change tracking tests to work
-  await scrape({
-    url: "https://example.com",
-    formats: ["markdown", "changeTracking"],
-    timeout: scrapeTimeout,
-  }, identity);
+  if (!process.env.TEST_SUITE_SELF_HOSTED) {
+    // Needed for change tracking tests to work
+    await scrape({
+      url: "https://example.com",
+      formats: ["markdown", "changeTracking"],
+      timeout: scrapeTimeout,
+    }, identity);
+  }
 }, 10000 + scrapeTimeout);
 
 describe("Scrape tests", () => {
