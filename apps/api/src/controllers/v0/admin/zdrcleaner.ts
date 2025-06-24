@@ -25,7 +25,15 @@ async function cleanUp(specificTeamId: string | null, _logger: Logger) {
             if (specificTeamId) {
                 selector = selector.eq("team_id", specificTeamId).not("dr_clean_by", "is", null);
             } else {
-                selector = selector.lte("dr_clean_by", new Date().toISOString())
+                selector = selector
+                    .lte("dr_clean_by", new Date().toISOString())
+                    .gte("dr_clean_by", new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString());
+                // Explanation for the gte: since the cleaner should run every 5 minutes, it is very unlikely that
+                // the cleaner will be down for 7 days without anyone noticing.
+                // Since the firecrawl_jobs table is incredibly large, even with the index on dr_clean_by,
+                // not giving the select a lower bound guarantees that the select will not run with an empty result
+                // in reasonable time.
+                // Therefore, we give it a lower bound which should never cause problems.
             }
 
             const { data: jobs } = await selector
