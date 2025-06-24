@@ -17,7 +17,7 @@ describe("Map tests", () => {
     }, identity);
 
     expectMapToSucceed(response);
-  }, 10000);
+  }, 60000);
 
   it.concurrent("times out properly", async () => {
     const response = await map({

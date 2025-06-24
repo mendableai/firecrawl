@@ -29,7 +29,9 @@ export type IdmuxRequest = {
 
 export async function idmux(req: IdmuxRequest): Promise<Identity> {
     if (!process.env.IDMUX_URL) {
-        console.warn("IDMUX_URL is not set, using test API key and team ID");
+        if (!process.env.TEST_SUITE_SELF_HOSTED) {
+            console.warn("IDMUX_URL is not set, using test API key and team ID");
+        }
         return {
             apiKey: process.env.TEST_API_KEY!,
             teamId: process.env.TEST_TEAM_ID!,
