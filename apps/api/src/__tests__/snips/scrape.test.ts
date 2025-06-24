@@ -9,7 +9,14 @@ beforeAll(async () => {
     concurrency: 100,
     credits: 1000000,
   });
-}, 10000);
+
+  // Needed for change tracking tests to work
+  await scrape({
+    url: "https://example.com",
+    formats: ["markdown", "changeTracking"],
+    timeout: scrapeTimeout,
+  }, identity);
+}, 10000 + scrapeTimeout);
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -505,14 +512,6 @@ describe("Scrape tests", () => {
     });
 
     describe("Change Tracking format", () => {
-      beforeAll(async () => {
-        await scrape({
-          url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-          timeout: scrapeTimeout,
-        }, identity);
-      }, scrapeTimeout);
-
       it.concurrent("works", async () => {
         const response = await scrape({
           url: "https://example.com",
