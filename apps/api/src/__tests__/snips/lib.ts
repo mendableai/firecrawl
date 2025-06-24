@@ -36,11 +36,16 @@ export async function idmux(req: IdmuxRequest): Promise<Identity> {
         }
     }
 
+    let runNumber = parseInt(process.env.GITHUB_RUN_NUMBER!);
+    if (isNaN(runNumber) || runNumber === null || runNumber === undefined) {
+        runNumber = 0;
+    }
+
     const res = await fetch(process.env.IDMUX_URL + "/", {
         method: "POST",
         body: JSON.stringify({
             refName: process.env.GITHUB_REF_NAME!,
-            runNumber: parseInt(process.env.GITHUB_RUN_NUMBER!),
+            runNumber,
             concurrency: req.concurrency ?? 100,
             ...req,
         }),
@@ -48,6 +53,10 @@ export async function idmux(req: IdmuxRequest): Promise<Identity> {
             "Content-Type": "application/json",
         },
     });
+
+    if (!res.ok) {
+        console.error(await res.text());
+    }
 
     expect(res.ok).toBe(true);
     return await res.json();

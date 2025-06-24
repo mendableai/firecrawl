@@ -764,7 +764,7 @@ describe("Scrape tests", () => {
 
       it.concurrent("auto works properly on 'stealth' site (faked for reliabile testing)", async () => {
         const res = await scrape({
-          url: "https://httpstat.us/403",
+          url: "https://eo16f6718vph4un.m.pipedream.net", // always returns 403
           proxy: "auto",
           timeout: scrapeTimeout * 2,
         }, identity);
