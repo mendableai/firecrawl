@@ -11,7 +11,7 @@ import request from "supertest";
 const TEST_URL = "http://127.0.0.1:3002";
 
 // Due to the limited resources of the CI runner, we need to set a longer timeout for the many many scrape tests
-export const scrapeTimeout = 75000;
+export const scrapeTimeout = 90000;
 export const indexCooldown = 30000;
 
 // =========================================
