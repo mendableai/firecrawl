@@ -139,7 +139,7 @@ export async function removeCrawlConcurrencyLimitActiveJob(
  * @param teamId
  * @returns A job that can be run, or null if there are no more jobs to run.
  */
-async function getNextConcurrentJob(teamId: string): Promise<{
+async function getNextConcurrentJob(teamId: string, i = 0): Promise<{
   job: ConcurrencyLimitedJob;
   timeout: number;
 } | null> {
@@ -210,11 +210,15 @@ async function getNextConcurrentJob(teamId: string): Promise<{
   if (finalJob !== null) {
     const res = await redisEvictConnection.zrem(constructQueueKey(teamId), finalJob._member);
     if (res === 0) {
-      logger.warn("Failed to remove job from concurrency limit queue", {
-        teamId,
-        jobId: finalJob.job.id,
-      });
-      return await getNextConcurrentJob(teamId);
+      // It's normal for this to happen, but if it happens too many times, we should log a warning
+      if (i > 15) {
+        logger.warn("Failed to remove job from concurrency limit queue", {
+          teamId,
+          jobId: finalJob.job.id,
+          i
+        });
+      }
+      return await getNextConcurrentJob(teamId, i + 1);
     }
   }
 
