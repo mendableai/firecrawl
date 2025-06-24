@@ -1,12 +1,7 @@
 import { supabase_service } from "../../services/supabase";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
-import { scrape, Identity, crawl, batchScrape, defaultIdentity, scrapeStatusRaw, zdrcleaner } from "./lib";
+import { scrape, Identity, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
 import { readFile, stat } from "fs/promises";
-
-const zdrIdentity: Identity = {
-    apiKey: process.env.TEST_API_KEY_ZDR!,
-    teamId: process.env.TEST_TEAM_ID_ZDR!,
-};
 
 if (process.env.TEST_SUITE_SELF_HOSTED) {
     it("mocked", () => {
@@ -41,9 +36,26 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
         return logs.split("\n").filter(line => line.trim().length > 0 && !line.includes("Billing queue created"));
     }
 
+    let zdrTeamIdentity: Identity;
+    let zdrRequestIdentity: Identity;
+
+    beforeAll(async () => {
+        zdrTeamIdentity = await idmux({
+            name: "zdr/team",
+            credits: 10000,
+            flags: {
+                zeroDataRetention: true,
+            }
+        });
+        zdrRequestIdentity = await idmux({
+            name: "zdr/request",
+            credits: 10000,
+        });
+    }, 10000);
+
     describe("Zero Data Retention", () => {
         describe.each(["Team-scoped", "Request-scoped"] as const)("%s", (scope) => {
-            const scopeIdentity = scope === "Team-scoped" ? zdrIdentity : defaultIdentity;
+            const scopeIdentity = scope === "Team-scoped" ? zdrTeamIdentity : zdrRequestIdentity;
 
             it("should clean up a scrape immediately", async () => {
                 const testId = crypto.randomUUID();
