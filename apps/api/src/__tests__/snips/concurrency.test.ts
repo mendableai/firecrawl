@@ -1,4 +1,4 @@
-import { batchScrapeWithConcurrencyTracking, concurrencyCheck, crawlWithConcurrencyTracking, Identity, idmux } from "./lib";
+import { batchScrapeWithConcurrencyTracking, crawlWithConcurrencyTracking, idmux } from "./lib";
 
 if (!process.env.TEST_SUITE_SELF_HOSTED) {
     const accountConcurrencyLimit = 20;

@@ -1,4 +1,14 @@
-import { extract } from "./lib";
+import { extract, idmux, Identity } from "./lib";
+
+let identity: Identity;
+
+beforeAll(async () => {
+  identity = await idmux({
+    name: "extract",
+    concurrency: 100,
+    tokens: 1000000,
+  });
+}, 10000);
 
 describe("Extract tests", () => {
     if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
@@ -24,7 +34,7 @@ describe("Extract tests", () => {
                     timeout: 75000,
                 },
                 origin: "api-sdk",
-            });
+            }, identity);
 
             expect(res.data).toHaveProperty("company_mission");
             expect(typeof res.data.company_mission).toBe("string")
@@ -52,7 +62,7 @@ describe("Extract tests", () => {
                     timeout: 75000,
                 },
                 origin: "api-sdk",
-            });
+            }, identity);
 
             expect(res.data).toHaveProperty("company_name");
             expect(typeof res.data.company_name).toBe("string")
