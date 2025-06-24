@@ -505,6 +505,14 @@ describe("Scrape tests", () => {
     });
 
     describe("Change Tracking format", () => {
+      beforeAll(async () => {
+        await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
+
       it.concurrent("works", async () => {
         const response = await scrape({
           url: "https://example.com",
