@@ -1,12 +1,22 @@
-import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, scrapeTimeout } from "./lib";
+import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, Identity, idmux, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
+
+let identity: Identity;
+
+beforeAll(async () => {
+  identity = await idmux({
+    name: "crawl",
+    concurrency: 100,
+    credits: 1000000,
+  });
+}, 10000);
 
 describe("Crawl tests", () => {
     it.concurrent("works", async () => {
         await crawl({
             url: "https://firecrawl.dev",
             limit: 10,
-        });
+        }, identity);
     }, 10 * scrapeTimeout);
 
     it.concurrent("filters URLs properly", async () => {
@@ -14,7 +24,7 @@ describe("Crawl tests", () => {
             url: "https://firecrawl.dev/pricing",
             includePaths: ["^/pricing$"],
             limit: 10,
-        });
+        }, identity);
 
         expect(res.success).toBe(true);
         if (res.success) {
@@ -32,7 +42,7 @@ describe("Crawl tests", () => {
             includePaths: ["^https://(www\\.)?firecrawl\\.dev/pricing$"],
             regexOnFullURL: true,
             limit: 10,
-        });
+        }, identity);
 
         expect(res.success).toBe(true);
         if (res.success) {
@@ -46,22 +56,22 @@ describe("Crawl tests", () => {
             url: "https://firecrawl.dev",
             limit: 3,
             delay: 5,
-        });
+        }, identity);
     }, 3 * scrapeTimeout + 3 * 5000);
 
     it.concurrent("ongoing crawls endpoint works", async () => {
         const res = await asyncCrawl({
             url: "https://firecrawl.dev",
             limit: 3,
-        });
+        }, identity);
 
-        const ongoing = await crawlOngoing();
+        const ongoing = await crawlOngoing(identity);
 
         expect(ongoing.crawls.find(x => x.id === res.id)).toBeDefined();
 
-        await asyncCrawlWaitForFinish(res.id);
+        await asyncCrawlWaitForFinish(res.id, identity);
 
-        const ongoing2 = await crawlOngoing();
+        const ongoing2 = await crawlOngoing(identity);
 
         expect(ongoing2.crawls.find(x => x.id === res.id)).toBeUndefined();
     }, 3 * scrapeTimeout);
@@ -106,7 +116,7 @@ describe("Crawl tests", () => {
             url: "https://firecrawl.dev",
             crawlEntireDomain: true,
             limit: 5,
-        });
+        }, identity);
 
         expect(res.success).toBe(true);
         if (res.success) {
@@ -120,7 +130,7 @@ describe("Crawl tests", () => {
             allowBackwardLinks: false,
             crawlEntireDomain: true,
             limit: 5,
-        });
+        }, identity);
 
         expect(res.success).toBe(true);
         if (res.success) {
@@ -133,7 +143,7 @@ describe("Crawl tests", () => {
             url: "https://firecrawl.dev",
             allowBackwardLinks: true,
             limit: 5,
-        });
+        }, identity);
 
         expect(res.success).toBe(true);
         if (res.success) {

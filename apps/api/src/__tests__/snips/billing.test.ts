@@ -1,14 +1,7 @@
-import { batchScrape, crawl, creditUsage, extract, map, scrape, search, tokenUsage } from "./lib";
+import { batchScrape, crawl, creditUsage, extract, idmux, map, scrape, search, tokenUsage } from "./lib";
 
 const sleep = (ms: number) => new Promise(x => setTimeout(() => x(true), ms));
 const sleepForBatchBilling = () => sleep(40000);
-
-beforeAll(async () => {
-    // Wait for previous test runs to stop billing processing
-    if (!process.env.TEST_SUITE_SELF_HOSTED) {
-        await sleep(40000);
-    }
-}, 50000);
 
 describe("Billing tests", () => {
     if (process.env.TEST_SUITE_SELF_HOSTED) {
@@ -16,20 +9,25 @@ describe("Billing tests", () => {
             expect(true).toBe(true);
         });
     } else {
-        it("bills scrape correctly", async () => {
-            const rc1 = (await creditUsage()).remaining_credits;
+        it.concurrent("bills scrape correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills scrape correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
             
             // Run all scrape operations in parallel with Promise.all
             const [scrape1, scrape2, scrape3] = await Promise.all([
                 // scrape 1: regular fc.dev scrape (1 credit)
                 scrape({
                     url: "https://firecrawl.dev"
-                }),
+                }, identity),
                 
                 // scrape 1.1: regular fc.dev scrape (1 credit)
                 scrape({
                     url: "https://firecrawl.dev"
-                }),
+                }, identity),
                 
                 // scrape 2: fc.dev with json (5 credits)
                 scrape({
@@ -44,7 +42,7 @@ describe("Billing tests", () => {
                             required: ["is_open_source"],
                         },
                     },
-                })
+                }, identity)
             ]);
 
             expect(scrape1.metadata.creditsUsed).toBe(1);
@@ -55,13 +53,18 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage()).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remaining_credits;
 
             expect(rc1 - rc2).toBe(7);
         }, 120000);
 
-        it("bills batch scrape correctly", async () => {
-            const rc1 = (await creditUsage()).remaining_credits;
+        it.concurrent("bills batch scrape correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills batch scrape correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
             
             // Run both scrape operations in parallel with Promise.all
             const [scrape1, scrape2] = await Promise.all([
@@ -72,7 +75,7 @@ describe("Billing tests", () => {
                         "https://mendable.ai",
                         "https://thisdomaindoesnotexistandwillfail.fcr",
                     ],
-                }),
+                }, identity),
                 
                 // scrape 2: batch scrape with json (10 credits)
                 batchScrape({
@@ -91,7 +94,7 @@ describe("Billing tests", () => {
                             required: ["four_word_summary"],
                         },
                     },
-                })
+                }, identity)
             ]);
 
             expect(scrape1.data[0].metadata.creditsUsed).toBe(1);
@@ -104,13 +107,18 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage()).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remaining_credits;
 
             expect(rc1 - rc2).toBe(12);
         }, 600000);
 
-        it("bills crawl correctly", async () => {
-            const rc1 = (await creditUsage()).remaining_credits;
+        it.concurrent("bills crawl correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills crawl correctly",
+                credits: 200,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
             
             // Run both crawl operations in parallel with Promise.all
             const [crawl1, crawl2] = await Promise.all([
@@ -118,7 +126,7 @@ describe("Billing tests", () => {
                 crawl({
                     url: "https://firecrawl.dev",
                     limit: 10,
-                }),
+                }, identity),
                 
                 // crawl 2: fc.dev crawl with json (5y credits)
                 crawl({
@@ -136,7 +144,7 @@ describe("Billing tests", () => {
                         },
                     },
                     limit: 10,
-                })
+                }, identity)
             ]);
             
             expect(crawl1.success).toBe(true);
@@ -146,54 +154,74 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage()).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remaining_credits;
 
             if (crawl1.success && crawl2.success) {
                 expect(rc1 - rc2).toBe(crawl1.completed + crawl2.completed * 5);
             }
         }, 600000);
 
-        it("bills map correctly", async () => {
-            const rc1 = (await creditUsage()).remaining_credits;
-            await map({ url: "https://firecrawl.dev" });
+        it.concurrent("bills map correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills map correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+            await map({ url: "https://firecrawl.dev" }, identity);
             await sleepForBatchBilling();
-            const rc2 = (await creditUsage()).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remaining_credits;
             expect(rc1 - rc2).toBe(1);
         }, 60000);
 
-        it("bills search correctly", async () => {
-            const rc1 = (await creditUsage()).remaining_credits;
+        it.concurrent("bills search correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills search correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
 
             const results = await search({
                 query: "firecrawl"
-            });
+            }, identity);
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage()).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remaining_credits;
 
             expect(rc1 - rc2).toBe(results.length);
         }, 60000);
 
-        it("bills search with scrape correctly", async () => {
-            const rc1 = (await creditUsage()).remaining_credits;
+        it.concurrent("bills search with scrape correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills search with scrape correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
 
             const results = await search({
                 query: "firecrawl",
                 scrapeOptions: {
                     formats: ["markdown"],
                 },
-            });
+            }, identity);
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage()).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remaining_credits;
 
             expect(rc1 - rc2).toBe(results.length);
         }, 600000);
 
-        it("bills extract correctly", async () => {
-            const rc1 = (await tokenUsage()).remaining_tokens;
+        it.concurrent("bills extract correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills extract correctly",
+                tokens: 1000,
+            });
+
+            const rc1 = (await tokenUsage(identity)).remaining_tokens;
             
             const extractResult = await extract({
                 urls: ["https://firecrawl.dev"],
@@ -209,13 +237,13 @@ describe("Billing tests", () => {
                     ]
                 },
                 origin: "api-sdk",
-            });
+            }, identity);
 
             expect(extractResult.tokensUsed).toBe(305);
 
             await sleepForBatchBilling();
             
-            const rc2 = (await tokenUsage()).remaining_tokens;
+            const rc2 = (await tokenUsage(identity)).remaining_tokens;
 
             expect(rc1 - rc2).toBe(305);
         }, 300000);

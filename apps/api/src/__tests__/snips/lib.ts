@@ -10,23 +10,70 @@ import request from "supertest";
 
 const TEST_URL = "http://127.0.0.1:3002";
 
-export type Identity = {
-    apiKey: string;
+// Due to the limited resources of the CI runner, we need to set a longer timeout for the many many scrape tests
+export const scrapeTimeout = 90000;
+export const indexCooldown = 30000;
+
+// =========================================
+// idmux
+// =========================================
+
+export type IdmuxRequest = {
+    name: string,
+
+    concurrency?: number,
+    credits?: number,
+    tokens?: number,
+    flags?: any,
 }
 
-export const defaultIdentity: Identity = {
-    apiKey: process.env.TEST_API_KEY!,
-};
+export async function idmux(req: IdmuxRequest): Promise<Identity> {
+    if (!process.env.IDMUX_URL) {
+        if (!process.env.TEST_SUITE_SELF_HOSTED) {
+            console.warn("IDMUX_URL is not set, using test API key and team ID");
+        }
+        return {
+            apiKey: process.env.TEST_API_KEY!,
+            teamId: process.env.TEST_TEAM_ID!,
+        }
+    }
 
-// Due to the limited resources of the CI runner, we need to set a longer timeout for the many many scrape tests
-export const scrapeTimeout = 75000;
-export const indexCooldown = 30000;
+    let runNumber = parseInt(process.env.GITHUB_RUN_NUMBER!);
+    if (isNaN(runNumber) || runNumber === null || runNumber === undefined) {
+        runNumber = 0;
+    }
+
+    const res = await fetch(process.env.IDMUX_URL + "/", {
+        method: "POST",
+        body: JSON.stringify({
+            refName: process.env.GITHUB_REF_NAME!,
+            runNumber,
+            concurrency: req.concurrency ?? 100,
+            ...req,
+        }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+
+    if (!res.ok) {
+        console.error(await res.text());
+    }
+
+    expect(res.ok).toBe(true);
+    return await res.json();
+}
+
+export type Identity = {
+    apiKey: string;
+    teamId: string;
+}
 
 // =========================================
 // Scrape API
 // =========================================
 
-async function scrapeRaw(body: ScrapeRequestInput, identity = defaultIdentity) {
+async function scrapeRaw(body: ScrapeRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -46,7 +93,7 @@ function expectScrapeToFail(response: Awaited<ReturnType<typeof scrapeRaw>>) {
     expect(typeof response.body.error).toBe("string");
 }
 
-export async function scrape(body: ScrapeRequestInput, identity = defaultIdentity): Promise<Document> {
+export async function scrape(body: ScrapeRequestInput, identity: Identity): Promise<Document> {
     const raw = await scrapeRaw(body, identity);
     expectScrapeToSucceed(raw);
     if (body.proxy === "stealth") {
@@ -57,7 +104,7 @@ export async function scrape(body: ScrapeRequestInput, identity = defaultIdentit
     return raw.body.data;
 }
 
-export async function scrapeWithFailure(body: ScrapeRequestInput, identity = defaultIdentity): Promise<{
+export async function scrapeWithFailure(body: ScrapeRequestInput, identity: Identity): Promise<{
     success: false;
     error: string;
 }> {
@@ -66,14 +113,14 @@ export async function scrapeWithFailure(body: ScrapeRequestInput, identity = def
     return raw.body;
 }
 
-export async function scrapeStatusRaw(jobId: string, identity = defaultIdentity) {
+export async function scrapeStatusRaw(jobId: string, identity: Identity) {
     return await request(TEST_URL)
         .get("/v1/scrape/" + encodeURIComponent(jobId))
         .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
-export async function scrapeStatus(jobId: string, identity = defaultIdentity): Promise<Document> {
+export async function scrapeStatus(jobId: string, identity: Identity): Promise<Document> {
     const raw = await scrapeStatusRaw(jobId, identity);
     expect(raw.statusCode).toBe(200);
     expect(raw.body.success).toBe(true);
@@ -87,7 +134,7 @@ export async function scrapeStatus(jobId: string, identity = defaultIdentity): P
 // Crawl API
 // =========================================
 
-async function crawlStart(body: CrawlRequestInput, identity = defaultIdentity) {
+async function crawlStart(body: CrawlRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -95,21 +142,21 @@ async function crawlStart(body: CrawlRequestInput, identity = defaultIdentity) {
         .send(body);
 }
 
-async function crawlStatus(id: string, identity = defaultIdentity) {
+async function crawlStatus(id: string, identity: Identity) {
     return await request(TEST_URL)
         .get("/v1/crawl/" + encodeURIComponent(id))
         .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
-async function crawlOngoingRaw(identity = defaultIdentity) {
+async function crawlOngoingRaw(identity: Identity) {
     return await request(TEST_URL)
         .get("/v1/crawl/ongoing")
         .set("Authorization", `Bearer ${identity.apiKey}`)
         .send();
 }
 
-export async function crawlOngoing(identity = defaultIdentity): Promise<Exclude<OngoingCrawlsResponse, ErrorResponse>> {
+export async function crawlOngoing(identity: Identity): Promise<Exclude<OngoingCrawlsResponse, ErrorResponse>> {
     const res = await crawlOngoingRaw(identity);
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
@@ -132,13 +179,13 @@ function expectCrawlToSucceed(response: Awaited<ReturnType<typeof crawlStatus>>)
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function asyncCrawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlResponse, ErrorResponse>> {
+export async function asyncCrawl(body: CrawlRequestInput, identity: Identity): Promise<Exclude<CrawlResponse, ErrorResponse>> {
     const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
     return cs.body;
 }
 
-export async function asyncCrawlWaitForFinish(id: string, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+export async function asyncCrawlWaitForFinish(id: string, identity: Identity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
     let x;
 
     do {
@@ -151,7 +198,7 @@ export async function asyncCrawlWaitForFinish(id: string, identity = defaultIden
     return x.body;
 }
 
-export async function crawlErrors(id: string, identity = defaultIdentity): Promise<Exclude<CrawlErrorsResponse, ErrorResponse>> {
+export async function crawlErrors(id: string, identity: Identity): Promise<Exclude<CrawlErrorsResponse, ErrorResponse>> {
     const res = await request(TEST_URL)
         .get("/v1/crawl/" + id + "/errors")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -163,7 +210,7 @@ export async function crawlErrors(id: string, identity = defaultIdentity): Promi
     return res.body;
 }
 
-export async function crawl(body: CrawlRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+export async function crawl(body: CrawlRequestInput, identity: Identity): Promise<Exclude<CrawlStatusResponse & { id: string }, ErrorResponse>> {
     const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
 
@@ -188,7 +235,7 @@ export async function crawl(body: CrawlRequestInput, identity = defaultIdentity)
 // Batch Scrape API
 // =========================================
 
-async function batchScrapeStart(body: BatchScrapeRequestInput, identity = defaultIdentity) {
+async function batchScrapeStart(body: BatchScrapeRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/batch/scrape")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -196,7 +243,7 @@ async function batchScrapeStart(body: BatchScrapeRequestInput, identity = defaul
         .send(body);
 }
 
-async function batchScrapeStatus(id: string, identity = defaultIdentity) {
+async function batchScrapeStatus(id: string, identity: Identity) {
     return await request(TEST_URL)
         .get("/v1/batch/scrape/" + encodeURIComponent(id))
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -219,7 +266,7 @@ function expectBatchScrapeToSucceed(response: Awaited<ReturnType<typeof batchScr
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function batchScrape(body: BatchScrapeRequestInput, identity = defaultIdentity): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
+export async function batchScrape(body: BatchScrapeRequestInput, identity: Identity): Promise<Exclude<CrawlStatusResponse, ErrorResponse> & { id: string }> {
     const bss = await batchScrapeStart(body, identity);
     expectBatchScrapeStartToSucceed(bss);
 
@@ -239,7 +286,7 @@ export async function batchScrape(body: BatchScrapeRequestInput, identity = defa
 // Map API
 // =========================================
 
-export async function map(body: MapRequestInput, identity = defaultIdentity) {
+export async function map(body: MapRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/map")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -258,7 +305,7 @@ export function expectMapToSucceed(response: Awaited<ReturnType<typeof map>>) {
 // Extract API
 // =========================================
 
-async function extractStart(body: ExtractRequestInput, identity = defaultIdentity) {
+async function extractStart(body: ExtractRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/extract")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -266,7 +313,7 @@ async function extractStart(body: ExtractRequestInput, identity = defaultIdentit
         .send(body);
 }
 
-async function extractStatus(id: string, identity = defaultIdentity) {
+async function extractStatus(id: string, identity: Identity) {
     return await request(TEST_URL)
         .get("/v1/extract/" + encodeURIComponent(id))
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -288,7 +335,7 @@ function expectExtractToSucceed(response: Awaited<ReturnType<typeof extractStatu
     expect(response.body).toHaveProperty("data");
 }
 
-export async function extract(body: ExtractRequestInput, identity = defaultIdentity): Promise<ExtractResponse> {
+export async function extract(body: ExtractRequestInput, identity: Identity): Promise<ExtractResponse> {
     const es = await extractStart(body, identity);
     expectExtractStartToSucceed(es);
 
@@ -308,7 +355,7 @@ export async function extract(body: ExtractRequestInput, identity = defaultIdent
 // Search API
 // =========================================
 
-async function searchRaw(body: SearchRequestInput, identity = defaultIdentity) {
+async function searchRaw(body: SearchRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/search")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -324,7 +371,7 @@ function expectSearchToSucceed(response: Awaited<ReturnType<typeof searchRaw>>) 
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function search(body: SearchRequestInput, identity = defaultIdentity): Promise<Document[]> {
+export async function search(body: SearchRequestInput, identity: Identity): Promise<Document[]> {
     const raw = await searchRaw(body, identity);
     expectSearchToSucceed(raw);
     return raw.body.data;
@@ -334,7 +381,7 @@ export async function search(body: SearchRequestInput, identity = defaultIdentit
 // Billing API
 // =========================================
 
-export async function creditUsage(identity = defaultIdentity): Promise<{ remaining_credits: number }> {
+export async function creditUsage(identity: Identity): Promise<{ remaining_credits: number }> {
     const req = (await request(TEST_URL)
     .get("/v1/team/credit-usage")
     .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -347,7 +394,7 @@ export async function creditUsage(identity = defaultIdentity): Promise<{ remaini
     return req.body.data;
 }
 
-export async function tokenUsage(identity = defaultIdentity): Promise<{ remaining_tokens: number }> {
+export async function tokenUsage(identity: Identity): Promise<{ remaining_tokens: number }> {
     return (await request(TEST_URL)
         .get("/v1/team/token-usage")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -358,7 +405,7 @@ export async function tokenUsage(identity = defaultIdentity): Promise<{ remainin
 // Concurrency API
 // =========================================
 
-export async function concurrencyCheck(identity = defaultIdentity): Promise<{ concurrency: number, maxConcurrency: number }> {
+export async function concurrencyCheck(identity: Identity): Promise<{ concurrency: number, maxConcurrency: number }> {
     const x = (await request(TEST_URL)
         .get("/v1/concurrency-check")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -369,7 +416,7 @@ export async function concurrencyCheck(identity = defaultIdentity): Promise<{ co
     return x.body;
 }
 
-export async function crawlWithConcurrencyTracking(body: CrawlRequestInput, identity = defaultIdentity): Promise<{
+export async function crawlWithConcurrencyTracking(body: CrawlRequestInput, identity: Identity): Promise<{
     crawl: Exclude<CrawlStatusResponse, ErrorResponse>;
     concurrencies: number[];
 }> {
@@ -392,7 +439,7 @@ export async function crawlWithConcurrencyTracking(body: CrawlRequestInput, iden
     };
 }
 
-export async function batchScrapeWithConcurrencyTracking(body: BatchScrapeRequestInput, identity = defaultIdentity): Promise<{
+export async function batchScrapeWithConcurrencyTracking(body: BatchScrapeRequestInput, identity: Identity): Promise<{
     batchScrape: Exclude<CrawlStatusResponse, ErrorResponse>;
     concurrencies: number[];
 }> {
@@ -428,7 +475,7 @@ async function deepResearchStart(body: {
   formats?: string[];
   topic?: string;
   jsonOptions?: any;
-}, identity = defaultIdentity) {
+}, identity: Identity) {
   return await request(TEST_URL)
     .post("/v1/deep-research")
     .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -436,7 +483,7 @@ async function deepResearchStart(body: {
     .send(body);
 }
 
-async function deepResearchStatus(id: string, identity = defaultIdentity) {
+async function deepResearchStatus(id: string, identity: Identity) {
   return await request(TEST_URL)
     .get("/v1/deep-research/" + encodeURIComponent(id))
     .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -459,7 +506,7 @@ export async function deepResearch(body: {
   formats?: string[];
   topic?: string;
   jsonOptions?: any;
-}, identity = defaultIdentity) {
+}, identity: Identity) {
   const ds = await deepResearchStart(body, identity);
   expectDeepResearchStartToSucceed(ds);
 

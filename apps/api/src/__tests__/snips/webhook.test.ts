@@ -1,4 +1,4 @@
-import { crawl, batchScrape } from "./lib";
+import { crawl, batchScrape, idmux, Identity } from "./lib";
 import Express from "express";
 import bodyParser from "body-parser";
 import type { WebhookEventType } from "src/types";
@@ -6,6 +6,16 @@ import type { Document } from "src/controllers/v1/types";
 
 const WEBHOOK_PORT_CRAWL = 3008;
 const WEBHOOK_PORT_BATCH_SCRAPE = 3009;
+
+let identity: Identity;
+
+beforeAll(async () => {
+  identity = await idmux({
+    name: "webhook",
+    concurrency: 100,
+    credits: 1000000,
+  });
+}, 10000);
 
 describe("Webhook tests", () => {
     it.concurrent("webhook works properly for crawl", async () => {
@@ -35,7 +45,7 @@ describe("Webhook tests", () => {
             webhook: {
                 url: `http://localhost:${WEBHOOK_PORT_CRAWL}/webhook`,
             },
-        });
+        }, identity);
 
         // wait to settle the webhook calls
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -93,7 +103,7 @@ describe("Webhook tests", () => {
             webhook: {
                 url: `http://localhost:${WEBHOOK_PORT_BATCH_SCRAPE}/webhook`,
             },
-        });
+        }, identity);
 
         // wait to settle the webhook calls
         await new Promise(resolve => setTimeout(resolve, 1000));

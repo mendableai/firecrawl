@@ -42,6 +42,7 @@ env:
   VERTEX_CREDENTIALS: ${{ secrets.VERTEX_CREDENTIALS }}
   USE_GO_MARKDOWN_PARSER: true
   SENTRY_ENVIRONMENT: dev
+  IDMUX_URL: ${{ secrets.IDMUX_URL }}
 
 jobs:
   test:
