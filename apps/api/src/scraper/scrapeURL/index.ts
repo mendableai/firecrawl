@@ -269,6 +269,10 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
     if (meta.options.actions && meta.options.actions.find(x => x.type === "screenshot")) {
       throw new ZDRViolationError("screenshot action");
     }
+
+    if (meta.options.actions && meta.options.actions.find(x => x.type === "pdf")) {
+      throw new ZDRViolationError("pdf action");
+    }
   }
 
   // TODO: handle sitemap data, see WebScraper/index.ts:280
