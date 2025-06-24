@@ -494,7 +494,7 @@ describe("Scrape tests", () => {
 
       it.concurrent("works properly on pages returning 200", async () => {
         const id = crypto.randomUUID();
-        const url = "https://httpstat.us/200?testId=" + id;
+        const url = "https://firecrawl.dev/?testId=" + id;
 
         await scrape({
           url,
