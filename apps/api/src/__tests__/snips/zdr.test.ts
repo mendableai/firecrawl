@@ -1,6 +1,6 @@
 import { supabase_service } from "../../services/supabase";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
-import { scrape, Identity, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
+import { scrape, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
 import { readFile, stat } from "node:fs/promises";
 
 if (process.env.TEST_SUITE_SELF_HOSTED) {
@@ -35,32 +35,21 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
     }
 
     describe("Zero Data Retention", () => {
-        let zdrTeamIdentity: Identity;
-        let zdrRequestIdentity: Identity;
-
-        beforeAll(async () => {
-            zdrTeamIdentity = await idmux({
-                name: "zdr/team",
-                credits: 10000,
-                flags: {
-                    zeroDataRetention: true,
-                }
-            });
-            zdrRequestIdentity = await idmux({
-                name: "zdr/request",
-                credits: 10000,
-            });
-        }, 10000);
-
         describe.each(["Team-scoped", "Request-scoped"] as const)("%s", (scope) => {
-            const scopeIdentity = scope === "Team-scoped" ? zdrTeamIdentity : zdrRequestIdentity;
-
             it("should clean up a scrape immediately", async () => {
+                let identity = await idmux({
+                    name: `zdr/${scope}/scrape`,
+                    credits: 10000,
+                    flags: scope === "Team-scoped" ? {
+                        zeroDataRetention: true,
+                    } : undefined,
+                });
+
                 const testId = crypto.randomUUID();
                 const scrape1 = await scrape({
                     url: "https://firecrawl.dev/?test=" + testId,
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
-                }, scopeIdentity);
+                }, identity);
 
                 const gcsJob = await getJobFromGCS(scrape1.metadata.scrapeId!);
                 expect(gcsJob).toBeNull();
@@ -82,7 +71,7 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 }
 
                 if (scope === "Request-scoped") {
-                    const status = await scrapeStatusRaw(scrape1.metadata.scrapeId!, scopeIdentity);
+                    const status = await scrapeStatusRaw(scrape1.metadata.scrapeId!, identity);
 
                     expect(status.statusCode).toBe(404);
                 }
@@ -92,11 +81,19 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 const preServerLogs = await getServerLogs();
                 const preWorkerLogs = await getWorkerLogs();
 
+                let identity = await idmux({
+                    name: `zdr/${scope}/crawl`,
+                    credits: 10000,
+                    flags: scope === "Team-scoped" ? {
+                        zeroDataRetention: true,
+                    } : undefined,
+                });
+
                 const crawl1 = await crawl({
                     url: "https://firecrawl.dev",
                     limit: 10,
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
-                }, scopeIdentity);
+                }, identity);
 
                 const postServerLogs = (await getServerLogs()).slice(preServerLogs.length);
                 const postWorkerLogs = (await getWorkerLogs()).slice(preWorkerLogs.length);
@@ -144,14 +141,14 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     }
                 }
 
-                await zdrcleaner(scopeIdentity.teamId!);
+                await zdrcleaner(identity.teamId!);
 
                 for (const job of jobs ?? []) {
                     const gcsJob = await getJobFromGCS(job.job_id);
                     expect(gcsJob).toBeNull();
 
                     if (scope === "Request-scoped") {
-                        const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
+                        const status = await scrapeStatusRaw(job.job_id, identity);
                         expect(status.statusCode).toBe(404);
                     }
                 }
@@ -161,10 +158,18 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 const preServerLogs = await getServerLogs();
                 const preWorkerLogs = await getWorkerLogs();
 
+                let identity = await idmux({
+                    name: `zdr/${scope}/batch-scrape`,
+                    credits: 10000,
+                    flags: scope === "Team-scoped" ? {
+                        zeroDataRetention: true,
+                    } : undefined,
+                });
+
                 const crawl1 = await batchScrape({
                     urls: ["https://firecrawl.dev", "https://mendable.ai"],
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
-                }, scopeIdentity);
+                }, identity);
 
                 const postServerLogs = (await getServerLogs()).slice(preServerLogs.length);
                 const postWorkerLogs = (await getWorkerLogs()).slice(preWorkerLogs.length);
@@ -212,14 +217,14 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     }
                 }
 
-                await zdrcleaner(scopeIdentity.teamId!);
+                await zdrcleaner(identity.teamId!);
 
                 for (const job of jobs ?? []) {
                     const gcsJob = await getJobFromGCS(job.job_id);
                     expect(gcsJob).toBeNull();
 
                     if (scope === "Request-scoped") {
-                        const status = await scrapeStatusRaw(job.job_id, scopeIdentity);
+                        const status = await scrapeStatusRaw(job.job_id, identity);
                         expect(status.statusCode).toBe(404);
                     }
                 }
