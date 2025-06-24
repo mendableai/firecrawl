@@ -157,10 +157,6 @@ async function getNextConcurrentJob(teamId: string): Promise<{
     cursor = scanResult[0];
     const results = scanResult[1];
 
-    if (results.length === 0) {
-      continue;
-    }
-
     for (let i = 0; i < results.length; i += 2) {
       const res = {
         job: JSON.parse(results[i]),
