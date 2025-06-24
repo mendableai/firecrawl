@@ -117,24 +117,23 @@ describe("Scrape tests", () => {
       expect(JSON.stringify(status)).toBe(JSON.stringify(response));
     }, scrapeTimeout);
     
-    // describe("Ad blocking (f-e dependant)", () => {
-    //   it.concurrent("blocks ads by default", async () => {
-    //     const response = await scrape({
-    //       url: "https://www.allrecipes.com/recipe/18185/yum/",
-    //     });
+    describe("Ad blocking (f-e dependant)", () => {
+      it.concurrent("blocking ads works", async () => {
+        await scrape({
+          url: "https://firecrawl.dev",
+          blockAds: true,
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
 
-    //     expect(response.markdown).not.toContain(".g.doubleclick.net/");
-    //   }, 30000);
-
-    //   it.concurrent("doesn't block ads if explicitly disabled", async () => {
-    //     const response = await scrape({
-    //       url: "https://www.allrecipes.com/recipe/18185/yum/",
-    //       blockAds: false,
-    //     });
-
-    //     expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
-    //   }, 30000);
-    // });
+      it.concurrent("doesn't block ads if explicitly disabled", async () => {
+        await scrape({
+          url: "https://firecrawl.dev",
+          blockAds: false,
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
+    });
     
     describe("Index", () => {
       it.concurrent("caches properly", async () => {
