@@ -26,9 +26,10 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
         creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
     } 
 
-    if (internalOptions.zeroDataRetention) {
-        creditsToBeBilled += (flags?.zdrExtraCost ?? 1);
-    }
+    // TEMP: Removed until consensus on product team
+    // if (internalOptions.zeroDataRetention) {
+    //     creditsToBeBilled += (flags?.zdrExtraCost ?? 1);
+    // }
     
     if (document.metadata.numPages !== undefined && document.metadata.numPages > 1) {
         creditsToBeBilled += creditsPerPDFPage * (document.metadata.numPages - 1);
