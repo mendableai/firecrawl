@@ -22,6 +22,7 @@ import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
+import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 
 // Used for deep research
 export async function searchAndScrapeSearchResult(
@@ -279,14 +280,11 @@ export async function searchController(
       }
     }
 
-    // TODO: This is horrid. Fix soon - mogery
-    const credits_billed = responseData.data.reduce((a, x) => {
-      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0 && req.body.scrapeOptions?.parsePDF !== false) {
-        return a + x.metadata.numPages;
-      } else {
-        return a + 1;
-      }
-    }, 0)
+    const credits_billed = await Promise.all(
+      responseData.data.map(async (document) => {
+        return await calculateCreditsToBeBilled(req.body.scrapeOptions, document, costTracking);
+      })
+    ).then(credits => credits.reduce((sum, credit) => sum + credit, 0));
 
     // Bill team once for all successful results
     if (!isSearchPreview) {

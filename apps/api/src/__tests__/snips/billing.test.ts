@@ -215,6 +215,31 @@ describe("Billing tests", () => {
             expect(rc1 - rc2).toBe(results.length);
         }, 600000);
 
+        it.concurrent("bills search with PDF scrape correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills search with PDF scrape correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+
+            const results = await search({
+                query: "firecrawl filetype:pdf",
+                scrapeOptions: {
+                    formats: ["markdown"],
+                    parsePDF: true,
+                },
+            }, identity);
+
+            await sleepForBatchBilling();
+
+            const rc2 = (await creditUsage(identity)).remaining_credits;
+
+            const shouldUse = results.reduce((sum, doc) => sum + (doc.metadata?.numPages || 1), 0);
+
+            expect(rc1 - rc2).toBe(shouldUse);
+        }, 600000);
+
         it.concurrent("bills extract correctly", async () => {
             const identity = await idmux({
                 name: "billing/bills extract correctly",
