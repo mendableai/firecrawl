@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - apps/api/**
-      - apps/playwright-service-ts/**
 
 env:
   PORT: 3002
