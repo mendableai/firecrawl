@@ -1244,10 +1244,12 @@ export default class FirecrawlApp {
     try {
       if (!params?.schema) {
         jsonSchema = undefined;
-      } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
-        jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
       } else {
-        jsonSchema = params.schema;
+        try {
+          jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+        } catch (_) {
+          jsonSchema = params.schema;
+        }
       }
     } catch (error: any) {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
@@ -1312,10 +1314,14 @@ export default class FirecrawlApp {
     let jsonSchema: any;
 
     try {
-      if (params?.schema instanceof zt.ZodType) {
-        jsonSchema = zodToJsonSchema(params.schema);
+      if (!params?.schema) {
+        jsonSchema = undefined;
       } else {
-        jsonSchema = params?.schema;
+        try {
+          jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+        } catch (_) {
+          jsonSchema = params.schema;
+        }
       }
     } catch (error: any) {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
