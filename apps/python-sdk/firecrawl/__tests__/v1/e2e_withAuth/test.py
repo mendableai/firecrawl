@@ -437,4 +437,29 @@ def test_search_with_invalid_params():
         app.search("test query", {"invalid_param": "value"})
     assert "ValidationError" in str(e.value)
 
+def test_scrape_url_with_parse_pdf_true():
+    if TEST_API_KEY:
+        app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+        response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=True)
+        assert response is not None
+        assert 'markdown' in response
+        assert len(response['markdown']) > 100
+
+def test_scrape_url_with_parse_pdf_false():
+    if TEST_API_KEY:
+        app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+        response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=False)
+        assert response is not None
+        assert 'markdown' in response
+        assert 'h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm' in response['markdown']
+
+def test_scrape_options_with_parse_pdf():
+    if TEST_API_KEY:
+        from firecrawl.firecrawl import ScrapeOptions
+        app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+        scrape_options = ScrapeOptions(parsePDF=False, formats=['markdown'])
+        response = app.search("firecrawl", limit=1, scrape_options=scrape_options)
+        assert response is not None
+        assert 'data' in response
+
 
