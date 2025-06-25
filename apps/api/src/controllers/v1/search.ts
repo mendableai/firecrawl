@@ -280,11 +280,17 @@ export async function searchController(
       }
     }
 
-    const credits_billed = await Promise.all(
-      responseData.data.map(async (document) => {
-        return await calculateCreditsToBeBilled(req.body.scrapeOptions, document, costTracking);
-      })
-    ).then(credits => credits.reduce((sum, credit) => sum + credit, 0));
+    let credits_billed = 0;
+    try {
+      credits_billed = await Promise.all(
+        responseData.data.map(async (document) => {
+          return await calculateCreditsToBeBilled(req.body.scrapeOptions, document, costTracking);
+        })
+      ).then(credits => credits.reduce((sum, credit) => sum + credit, 0));
+    } catch (error) {
+      logger.error("Error calculating credits for billing", { error });
+      credits_billed = responseData.data.length;
+    }
 
     // Bill team once for all successful results
     if (!isSearchPreview) {
