@@ -482,6 +482,7 @@ class FirecrawlApp:
             change_tracking_options: Optional[ChangeTrackingOptions] = None,
             max_age: Optional[int] = None,
             store_in_cache: Optional[bool] = None,
+            zero_data_retention: Optional[bool] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
@@ -504,6 +505,7 @@ class FirecrawlApp:
           json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
           change_tracking_options (Optional[ChangeTrackingOptions]): Change tracking settings
+          zero_data_retention (Optional[bool]): Whether to delete data after scrape is done
 
 
         Returns:
@@ -711,6 +713,7 @@ class FirecrawlApp:
         delay: Optional[int] = None,
         allow_subdomains: Optional[bool] = None,
         max_concurrency: Optional[int] = None,
+        zero_data_retention: Optional[bool] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
@@ -737,6 +740,7 @@ class FirecrawlApp:
             delay (Optional[int]): Delay in seconds between scrapes
             allow_subdomains (Optional[bool]): Follow subdomains
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
@@ -790,7 +794,8 @@ class FirecrawlApp:
             crawl_params['allowSubdomains'] = allow_subdomains
         if max_concurrency is not None:
             crawl_params['maxConcurrency'] = max_concurrency
-        
+        if zero_data_retention is not None:
+            crawl_params['zeroDataRetention'] = zero_data_retention
         # Add any additional kwargs
         crawl_params.update(kwargs)
 
@@ -834,6 +839,7 @@ class FirecrawlApp:
         delay: Optional[int] = None,
         allow_subdomains: Optional[bool] = None,
         max_concurrency: Optional[int] = None,
+        zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> CrawlResponse:
@@ -859,6 +865,7 @@ class FirecrawlApp:
             delay (Optional[int]): Delay in seconds between scrapes
             allow_subdomains (Optional[bool]): Follow subdomains
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
@@ -912,7 +919,8 @@ class FirecrawlApp:
             crawl_params['allowSubdomains'] = allow_subdomains
         if max_concurrency is not None:
             crawl_params['maxConcurrency'] = max_concurrency
-        
+        if zero_data_retention is not None:
+            crawl_params['zeroDataRetention'] = zero_data_retention
         # Add any additional kwargs
         crawl_params.update(kwargs)
 
@@ -1092,6 +1100,7 @@ class FirecrawlApp:
             delay: Optional[int] = None,
             allow_subdomains: Optional[bool] = None,
             max_concurrency: Optional[int] = None,
+            zero_data_retention: Optional[bool] = None,
             idempotency_key: Optional[str] = None,
             **kwargs
     ) -> 'CrawlWatcher':
@@ -1117,6 +1126,7 @@ class FirecrawlApp:
             delay (Optional[int]): Delay in seconds between scrapes
             allow_subdomains (Optional[bool]): Follow subdomains
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
@@ -1144,6 +1154,7 @@ class FirecrawlApp:
             delay=delay,
             allow_subdomains=allow_subdomains,
             max_concurrency=max_concurrency,
+            zero_data_retention=zero_data_retention,
             idempotency_key=idempotency_key,
             **kwargs
         )
@@ -1261,6 +1272,7 @@ class FirecrawlApp:
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
         max_concurrency: Optional[int] = None,
+        zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> BatchScrapeStatusResponse:
@@ -1424,6 +1436,7 @@ class FirecrawlApp:
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
@@ -1485,6 +1498,8 @@ class FirecrawlApp:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if max_concurrency is not None:
             scrape_params['maxConcurrency'] = max_concurrency
+        if zero_data_retention is not None:
+            scrape_params['zeroDataRetention'] = zero_data_retention
         
         # Add any additional kwargs
         scrape_params.update(kwargs)
@@ -1534,6 +1549,7 @@ class FirecrawlApp:
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
         max_concurrency: Optional[int] = None,
+        zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> 'CrawlWatcher':
@@ -1560,6 +1576,7 @@ class FirecrawlApp:
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
@@ -1617,6 +1634,8 @@ class FirecrawlApp:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if max_concurrency is not None:
             scrape_params['maxConcurrency'] = max_concurrency
+        if zero_data_retention is not None:
+            scrape_params['zeroDataRetention'] = zero_data_retention
         
         # Add any additional kwargs
         scrape_params.update(kwargs)
@@ -3204,6 +3223,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
+        zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> BatchScrapeResponse:
@@ -3229,6 +3249,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
+            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
@@ -3288,7 +3309,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
-
+        if zero_data_retention is not None:
+            scrape_params['zeroDataRetention'] = zero_data_retention
+        
         # Add any additional kwargs
         scrape_params.update(kwargs)
 
