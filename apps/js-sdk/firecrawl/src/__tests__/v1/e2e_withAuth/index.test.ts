@@ -103,6 +103,31 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
 
+  test.concurrent('should return successful response for valid scrape with PDF file and parsePDF true', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001.pdf', {
+      parsePDF: true
+    });
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    expect(response).not.toBeNull();
+    expect(response?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+  }, 30000); // 30 seconds timeout
+
+  test.concurrent('should return successful response for valid scrape with PDF file and parsePDF false', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001.pdf', {
+      parsePDF: false
+    });
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    expect(response).not.toBeNull();
+  }, 30000); // 30 seconds timeout
+
   test.concurrent('should throw error for invalid API key on crawl', async () => {
     if (API_URL.includes('api.firecrawl.dev')) {
       const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
@@ -151,6 +176,23 @@ describe('FirecrawlApp E2E Tests', () => {
       expect(response.data[0]).toHaveProperty("rawHtml");
       expect(response.data[0]).toHaveProperty("screenshot");
       expect(response.data[0]).toHaveProperty("links");
+    }
+  }, 60000); // 60 seconds timeout
+
+  test.concurrent('should handle parsePDF parameter in crawl scrapeOptions', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    const response = await app.crawlUrl('https://roastmywebsite.ai', {
+      limit: 1,
+      scrapeOptions: {
+        formats: ['markdown'],
+        parsePDF: true
+      }
+    } as CrawlParams, 30) as CrawlStatusResponse;
+    
+    expect(response).not.toHaveProperty("next");
+    expect(response.data.length).toBeGreaterThan(0);
+    if (response.data[0]) {
+      expect(response.data[0]).toHaveProperty("markdown");
     }
   }, 60000); // 60 seconds timeout
 
