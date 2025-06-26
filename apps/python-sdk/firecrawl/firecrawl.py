@@ -160,6 +160,7 @@ class ScrapeOptions(pydantic.BaseModel):
     changeTrackingOptions: Optional[ChangeTrackingOptions] = None
     maxAge: Optional[int] = None
     storeInCache: Optional[bool] = None
+    parsePDF: Optional[bool] = None
 
 class WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
@@ -465,6 +466,7 @@ class FirecrawlApp:
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
             proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+            parse_pdf: Optional[bool] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -538,6 +540,8 @@ class FirecrawlApp:
             scrape_params['blockAds'] = block_ads
         if proxy:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
@@ -2904,6 +2908,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
             proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+            parse_pdf: Optional[bool] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -2981,6 +2986,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['blockAds'] = block_ads
         if proxy:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
