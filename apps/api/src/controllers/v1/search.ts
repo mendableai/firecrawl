@@ -24,6 +24,11 @@ import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 
+interface DocumentWithCostTracking {
+  document: Document;
+  costTracking: CostTracking;
+}
+
 // Used for deep research
 export async function searchAndScrapeSearchResult(
   query: string,
@@ -34,16 +39,15 @@ export async function searchAndScrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   },
   logger: Logger,
-  costTracking: CostTracking,
   flags: TeamFlags,
-): Promise<Document[]> {
+): Promise<DocumentWithCostTracking[]> {
   try {
     const searchResults = await search({
       query,
       num_results: 5,
     });
 
-    const documents = await Promise.all(
+    const documentsWithCostTracking = await Promise.all(
       searchResults.map((result) =>
         scrapeSearchResult(
           {
@@ -53,13 +57,12 @@ export async function searchAndScrapeSearchResult(
           },
           options,
           logger,
-          costTracking,
           flags,
         ),
       ),
     );
 
-    return documents;
+    return documentsWithCostTracking;
   } catch (error) {
     return [];
   }
@@ -74,16 +77,17 @@ async function scrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   },
   logger: Logger,
-  costTracking: CostTracking,
   flags: TeamFlags,
   directToBullMQ: boolean = false,
   isSearchPreview: boolean = false,
-): Promise<Document> {
+): Promise<DocumentWithCostTracking> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
     team_id: options.teamId,
     basePriority: 10,
   });
+  
+  const costTracking = new CostTracking();
 
   const zeroDataRetention = flags?.forceZDR ?? false;
 
@@ -120,6 +124,19 @@ async function scrapeSearchResult(
     );
 
     const doc: Document = await waitForJob(jobId, options.timeout);
+    
+    const actualCostTracking = new CostTracking();
+    const credits = await calculateCreditsToBeBilled(options.scrapeOptions, doc, actualCostTracking);
+    actualCostTracking.addCall({
+      type: "other",
+      metadata: {
+        module: "search",
+        operation: "scrape",
+        url: searchResult.url
+      },
+      cost: credits,
+      model: "search-scrape"
+    });
 
     logger.info("Scrape job completed", {
       scrapeId: jobId,
@@ -129,12 +146,16 @@ async function scrapeSearchResult(
     });
     await getScrapeQueue().remove(jobId);
 
-    // Move SERP results to top level
-    return {
+    const document = {
       title: searchResult.title,
       description: searchResult.description,
       url: searchResult.url,
       ...doc,
+    };
+
+    return {
+      document,
+      costTracking: actualCostTracking,
     };
   } catch (error) {
     logger.error(`Error in scrapeSearchResult: ${error}`, {
@@ -147,8 +168,8 @@ async function scrapeSearchResult(
     if (error?.message?.includes("Could not scrape url")) {
       statusCode = 403;
     }
-    // Return a minimal document with SERP results at top level
-    return {
+    
+    const document: Document = {
       title: searchResult.title,
       description: searchResult.description,
       url: searchResult.url,
@@ -157,6 +178,11 @@ async function scrapeSearchResult(
         error: error.message,
         proxyUsed: "basic",
       },
+    };
+
+    return {
+      document,
+      costTracking: new CostTracking(),
     };
   }
 }
@@ -183,8 +209,10 @@ export async function searchController(
     data: [],
   };
   const startTime = new Date().getTime();
-  const costTracking = new CostTracking();
   const isSearchPreview = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  
+  let credits_billed = 0;
+  let allDocsWithCostTracking: DocumentWithCostTracking[] = [];
 
   try {
     req.body = searchRequestSchema.parse(req.body);
@@ -251,18 +279,18 @@ export async function searchController(
             scrapeOptions: req.body.scrapeOptions,
           },
           logger,
-          costTracking,
           req.acuc?.flags ?? null,
           (req.acuc?.price_credits ?? 0) <= 3000,
           isSearchPreview,
         ),
       );
 
-      const docs = await Promise.all(scrapePromises);
+      const docsWithCostTracking = await Promise.all(scrapePromises);
       logger.info("Scraping completed", {
-        num_docs: docs.length,
+        num_docs: docsWithCostTracking.length,
       });
 
+      const docs = docsWithCostTracking.map(item => item.document);
       const filteredDocs = docs.filter(
         (doc) =>
           doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
@@ -278,18 +306,34 @@ export async function searchController(
       } else {
         responseData.data = filteredDocs;
       }
-    }
 
-    let credits_billed = 0;
-    try {
-      credits_billed = await Promise.all(
-        responseData.data.map(async (document) => {
-          return await calculateCreditsToBeBilled(req.body.scrapeOptions, document, costTracking);
-        })
-      ).then(credits => credits.reduce((sum, credit) => sum + credit, 0));
-    } catch (error) {
-      logger.error("Error calculating credits for billing", { error });
-      credits_billed = responseData.data.length;
+      const finalDocsForBilling = responseData.data;
+      
+      const creditPromises = finalDocsForBilling.map(async (finalDoc) => {
+        const matchingDocWithCost = docsWithCostTracking.find(item => 
+          item.document.url === finalDoc.url
+        );
+        
+        if (matchingDocWithCost) {
+          return await calculateCreditsToBeBilled(
+            req.body.scrapeOptions, 
+            matchingDocWithCost.document, 
+            matchingDocWithCost.costTracking
+          );
+        } else {
+          return 1;
+        }
+      });
+      
+      try {
+        const individualCredits = await Promise.all(creditPromises);
+        credits_billed = individualCredits.reduce((sum, credit) => sum + credit, 0);
+      } catch (error) {
+        logger.error("Error calculating credits for billing", { error });
+        credits_billed = responseData.data.length;
+      }
+
+      allDocsWithCostTracking = docsWithCostTracking;
     }
 
     // Bill team once for all successful results
@@ -326,7 +370,7 @@ export async function searchController(
         scrapeOptions: req.body.scrapeOptions,
         origin: req.body.origin,
         integration: req.body.integration,
-        cost_tracking: costTracking,
+        cost_tracking: allDocsWithCostTracking.length > 0 ? allDocsWithCostTracking[0].costTracking : new CostTracking(),
         credits_billed,
         zeroDataRetention: false, // not supported
       },
