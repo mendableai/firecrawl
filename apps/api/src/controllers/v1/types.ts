@@ -42,7 +42,7 @@ export const url = z.preprocess(
     if (!protocolIncluded(x as string)) {
       x = `http://${x}`;
     }
-    
+
     // transforming the query parameters is breaking certain sites, so we're not doing it - mogery
     // try {
     //   const urlObj = new URL(x as string);
@@ -52,7 +52,7 @@ export const url = z.preprocess(
     //   }
     // } catch (e) {
     // }
-    
+
     return x;
   },
   z
@@ -61,7 +61,7 @@ export const url = z.preprocess(
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
       (x) =>
-        /\.[a-zA-Z\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F]{2,}(:\d+)?([\/?#]|$)/i.test(
+        /\.[a-zA-Z0-9-\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F]{2,}(:\d+)?([\/?#]|$)/i.test(
           x,
         ),
       "URL must have a valid top-level domain or be a valid path",
@@ -74,7 +74,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+  // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =
@@ -823,11 +823,11 @@ export type ErrorResponse = {
 export type ScrapeResponse =
   | ErrorResponse
   | {
-      success: true;
-      warning?: string;
-      data: Document;
-      scrape_id?: string;
-    };
+    success: true;
+    warning?: string;
+    data: Document;
+    scrape_id?: string;
+  };
 
 export interface ScrapeResponseRequestTest {
   statusCode: number;
@@ -878,27 +878,27 @@ export interface ExtractResponseRequestTest {
 export type CrawlResponse =
   | ErrorResponse
   | {
-      success: true;
-      id: string;
-      url: string;
-    };
+    success: true;
+    id: string;
+    url: string;
+  };
 
 export type BatchScrapeResponse =
   | ErrorResponse
   | {
-      success: true;
-      id: string;
-      url: string;
-      invalidURLs?: string[];
-    };
+    success: true;
+    id: string;
+    url: string;
+    invalidURLs?: string[];
+  };
 
 export type MapResponse =
   | ErrorResponse
   | {
-      success: true;
-      links: string[];
-      scrape_id?: string;
-    };
+    success: true;
+    links: string[];
+    scrape_id?: string;
+  };
 
 export type CrawlStatusParams = {
   jobId: string;
@@ -911,47 +911,47 @@ export type ConcurrencyCheckParams = {
 export type ConcurrencyCheckResponse =
   | ErrorResponse
   | {
-      success: true;
-      concurrency: number;
-      maxConcurrency: number;
-    };
+    success: true;
+    concurrency: number;
+    maxConcurrency: number;
+  };
 
 export type CrawlStatusResponse =
   | ErrorResponse
   | {
-      success: true;
-      status: "scraping" | "completed" | "failed" | "cancelled";
-      completed: number;
-      total: number;
-      creditsUsed: number;
-      expiresAt: string;
-      next?: string;
-      data: Document[];
-    };
+    success: true;
+    status: "scraping" | "completed" | "failed" | "cancelled";
+    completed: number;
+    total: number;
+    creditsUsed: number;
+    expiresAt: string;
+    next?: string;
+    data: Document[];
+  };
 
 export type OngoingCrawlsResponse =
   | ErrorResponse
   | {
-      success: true;
-      crawls: {
-        id: string;
-        teamId: string;
-        url: string;
-        options: CrawlerOptions;
-      }[];
+    success: true;
+    crawls: {
+      id: string;
+      teamId: string;
+      url: string;
+      options: CrawlerOptions;
+    }[];
   };
-      
+
 export type CrawlErrorsResponse =
   | ErrorResponse
   | {
-      errors: {
-        id: string;
-        timestamp?: string;
-        url: string;
-        error: string;
-      }[];
-      robotsBlocked: string[];
-    };
+    errors: {
+      id: string;
+      timestamp?: string;
+      url: string;
+      error: string;
+    }[];
+    robotsBlocked: string[];
+  };
 
 type AuthObject = {
   team_id: string;
@@ -1146,7 +1146,7 @@ export function fromLegacyScrapeOptions(
           ? ("screenshot@fullPage" as const)
           : null,
         extractorOptions !== undefined &&
-        extractorOptions.mode.includes("llm-extraction")
+          extractorOptions.mode.includes("llm-extraction")
           ? ("extract" as const)
           : null,
         "links",
@@ -1170,12 +1170,12 @@ export function fromLegacyScrapeOptions(
       removeBase64Images: pageOptions.removeBase64Images,
       extract:
         extractorOptions !== undefined &&
-        extractorOptions.mode.includes("llm-extraction")
+          extractorOptions.mode.includes("llm-extraction")
           ? {
-              systemPrompt: extractorOptions.extractionPrompt,
-              prompt: extractorOptions.userPrompt,
-              schema: extractorOptions.extractionSchema,
-            }
+            systemPrompt: extractorOptions.extractionPrompt,
+            prompt: extractorOptions.userPrompt,
+            schema: extractorOptions.extractionSchema,
+          }
           : undefined,
       mobile: pageOptions.mobile,
       fastMode: pageOptions.useFastMode,
@@ -1290,10 +1290,10 @@ export type SearchRequestInput = z.input<typeof searchRequestSchema>;
 export type SearchResponse =
   | ErrorResponse
   | {
-      success: true;
-      warning?: string;
-      data: Document[];
-    };
+    success: true;
+    warning?: string;
+    data: Document[];
+  };
 
 export type TokenUsage = {
   promptTokens: number;

@@ -76,4 +76,9 @@ describe("URL Schema Validation", () => {
   it("should reject malformed URLs containing multiple 'http://'", () => {
     expect(() => url.parse("http://ex ample.com/")).toThrow("Invalid URL");
   });
+
+  it("should accept URLs with international domain names", () => {
+    expect(() => url.parse("http://xn--1lqv92a901a.xn--ses554g/")).not.toThrow();
+  });
+
 });
