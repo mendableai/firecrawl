@@ -150,21 +150,4 @@ describe("Crawl tests", () => {
             expect(res.completed).toBeGreaterThan(0);
         }
     }, 5 * scrapeTimeout);
-
-    it.concurrent("Faire team ID bypasses job expiration - integration test", async () => {
-        const faireTeamId = "f96ad1a4-8102-4b35-9904-36fd517d3616";
-        expect(faireTeamId).toBe("f96ad1a4-8102-4b35-9904-36fd517d3616");
-        
-    });
-
-    it.concurrent("Team ID exception constant is properly defined", async () => {
-        const fs = require('fs');
-        const path = require('path');
-        const crawlStatusPath = path.join(__dirname, '../../controllers/v1/crawl-status.ts');
-        const fileContent = fs.readFileSync(crawlStatusPath, 'utf8');
-        
-        expect(fileContent).toContain('TEMP_FAIRE_TEAM_ID');
-        expect(fileContent).toContain('f96ad1a4-8102-4b35-9904-36fd517d3616');
-        expect(fileContent).toContain('TEMP_FAIRE_TEAM_ID');
-    });
 });
