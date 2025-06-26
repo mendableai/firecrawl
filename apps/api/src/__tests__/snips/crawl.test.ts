@@ -75,6 +75,54 @@ describe("Crawl tests", () => {
 
         expect(ongoing2.crawls.find(x => x.id === res.id)).toBeUndefined();
     }, 3 * scrapeTimeout);
+
+    it.concurrent("ongoing crawls endpoint includes created_at field", async () => {
+        const res = await asyncCrawl({
+            url: "https://firecrawl.dev",
+            limit: 3,
+        }, identity);
+
+        const ongoing = await crawlOngoing(identity);
+        const crawlItem = ongoing.crawls.find(x => x.id === res.id);
+
+        expect(crawlItem).toBeDefined();
+        if (crawlItem) {
+            expect(crawlItem.created_at).toBeDefined();
+            expect(typeof crawlItem.created_at).toBe("string");
+            
+            const createdAtDate = new Date(crawlItem.created_at);
+            expect(createdAtDate).toBeInstanceOf(Date);
+            expect(createdAtDate.getTime()).not.toBeNaN();
+            
+            expect(crawlItem.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+        }
+
+        await asyncCrawlWaitForFinish(res.id, identity);
+    }, 3 * scrapeTimeout);
+
+    it.concurrent("created_at timestamp is recent for new crawls", async () => {
+        const beforeCrawl = new Date();
+        
+        const res = await asyncCrawl({
+            url: "https://firecrawl.dev",
+            limit: 3,
+        }, identity);
+
+        const ongoing = await crawlOngoing(identity);
+        const afterCrawl = new Date();
+        
+        const crawlItem = ongoing.crawls.find(x => x.id === res.id);
+        
+        expect(crawlItem).toBeDefined();
+        if (crawlItem) {
+            const createdAt = new Date(crawlItem.created_at);
+            
+            expect(createdAt.getTime()).toBeGreaterThanOrEqual(beforeCrawl.getTime() - 1000);
+            expect(createdAt.getTime()).toBeLessThanOrEqual(afterCrawl.getTime() + 1000);
+        }
+
+        await asyncCrawlWaitForFinish(res.id, identity);
+    }, 3 * scrapeTimeout);
     
     // TEMP: Flaky
     // it.concurrent("discovers URLs properly when origin is not included", async () => {

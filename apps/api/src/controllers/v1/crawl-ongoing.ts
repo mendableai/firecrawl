@@ -25,6 +25,7 @@ export async function ongoingCrawlsController(
       id: x.id,
       teamId: x.team_id!,
       url: x.originUrl!,
+      created_at: new Date(x.createdAt || Date.now()).toISOString(),
       options: {
         ...toNewCrawlerOptions(x.crawlerOptions),
         scrapeOptions: x.scrapeOptions,

@@ -126,3 +126,8 @@ content-type: application/json
   "query": "firecrawl",
   "limit": 50
 }
+
+### Get Active Crawls
+# @name activeCrawls
+GET {{baseUrl}}/v1/crawl/active HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
