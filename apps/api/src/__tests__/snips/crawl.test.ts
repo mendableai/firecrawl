@@ -150,4 +150,33 @@ describe("Crawl tests", () => {
             expect(res.completed).toBeGreaterThan(0);
         }
     }, 5 * scrapeTimeout);
+
+    it.concurrent("allowSubdomains parameter works", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev",
+            allowSubdomains: true,
+            limit: 5,
+        }, identity);
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            expect(res.completed).toBeGreaterThan(0);
+        }
+    }, 5 * scrapeTimeout);
+
+    it.concurrent("allowSubdomains blocks subdomains when false", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev", 
+            allowSubdomains: false,
+            limit: 5,
+        }, identity);
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            for (const page of res.data) {
+                const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
+                expect(url.hostname.endsWith("firecrawl.dev")).toBe(true);
+            }
+        }
+    }, 5 * scrapeTimeout);
 });
