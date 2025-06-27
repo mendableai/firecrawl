@@ -173,6 +173,7 @@ class ScreenshotAction(pydantic.BaseModel):
     """Screenshot action to perform during scraping."""
     type: Literal["screenshot"]
     fullPage: Optional[bool] = None
+    quality: Optional[int] = None
 
 class ClickAction(pydantic.BaseModel):
     """Click action to perform during scraping."""
