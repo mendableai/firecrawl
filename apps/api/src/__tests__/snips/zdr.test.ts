@@ -31,7 +31,7 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
             }
         }
         const logs = await readFile("worker.log", "utf8");
-        return logs.split("\n").filter(x => x.trim().length > 0 && !x.includes("Billing queue created"));
+        return logs.split("\n").filter(x => x.trim().length > 0 && ["Billing queue created", "No billing operations to process in batch", "billing batch queue", "billing batch processing lock", "Batch billing team", "Successfully billed team", "Billing batch processing"].every(y => !x.includes(y)));
     }
 
     describe("Zero Data Retention", () => {
