@@ -198,6 +198,8 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
 
         cacheInfo: {
             created_at: new Date(data[0].created_at),
-        }
+        },
+
+        proxyUsed: doc.proxyUsed ?? "basic",
     };
 }

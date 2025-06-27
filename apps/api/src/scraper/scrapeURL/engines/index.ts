@@ -119,6 +119,8 @@ export type EngineScrapeResult = {
   };
   
   contentType?: string;
+
+  proxyUsed: "basic" | "stealth";
 };
 
 const engineHandlers: {

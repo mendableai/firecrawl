@@ -53,5 +53,7 @@ export async function scrapeURLWithPlaywright(
     statusCode: response.pageStatusCode,
     error: response.pageError,
     contentType: response.contentType,
+
+    proxyUsed: "basic",
   };
 }
