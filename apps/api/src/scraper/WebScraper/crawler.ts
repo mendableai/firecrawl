@@ -459,18 +459,16 @@ export class WebCrawler {
         return { allowed: true, url: fullUrl };
       }
       
+      if (
+        this.allowSubdomains &&
+        !this.isSocialMediaOrEmail(fullUrl) &&
+        this.isSubdomain(fullUrl)
+      ) {
+        return { allowed: true, url: fullUrl };
+      }
+      
       return { allowed: false, denialReason: DenialReason.EXTERNAL_LINK };
     }
-
-    if (
-      this.allowSubdomains &&
-      !this.isSocialMediaOrEmail(fullUrl) &&
-      this.isSubdomain(fullUrl)
-    ) {
-      return { allowed: true, url: fullUrl };
-    }
-
-    return { allowed: false, denialReason: DenialReason.EXTERNAL_LINK };
   }
 
   private async extractLinksFromHTMLRust(html: string, url: string) {
