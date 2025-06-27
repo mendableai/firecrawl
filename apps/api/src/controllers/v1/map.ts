@@ -99,7 +99,7 @@ export async function getMapResults({
   let links: string[] = [url];
   let mapResults: MapDocument[] = [];
 
-  const zeroDataRetention = flags?.zeroDataRetention ?? false;
+  const zeroDataRetention = flags?.forceZDR ?? false;
 
   const sc: StoredCrawl = {
     originUrl: url,
@@ -319,7 +319,7 @@ export async function mapController(
   const originalRequest = req.body;
   req.body = mapRequestSchema.parse(req.body);
   
-  if (req.acuc?.flags?.zeroDataRetention) {
+  if (req.acuc?.flags?.forceZDR) {
     return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature." });
   }
 

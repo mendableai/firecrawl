@@ -84,7 +84,7 @@ async function scrapeSearchResult(
     basePriority: 10,
   });
 
-  const zeroDataRetention = flags?.zeroDataRetention ?? false;
+  const zeroDataRetention = flags?.forceZDR ?? false;
 
   try {
     if (isUrlBlocked(searchResult.url, flags)) {
@@ -170,10 +170,10 @@ export async function searchController(
     teamId: req.auth.team_id,
     module: "search",
     method: "searchController",
-    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
 
-  if (req.acuc?.flags?.zeroDataRetention) {
+  if (req.acuc?.flags?.forceZDR) {
     return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature." });
   }
 

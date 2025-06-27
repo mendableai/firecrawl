@@ -19,7 +19,14 @@ export async function scrapeController(
   const jobId = uuidv4();
   const preNormalizedBody = { ...req.body };
 
-  const zeroDataRetention = req.acuc?.flags?.zeroDataRetention || req.body.zeroDataRetention;
+  if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
+    return res.status(400).json({
+      success: false,
+      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+    });
+  }
+
+  const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
 
   const logger = _logger.child({
     method: "scrapeController",

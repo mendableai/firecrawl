@@ -408,7 +408,7 @@ export function crawlToCrawler(
     regexOnFullURL: sc.crawlerOptions?.regexOnFullURL ?? false,
     maxDiscoveryDepth: sc.crawlerOptions?.maxDiscoveryDepth,
     currentDiscoveryDepth: crawlerOptions?.currentDiscoveryDepth ?? 0,
-    zeroDataRetention: (teamFlags?.zeroDataRetention || sc.zeroDataRetention) ?? false,
+    zeroDataRetention: (teamFlags?.forceZDR || sc.zeroDataRetention) ?? false,
   });
 
   if (sc.robots !== undefined) {

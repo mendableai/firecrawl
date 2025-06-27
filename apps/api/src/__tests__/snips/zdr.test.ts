@@ -40,9 +40,12 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 let identity = await idmux({
                     name: `zdr/${scope}/scrape`,
                     credits: 10000,
-                    flags: scope === "Team-scoped" ? {
-                        zeroDataRetention: true,
-                    } : undefined,
+                    flags: {
+                        allowZDR: true,
+                        ...(scope === "Team-scoped" ? {
+                            forceZDR: true,
+                        } : {}),
+                    },
                 });
 
                 const testId = crypto.randomUUID();
@@ -84,9 +87,12 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 let identity = await idmux({
                     name: `zdr/${scope}/crawl`,
                     credits: 10000,
-                    flags: scope === "Team-scoped" ? {
-                        zeroDataRetention: true,
-                    } : undefined,
+                    flags: {
+                        allowZDR: true,
+                        ...(scope === "Team-scoped" ? {
+                            forceZDR: true,
+                        } : {}),
+                    },
                 });
 
                 const crawl1 = await crawl({
@@ -161,9 +167,12 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                 let identity = await idmux({
                     name: `zdr/${scope}/batch-scrape`,
                     credits: 10000,
-                    flags: scope === "Team-scoped" ? {
-                        zeroDataRetention: true,
-                    } : undefined,
+                    flags: {
+                        allowZDR: true,
+                        ...(scope === "Team-scoped" ? {
+                            forceZDR: true,
+                        } : {}),
+                    },
                 });
 
                 const crawl1 = await batchScrape({

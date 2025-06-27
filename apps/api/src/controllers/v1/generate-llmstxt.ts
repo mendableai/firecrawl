@@ -24,7 +24,7 @@ export async function generateLLMsTextController(
   req: RequestWithAuth<{}, GenerateLLMsTextResponse, GenerateLLMsTextRequest>,
   res: Response<GenerateLLMsTextResponse>,
 ) {
-  if (req.acuc?.flags?.zeroDataRetention) {
+  if (req.acuc?.flags?.forceZDR) {
     return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on llmstxt. Please contact support@firecrawl.com to unblock this feature." });
   }
 

@@ -1,7 +1,7 @@
 import { configDotenv } from "dotenv";
 configDotenv();
 
-import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse, CrawlResponse, OngoingCrawlsResponse, ErrorResponse, CrawlErrorsResponse } from "../../controllers/v1/types";
+import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse, CrawlResponse, OngoingCrawlsResponse, ErrorResponse, CrawlErrorsResponse, TeamFlags } from "../../controllers/v1/types";
 import request from "supertest";
 
 // =========================================
@@ -24,7 +24,7 @@ export type IdmuxRequest = {
     concurrency?: number,
     credits?: number,
     tokens?: number,
-    flags?: any,
+    flags?: TeamFlags,
     teamId?: string;
 }
 

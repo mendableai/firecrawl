@@ -79,7 +79,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       return res.status(auth.status).json({ error: auth.error });
     }
 
-    if (auth.chunk?.flags?.zeroDataRetention) {
+    if (auth.chunk?.flags?.forceZDR) {
       return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
     }
 

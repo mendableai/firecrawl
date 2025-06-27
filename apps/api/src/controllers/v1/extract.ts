@@ -62,7 +62,7 @@ export async function extractController(
   const originalRequest = { ...req.body };
   req.body = extractRequestSchema.parse(req.body);
 
-  if (req.acuc?.flags?.zeroDataRetention) {
+  if (req.acuc?.flags?.forceZDR) {
     return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on extract. Please contact support@firecrawl.com to unblock this feature." });
   }
 
@@ -86,7 +86,7 @@ export async function extractController(
     team_id: req.auth.team_id,
     subId: req.acuc?.sub_id,
     extractId,
-    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
 
   const jobData = {
@@ -116,7 +116,7 @@ export async function extractController(
     showLLMUsage: req.body.__experimental_llmUsage,
     showSources: req.body.__experimental_showSources || req.body.showSources,
     showCostTracking: req.body.__experimental_showCostTracking,
-    zeroDataRetention: req.acuc?.flags?.zeroDataRetention,
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
 
   if (Sentry.isInitialized()) {
