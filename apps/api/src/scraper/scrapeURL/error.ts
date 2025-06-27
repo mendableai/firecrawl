@@ -93,6 +93,12 @@ export class PDFInsufficientTimeError extends Error {
   }
 }
 
+export class DNSResolutionError extends Error {
+  constructor(hostname: string) {
+    super(`DNS resolution failed for hostname: ${hostname}. Please check if the domain is valid and accessible.`);
+  }
+}
+
 export class IndexMissError extends Error {
   constructor() {
     super("Index doesn't have the page we're looking for");
