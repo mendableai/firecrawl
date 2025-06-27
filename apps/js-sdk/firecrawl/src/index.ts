@@ -139,6 +139,7 @@ export type Action = {
 } | {
   type: "screenshot",
   fullPage?: boolean,
+  quality?: number,
 } | {
   type: "write",
   text: string,
