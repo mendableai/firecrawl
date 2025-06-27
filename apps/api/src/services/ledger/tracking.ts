@@ -2,6 +2,7 @@ import { EventDataMap, EventDefinitionSlug } from "./data-schemas";
 // @ts-nocheck - Schema not in types_db yet
 import { supabase_ledger_service } from "./supabase-ledger";
 import { getValue, setValue } from "../redis";
+import { logger } from "src/lib/logger";
 
 /**
  * Track an event in the ledger system
@@ -41,7 +42,7 @@ export async function trackEvent<T extends EventDefinitionSlug>(
     }
 
     if (definitionError || !providerDefinition) {
-      console.error("Error finding provider definition:", definitionError);
+      logger.error("Error finding provider definition:", definitionError);
       return null;
     }
 
@@ -59,13 +60,13 @@ export async function trackEvent<T extends EventDefinitionSlug>(
       .single();
 
     if (trackError || !track) {
-      console.error("Error creating track:", trackError);
+      logger.error("Error creating track:", trackError);
       return null;
     }
     //@ts-ignore
     return track.uuid;
   } catch (error) {
-    console.error("Error tracking event:", error);
+    logger.error("Error tracking event:", error);
     return null;
   }
 }
