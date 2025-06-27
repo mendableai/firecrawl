@@ -195,6 +195,7 @@ export const actionSchema = z
     z.object({
       type: z.literal("screenshot"),
       fullPage: z.boolean().default(false),
+      quality: z.number().min(1).max(100).optional(),
     }),
     z.object({
       type: z.literal("write"),
