@@ -183,6 +183,8 @@ export async function scrapePDF(
 
         html: content,
         markdown: content,
+
+        proxyUsed: meta.pdfPrefetch.proxyUsed,
       };
     } else {
       const file = await fetchFileToBuffer(meta.rewrittenUrl ?? meta.url, {
@@ -202,6 +204,8 @@ export async function scrapePDF(
 
         html: content,
         markdown: content,
+
+        proxyUsed: "basic",
       };
     }
   }
@@ -300,5 +304,7 @@ export async function scrapePDF(
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",
     numPages: pageCount,
+
+    proxyUsed: "basic",
   };
 }

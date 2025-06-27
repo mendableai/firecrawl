@@ -14,5 +14,7 @@ export async function scrapeDOCX(meta: Meta, timeToRun: number | undefined): Pro
     statusCode: response.status,
 
     html: (await mammoth.convertToHtml({ path: tempFilePath })).value,
+
+    proxyUsed: "basic",
   };
 }

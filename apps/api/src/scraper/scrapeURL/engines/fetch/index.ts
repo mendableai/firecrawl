@@ -120,5 +120,7 @@ export async function scrapeURLWithFetch(
     contentType: (response.headers.find(
       (x) => x[0].toLowerCase() === "content-type",
     ) ?? [])[1] ?? undefined,
+
+    proxyUsed: "basic",
   };
 }
