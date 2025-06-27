@@ -50,8 +50,13 @@ export class RemoveFeatureError extends Error {
 }
 
 export class SSLError extends Error {
-  constructor() {
-    super("An SSL error occurred while scraping the URL. If you're not inputting any sensitive data, try scraping with `skipTlsVerification: true`.");
+  constructor(skipTlsVerification: boolean) {
+    super(
+      "An SSL error occurred while scraping the URL. "
+      + (skipTlsVerification
+        ? "Since you have `skipTlsVerification` enabled, this means that the TLS configuration of the target site is completely broken. Try scraping the plain HTTP version of the page."
+        : "If you're not inputting any sensitive data, try scraping with `skipTlsVerification: true`.")
+    );
   }
 }
 

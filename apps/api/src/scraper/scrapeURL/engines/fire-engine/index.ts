@@ -37,6 +37,7 @@ async function performFireEngineScrape<
     | FireEngineScrapeRequestPlaywright
     | FireEngineScrapeRequestTLSClient,
 >(
+  meta: Meta,
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
   timeout: number,
@@ -85,6 +86,7 @@ async function performFireEngineScrape<
 
     try {
       status = await fireEngineCheckStatus(
+        meta,
         logger.child({ method: "fireEngineCheckStatus" }),
         scrape.jobId,
         mock,
@@ -229,6 +231,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
   };
 
   let response = await performFireEngineScrape(
+    meta,
     meta.logger.child({
       method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
       request,
@@ -315,6 +318,7 @@ export async function scrapeURLWithFireEnginePlaywright(
   };
 
   let response = await performFireEngineScrape(
+    meta,
     meta.logger.child({
       method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
       request,
@@ -375,6 +379,7 @@ export async function scrapeURLWithFireEngineTLSClient(
   };
 
   let response = await performFireEngineScrape(
+    meta,
     meta.logger.child({
       method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
       request,
