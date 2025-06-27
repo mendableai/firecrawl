@@ -247,5 +247,57 @@ describe("Billing tests", () => {
 
             expect(rc1 - rc2).toBe(305);
         }, 300000);
+
+        it.concurrent("bills search with stealth mode correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills search with stealth mode correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+
+            const results = await search({
+                query: "firecrawl",
+                scrapeOptions: {
+                    formats: ["markdown"],
+                    proxy: "stealth",
+                },
+            }, identity);
+
+            await sleepForBatchBilling();
+
+            const rc2 = (await creditUsage(identity)).remaining_credits;
+
+            const expectedCredits = results.length * 5;
+            expect(rc1 - rc2).toBe(expectedCredits);
+        }, 600000);
+
+        it.concurrent("bills search with PDF correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills search with PDF correctly", 
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+
+            const results = await search({
+                query: "filetype:pdf firecrawl",
+                scrapeOptions: {
+                    formats: ["markdown"],
+                    parsePDF: true,
+                },
+            }, identity);
+
+            await sleepForBatchBilling();
+
+            const rc2 = (await creditUsage(identity)).remaining_credits;
+
+            const expectedCredits = results.reduce((sum, doc) => {
+                const pages = doc.metadata?.numPages || 1;
+                return sum + Math.max(1, pages);
+            }, 0);
+            
+            expect(rc1 - rc2).toBe(expectedCredits);
+        }, 600000);
     }
 });

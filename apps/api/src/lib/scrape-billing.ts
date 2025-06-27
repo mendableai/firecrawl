@@ -25,7 +25,7 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, documen
         creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
     } 
     
-    if (document.metadata.numPages !== undefined && document.metadata.numPages > 1) {
+    if (document.metadata?.numPages !== undefined && document.metadata.numPages > 1) {
         creditsToBeBilled += creditsPerPDFPage * (document.metadata.numPages - 1);
     }
 
