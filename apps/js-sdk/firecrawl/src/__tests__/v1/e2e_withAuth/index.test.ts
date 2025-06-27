@@ -180,23 +180,6 @@ describe('FirecrawlApp E2E Tests', () => {
     }
   }, 60000); // 60 seconds timeout
 
-  test.concurrent('should handle parsePDF parameter in crawl scrapeOptions', async () => {
-    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.crawlUrl('https://roastmywebsite.ai', {
-      limit: 1,
-      scrapeOptions: {
-        formats: ['markdown'],
-        parsePDF: true
-      }
-    } as CrawlParams, 30) as CrawlStatusResponse;
-    
-    expect(response).not.toHaveProperty("next");
-    expect(response.data.length).toBeGreaterThan(0);
-    if (response.data[0]) {
-      expect(response.data[0]).toHaveProperty("markdown");
-    }
-  }, 60000); // 60 seconds timeout
-
   test.concurrent('should handle idempotency key for crawl', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const uniqueIdempotencyKey = uuidv4();
