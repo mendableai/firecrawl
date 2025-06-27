@@ -750,6 +750,11 @@ const workerFun = async (
 
       await sleep(cantAcceptConnectionInterval); // more sleep
       continue;
+    } else if (!currentLiveness) {
+      logger.info("Not accepting jobs because the liveness check failed");
+
+      await sleep(cantAcceptConnectionInterval);
+      continue;
     } else {
       cantAcceptConnectionCount = 0;
     }
@@ -1564,9 +1569,12 @@ async function processJob(job: Job & { id: string }, token: string) {
 // Start all workers
 const app = Express();
 
+let currentLiveness: boolean = true;
+
 app.get("/liveness", (req, res) => {
   // stalled check
   if (isWorkerStalled) {
+    currentLiveness = false;
     res.status(500).json({ ok: false });
   } else {
     // networking check
@@ -1579,9 +1587,11 @@ app.get("/liveness", (req, res) => {
       ignoreResponse: true,
     })
       .then(() => {
+        currentLiveness = true;
         res.status(200).json({ ok: true });
       }).catch(e => {
         _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
+        currentLiveness = false;
         res.status(500).json({ ok: false });
       });
   }
