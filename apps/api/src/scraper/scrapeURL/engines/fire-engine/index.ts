@@ -198,8 +198,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
           {
             type: "screenshot" as const,
             fullPage: meta.options.formats.includes("screenshot@fullPage"),
-            // Note: If needed to specify quality, do it in the action itself
-            quality: 100
           },
         ]
       : []),
