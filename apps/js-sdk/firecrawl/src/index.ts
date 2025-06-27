@@ -125,6 +125,7 @@ export interface CrawlScrapeOptions {
   proxy?: "basic" | "stealth" | "auto";
   storeInCache?: boolean;
   maxAge?: number;
+  parsePDF?: boolean;
 }
 
 export type Action = {
