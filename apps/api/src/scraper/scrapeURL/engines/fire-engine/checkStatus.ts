@@ -9,6 +9,7 @@ import {
   SiteError,
   SSLError,
   UnsupportedFileError,
+  DNSResolutionError
 } from "../../error";
 import { MockState } from "../../lib/mock";
 import { fireEngineURL } from "./scrape";
@@ -187,6 +188,11 @@ export async function fireEngineCheckStatus(
       } else {
         throw new SiteError(code);
       }
+    } else if (
+      typeof status.error === "string" &&
+      status.error.includes("Dns resolution error for hostname: ")
+    ) {
+      throw new DNSResolutionError(status.error.split("Dns resolution error for hostname: ")[1]);
     } else if (
       typeof status.error === "string" &&
       status.error.includes("File size exceeds")

@@ -16,6 +16,7 @@ import {
 import {
   ActionError,
   EngineError,
+  DNSResolutionError,
   SiteError,
   SSLError,
   TimeoutError,
@@ -99,6 +100,7 @@ async function performFireEngineScrape<
         error instanceof EngineError ||
         error instanceof SiteError ||
         error instanceof SSLError ||
+        error instanceof DNSResolutionError ||
         error instanceof ActionError ||
         error instanceof UnsupportedFileError
       ) {

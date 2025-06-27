@@ -24,6 +24,7 @@ import {
   SSLError,
   PDFInsufficientTimeError,
   IndexMissError,
+  DNSResolutionError,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -370,6 +371,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       } else if (error instanceof SiteError) {
         throw error;
       } else if (error instanceof SSLError) {
+        throw error;
+      } else if (error instanceof DNSResolutionError) {
         throw error;
       } else if (error instanceof ActionError) {
         throw error;
