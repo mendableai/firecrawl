@@ -96,6 +96,7 @@ class AgentOptionsExtract(pydantic.BaseModel):
 class ActionsResult(pydantic.BaseModel):
     """Result of actions performed during scraping."""
     screenshots: List[str]
+    pdfs: List[str]
 
 class ChangeTrackingData(pydantic.BaseModel):
     """
@@ -203,6 +204,12 @@ class ExecuteJavascriptAction(pydantic.BaseModel):
     type: Literal["executeJavascript"]
     script: str
 
+class PDFAction(pydantic.BaseModel):
+    """PDF action to perform during scraping."""
+    type: Literal["pdf"]
+    format: Optional[Literal["A0", "A1", "A2", "A3", "A4", "A5", "A6", "Letter", "Legal", "Tabloid", "Ledger"]] = None
+    landscape: Optional[bool] = None
+    scale: Optional[float] = None
 
 class ExtractAgent(pydantic.BaseModel):
     """Configuration for the agent in extract operations."""
@@ -219,7 +226,7 @@ class ScrapeParams(ScrapeOptions):
     """Parameters for scraping operations."""
     extract: Optional[JsonConfig] = None
     jsonOptions: Optional[JsonConfig] = None
-    actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
+    actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None
     agent: Optional[AgentOptions] = None
     webhook: Optional[WebhookConfig] = None
 
@@ -469,7 +476,7 @@ class FirecrawlApp:
             parse_pdf: Optional[bool] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
-            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
             change_tracking_options: Optional[ChangeTrackingOptions] = None,
             max_age: Optional[int] = None,
             store_in_cache: Optional[bool] = None,
@@ -493,7 +500,7 @@ class FirecrawlApp:
           proxy (Optional[Literal["basic", "stealth", "auto"]]): Proxy type (basic/stealth)
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
-          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
+          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
           change_tracking_options (Optional[ChangeTrackingOptions]): Change tracking settings
 
 
@@ -1236,7 +1243,7 @@ class FirecrawlApp:
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
         max_concurrency: Optional[int] = None,
@@ -1374,7 +1381,7 @@ class FirecrawlApp:
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
         max_concurrency: Optional[int] = None,
         idempotency_key: Optional[str] = None,
@@ -1510,7 +1517,7 @@ class FirecrawlApp:
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
         max_concurrency: Optional[int] = None,
         idempotency_key: Optional[str] = None,
@@ -2911,7 +2918,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             parse_pdf: Optional[bool] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
-            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape a single URL asynchronously.
@@ -2932,7 +2939,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
           proxy (Optional[Literal["basic", "stealth", "auto"]]): Proxy type (basic/stealth)
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
-          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
+          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
           **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3042,7 +3049,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
@@ -3181,7 +3188,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
         agent: Optional[AgentOptions] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
