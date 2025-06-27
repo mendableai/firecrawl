@@ -167,7 +167,7 @@ async function sendLedgerEvent(
     trackEvent("concurrent-browser-limit-reached", {
       team_id,
     }).catch((error) => {
-      logger.debug(`(ledger) Error tracking event: ${error}`);
+      logger.warn("Error tracking event", { module: "email_notification", method: "sendLedgerEvent", error });
     });
   }
 }
@@ -351,7 +351,7 @@ export async function sendNotificationWithCustomDays(
         return { success: true };
       }
 
-      console.log(
+      logger.info(
         `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
       );
       // get the emails from the user with the team_id
