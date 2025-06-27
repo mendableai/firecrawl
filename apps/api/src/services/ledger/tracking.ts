@@ -1,5 +1,3 @@
-"use server";
-
 import { EventDataMap, EventDefinitionSlug } from "./data-schemas";
 // @ts-nocheck - Schema not in types_db yet
 import { supabase_ledger_service } from "./supabase-ledger";
