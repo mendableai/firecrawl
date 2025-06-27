@@ -273,6 +273,7 @@ class CrawlParams(pydantic.BaseModel):
     regexOnFullURL: Optional[bool] = None
     delay: Optional[int] = None  # Delay in seconds between scrapes
     maxConcurrency: Optional[int] = None
+    allowSubdomains: Optional[bool] = None
 
 class CrawlResponse(pydantic.BaseModel):
     """Response from crawling operations."""
@@ -708,6 +709,7 @@ class FirecrawlApp:
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
         delay: Optional[int] = None,
+        allow_subdomains: Optional[bool] = None,
         max_concurrency: Optional[int] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
@@ -733,6 +735,7 @@ class FirecrawlApp:
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
             delay (Optional[int]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]): Follow subdomains
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
@@ -783,6 +786,8 @@ class FirecrawlApp:
             crawl_params['regexOnFullURL'] = regex_on_full_url
         if delay is not None:
             crawl_params['delay'] = delay
+        if allow_subdomains is not None:
+            crawl_params['allowSubdomains'] = allow_subdomains
         if max_concurrency is not None:
             crawl_params['maxConcurrency'] = max_concurrency
         
@@ -827,6 +832,8 @@ class FirecrawlApp:
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
         delay: Optional[int] = None,
+        allow_subdomains: Optional[bool] = None,
+        max_concurrency: Optional[int] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> CrawlResponse:
@@ -850,6 +857,7 @@ class FirecrawlApp:
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
             delay (Optional[int]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]): Follow subdomains
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
@@ -900,6 +908,8 @@ class FirecrawlApp:
             crawl_params['regexOnFullURL'] = regex_on_full_url
         if delay is not None:
             crawl_params['delay'] = delay
+        if allow_subdomains is not None:
+            crawl_params['allowSubdomains'] = allow_subdomains
         if max_concurrency is not None:
             crawl_params['maxConcurrency'] = max_concurrency
         
@@ -1080,6 +1090,7 @@ class FirecrawlApp:
             ignore_query_parameters: Optional[bool] = None,
             regex_on_full_url: Optional[bool] = None,
             delay: Optional[int] = None,
+            allow_subdomains: Optional[bool] = None,
             max_concurrency: Optional[int] = None,
             idempotency_key: Optional[str] = None,
             **kwargs
@@ -1104,6 +1115,7 @@ class FirecrawlApp:
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
             delay (Optional[int]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]): Follow subdomains
             max_concurrency (Optional[int]): Maximum number of concurrent scrapes
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
@@ -1130,6 +1142,7 @@ class FirecrawlApp:
             ignore_query_parameters=ignore_query_parameters,
             regex_on_full_url=regex_on_full_url,
             delay=delay,
+            allow_subdomains=allow_subdomains,
             max_concurrency=max_concurrency,
             idempotency_key=idempotency_key,
             **kwargs
@@ -3325,6 +3338,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
         delay: Optional[int] = None,
+        allow_subdomains: Optional[bool] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
@@ -3349,6 +3363,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
             delay (Optional[int]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]): Follow subdomains
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
@@ -3398,6 +3413,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_params['regexOnFullURL'] = regex_on_full_url
         if delay is not None:
             crawl_params['delay'] = delay
+        if allow_subdomains is not None:
+            crawl_params['allowSubdomains'] = allow_subdomains
 
         # Add any additional kwargs
         crawl_params.update(kwargs)
@@ -3441,6 +3458,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
         delay: Optional[int] = None,
+        allow_subdomains: Optional[bool] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
@@ -3510,6 +3528,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_params['regexOnFullURL'] = regex_on_full_url
         if delay is not None:
             crawl_params['delay'] = delay
+        if allow_subdomains is not None:
+            crawl_params['allowSubdomains'] = allow_subdomains
 
         # Add any additional kwargs
         crawl_params.update(kwargs)

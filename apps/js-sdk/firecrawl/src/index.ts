@@ -229,6 +229,7 @@ export interface CrawlParams {
    * If not provided, the crawler may use the robots.txt crawl delay if available.
    */
   delay?: number;
+  allowSubdomains?: boolean;
   maxConcurrency?: number;
 }
 
