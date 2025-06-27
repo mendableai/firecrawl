@@ -126,6 +126,7 @@ describe('FirecrawlApp E2E Tests', () => {
     }
 
     expect(response).not.toBeNull();
+    expect(response?.markdown).toMatch(/^[A-Za-z0-9+/]+=*$/);
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should throw error for invalid API key on crawl', async () => {
