@@ -559,6 +559,7 @@ export const scrapeRequestSchema = baseScrapeOptions
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     timeout: z.number().int().positive().finite().safe().default(30000),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
@@ -597,6 +598,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
     appendToId: z.string().uuid().optional(),
     ignoreInvalidURLs: z.boolean().default(false),
     maxConcurrency: z.number().positive().int().optional(),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
@@ -612,6 +614,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
     appendToId: z.string().uuid().optional(),
     ignoreInvalidURLs: z.boolean().default(false),
     maxConcurrency: z.number().positive().int().optional(),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
@@ -663,6 +666,7 @@ export const crawlRequestSchema = crawlerOptions
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
     maxConcurrency: z.number().positive().int().optional(),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
@@ -1002,6 +1006,9 @@ export type AuthCreditUsageChunk = {
 export type TeamFlags = {
   ignoreRobots?: boolean;
   unblockedDomains?: string[];
+  forceZDR?: boolean;
+  allowZDR?: boolean;
+  zdrCost?: number;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;

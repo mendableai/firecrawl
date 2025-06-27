@@ -139,13 +139,15 @@ async function scrapePDFWithRunPodMU(
     html: await marked.parse(result.markdown, { async: true }),
   };
 
-  try {
-    await savePdfResultToCache(base64Content, processorResult);
-  } catch (error) {
-    meta.logger.warn("Error saving PDF to cache", {
-      error,
-      tempFilePath,
-    });
+  if (!meta.internalOptions.zeroDataRetention) {
+    try {
+      await savePdfResultToCache(base64Content, processorResult);
+    } catch (error) {
+      meta.logger.warn("Error saving PDF to cache", {
+        error,
+        tempFilePath,
+      });
+    }
   }
 
   return processorResult;

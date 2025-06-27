@@ -215,6 +215,7 @@ async function getNextConcurrentJob(teamId: string, i = 0): Promise<{
         logger.warn("Failed to remove job from concurrency limit queue", {
           teamId,
           jobId: finalJob.job.id,
+          zeroDataRetention: finalJob.job.data?.zeroDataRetention,
           i
         });
       }

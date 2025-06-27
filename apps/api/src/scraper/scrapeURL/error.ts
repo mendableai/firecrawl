@@ -109,3 +109,9 @@ export class IndexMissError extends Error {
     super("Index doesn't have the page we're looking for");
   }
 }
+
+export class ZDRViolationError extends Error {
+  constructor(feature: string) {
+    super(`${feature} is not supported when using zeroDataRetention. Please contact support@firecrawl.com to unblock this feature.`);
+  }
+}

@@ -29,6 +29,8 @@ export type FireEngineScrapeRequestCommon = {
   mobileProxy?: boolean; // leave it undefined if user doesn't specify
 
   timeout?: number;
+  saveScrapeResultToGCS?: boolean;
+  zeroDataRetention?: boolean;
 };
 
 export type FireEngineScrapeRequestChromeCDP = {
@@ -38,7 +40,6 @@ export type FireEngineScrapeRequestChromeCDP = {
   blockMedia?: true; // cannot be false
   mobile?: boolean;
   disableSmartWaitCache?: boolean;
-  saveScrapeResultToGCS?: boolean;
 };
 
 export type FireEngineScrapeRequestPlaywright = {

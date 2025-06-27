@@ -51,6 +51,7 @@ export async function scrapeDocument_F0(
         is_scrape: true,
         from_extract: true,
         startTime: Date.now(),
+        zeroDataRetention: false, // not supported
       },
       {},
       jobId,

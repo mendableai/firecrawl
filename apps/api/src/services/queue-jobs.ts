@@ -15,7 +15,7 @@ import { logger } from "../lib/logger";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
 import { getACUC, getACUCTeam } from "../controllers/auth";
-import { getJobFromGCS } from "../lib/gcs-jobs";
+import { getJobFromGCS, removeJobFromGCS } from "../lib/gcs-jobs";
 import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
 
@@ -49,7 +49,7 @@ async function _addScrapeJobToConcurrencyQueue(
 }
 
 export async function _addScrapeJobToBullMQ(
-  webScraperOptions: any,
+  webScraperOptions: WebScraperOptions,
   options: any,
   jobId: string,
   jobPriority: number,
@@ -76,7 +76,7 @@ export async function _addScrapeJobToBullMQ(
 }
 
 async function addScrapeJobRaw(
-  webScraperOptions: any,
+  webScraperOptions: WebScraperOptions,
   options: any,
   jobId: string,
   jobPriority: number,
@@ -399,7 +399,8 @@ export function waitForJob(
         if (state === "completed") {
           clearInterval(int);
           let doc: Document;
-          doc = (await getScrapeQueue().getJob(jobId))!.returnvalue;
+          const job = (await getScrapeQueue().getJob(jobId))!;
+          doc = job.returnvalue;
 
           if (!doc) {
             const docs = await getJobFromGCS(jobId);
@@ -407,6 +408,10 @@ export function waitForJob(
               throw new Error("Job not found in GCS");
             }
             doc = docs[0];
+
+            if (job.data?.internalOptions?.zeroDataRetention) {
+              await removeJobFromGCS(jobId);
+            }
           }
 
           resolve(doc);

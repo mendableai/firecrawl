@@ -19,13 +19,24 @@ export async function crawlController(
   const preNormalizedBody = req.body;
   req.body = crawlRequestSchema.parse(req.body);
 
+  if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
+    return res.status(400).json({
+      success: false,
+      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+    });
+  }
+
+  const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
+
   const id = uuidv4();
   const logger = _logger.child({
     crawlId: id,
     module: "api/v1",
     method: "crawlController",
     teamId: req.auth.team_id,
+    zeroDataRetention,
   });
+
   logger.debug("Crawl " + id + " starting", {
     request: req.body,
     originalRequest: preNormalizedBody,
@@ -84,10 +95,12 @@ export async function crawlController(
       disableSmartWaitCache: true,
       teamId: req.auth.team_id,
       saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+      zeroDataRetention,
     }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     maxConcurrency: req.body.maxConcurrency !== undefined ? Math.min(req.body.maxConcurrency, req.acuc.concurrency) : undefined,
+    zeroDataRetention,
   };
 
   const crawler = crawlToCrawler(id, sc, req.acuc?.flags ?? null);
@@ -119,6 +132,7 @@ export async function crawlController(
       crawl_id: id,
       webhook: req.body.webhook,
       v1: true,
+      zeroDataRetention: zeroDataRetention || false,
     },
     {},
     crypto.randomUUID(),

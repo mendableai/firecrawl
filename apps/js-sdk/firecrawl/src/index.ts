@@ -176,6 +176,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
   }
   actions?: ActionsSchema;
   agent?: AgentOptions;
+  zeroDataRetention?: boolean;
 }
 
 export interface ActionsResult {
@@ -231,6 +232,7 @@ export interface CrawlParams {
   delay?: number;
   allowSubdomains?: boolean;
   maxConcurrency?: number;
+  zeroDataRetention?: boolean;
 }
 
 /**

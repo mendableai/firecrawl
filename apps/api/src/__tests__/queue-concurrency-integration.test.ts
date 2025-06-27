@@ -80,6 +80,7 @@ describe("Queue Concurrency Integration", () => {
       team_id: mockTeamId,
       scrapeOptions: defaultScrapeOptions,
       crawlerOptions: null,
+      zeroDataRetention: false,
     };
 
     it("should add job directly to BullMQ when under concurrency limit", async () => {
@@ -139,6 +140,7 @@ describe("Queue Concurrency Integration", () => {
             mode: "single_urls",
             team_id: mockTeamId,
             scrapeOptions: defaultScrapeOptions,
+            zeroDataRetention: false,
           } as WebScraperOptions,
           opts: {
             jobId: `job-${i}`,
@@ -184,6 +186,7 @@ describe("Queue Concurrency Integration", () => {
         id: "test-job",
         data: {
           team_id: mockTeamId,
+          zeroDataRetention: false,
         },
       };
 
