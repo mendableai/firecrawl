@@ -2,7 +2,7 @@ import { EventDataMap, EventDefinitionSlug } from "./data-schemas";
 // @ts-nocheck - Schema not in types_db yet
 import { supabase_ledger_service } from "./supabase-ledger";
 import { getValue, setValue } from "../redis";
-import { logger } from "src/lib/logger";
+import { logger } from "../../lib/logger";
 
 /**
  * Track an event in the ledger system
