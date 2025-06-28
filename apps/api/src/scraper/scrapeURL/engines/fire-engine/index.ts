@@ -322,7 +322,7 @@ export async function scrapeURLWithFireEnginePlaywright(
   let response = await performFireEngineScrape(
     meta,
     meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+      method: "scrapeURLWithFireEnginePlaywright/callFireEngine",
       request,
     }),
     request,
@@ -383,7 +383,7 @@ export async function scrapeURLWithFireEngineTLSClient(
   let response = await performFireEngineScrape(
     meta,
     meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+      method: "scrapeURLWithFireEngineTLSClient/callFireEngine",
       request,
     }),
     request,
