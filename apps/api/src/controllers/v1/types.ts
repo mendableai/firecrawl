@@ -938,6 +938,7 @@ export type OngoingCrawlsResponse =
       id: string;
       teamId: string;
       url: string;
+      created_at: string;
       options: CrawlerOptions;
     }[];
   };
