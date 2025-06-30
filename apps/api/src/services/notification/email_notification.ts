@@ -292,6 +292,7 @@ export async function sendNotificationWithCustomDays(
   notificationType: NotificationType,
   daysBetweenEmails: number,
   bypassRecentChecks: boolean = false,
+  is_ledger_enabled: boolean = false,
 ) {
   return withAuth(
     async (
@@ -299,6 +300,7 @@ export async function sendNotificationWithCustomDays(
       notificationType: NotificationType,
       daysBetweenEmails: number,
       bypassRecentChecks: boolean,
+      is_ledger_enabled: boolean,
     ) => {
       const redisKey = "notification_sent:" + notificationType + ":" + team_id;
 
@@ -368,8 +370,16 @@ export async function sendNotificationWithCustomDays(
         return { success: false };
       }
 
-      for (const email of emails) {
-        await sendEmailNotification(email.email, notificationType);
+      if (is_ledger_enabled) {
+        sendLedgerEvent(team_id, notificationType).catch((error) => {
+          logger.warn("Error sending ledger event", { module: "email_notification", method: "sendEmail", error });
+        });
+      }
+
+      if (!is_ledger_enabled) {
+        for (const email of emails) {
+          await sendEmailNotification(email.email, notificationType);
+        }
       }
 
       const { error: insertError } = await supabase_service
@@ -406,5 +416,5 @@ export async function sendNotificationWithCustomDays(
       return { success: true };
     },
     undefined,
-  )(team_id, notificationType, daysBetweenEmails, bypassRecentChecks);
+  )(team_id, notificationType, daysBetweenEmails, bypassRecentChecks, is_ledger_enabled );
 }
