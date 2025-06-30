@@ -10,6 +10,7 @@ import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
 import {
   PDFAntibotError,
   PDFInsufficientTimeError,
+  PDFPrefetchFailed,
   RemoveFeatureError,
   TimeoutError,
 } from "../../error";
@@ -192,7 +193,11 @@ export async function scrapePDF(
       const ct = file.response.headers.get("Content-Type");
       if (ct && !ct.includes("application/pdf")) {
         // if downloaded file wasn't a PDF
-        throw new PDFAntibotError();
+        if (meta.pdfPrefetch === undefined) {
+          throw new PDFAntibotError();
+        } else {
+          throw new PDFPrefetchFailed();
+        }
       }
 
       const content = file.buffer.toString("base64");
@@ -219,7 +224,11 @@ export async function scrapePDF(
     const ct = r.headers.get("Content-Type");
     if (ct && !ct.includes("application/pdf")) {
       // if downloaded file wasn't a PDF
-      throw new PDFAntibotError();
+      if (meta.pdfPrefetch === undefined) {
+        throw new PDFAntibotError();
+      } else {
+        throw new PDFPrefetchFailed();
+      }
     }
   }
 
