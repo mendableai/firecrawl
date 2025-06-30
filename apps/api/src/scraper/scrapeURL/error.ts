@@ -109,3 +109,9 @@ export class IndexMissError extends Error {
     super("Index doesn't have the page we're looking for");
   }
 }
+
+export class PDFPrefetchFailed extends Error {
+  constructor() {
+    super("Failed to prefetch PDF that is protected by anti-bot. Please contact help@firecrawl.com");
+  }
+}
