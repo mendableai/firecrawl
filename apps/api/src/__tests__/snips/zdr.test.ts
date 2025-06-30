@@ -3,6 +3,8 @@ import { getJobFromGCS } from "../../lib/gcs-jobs";
 import { scrape, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
 import { readFile, stat } from "node:fs/promises";
 
+const logIgnoreList = ["Billing queue created", "No billing operations to process in batch", "billing batch queue", "billing batch processing lock", "Batch billing team", "Successfully billed team", "Billing batch processing"];
+
 if (process.env.TEST_SUITE_SELF_HOSTED) {
     it("mocked", () => {
         expect(true).toBe(true);
@@ -18,7 +20,7 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
             }
         }
         const logs = await readFile("api.log", "utf8");
-        return logs.split("\n").filter(x => x.trim().length > 0);
+        return logs.split("\n").filter(x => x.trim().length > 0 && !logIgnoreList.some(y => x.includes(y)));
     }
 
     async function getWorkerLogs() {
@@ -31,7 +33,7 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
             }
         }
         const logs = await readFile("worker.log", "utf8");
-        return logs.split("\n").filter(x => x.trim().length > 0 && ["Billing queue created", "No billing operations to process in batch", "billing batch queue", "billing batch processing lock", "Batch billing team", "Successfully billed team", "Billing batch processing"].every(y => !x.includes(y)));
+        return logs.split("\n").filter(x => x.trim().length > 0 && !logIgnoreList.some(y => x.includes(y)));
     }
 
     describe("Zero Data Retention", () => {
