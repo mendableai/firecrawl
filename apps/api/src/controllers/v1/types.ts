@@ -1269,6 +1269,7 @@ export const searchRequestSchema = z
               "screenshot",
               "screenshot@fullPage",
               "extract",
+              "json",
             ]),
           )
           .default([]),
