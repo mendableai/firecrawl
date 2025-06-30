@@ -8,6 +8,7 @@ import { getNotificationString } from "./notification_string";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { redlock } from "../redlock";
 import { redisEvictConnection } from "../redis";
+import { trackEvent } from "../ledger/tracking";
 
 const emailTemplates: Record<
   NotificationType,
@@ -51,14 +52,17 @@ const emailTemplates: Record<
 };
 
 // Map notification types to email categories
-const notificationToEmailCategory: Record<NotificationType, 'rate_limit_warnings' | 'system_alerts'> = {
-  [NotificationType.APPROACHING_LIMIT]: 'system_alerts',
-  [NotificationType.LIMIT_REACHED]: 'system_alerts',
-  [NotificationType.RATE_LIMIT_REACHED]: 'rate_limit_warnings',
-  [NotificationType.AUTO_RECHARGE_SUCCESS]: 'system_alerts',
-  [NotificationType.AUTO_RECHARGE_FAILED]: 'system_alerts',
-  [NotificationType.CONCURRENCY_LIMIT_REACHED]: 'rate_limit_warnings',
-  [NotificationType.AUTO_RECHARGE_FREQUENT]: 'system_alerts',
+const notificationToEmailCategory: Record<
+  NotificationType,
+  "rate_limit_warnings" | "system_alerts"
+> = {
+  [NotificationType.APPROACHING_LIMIT]: "system_alerts",
+  [NotificationType.LIMIT_REACHED]: "system_alerts",
+  [NotificationType.RATE_LIMIT_REACHED]: "rate_limit_warnings",
+  [NotificationType.AUTO_RECHARGE_SUCCESS]: "system_alerts",
+  [NotificationType.AUTO_RECHARGE_FAILED]: "system_alerts",
+  [NotificationType.CONCURRENCY_LIMIT_REACHED]: "rate_limit_warnings",
+  [NotificationType.AUTO_RECHARGE_FREQUENT]: "system_alerts",
 };
 
 export async function sendNotification(
@@ -68,6 +72,7 @@ export async function sendNotification(
   endDateString: string | null,
   chunk: AuthCreditUsageChunk,
   bypassRecentChecks: boolean = false,
+  is_ledger_enabled: boolean = false,
 ) {
   return withAuth(sendNotificationInternal, undefined)(
     team_id,
@@ -76,6 +81,7 @@ export async function sendNotification(
     endDateString,
     chunk,
     bypassRecentChecks,
+    is_ledger_enabled,
   );
 }
 
@@ -112,7 +118,9 @@ async function sendEmailNotification(
 
     // If user has unsubscribed from all emails or we can't find their preferences, don't send
     if (!preferences || preferences.unsubscribed_all) {
-      logger.debug(`User ${email} has unsubscribed from all emails or preferences not found`);
+      logger.debug(
+        `User ${email} has unsubscribed from all emails or preferences not found`,
+      );
       return { success: true }; // Return success since this is an expected case
     }
 
@@ -125,7 +133,9 @@ async function sendEmailNotification(
       Array.isArray(preferences.email_preferences) &&
       !preferences.email_preferences.includes(emailCategory)
     ) {
-      logger.debug(`User ${email} has unsubscribed from ${emailCategory} emails`);
+      logger.debug(
+        `User ${email} has unsubscribed from ${emailCategory} emails`,
+      );
       return { success: true }; // Return success since this is an expected case
     }
 
@@ -149,6 +159,19 @@ async function sendEmailNotification(
   }
 }
 
+async function sendLedgerEvent(
+  team_id: string,
+  notificationType: NotificationType,
+) {
+  if (notificationType === NotificationType.CONCURRENCY_LIMIT_REACHED) {
+    trackEvent("concurrent-browser-limit-reached", {
+      team_id,
+    }).catch((error) => {
+      logger.warn("Error tracking event", { module: "email_notification", method: "sendLedgerEvent", error });
+    });
+  }
+}
+
 async function sendNotificationInternal(
   team_id: string,
   notificationType: NotificationType,
@@ -156,6 +179,7 @@ async function sendNotificationInternal(
   endDateString: string | null,
   chunk: AuthCreditUsageChunk,
   bypassRecentChecks: boolean = false,
+  is_ledger_enabled: boolean = false,
 ): Promise<{ success: boolean }> {
   if (team_id === "preview" || team_id.startsWith("preview_")) {
     return { success: true };
@@ -209,6 +233,12 @@ async function sendNotificationInternal(
       console.log(
         `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
       );
+
+      if (is_ledger_enabled) {
+        sendLedgerEvent(team_id, notificationType).catch((error) => {
+          logger.warn("Error sending ledger event", { module: "email_notification", method: "sendEmail", error });
+        });
+      }
       // get the emails from the user with the team_id
       const { data: emails, error: emailsError } = await supabase_service
         .from("users")
@@ -220,8 +250,10 @@ async function sendNotificationInternal(
         return { success: false };
       }
 
-      for (const email of emails) {
-        await sendEmailNotification(email.email, notificationType);
+      if (!is_ledger_enabled) {
+        for (const email of emails) {
+          await sendEmailNotification(email.email, notificationType);
+        }
       }
 
       const { error: insertError } = await supabase_service
@@ -255,103 +287,134 @@ async function sendNotificationInternal(
   );
 }
 
-
 export async function sendNotificationWithCustomDays(
   team_id: string,
   notificationType: NotificationType,
   daysBetweenEmails: number,
   bypassRecentChecks: boolean = false,
+  is_ledger_enabled: boolean = false,
 ) {
-  return withAuth(async (
-    team_id: string,
-    notificationType: NotificationType,
-    daysBetweenEmails: number,
-    bypassRecentChecks: boolean,
-  ) => {
-    const redisKey = "notification_sent:" + notificationType + ":" + team_id;
+  return withAuth(
+    async (
+      team_id: string,
+      notificationType: NotificationType,
+      daysBetweenEmails: number,
+      bypassRecentChecks: boolean,
+      is_ledger_enabled: boolean,
+    ) => {
+      const redisKey = "notification_sent:" + notificationType + ":" + team_id;
 
-    const didSendRecentNotification = (await redisEvictConnection.get(redisKey)) !== null;
+      const didSendRecentNotification =
+        (await redisEvictConnection.get(redisKey)) !== null;
 
-    if (didSendRecentNotification && !bypassRecentChecks) {
-      logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
+      if (didSendRecentNotification && !bypassRecentChecks) {
+        logger.debug(
+          `Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`,
+        );
+        return { success: true };
+      }
+
+      await redisEvictConnection.set(
+        redisKey,
+        "1",
+        "EX",
+        daysBetweenEmails * 24 * 60 * 60,
+      );
+
+      const now = new Date();
+      const pastDate = new Date(
+        now.getTime() - daysBetweenEmails * 24 * 60 * 60 * 1000,
+      );
+
+      const { data: recentNotifications, error: recentNotificationsError } =
+        await supabase_service
+          .from("user_notifications")
+          .select("*")
+          .eq("team_id", team_id)
+          .eq("notification_type", notificationType)
+          .gte("sent_date", pastDate.toISOString());
+
+      if (recentNotificationsError) {
+        logger.debug(
+          `Error fetching recent notifications: ${recentNotificationsError}`,
+        );
+        await redisEvictConnection.del(redisKey); // free up redis, let it try again
+        return { success: false };
+      }
+
+      if (recentNotifications.length > 0 && !bypassRecentChecks) {
+        logger.debug(
+          `Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`,
+        );
+        await redisEvictConnection.set(
+          redisKey,
+          "1",
+          "EX",
+          daysBetweenEmails * 24 * 60 * 60,
+        );
+        return { success: true };
+      }
+
+      logger.info(
+        `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
+      );
+      // get the emails from the user with the team_id
+      const { data: emails, error: emailsError } = await supabase_service
+        .from("users")
+        .select("email")
+        .eq("team_id", team_id);
+
+      if (emailsError) {
+        logger.debug(`Error fetching emails: ${emailsError}`);
+        await redisEvictConnection.del(redisKey); // free up redis, let it try again
+        return { success: false };
+      }
+
+      if (is_ledger_enabled) {
+        sendLedgerEvent(team_id, notificationType).catch((error) => {
+          logger.warn("Error sending ledger event", { module: "email_notification", method: "sendEmail", error });
+        });
+      }
+
+      if (!is_ledger_enabled) {
+        for (const email of emails) {
+          await sendEmailNotification(email.email, notificationType);
+        }
+      }
+
+      const { error: insertError } = await supabase_service
+        .from("user_notifications")
+        .insert([
+          {
+            team_id: team_id,
+            notification_type: notificationType,
+            sent_date: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+
+      if (
+        process.env.SLACK_ADMIN_WEBHOOK_URL &&
+        emails.length > 0 &&
+        notificationType !== NotificationType.CONCURRENCY_LIMIT_REACHED
+      ) {
+        sendSlackWebhook(
+          `${getNotificationString(notificationType)}: Team ${team_id}, with email ${emails[0].email}.`,
+          false,
+          process.env.SLACK_ADMIN_WEBHOOK_URL,
+        ).catch((error) => {
+          logger.debug(`Error sending slack notification: ${error}`);
+        });
+      }
+
+      if (insertError) {
+        logger.debug(`Error inserting notification record: ${insertError}`);
+        await redisEvictConnection.del(redisKey); // free up redis, let it try again
+        return { success: false };
+      }
+
       return { success: true };
-    }
-    
-    await redisEvictConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
-
-    const now = new Date();
-    const pastDate = new Date(now.getTime() - daysBetweenEmails * 24 * 60 * 60 * 1000);
-
-    const { data: recentNotifications, error: recentNotificationsError } = await supabase_service
-      .from("user_notifications")
-      .select("*")
-      .eq("team_id", team_id)
-      .eq("notification_type", notificationType)
-      .gte("sent_date", pastDate.toISOString());
-
-    if (recentNotificationsError) {
-      logger.debug(`Error fetching recent notifications: ${recentNotificationsError}`);
-      await redisEvictConnection.del(redisKey); // free up redis, let it try again
-      return { success: false };
-    }
-
-    if (recentNotifications.length > 0 && !bypassRecentChecks) {
-      logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
-      await redisEvictConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
-      return { success: true };
-    }
-
-    console.log(
-      `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
-    );
-    // get the emails from the user with the team_id
-    const { data: emails, error: emailsError } = await supabase_service
-      .from("users")
-      .select("email")
-      .eq("team_id", team_id);
-
-    if (emailsError) {
-      logger.debug(`Error fetching emails: ${emailsError}`);
-      await redisEvictConnection.del(redisKey); // free up redis, let it try again
-      return { success: false };
-    }
-
-    for (const email of emails) {
-      await sendEmailNotification(email.email, notificationType);
-    }
-
-    const { error: insertError } = await supabase_service
-      .from("user_notifications")
-      .insert([
-        {
-          team_id: team_id,
-          notification_type: notificationType,
-          sent_date: new Date().toISOString(),
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-
-    if (process.env.SLACK_ADMIN_WEBHOOK_URL && emails.length > 0 && notificationType !== NotificationType.CONCURRENCY_LIMIT_REACHED) {
-      sendSlackWebhook(
-        `${getNotificationString(notificationType)}: Team ${team_id}, with email ${emails[0].email}.`,
-        false,
-        process.env.SLACK_ADMIN_WEBHOOK_URL,
-      ).catch((error) => {
-        logger.debug(`Error sending slack notification: ${error}`);
-      });
-    }
-
-    if (insertError) {
-      logger.debug(`Error inserting notification record: ${insertError}`);
-      await redisEvictConnection.del(redisKey); // free up redis, let it try again
-      return { success: false };
-    }
-
-    return { success: true };
-  }, undefined)(
-    team_id,
-    notificationType,
-    daysBetweenEmails,
-    bypassRecentChecks,
-  );
+    },
+    undefined,
+  )(team_id, notificationType, daysBetweenEmails, bypassRecentChecks, is_ledger_enabled );
 }

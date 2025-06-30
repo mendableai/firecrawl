@@ -127,7 +127,7 @@ async function addScrapeJobRaw(
         // Only send notification if it's not a crawl or batch scrape
           const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
           if (shouldSendNotification) {
-            sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
+            sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false, true).catch((error) => {
               logger.error("Error sending notification (concurrency limit reached)", { error });
             });
           }
@@ -309,7 +309,7 @@ export async function addScrapeJobs(
       if (!isCrawlOrBatchScrape(jobs[0].data)) {
         const shouldSendNotification = await shouldSendConcurrencyLimitNotification(jobs[0].data.team_id);
         if (shouldSendNotification) {
-          sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
+          sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false, true).catch((error) => {
             logger.error("Error sending notification (concurrency limit reached)", { error });
           });
         }
