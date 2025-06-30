@@ -60,6 +60,7 @@ export type Meta = {
     filePath: string;
     url?: string;
     status: number;
+    proxyUsed: "basic" | "stealth";
   } | null | undefined; // undefined: no prefetch yet, null: prefetch came back empty
   costTracking: CostTracking;
   winnerEngine?: Engine;

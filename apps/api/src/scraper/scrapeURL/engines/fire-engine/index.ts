@@ -291,6 +291,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
           },
         }
       : {}),
+
+    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }
 
@@ -354,6 +356,8 @@ export async function scrapeURLWithFireEnginePlaywright(
           screenshot: response.screenshots[0],
         }
       : {}),
+
+    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }
 
@@ -409,5 +413,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
     ) ?? [])[1] ?? undefined,
+
+    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }

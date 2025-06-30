@@ -18,6 +18,7 @@ async function feResToPdfPrefetch(feRes: FireEngineCheckStatusSuccess | undefine
     status: feRes.pageStatusCode,
     url: feRes.url,
     filePath,
+    proxyUsed: feRes.usedMobileProxy ? "stealth" : "basic",
   };
 }
 
