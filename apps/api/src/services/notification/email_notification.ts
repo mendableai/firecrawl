@@ -235,7 +235,9 @@ async function sendNotificationInternal(
       );
 
       if (is_ledger_enabled) {
-        sendLedgerEvent(team_id, notificationType);
+        sendLedgerEvent(team_id, notificationType).catch((error) => {
+          logger.warn("Error sending ledger event", { module: "email_notification", method: "sendEmail", error });
+        });
       }
       // get the emails from the user with the team_id
       const { data: emails, error: emailsError } = await supabase_service
