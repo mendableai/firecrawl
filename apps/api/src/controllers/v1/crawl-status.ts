@@ -216,11 +216,24 @@ export async function crawlStatusController(
       totalCount = x.count ?? 0;
     }
 
-    creditsUsed = totalCount * (
-      sc.scrapeOptions?.extract
-        ? 5
-        : 1
-    )
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const creditsRpc = await supabase_rr_service
+        .rpc("credits_billed_by_crawl_id_1", {
+          i_crawl_id: req.params.jobId,
+        });
+      
+      creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? (totalCount * (
+        sc.scrapeOptions?.extract
+          ? 5
+          : 1
+      ));
+    } else {
+      creditsUsed = totalCount * (
+        sc.scrapeOptions?.extract
+          ? 5
+          : 1
+      )
+    }
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
     // TODO: move to read replica
     const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_service
