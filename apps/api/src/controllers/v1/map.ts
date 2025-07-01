@@ -78,6 +78,7 @@ export async function getMapResults({
   filterByPath = true,
   flags,
   useIndex = true,
+  timeout,
 }: {
   url: string;
   search?: string;
@@ -94,6 +95,7 @@ export async function getMapResults({
   filterByPath?: boolean;
   flags: TeamFlags;
   useIndex?: boolean;
+  timeout?: number;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -129,7 +131,7 @@ export async function getMapResults({
       },
       true,
       true,
-      30000,
+      timeout ?? 30000,
       abort,
       mock,
     );
@@ -207,7 +209,7 @@ export async function getMapResults({
           },
           true,
           false,
-          30000,
+          timeout ?? 30000,
           abort,
         );
       } catch (e) {
@@ -339,6 +341,7 @@ export async function mapController(
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
         useIndex: req.body.useIndex,
+        timeout: req.body.timeout,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {
