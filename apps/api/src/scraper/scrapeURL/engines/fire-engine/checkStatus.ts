@@ -9,7 +9,8 @@ import {
   SiteError,
   SSLError,
   UnsupportedFileError,
-  DNSResolutionError
+  DNSResolutionError,
+  FEPageLoadFailed
 } from "../../error";
 import { MockState } from "../../lib/mock";
 import { fireEngineURL } from "./scrape";
@@ -94,6 +95,8 @@ const successSchema = z.object({
     .or(z.null()),
 
   docUrl: z.string().optional(),
+
+  usedMobileProxy: z.boolean().optional(),
 });
 
 export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
@@ -200,6 +203,12 @@ export async function fireEngineCheckStatus(
       throw new UnsupportedFileError(
         "File size exceeds " + status.error.split("File size exceeds ")[1],
       );
+    } else if (
+      typeof status.error === "string" &&
+      status.error.includes("failed to finish without timing out")
+    ) {
+      logger.warn("CDP timed out while loading the page", { status, jobId });
+      throw new FEPageLoadFailed();
     } else if (
       typeof status.error === "string" &&
       // TODO: improve this later

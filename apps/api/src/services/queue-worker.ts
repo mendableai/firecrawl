@@ -94,7 +94,7 @@ const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
 const workerStalledCheckInterval =
   Number(process.env.WORKER_STALLED_CHECK_INTERVAL) || 30000;
 const jobLockExtendInterval =
-  Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
+  Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 10000;
 const jobLockExtensionTime =
   Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
 
@@ -721,8 +721,7 @@ const workerFun = async (
 
   const worker = new Worker(queue.name, null, {
     connection: redisConnection,
-    lockDuration: 1 * 60 * 1000, // 1 minute
-    // lockRenewTime: 15 * 1000, // 15 seconds
+    lockDuration: 30 * 1000, // 30 seconds
     stalledInterval: 30 * 1000, // 30 seconds
     maxStalledCount: 10, // 10 times
   });

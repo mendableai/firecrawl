@@ -115,3 +115,15 @@ export class ZDRViolationError extends Error {
     super(`${feature} is not supported when using zeroDataRetention. Please contact support@firecrawl.com to unblock this feature.`);
   }
 }
+
+export class PDFPrefetchFailed extends Error {
+  constructor() {
+    super("Failed to prefetch PDF that is protected by anti-bot. Please contact help@firecrawl.com");
+  }
+}
+
+export class FEPageLoadFailed extends Error {
+  constructor() {
+    super("The page failed to load with the specified timeout. Please increase the timeout parameter in your request.");
+  }
+}
