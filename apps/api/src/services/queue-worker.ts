@@ -1591,23 +1591,32 @@ app.get("/liveness", (req, res) => {
     currentLiveness = false;
     res.status(500).json({ ok: false });
   } else {
-    // networking check
-    robustFetch({
-      url: "http://firecrawl-app-service:3002",
-      method: "GET",
-      mock: null,
-      logger: _logger,
-      abort: AbortSignal.timeout(5000),
-      ignoreResponse: true,
-    })
-      .then(() => {
-        currentLiveness = true;
-        res.status(200).json({ ok: true });
-      }).catch(e => {
-        _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
-        currentLiveness = false;
-        res.status(500).json({ ok: false });
-      });
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      // networking check for Kubernetes environments
+      const host = process.env.FIRECRAWL_APP_HOST || "firecrawl-app-service";
+      const port = process.env.FIRECRAWL_APP_PORT || "3002";
+      const scheme = process.env.FIRECRAWL_APP_SCHEME || "http";
+      
+      robustFetch({
+        url: `${scheme}://${host}:${port}`,
+        method: "GET",
+        mock: null,
+        logger: _logger,
+        abort: AbortSignal.timeout(5000),
+        ignoreResponse: true,
+      })
+        .then(() => {
+          currentLiveness = true;
+          res.status(200).json({ ok: true });
+        }).catch(e => {
+          _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
+          currentLiveness = false;
+          res.status(500).json({ ok: false });
+        });
+    } else {
+      currentLiveness = true;
+      res.status(200).json({ ok: true });
+    }
   }
 });
 
