@@ -66,6 +66,7 @@ services:
       HOST: "0.0.0.0"
       PORT: ${INTERNAL_PORT:-3002}
       FLY_PROCESS_GROUP: app
+      ENV: local
     depends_on:
       - redis
       - playwright-service
@@ -78,6 +79,7 @@ services:
     environment:
       <<: *common-env
       FLY_PROCESS_GROUP: worker
+      ENV: local
     depends_on:
       - redis
       - playwright-service
