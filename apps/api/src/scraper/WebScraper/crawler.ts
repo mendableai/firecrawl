@@ -58,6 +58,7 @@ export class WebCrawler {
   private sitemapsHit: Set<string> = new Set();
   private maxDiscoveryDepth: number | undefined;
   private currentDiscoveryDepth: number;
+  private zeroDataRetention: boolean;
 
   constructor({
     jobId,
@@ -76,6 +77,7 @@ export class WebCrawler {
     regexOnFullURL = false,
     maxDiscoveryDepth,
     currentDiscoveryDepth,
+    zeroDataRetention,
   }: {
     jobId: string;
     initialUrl: string;
@@ -93,6 +95,7 @@ export class WebCrawler {
     regexOnFullURL?: boolean;
     maxDiscoveryDepth?: number;
     currentDiscoveryDepth?: number;
+    zeroDataRetention?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -111,7 +114,8 @@ export class WebCrawler {
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
     this.regexOnFullURL = regexOnFullURL ?? false;
-    this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
+    this.zeroDataRetention = zeroDataRetention ?? false;
+    this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler", zeroDataRetention: this.zeroDataRetention });
     this.maxDiscoveryDepth = maxDiscoveryDepth;
     this.currentDiscoveryDepth = currentDiscoveryDepth ?? 0;
   }
@@ -682,7 +686,7 @@ export class WebCrawler {
     // Try to get sitemap from the provided URL first
     try {
       sitemapCount = await getLinksFromSitemap(
-        { sitemapUrl, urlsHandler, mode: "fire-engine", maxAge },
+        { sitemapUrl, urlsHandler, mode: "fire-engine", maxAge, zeroDataRetention: this.zeroDataRetention },
         this.logger,
         this.jobId,
         this.sitemapsHit,
@@ -731,6 +735,7 @@ export class WebCrawler {
               },
               mode: "fire-engine",
               maxAge,
+              zeroDataRetention: this.zeroDataRetention,
             },
             this.logger,
             this.jobId,
@@ -766,7 +771,7 @@ export class WebCrawler {
       const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
       try {
         sitemapCount += await getLinksFromSitemap(
-          { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine", maxAge },
+          { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine", maxAge, zeroDataRetention: this.zeroDataRetention },
           this.logger,
           this.jobId,
           this.sitemapsHit,
@@ -786,7 +791,7 @@ export class WebCrawler {
             // ignore 404
           } else {
             sitemapCount += await getLinksFromSitemap(
-              { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine", maxAge },
+              { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine", maxAge, zeroDataRetention: this.zeroDataRetention },
               this.logger,
               this.jobId,
               this.sitemapsHit,

@@ -29,11 +29,9 @@ import {
   finishCrawlKickoff,
   generateURLPermutations,
   getCrawl,
-  getCrawlJobCount,
   getCrawlJobs,
   getDoneJobsOrderedLength,
   lockURL,
-  lockURLs,
   lockURLsIndividually,
   normalizeURL,
   saveCrawl,
@@ -54,7 +52,7 @@ import {
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
-import { Document } from "../controllers/v1/types";
+import { Document, TeamFlags } from "../controllers/v1/types";
 import {
   ExtractResult,
   performExtraction,
@@ -119,9 +117,10 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     jobId: job.id,
     scrapeId: job.id,
     crawlId: job.data.crawl_id,
+    zeroDataRetention: sc.internalOptions.zeroDataRetention,
   });
 
-  if (await finishCrawlPre(job.data.crawl_id)) {
+  if (await finishCrawlPre(job.data.crawl_id, logger)) {
     logger.info("Crawl is pre-finished, checking if we need to add more jobs");
     if (
       job.data.crawlerOptions &&
@@ -213,6 +212,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
               sitemapped: true,
               webhook: job.data.webhook,
               v1: job.data.v1,
+              zeroDataRetention: job.data.zeroDataRetention,
             },
             opts: {
               jobId: uuid,
@@ -232,6 +232,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         await addCrawlJobs(
           job.data.crawl_id,
           lockedJobs.map((x) => x.opts.jobId),
+          logger,
         );
         await addScrapeJobs(lockedJobs);
 
@@ -249,7 +250,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     }
 
     logger.info("Finishing crawl");
-    await finishCrawl(job.data.crawl_id);
+    await finishCrawl(job.data.crawl_id, logger);
 
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
@@ -286,6 +287,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         crawlerOptions: sc.crawlerOptions,
         origin: job.data.origin,
         integration: job.data.integration,
+        zeroDataRetention: job.data.zeroDataRetention,
       }, false, job.data.internalOptions?.bypassBilling ?? false);
 
       const data = {
@@ -354,6 +356,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           origin: job.data.origin,
           integration: job.data.integration,
           credits_billed,
+          zeroDataRetention: job.data.zeroDataRetention,
         },
         true,
         job.data.internalOptions?.bypassBilling ?? false,
@@ -384,6 +387,7 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
     jobId: job.id,
     scrapeId: job.id,
     crawlId: job.data?.crawl_id ?? undefined,
+    zeroDataRetention: job.data?.zeroDataRetention ?? false,
   });
 
   const extendLockInterval = setInterval(async () => {
@@ -874,6 +878,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
     scrapeId: job.id,
     crawlId: job.data?.crawl_id ?? undefined,
     teamId: job.data?.team_id ?? undefined,
+    zeroDataRetention: job.data.zeroDataRetention ?? false,
   });
 
   try {
@@ -898,6 +903,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
         webhook: job.data.webhook,
         v1: job.data.v1,
         isCrawlSourceScrape: true,
+        zeroDataRetention: job.data.zeroDataRetention,
       },
       {
         priority: 15,
@@ -905,7 +911,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       jobId,
     );
     logger.debug("Adding scrape job to BullMQ...", { jobId });
-    await addCrawlJob(job.data.crawl_id, jobId);
+    await addCrawlJob(job.data.crawl_id, jobId, logger);
 
     if (job.data.webhook) {
       logger.debug("Calling webhook with crawl.started...", {
@@ -953,6 +959,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
                 sitemapped: true,
                 webhook: job.data.webhook,
                 v1: job.data.v1,
+                zeroDataRetention: job.data.zeroDataRetention,
               },
               opts: {
                 jobId: uuid,
@@ -974,6 +981,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
           await addCrawlJobs(
             job.data.crawl_id,
             lockedJobs.map((x) => x.opts.jobId),
+            logger,
           );
           logger.debug("Adding scrape jobs to BullMQ...");
           await addScrapeJobs(lockedJobs);
@@ -1015,6 +1023,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
             sitemapped: true,
             webhook: job.data.webhook,
             v1: job.data.v1,
+            zeroDataRetention: job.data.zeroDataRetention,
           },
           opts: {
             jobId: uuid,
@@ -1036,6 +1045,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       await addCrawlJobs(
         job.data.crawl_id,
         lockedJobs.map((x) => x.opts.jobId),
+        logger,
       );
       logger.debug("Adding scrape jobs to BullMQ...");
       await addScrapeJobs(lockedJobs);
@@ -1058,11 +1068,11 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   }
 }
 
-async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking) {
+async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking, flags: TeamFlags) {
   let creditsToBeBilled: number | null = null;
 
   if (job.data.is_scrape !== true && !job.data.internalOptions?.bypassBilling) {
-    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, costTracking);
+    creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, job.data.internalOptions, document, costTracking, flags);
 
     if (
       job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! &&
@@ -1119,6 +1129,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     scrapeId: job.id,
     crawlId: job.data?.crawl_id ?? undefined,
     teamId: job.data?.team_id ?? undefined,
+    zeroDataRetention: job.data?.zeroDataRetention ?? false,
   });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
   const start = job.data.startTime ?? Date.now();
@@ -1324,13 +1335,14 @@ async function processJob(job: Job & { id: string }, token: string) {
                   crawl_id: job.data.crawl_id,
                   webhook: job.data.webhook,
                   v1: job.data.v1,
+                  zeroDataRetention: job.data.zeroDataRetention,
                 },
                 {},
                 jobId,
                 jobPriority,
               );
 
-              await addCrawlJob(job.data.crawl_id, jobId);
+              await addCrawlJob(job.data.crawl_id, jobId, logger);
               logger.debug("Added job for URL " + JSON.stringify(link), {
                 jobPriority,
                 url: link,
@@ -1366,7 +1378,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         throw new Error("timeout");
       }
 
-      const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+      const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
       doc.metadata.creditsUsed = credits_billed ?? undefined;
 
@@ -1390,6 +1402,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           pdf_num_pages: doc.metadata.numPages,
           credits_billed,
           change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+          zeroDataRetention: job.data.zeroDataRetention,
         },
         true,
         job.data.internalOptions?.bypassBilling ?? false,
@@ -1411,7 +1424,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
 
       logger.debug("Declaring job as done...");
-      await addCrawlJobDone(job.data.crawl_id, job.id, true);
+      await addCrawlJobDone(job.data.crawl_id, job.id, true, logger);
 
       await finishCrawlIfNeeded(job, sc);
     } else {
@@ -1421,7 +1434,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         throw new Error("timeout");
       }
 
-      const credits_billed = await billScrapeJob(job, doc, logger, costTracking);
+      const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
       doc.metadata.creditsUsed = credits_billed ?? undefined;
 
@@ -1443,6 +1456,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         pdf_num_pages: doc.metadata.numPages,
         credits_billed,
         change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+        zeroDataRetention: job.data.zeroDataRetention,
       }, false, job.data.internalOptions?.bypassBilling ?? false);
     }
 
@@ -1453,7 +1467,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
       logger.debug("Declaring job as done...");
-      await addCrawlJobDone(job.data.crawl_id, job.id, false);
+      await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
       await redisEvictConnection.srem(
         "crawl:" + job.data.crawl_id + ":visited_unique",
         normalizeURL(job.data.url, sc),
@@ -1520,7 +1534,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const credits_billed = await billScrapeJob(job, null, logger, costTracking);
+    const credits_billed = await billScrapeJob(job, null, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
     logger.debug("Logging job to DB...");
     await logJob(
@@ -1545,6 +1559,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         crawl_id: job.data.crawl_id,
         cost_tracking: costTracking,
         credits_billed,
+        zeroDataRetention: job.data.zeroDataRetention,
       },
       true,
       job.data.internalOptions?.bypassBilling ?? false,

@@ -653,6 +653,11 @@ export async function performLLMExtract(
   document: Document,
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
+    if (meta.internalOptions.zeroDataRetention) {
+      document.warning = "JSON mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
+      return document;
+    }
+
     // const originalOptions = meta.options.extract!;
 
     // let generationOptions = { ...originalOptions }; // Start with original options

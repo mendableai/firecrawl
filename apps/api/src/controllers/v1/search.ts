@@ -84,6 +84,8 @@ async function scrapeSearchResult(
     basePriority: 10,
   });
 
+  const zeroDataRetention = flags?.forceZDR ?? false;
+
   try {
     if (isUrlBlocked(searchResult.url, flags)) {
       throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
@@ -93,6 +95,7 @@ async function scrapeSearchResult(
       url: searchResult.url,
       teamId: options.teamId,
       origin: options.origin,
+      zeroDataRetention,
     });
     await addScrapeJob(
       {
@@ -103,10 +106,11 @@ async function scrapeSearchResult(
           ...options.scrapeOptions,
           maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
         },
-        internalOptions: { teamId: options.teamId, bypassBilling: true },
+        internalOptions: { teamId: options.teamId, bypassBilling: true, zeroDataRetention },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
+        zeroDataRetention,
       },
       {},
       jobId,
@@ -166,7 +170,12 @@ export async function searchController(
     teamId: req.auth.team_id,
     module: "search",
     method: "searchController",
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
+
+  if (req.acuc?.flags?.forceZDR) {
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature." });
+  }
 
   let responseData: SearchResponse = {
     success: true,
@@ -315,6 +324,7 @@ export async function searchController(
         integration: req.body.integration,
         cost_tracking: costTracking,
         credits_billed,
+        zeroDataRetention: false, // not supported
       },
       false,
       isSearchPreview,

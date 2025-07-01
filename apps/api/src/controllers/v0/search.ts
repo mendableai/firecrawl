@@ -108,11 +108,12 @@ export async function searchHelper(
       name: uuid,
       data: {
         url,
-        mode: "single_urls",
+        mode: "single_urls" as const,
         team_id: team_id,
         scrapeOptions,
         internalOptions,
         startTime: Date.now(),
+        zeroDataRetention: false, // not supported on v0
       },
       opts: {
         jobId: uuid,
@@ -123,7 +124,7 @@ export async function searchHelper(
 
   // TODO: addScrapeJobs
   for (const job of jobDatas) {
-    await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority);
+    await addScrapeJob(job.data, {}, job.opts.jobId, job.opts.priority);
   }
 
   const docs = (
@@ -168,6 +169,10 @@ export async function searchController(req: Request, res: Response) {
       return res.status(auth.status).json({ error: auth.error });
     }
     const { team_id, chunk } = auth;
+
+    if (chunk?.flags?.forceZDR) {
+      return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
+    }
 
     redisEvictConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
@@ -224,6 +229,7 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       origin,
       integration: req.body.integration,
+      zeroDataRetention: false, // not supported
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

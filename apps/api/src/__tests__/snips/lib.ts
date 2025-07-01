@@ -1,7 +1,7 @@
 import { configDotenv } from "dotenv";
 configDotenv();
 
-import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse, CrawlResponse, OngoingCrawlsResponse, ErrorResponse, CrawlErrorsResponse } from "../../controllers/v1/types";
+import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse, CrawlResponse, OngoingCrawlsResponse, ErrorResponse, CrawlErrorsResponse, TeamFlags } from "../../controllers/v1/types";
 import request from "supertest";
 
 // =========================================
@@ -24,7 +24,8 @@ export type IdmuxRequest = {
     concurrency?: number,
     credits?: number,
     tokens?: number,
-    flags?: any,
+    flags?: TeamFlags,
+    teamId?: string;
 }
 
 export async function idmux(req: IdmuxRequest): Promise<Identity> {
@@ -228,7 +229,10 @@ export async function crawl(body: CrawlRequestInput, identity: Identity): Promis
     }
 
     expectCrawlToSucceed(x);
-    return x.body;
+    return {
+        ...x.body,
+        id: cs.body.id,
+    };
 }
 
 // =========================================
@@ -279,7 +283,10 @@ export async function batchScrape(body: BatchScrapeRequestInput, identity: Ident
     } while (x.body.status === "scraping");
 
     expectBatchScrapeToSucceed(x);
-    return x.body;
+    return {
+        ...x.body,
+        id: bss.body.id,
+    };
 }
 
 // =========================================
@@ -460,6 +467,19 @@ export async function batchScrapeWithConcurrencyTracking(body: BatchScrapeReques
         batchScrape: x.body,
         concurrencies,
     };
+}
+
+// =========================================
+// ZDR API
+// =========================================
+
+export async function zdrcleaner(teamId: string) {
+    const res =  await request(TEST_URL)
+        .get(`/admin/${process.env.BULL_AUTH_KEY}/zdrcleaner`)
+        .query({ teamId });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.ok).toBe(true);
 }
 
 // =========================================

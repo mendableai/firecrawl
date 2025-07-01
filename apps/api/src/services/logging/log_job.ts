@@ -22,7 +22,7 @@ function cleanOfNull<T>(x: T): T {
 }
 
 export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLogging: boolean = false) {
-  const logger = _logger.child({
+  let logger = _logger.child({
     module: "log_job",
     method: "logJob",
     ...(job.mode === "scrape" || job.mode === "single_urls" || job.mode === "single_url" ? ({
@@ -34,6 +34,12 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
     ...(job.mode === "extract" ? ({
       extractId: job.job_id,
     }) : {}),
+  });
+
+  const zeroDataRetention = job.zeroDataRetention ?? false;
+
+  logger = logger.child({
+    zeroDataRetention,
   });
 
   try {
@@ -60,26 +66,27 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
     const jobColumn = {
       job_id: job.job_id ? job.job_id : null,
       success: job.success,
-      message: job.message,
+      message: zeroDataRetention ? null : job.message,
       num_docs: job.num_docs,
-      docs: ((job.mode === "single_urls" || job.mode === "scrape") && process.env.GCS_BUCKET_NAME) ? null : cleanOfNull(job.docs),
+      docs: zeroDataRetention ? null : ((job.mode === "single_urls" || job.mode === "scrape") && process.env.GCS_BUCKET_NAME) ? null : cleanOfNull(job.docs),
       time_taken: job.time_taken,
       team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
       mode: job.mode,
-      url: job.url,
-      crawler_options: job.crawlerOptions,
-      page_options: job.scrapeOptions,
-      origin: job.origin,
-      integration: job.integration ?? null,
+      url: zeroDataRetention ? "<redacted due to zero data retention>" : job.url,
+      crawler_options: zeroDataRetention ? null : job.crawlerOptions,
+      page_options: zeroDataRetention ? null : job.scrapeOptions,
+      origin: zeroDataRetention ? null : job.origin,
+      integration: zeroDataRetention ? null : job.integration ?? null,
       num_tokens: job.num_tokens,
       retry: !!job.retry,
       crawl_id: job.crawl_id,
       tokens_billed: job.tokens_billed,
       is_migrated: true,
-      cost_tracking: job.cost_tracking,
-      pdf_num_pages: job.pdf_num_pages ?? null,
+      cost_tracking: zeroDataRetention ? null : job.cost_tracking,
+      pdf_num_pages: zeroDataRetention ? null : job.pdf_num_pages ?? null,
       credits_billed: job.credits_billed ?? null,
-      change_tracking_tag: job.change_tracking_tag ?? null,
+      change_tracking_tag: zeroDataRetention ? null : job.change_tracking_tag ?? null,
+      dr_clean_by: zeroDataRetention && job.crawl_id ? new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString() : null,
     };
 
     if (process.env.GCS_BUCKET_NAME) {
@@ -145,21 +152,21 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
         event: "job-logged",
         properties: {
           success: job.success,
-          message: job.message,
+          message: zeroDataRetention ? null: job.message,
           num_docs: job.num_docs,
           time_taken: job.time_taken,
           team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
           mode: job.mode,
-          url: job.url,
-          crawler_options: job.crawlerOptions,
-          page_options: job.scrapeOptions,
-          origin: job.origin,
+          url: zeroDataRetention ? "<redacted due to zero data retention>" : job.url,
+          crawler_options: zeroDataRetention ? null : job.crawlerOptions,
+          page_options: zeroDataRetention ? null : job.scrapeOptions,
+          origin: zeroDataRetention ? null : job.origin,
           num_tokens: job.num_tokens,
           retry: job.retry,
           tokens_billed: job.tokens_billed,
-          cost_tracking: job.cost_tracking,
-          pdf_num_pages: job.pdf_num_pages,
-          change_tracking_tag: job.change_tracking_tag ?? null,
+          cost_tracking: zeroDataRetention ? null : job.cost_tracking,
+          pdf_num_pages: zeroDataRetention ? null : job.pdf_num_pages,
+          change_tracking_tag: zeroDataRetention ? null : job.change_tracking_tag ?? null,
         },
       };
       if (job.mode !== "single_urls") {

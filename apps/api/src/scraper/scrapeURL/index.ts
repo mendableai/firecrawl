@@ -25,6 +25,7 @@ import {
   PDFInsufficientTimeError,
   IndexMissError,
   DNSResolutionError,
+  ZDRViolationError,
   PDFPrefetchFailed,
   FEPageLoadFailed,
 } from "./error";
@@ -177,6 +178,7 @@ async function buildMetaObject(
     module: "ScrapeURL",
     scrapeId: id,
     scrapeURL: url,
+    zeroDataRetention: internalOptions.zeroDataRetention,
   });
   const logs: any[] = [];
 
@@ -216,6 +218,7 @@ export type InternalOptions = {
 
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
   bypassBilling?: boolean;
+  zeroDataRetention?: boolean;
 };
 
 export type EngineResultsTracker = {
@@ -258,6 +261,24 @@ function safeguardCircularError<T>(error: T): T {
 
 async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   meta.logger.info(`Scraping URL ${JSON.stringify(meta.rewrittenUrl ?? meta.url)}...`);
+
+  if (meta.internalOptions.zeroDataRetention) {
+    if (meta.featureFlags.has("screenshot")) {
+      throw new ZDRViolationError("screenshot");
+    }
+
+    if (meta.featureFlags.has("screenshot@fullScreen")) {
+      throw new ZDRViolationError("screenshot@fullScreen");
+    }
+
+    if (meta.options.actions && meta.options.actions.find(x => x.type === "screenshot")) {
+      throw new ZDRViolationError("screenshot action");
+    }
+
+    if (meta.options.actions && meta.options.actions.find(x => x.type === "pdf")) {
+      throw new ZDRViolationError("pdf action");
+    }
+  }
 
   // TODO: handle sitemap data, see WebScraper/index.ts:280
   // TODO: ScrapeEvents

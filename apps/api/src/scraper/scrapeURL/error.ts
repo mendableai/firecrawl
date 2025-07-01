@@ -110,6 +110,12 @@ export class IndexMissError extends Error {
   }
 }
 
+export class ZDRViolationError extends Error {
+  constructor(feature: string) {
+    super(`${feature} is not supported when using zeroDataRetention. Please contact support@firecrawl.com to unblock this feature.`);
+  }
+}
+
 export class PDFPrefetchFailed extends Error {
   constructor() {
     super("Failed to prefetch PDF that is protected by anti-bot. Please contact help@firecrawl.com");

@@ -53,6 +53,7 @@ export async function scrapeDocument(
         is_scrape: true,
         from_extract: true,
         startTime: Date.now(),
+        zeroDataRetention: false, // not supported
       },
       {},
       jobId,

@@ -18,12 +18,23 @@ export async function scrapeController(
 ) {
   const jobId = uuidv4();
   const preNormalizedBody = { ...req.body };
+
+  if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
+    return res.status(400).json({
+      success: false,
+      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+    });
+  }
+
+  const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
+
   const logger = _logger.child({
     method: "scrapeController",
     jobId,
     scrapeId: jobId,
     teamId: req.auth.team_id,
     team_id: req.auth.team_id,
+    zeroDataRetention,
   });
  
   logger.debug("Scrape " + jobId + " starting", {
@@ -62,10 +73,12 @@ export async function scrapeController(
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
         bypassBilling: isDirectToBullMQ,
+        zeroDataRetention,
       },
       origin,
       integration: req.body.integration,
       startTime,
+      zeroDataRetention,
     },
     {},
     jobId,
@@ -87,6 +100,10 @@ export async function scrapeController(
     logger.error(`Error in scrapeController`, {
       startTime,
     });
+
+    if (zeroDataRetention) {
+      await getScrapeQueue().remove(jobId);
+    }
 
     if (
       e instanceof Error &&
