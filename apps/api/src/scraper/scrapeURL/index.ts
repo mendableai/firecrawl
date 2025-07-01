@@ -26,6 +26,7 @@ import {
   IndexMissError,
   DNSResolutionError,
   PDFPrefetchFailed,
+  FEPageLoadFailed,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -65,6 +66,7 @@ export type Meta = {
   } | null | undefined; // undefined: no prefetch yet, null: prefetch came back empty
   costTracking: CostTracking;
   winnerEngine?: Engine;
+  results: EngineResultsTracker;
 };
 
 function buildFeatureFlags(
@@ -193,6 +195,7 @@ async function buildMetaObject(
         : null,
     pdfPrefetch: undefined,
     costTracking,
+    results: {},
   };
 }
 
@@ -261,7 +264,6 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
 
   const fallbackList = buildFallbackList(meta);
 
-  const results: EngineResultsTracker = {};
   let result: EngineScrapeResultWithContext | null = null;
 
   const timeToRun =
@@ -293,7 +295,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       const hasNoPageError = engineResult.error === undefined;
       const isLikelyProxyError = [403, 429].includes(engineResult.statusCode);
 
-      results[engine] = {
+      meta.results[engine] = {
         state: "success",
         result: engineResult,
         factors: { isLongEnough, isGoodStatusCode, hasNoPageError, isLikelyProxyError },
@@ -327,7 +329,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         meta.logger.warn("Engine " + engine + " could not scrape the page.", {
           error,
         });
-        results[engine] = {
+        meta.results[engine] = {
           state: "error",
           error: safeguardCircularError(error),
           unexpected: false,
@@ -338,7 +340,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         meta.logger.info("Engine " + engine + " could not find the page in the index.", {
           error,
         });
-        results[engine] = {
+        meta.results[engine] = {
           state: "error",
           error: safeguardCircularError(error),
           unexpected: false,
@@ -349,7 +351,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         meta.logger.info("Engine " + engine + " timed out while scraping.", {
           error,
         });
-        results[engine] = {
+        meta.results[engine] = {
           state: "timeout",
           startedAt,
           finishedAt: Date.now(),
@@ -360,14 +362,14 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       ) {
         throw error;
       } else if (error instanceof LLMRefusalError) {
-        results[engine] = {
+        meta.results[engine] = {
           state: "error",
           error: safeguardCircularError(error),
           unexpected: true,
           startedAt,
           finishedAt: Date.now(),
         };
-        error.results = results;
+        error.results = meta.results;
         meta.logger.warn("LLM refusal encountered", { error });
         throw error;
       } else if (error instanceof SiteError) {
@@ -386,13 +388,21 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else if (error instanceof PDFInsufficientTimeError) {
         throw error;
+      } else if (error instanceof FEPageLoadFailed) {
+        meta.results[engine] = {
+          state: "error",
+          error,
+          unexpected: false,
+          startedAt,
+          finishedAt: Date.now(),
+        };
       } else {
         Sentry.captureException(error);
         meta.logger.warn(
           "An unexpected error happened while scraping with " + engine + ".",
           { error },
         );
-        results[engine] = {
+        meta.results[engine] = {
           state: "error",
           error: safeguardCircularError(error),
           unexpected: true,
@@ -406,7 +416,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   if (result === null) {
     throw new NoEnginesLeftError(
       fallbackList.map((x) => x.engine),
-      results,
+      meta.results,
     );
   }
 
@@ -423,7 +433,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       numPages: result.result.numPages,
       contentType: result.result.contentType,
       proxyUsed: meta.featureFlags.has("stealthProxy") ? "stealth" : "basic",
-      ...((results["index"] || results["index;documents"]) ? (
+      ...((meta.results["index"] || meta.results["index;documents"]) ? (
         result.result.cacheInfo ? {
           cacheState: "hit",
           cachedAt: result.result.cacheInfo.created_at.toISOString(),
@@ -452,7 +462,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
     success: true,
     document,
     logs: meta.logs,
-    engines: results,
+    engines: meta.results,
   };
 }
 
@@ -524,14 +534,12 @@ export async function scrapeURL(
       }
     }
   } catch (error) {
-    let results: EngineResultsTracker = {};
-
-    if (error instanceof NoEnginesLeftError) {
+    if (Object.values(meta.results).length > 0 && Object.values(meta.results).every(x => x.state === "error" && x.error instanceof FEPageLoadFailed)) {
+      throw new FEPageLoadFailed();
+    } else if (error instanceof NoEnginesLeftError) {
       meta.logger.warn("scrapeURL: All scraping engines failed!", { error });
-      results = error.results;
     } else if (error instanceof LLMRefusalError) {
       meta.logger.warn("scrapeURL: LLM refused to extract content", { error });
-      results = error.results!;
     } else if (
       error instanceof Error &&
       error.message.includes("Invalid schema for response_format")
@@ -565,7 +573,7 @@ export async function scrapeURL(
       success: false,
       error,
       logs: meta.logs,
-      engines: results,
+      engines: meta.results,
     };
   }
 }
