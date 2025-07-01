@@ -185,6 +185,7 @@ export async function autoCharge(
                 await redisRateLimitClient.expire(
                   hourlyCounterKey,
                   HOURLY_COUNTER_EXPIRY,
+                  "NX",
                 );
 
                 try {
