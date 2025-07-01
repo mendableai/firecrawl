@@ -5,6 +5,7 @@ import {
   ErrorResponse,
   RequestWithAuth,
 } from "./types";
+import { getResponseProtocol } from "../../lib/protocol-utils";
 import {
   getCrawl,
   getCrawlExpiry,
@@ -384,7 +385,7 @@ export async function crawlStatusController(
 
   const data = doneJobs.map((x) => x.returnvalue);
 
-  const protocol = process.env.ENV === "local" ? req.protocol : "https";
+  const protocol = getResponseProtocol(req);
   const nextURL = new URL(
     `${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
   );

@@ -11,6 +11,7 @@ import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
+import { getResponseProtocol } from "../../lib/protocol-utils";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -125,7 +126,7 @@ export async function crawlController(
     10,
   );
 
-  const protocol = process.env.ENV === "local" ? req.protocol : "https";
+  const protocol = getResponseProtocol(req);
 
   return res.status(200).json({
     success: true,
