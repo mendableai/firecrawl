@@ -3,7 +3,7 @@ import { getJobFromGCS } from "../../lib/gcs-jobs";
 import { scrape, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
 import { readFile, stat } from "node:fs/promises";
 
-const logIgnoreList = ["Billing queue created", "No billing operations to process in batch", "billing batch queue", "billing batch processing lock", "Batch billing team", "Successfully billed team", "Billing batch processing"];
+const logIgnoreList = ["Billing queue created", "No billing operations to process in batch", "billing batch queue", "billing batch processing lock", "Batch billing team", "Successfully billed team", "Billing batch processing", "Processing batch of", "Billing team"];
 
 if (process.env.TEST_SUITE_SELF_HOSTED) {
     it("mocked", () => {
