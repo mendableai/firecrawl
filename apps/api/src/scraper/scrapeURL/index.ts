@@ -26,6 +26,7 @@ import {
   IndexMissError,
   DNSResolutionError,
   PDFPrefetchFailed,
+  FEPageLoadFailed,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -386,6 +387,14 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else if (error instanceof PDFInsufficientTimeError) {
         throw error;
+      } else if (error instanceof FEPageLoadFailed) {
+        results[engine] = {
+          state: "error",
+          error,
+          unexpected: false,
+          startedAt,
+          finishedAt: Date.now(),
+        };
       } else {
         Sentry.captureException(error);
         meta.logger.warn(
@@ -526,7 +535,9 @@ export async function scrapeURL(
   } catch (error) {
     let results: EngineResultsTracker = {};
 
-    if (error instanceof NoEnginesLeftError) {
+    if (Object.values(results).every(x => x.state === "error" && x.error instanceof FEPageLoadFailed)) {
+      throw new FEPageLoadFailed();
+    } else if (error instanceof NoEnginesLeftError) {
       meta.logger.warn("scrapeURL: All scraping engines failed!", { error });
       results = error.results;
     } else if (error instanceof LLMRefusalError) {

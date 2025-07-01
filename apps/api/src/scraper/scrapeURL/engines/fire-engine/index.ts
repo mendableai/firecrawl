@@ -21,6 +21,7 @@ import {
   SSLError,
   TimeoutError,
   UnsupportedFileError,
+  FEPageLoadFailed,
 } from "../../error";
 import * as Sentry from "@sentry/node";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
@@ -102,7 +103,8 @@ async function performFireEngineScrape<
         error instanceof SSLError ||
         error instanceof DNSResolutionError ||
         error instanceof ActionError ||
-        error instanceof UnsupportedFileError
+        error instanceof UnsupportedFileError ||
+        error instanceof FEPageLoadFailed
       ) {
         fireEngineDelete(
           logger.child({
