@@ -1,5 +1,6 @@
 import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, Identity, idmux, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
+import request from "supertest";
 
 let identity: Identity;
 
@@ -179,4 +180,52 @@ describe("Crawl tests", () => {
             }
         }
     }, 5 * scrapeTimeout);
+
+    it.concurrent("rejects crawl when URL depth exceeds maxDepth", async () => {
+        const response = await request("http://127.0.0.1:3002")
+            .post("/v1/crawl")
+            .set("Authorization", `Bearer ${identity.apiKey}`)
+            .set("Content-Type", "application/json")
+            .send({
+                url: "https://firecrawl.dev/blog/category/deep/nested/path",
+                maxDepth: 2,
+                limit: 5,
+            });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toContain("URL depth exceeds the specified maxDepth");
+    });
+
+    it.concurrent("accepts crawl when URL depth equals maxDepth", async () => {
+        const response = await request("http://127.0.0.1:3002")
+            .post("/v1/crawl")
+            .set("Authorization", `Bearer ${identity.apiKey}`)
+            .set("Content-Type", "application/json")
+            .send({
+                url: "https://firecrawl.dev/blog/category",
+                maxDepth: 2,
+                limit: 5,
+            });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(typeof response.body.id).toBe("string");
+    });
+
+    it.concurrent("accepts crawl when URL depth is less than maxDepth", async () => {
+        const response = await request("http://127.0.0.1:3002")
+            .post("/v1/crawl")
+            .set("Authorization", `Bearer ${identity.apiKey}`)
+            .set("Content-Type", "application/json")
+            .send({
+                url: "https://firecrawl.dev/blog",
+                maxDepth: 5,
+                limit: 5,
+            });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(typeof response.body.id).toBe("string");
+    });
 });
