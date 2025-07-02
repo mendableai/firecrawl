@@ -46,6 +46,52 @@ describe("Scrape tests", () => {
     expect(response.markdown).toContain("Firecrawl");
   }, scrapeTimeout);
 
+  describe("waitFor validation", () => {
+    it.concurrent("allows waitFor when it's less than half of timeout", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 5000,
+        timeout: 15000,
+      }, identity);
+
+      expect(response.markdown).toContain("Firecrawl");
+    }, scrapeTimeout);
+
+    it.concurrent("allows waitFor when it's exactly half of timeout", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 7500,
+        timeout: 15000,
+      }, identity);
+
+      expect(response.markdown).toContain("Firecrawl");
+    }, scrapeTimeout);
+
+    it.concurrent("rejects waitFor when it exceeds half of timeout", async () => {
+      await expect(scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 8000,
+        timeout: 15000,
+      }, identity)).rejects.toThrow("waitFor must not exceed half of timeout");
+    }, scrapeTimeout);
+
+    it.concurrent("rejects waitFor when it equals timeout", async () => {
+      await expect(scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 15000,
+        timeout: 15000,
+      }, identity)).rejects.toThrow("waitFor must not exceed half of timeout");
+    }, scrapeTimeout);
+
+    it.concurrent("rejects waitFor when it exceeds timeout", async () => {
+      await expect(scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 20000,
+        timeout: 15000,
+      }, identity)).rejects.toThrow("waitFor must not exceed half of timeout");
+    }, scrapeTimeout);
+  });
+
   it.concurrent("works with Punycode domains", async () => {
     await scrape({
       url: "http://xn--1lqv92a901a.xn--ses554g/",

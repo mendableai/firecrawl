@@ -446,6 +446,18 @@ export const scrapeOptions = baseScrapeOptions
   )
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(
+    (data) => {
+      if (data.waitFor && data.timeout) {
+        return data.waitFor <= data.timeout / 2;
+      }
+      return true;
+    },
+    {
+      message: "waitFor must not exceed half of timeout",
+      path: ["waitFor"],
+    }
+  )
   .transform(extractTransform);
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
@@ -564,6 +576,18 @@ export const scrapeRequestSchema = baseScrapeOptions
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(
+    (data) => {
+      if (data.waitFor && data.timeout) {
+        return data.waitFor <= data.timeout / 2;
+      }
+      return true;
+    },
+    {
+      message: "waitFor must not exceed half of timeout",
+      path: ["waitFor"],
+    }
+  )
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
