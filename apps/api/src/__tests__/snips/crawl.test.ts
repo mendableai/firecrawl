@@ -194,7 +194,10 @@ describe("Crawl tests", () => {
 
         expect(response.statusCode).toBe(400);
         expect(response.body.success).toBe(false);
-        expect(response.body.error).toContain("URL depth exceeds the specified maxDepth");
+        expect(response.body.error).toBe("Bad Request");
+        expect(response.body.details).toBeDefined();
+        expect(response.body.details[0].message).toBe("URL depth exceeds the specified maxDepth");
+        expect(response.body.details[0].path).toEqual(["url"]);
     });
 
     it.concurrent("accepts crawl when URL depth equals maxDepth", async () => {
