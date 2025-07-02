@@ -72,9 +72,11 @@ describe("Scrape tests", () => {
         url: "http://firecrawl.dev",
         waitFor: 8000,
         timeout: 15000,
-      }, identity);
+      }, identity) as any;
 
-      expect(response.error).toContain("waitFor must not exceed half of timeout");
+      expect(response.error).toBe("Bad Request");
+      expect(response.details).toBeDefined();
+      expect(JSON.stringify(response.details)).toContain("waitFor must not exceed half of timeout");
     }, scrapeTimeout);
 
     it.concurrent("rejects waitFor when it equals timeout", async () => {
@@ -82,9 +84,11 @@ describe("Scrape tests", () => {
         url: "http://firecrawl.dev",
         waitFor: 15000,
         timeout: 15000,
-      }, identity);
+      }, identity) as any;
 
-      expect(response.error).toContain("waitFor must not exceed half of timeout");
+      expect(response.error).toBe("Bad Request");
+      expect(response.details).toBeDefined();
+      expect(JSON.stringify(response.details)).toContain("waitFor must not exceed half of timeout");
     }, scrapeTimeout);
 
     it.concurrent("rejects waitFor when it exceeds timeout", async () => {
@@ -92,9 +96,11 @@ describe("Scrape tests", () => {
         url: "http://firecrawl.dev",
         waitFor: 20000,
         timeout: 15000,
-      }, identity);
+      }, identity) as any;
 
-      expect(response.error).toContain("waitFor must not exceed half of timeout");
+      expect(response.error).toBe("Bad Request");
+      expect(response.details).toBeDefined();
+      expect(JSON.stringify(response.details)).toContain("waitFor must not exceed half of timeout");
     }, scrapeTimeout);
   });
 
