@@ -356,6 +356,9 @@ const fire1RefineOpts = {
 };
 const waitForRefine = (obj) => {
   if (obj.waitFor && obj.timeout) {
+    if (typeof obj.timeout !== 'number' || obj.timeout <= 0) {
+      return false;
+    }
     return obj.waitFor <= obj.timeout / 2;
   }
   return true;
