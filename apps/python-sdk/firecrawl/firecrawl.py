@@ -665,11 +665,15 @@ class FirecrawlApp:
         
         # Add any additional kwargs
         search_params.update(kwargs)
+        _integration = search_params.get('integration')
 
         # Create final params object
         final_params = SearchParams(query=query, **search_params)
         params_dict = final_params.dict(exclude_none=True)
         params_dict['origin'] = f"python-sdk@{version}"
+
+        if _integration:
+            params_dict['integration'] = _integration
 
         # Make request
         response = requests.post(
@@ -798,12 +802,16 @@ class FirecrawlApp:
             crawl_params['zeroDataRetention'] = zero_data_retention
         # Add any additional kwargs
         crawl_params.update(kwargs)
+        _integration = crawl_params.get('integration')
 
         # Create final params object
         final_params = CrawlParams(**crawl_params)
         params_dict = final_params.dict(exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
+
+        if _integration:
+            params_dict['integration'] = _integration
 
         # Make request
         headers = self._prepare_headers(idempotency_key)
@@ -1221,12 +1229,16 @@ class FirecrawlApp:
         
         # Add any additional kwargs
         map_params.update(kwargs)
+        _integration = map_params.get('integration')
 
         # Create final params object
         final_params = MapParams(**map_params)
         params_dict = final_params.dict(exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
+
+        if _integration:
+            params_dict['integration'] = _integration
 
         # Make request
         response = requests.post(
@@ -1768,7 +1780,8 @@ class FirecrawlApp:
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
-            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
+            agent: Optional[Dict[str, Any]] = None,
+            **kwargs) -> ExtractResponse[Any]:
         """
         Extract structured information from URLs.
 
@@ -1781,6 +1794,7 @@ class FirecrawlApp:
             enable_web_search (Optional[bool]): Enable web search
             show_sources (Optional[bool]): Include source URLs
             agent (Optional[Dict[str, Any]]): Agent configuration
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
             ExtractResponse[Any] with:
@@ -1791,6 +1805,9 @@ class FirecrawlApp:
         Raises:
             ValueError: If prompt/schema missing or extraction fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "extract")
+        
         headers = self._prepare_headers()
 
         if not prompt and not schema:
@@ -1819,6 +1836,9 @@ class FirecrawlApp:
             
         if agent:
             request_data['agent'] = agent
+
+        # Add any additional kwargs
+        request_data.update(kwargs)
 
         try:
             # Send the initial extract request
@@ -2568,12 +2588,13 @@ class FirecrawlApp:
         method_params = {
             "scrape_url": {"formats", "include_tags", "exclude_tags", "only_main_content", "wait_for", 
                           "timeout", "location", "mobile", "skip_tls_verification", "remove_base64_images",
-                          "block_ads", "proxy", "extract", "json_options", "actions", "change_tracking_options"},
-            "search": {"limit", "tbs", "filter", "lang", "country", "location", "timeout", "scrape_options"},
+                          "block_ads", "proxy", "extract", "json_options", "actions", "change_tracking_options", "integration"},
+            "search": {"limit", "tbs", "filter", "lang", "country", "location", "timeout", "scrape_options", "integration"},
             "crawl_url": {"include_paths", "exclude_paths", "max_depth", "max_discovery_depth", "limit",
                          "allow_backward_links", "allow_external_links", "ignore_sitemap", "scrape_options",
-                         "webhook", "deduplicate_similar_urls", "ignore_query_parameters", "regex_on_full_url"},
-            "map_url": {"search", "ignore_sitemap", "include_subdomains", "sitemap_only", "limit", "timeout"},
+                         "webhook", "deduplicate_similar_urls", "ignore_query_parameters", "regex_on_full_url", "integration"},
+            "map_url": {"search", "ignore_sitemap", "include_subdomains", "sitemap_only", "limit", "timeout", "integration"},
+            "extract": {"prompt", "schema", "system_prompt", "allow_external_links", "enable_web_search", "show_sources", "agent", "integration"},
             "batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                  "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
                                  "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
