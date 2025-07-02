@@ -211,6 +211,14 @@ export async function crawlErrors(id: string, identity: Identity): Promise<Exclu
     return res.body;
 }
 
+export async function crawlStartRaw(body: CrawlRequestInput, identity: Identity) {
+    return await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer ${identity.apiKey}`)
+        .set("Content-Type", "application/json")
+        .send(body);
+}
+
 export async function crawl(body: CrawlRequestInput, identity: Identity): Promise<Exclude<CrawlStatusResponse & { id: string }, ErrorResponse>> {
     const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
