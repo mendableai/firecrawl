@@ -5,6 +5,23 @@ use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
+/// Extracts base href from HTML
+/// 
+/// # Safety
+/// Input must be a C HTML string. Output will be a string. Output string must be freed with free_string.
+#[no_mangle]
+pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char) -> *mut libc::c_char {
+    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
+    
+    let document = parse_html().one(html);
+    
+    let base_href = document.select("base[href]").unwrap().next()
+        .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string()))
+        .unwrap_or_else(|| String::new());
+    
+    CString::new(base_href).unwrap().into_raw()
+}
+
 /// Extracts links from HTML
 /// 
 /// # Safety
