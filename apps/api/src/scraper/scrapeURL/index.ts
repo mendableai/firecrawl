@@ -29,7 +29,7 @@ import {
   PDFPrefetchFailed,
   FEPageLoadFailed,
 } from "./error";
-import { executeTransformers, deriveHTMLFromRawHTML, deriveMarkdownFromHTML } from "./transformers";
+import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
@@ -478,27 +478,6 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   }
 
   document = await executeTransformers(meta, document);
-
-  if (meta.options.onlyMainContent === true && 
-      (!document.markdown || document.markdown.trim().length === 0)) {
-    
-    meta.logger.info("Main content extraction resulted in empty markdown, falling back to full content extraction");
-    
-    const fallbackMeta = {
-      ...meta,
-      options: {
-        ...meta.options,
-        onlyMainContent: false
-      }
-    };
-    
-    document = await deriveHTMLFromRawHTML(fallbackMeta, document);
-    document = await deriveMarkdownFromHTML(fallbackMeta, document);
-    
-    meta.logger.info("Fallback to full content extraction completed", {
-      markdownLength: document.markdown?.length || 0
-    });
-  }
 
   return {
     success: true,

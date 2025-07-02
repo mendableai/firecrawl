@@ -54,7 +54,7 @@ export async function deriveHTMLFromRawHTML(
 }
 
 export async function deriveMarkdownFromHTML(
-  _meta: Meta,
+  meta: Meta,
   document: Document,
 ): Promise<Document> {
   if (document.html === undefined) {
@@ -75,6 +75,28 @@ export async function deriveMarkdownFromHTML(
   }
 
   document.markdown = await parseMarkdown(document.html);
+
+  if (meta.options.onlyMainContent === true && 
+      (!document.markdown || document.markdown.trim().length === 0)) {
+    
+    meta.logger.info("Main content extraction resulted in empty markdown, falling back to full content extraction");
+    
+    const fallbackMeta = {
+      ...meta,
+      options: {
+        ...meta.options,
+        onlyMainContent: false
+      }
+    };
+    
+    document = await deriveHTMLFromRawHTML(fallbackMeta, document);
+    document.markdown = await parseMarkdown(document.html);
+    
+    meta.logger.info("Fallback to full content extraction completed", {
+      markdownLength: document.markdown?.length || 0
+    });
+  }
+
   return document;
 }
 
