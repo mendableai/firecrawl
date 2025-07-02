@@ -1,4 +1,4 @@
-import { scrape, scrapeStatus, scrapeWithFailure, scrapeTimeout, indexCooldown, idmux, Identity } from "./lib";
+import { scrape, scrapeWithFailure, scrapeStatus, scrapeTimeout, indexCooldown, idmux, Identity } from "./lib";
 import crypto from "crypto";
 
 let identity: Identity;
@@ -68,27 +68,33 @@ describe("Scrape tests", () => {
     }, scrapeTimeout);
 
     it.concurrent("rejects waitFor when it exceeds half of timeout", async () => {
-      await expect(scrape({
+      const response = await scrapeWithFailure({
         url: "http://firecrawl.dev",
         waitFor: 8000,
         timeout: 15000,
-      }, identity)).rejects.toThrow("waitFor must not exceed half of timeout");
+      }, identity);
+
+      expect(response.error).toContain("waitFor must not exceed half of timeout");
     }, scrapeTimeout);
 
     it.concurrent("rejects waitFor when it equals timeout", async () => {
-      await expect(scrape({
+      const response = await scrapeWithFailure({
         url: "http://firecrawl.dev",
         waitFor: 15000,
         timeout: 15000,
-      }, identity)).rejects.toThrow("waitFor must not exceed half of timeout");
+      }, identity);
+
+      expect(response.error).toContain("waitFor must not exceed half of timeout");
     }, scrapeTimeout);
 
     it.concurrent("rejects waitFor when it exceeds timeout", async () => {
-      await expect(scrape({
+      const response = await scrapeWithFailure({
         url: "http://firecrawl.dev",
         waitFor: 20000,
         timeout: 15000,
-      }, identity)).rejects.toThrow("waitFor must not exceed half of timeout");
+      }, identity);
+
+      expect(response.error).toContain("waitFor must not exceed half of timeout");
     }, scrapeTimeout);
   });
 
