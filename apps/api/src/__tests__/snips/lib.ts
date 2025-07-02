@@ -135,7 +135,7 @@ export async function scrapeStatus(jobId: string, identity: Identity): Promise<D
 // Crawl API
 // =========================================
 
-async function crawlStart(body: CrawlRequestInput, identity: Identity) {
+export async function crawlStart(body: CrawlRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${identity.apiKey}`)
