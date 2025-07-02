@@ -24,7 +24,7 @@ export enum DenialReason {
   ROBOTS_TXT = "URL blocked by robots.txt",
   FILE_TYPE = "URL points to a file type that is not crawled",
   URL_PARSE_ERROR = "URL could not be parsed",
-  BACKWARD_CRAWLING = "URL not allowed due to backward crawling restrictions",
+  BACKWARD_CRAWLING = "URL cannot be crawled unless crawlEntireDomain is set to true",
   SOCIAL_MEDIA = "URL is a social media or email link",
   EXTERNAL_LINK = "External URL not allowed",
   SECTION_LINK = "URL contains section anchor (#)"
@@ -284,7 +284,7 @@ export class WebCrawler {
     const delay = this.robots.getCrawlDelay("FireCrawlAgent") || this.robots.getCrawlDelay("FirecrawlAgent");
     this.robotsCrawlDelay = delay !== undefined ? delay : null;
   }
-  
+
   public getRobotsCrawlDelay(): number | null {
     return this.robotsCrawlDelay;
   }
@@ -421,11 +421,11 @@ export class WebCrawler {
       if (!this.noSections(fullUrl)) {
         return { allowed: false, denialReason: DenialReason.SECTION_LINK };
       }
-      
+
       if (this.matchesExcludes(path)) {
         return { allowed: false, denialReason: DenialReason.EXCLUDE_PATTERN };
       }
-      
+
       if (!this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)) {
         (async () => {
           await redisEvictConnection.sadd(
@@ -439,18 +439,18 @@ export class WebCrawler {
         })();
         return { allowed: false, denialReason: DenialReason.ROBOTS_TXT };
       }
-      
+
       return { allowed: true, url: fullUrl };
     } else {
       // EXTERNAL LINKS
       if (this.isSocialMediaOrEmail(fullUrl)) {
         return { allowed: false, denialReason: DenialReason.SOCIAL_MEDIA };
       }
-      
+
       if (this.matchesExcludes(fullUrl, true)) {
         return { allowed: false, denialReason: DenialReason.EXCLUDE_PATTERN };
       }
-      
+
       if (
         this.isInternalLink(url) &&
         this.allowExternalContentLinks &&
@@ -458,7 +458,7 @@ export class WebCrawler {
       ) {
         return { allowed: true, url: fullUrl };
       }
-      
+
       if (
         this.allowSubdomains &&
         !this.isSocialMediaOrEmail(fullUrl) &&
@@ -466,7 +466,7 @@ export class WebCrawler {
       ) {
         return { allowed: true, url: fullUrl };
       }
-      
+
       return { allowed: false, denialReason: DenialReason.EXTERNAL_LINK };
     }
   }
@@ -725,7 +725,7 @@ export class WebCrawler {
                     try {
                       const linkUrl = new URL(link);
                       return linkUrl.hostname.endsWith(hostname);
-                    } catch {}
+                    } catch { }
                   }),
                 );
               },
