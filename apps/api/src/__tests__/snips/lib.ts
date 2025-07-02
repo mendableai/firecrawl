@@ -74,7 +74,7 @@ export type Identity = {
 // Scrape API
 // =========================================
 
-async function scrapeRaw(body: ScrapeRequestInput, identity: Identity) {
+export async function scrapeRaw(body: ScrapeRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${identity.apiKey}`)
