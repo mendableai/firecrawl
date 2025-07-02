@@ -130,7 +130,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             skipTlsVerification: false,
             removeBase64Images: false,
             fastMode: false,
-            blockAds: false,
+            blockAds: true,
             maxAge: 4 * 60 * 60 * 1000,
             storeInCache: true,
           },
