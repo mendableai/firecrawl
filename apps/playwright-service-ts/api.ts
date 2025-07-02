@@ -155,26 +155,12 @@ const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networki
 
 app.get('/health', async (req: Request, res: Response) => {
   try {
-    const testBrowser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
+    if (!browser || !context) {
+      await initializeBrowser();
+    }
     
-    const testContext = await testBrowser.newContext();
-    const testPage = await testContext.newPage();
-    
+    const testPage = await context.newPage();
     await testPage.close();
-    await testContext.close();
-    await testBrowser.close();
     
     res.status(200).json({ status: 'healthy' });
   } catch (error) {
