@@ -135,7 +135,7 @@ export async function scrapeStatus(jobId: string, identity: Identity): Promise<D
 // Crawl API
 // =========================================
 
-async function crawlStart(body: CrawlRequestInput, identity: Identity) {
+export async function crawlStart(body: CrawlRequestInput, identity: Identity) {
     return await request(TEST_URL)
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${identity.apiKey}`)
@@ -209,14 +209,6 @@ export async function crawlErrors(id: string, identity: Identity): Promise<Exclu
     expect(res.body.success).not.toBe(false);
 
     return res.body;
-}
-
-export async function crawlStartRaw(body: CrawlRequestInput, identity: Identity) {
-    return await request(TEST_URL)
-        .post("/v1/crawl")
-        .set("Authorization", `Bearer ${identity.apiKey}`)
-        .set("Content-Type", "application/json")
-        .send(body);
 }
 
 export async function crawl(body: CrawlRequestInput, identity: Identity): Promise<Exclude<CrawlStatusResponse & { id: string }, ErrorResponse>> {

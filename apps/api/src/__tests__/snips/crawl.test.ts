@@ -1,4 +1,4 @@
-import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, crawlStartRaw, Identity, idmux, scrapeTimeout } from "./lib";
+import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, crawlStart, Identity, idmux, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
 
 let identity: Identity;
@@ -181,7 +181,7 @@ describe("Crawl tests", () => {
     }, 5 * scrapeTimeout);
 
     it.concurrent("rejects crawl when URL depth exceeds maxDepth", async () => {
-        const response = await crawlStartRaw({
+        const response = await crawlStart({
             url: "https://firecrawl.dev/blog/category/deep/nested/path",
             maxDepth: 2,
             limit: 5,
@@ -196,7 +196,7 @@ describe("Crawl tests", () => {
     });
 
     it.concurrent("accepts crawl when URL depth equals maxDepth", async () => {
-        const response = await crawlStartRaw({
+        const response = await crawlStart({
             url: "https://firecrawl.dev/blog/category",
             maxDepth: 2,
             limit: 5,
@@ -208,7 +208,7 @@ describe("Crawl tests", () => {
     });
 
     it.concurrent("accepts crawl when URL depth is less than maxDepth", async () => {
-        const response = await crawlStartRaw({
+        const response = await crawlStart({
             url: "https://firecrawl.dev/blog",
             maxDepth: 5,
             limit: 5,
