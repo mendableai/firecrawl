@@ -23,10 +23,11 @@ import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
+import { supabase_service } from "../../services/supabase";
 
 interface DocumentWithCostTracking {
   document: Document;
-  costTracking: CostTracking;
+  costTracking: ReturnType<typeof CostTracking.prototype.toJSON>;
 }
 
 // Used for deep research
@@ -125,19 +126,6 @@ async function scrapeSearchResult(
 
     const doc: Document = await waitForJob(jobId, options.timeout);
     
-    const actualCostTracking = new CostTracking();
-    const credits = await calculateCreditsToBeBilled(options.scrapeOptions, doc, actualCostTracking);
-    actualCostTracking.addCall({
-      type: "other",
-      metadata: {
-        module: "search",
-        operation: "scrape",
-        url: searchResult.url
-      },
-      cost: credits,
-      model: "search-scrape"
-    });
-
     logger.info("Scrape job completed", {
       scrapeId: jobId,
       url: searchResult.url,
@@ -153,9 +141,20 @@ async function scrapeSearchResult(
       ...doc,
     };
 
+    const { data: costTrackingResponse, error: costTrackingError } = await supabase_service.from("firecrawl_jobs")
+      .select("cost_tracking")
+      .eq("job_id", jobId);
+    
+    if (costTrackingError) {
+      logger.error("Error getting cost tracking", { error: costTrackingError });
+      throw costTrackingError;
+    }
+    
+    const costTracking: ReturnType<typeof CostTracking.prototype.toJSON> = costTrackingResponse?.[0]?.cost_tracking;
+
     return {
       document,
-      costTracking: actualCostTracking,
+      costTracking,
     };
   } catch (error) {
     logger.error(`Error in scrapeSearchResult: ${error}`, {
@@ -182,7 +181,7 @@ async function scrapeSearchResult(
 
     return {
       document,
-      costTracking: new CostTracking(),
+      costTracking: new CostTracking().toJSON(),
     };
   }
 }
@@ -316,9 +315,11 @@ export async function searchController(
         
         if (matchingDocWithCost) {
           return await calculateCreditsToBeBilled(
-            req.body.scrapeOptions, 
+            req.body.scrapeOptions,
+            { teamId: req.auth.team_id, bypassBilling: true, zeroDataRetention: false },
             matchingDocWithCost.document, 
-            matchingDocWithCost.costTracking
+            matchingDocWithCost.costTracking,
+            req.acuc.flags,
           );
         } else {
           return 1;
@@ -370,7 +371,6 @@ export async function searchController(
         scrapeOptions: req.body.scrapeOptions,
         origin: req.body.origin,
         integration: req.body.integration,
-        cost_tracking: allDocsWithCostTracking.length > 0 ? allDocsWithCostTracking[0].costTracking : new CostTracking(),
         credits_billed,
         zeroDataRetention: false, // not supported
       },
