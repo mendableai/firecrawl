@@ -5,6 +5,12 @@ use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
+fn _extract_base_href(html: &str) -> Option<String> {
+    let document = parse_html().one(html);
+    document.select("base[href]").unwrap().next()
+        .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string()))
+}
+
 /// Extracts base href from HTML
 /// 
 /// # Safety
@@ -12,13 +18,7 @@ use url::Url;
 #[no_mangle]
 pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char) -> *mut libc::c_char {
     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
-    
-    let document = parse_html().one(html);
-    
-    let base_href = document.select("base[href]").unwrap().next()
-        .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string()))
-        .unwrap_or_else(|| String::new());
-    
+    let base_href = _extract_base_href(html).unwrap_or_else(|| String::new());
     CString::new(base_href).unwrap().into_raw()
 }
 
@@ -261,7 +261,7 @@ struct ImageSource {
 }
 
 fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
-    let mut document = parse_html().one(opts.html);
+    let mut document = parse_html().one(opts.html.as_ref());
     
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
@@ -352,7 +352,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
         }
     }
 
-    let url = Url::parse(&opts.url).map_err(|_| ())?;
+    let url = Url::parse(&_extract_base_href(opts.html.as_ref()).unwrap_or(opts.url)).map_err(|_| ())?;
     
     let src_images: Vec<_> = document.select("img[src]")?.collect();
     for img in src_images {
