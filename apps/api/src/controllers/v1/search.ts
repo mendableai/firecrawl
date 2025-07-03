@@ -271,6 +271,7 @@ export async function searchController(
         title: r.title,
         description: r.description,
       })) as Document[];
+      credits_billed = responseData.data.length;
     } else {
       logger.info("Scraping search results");
       const scrapePromises = searchResults.map((result) =>
@@ -315,7 +316,7 @@ export async function searchController(
       
       const creditPromises = finalDocsForBilling.map(async (finalDoc) => {
         const matchingDocWithCost = docsWithCostTracking.find(item => 
-          item.document.url === finalDoc.url
+          item.document.metadata && finalDoc.metadata && item.document.metadata.scrapeId === finalDoc.metadata.scrapeId
         );
         
         if (matchingDocWithCost) {
