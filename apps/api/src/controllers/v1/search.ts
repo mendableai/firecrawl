@@ -141,16 +141,21 @@ async function scrapeSearchResult(
       ...doc,
     };
 
-    const { data: costTrackingResponse, error: costTrackingError } = await supabase_service.from("firecrawl_jobs")
-      .select("cost_tracking")
-      .eq("job_id", jobId);
-    
-    if (costTrackingError) {
-      logger.error("Error getting cost tracking", { error: costTrackingError });
-      throw costTrackingError;
+    let costTracking: ReturnType<typeof CostTracking.prototype.toJSON>;
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const { data: costTrackingResponse, error: costTrackingError } = await supabase_service.from("firecrawl_jobs")
+        .select("cost_tracking")
+        .eq("job_id", jobId);
+      
+      if (costTrackingError) {
+        logger.error("Error getting cost tracking", { error: costTrackingError });
+        throw costTrackingError;
+      }
+      
+      costTracking = costTrackingResponse?.[0]?.cost_tracking;
+    } else {
+      costTracking = new CostTracking().toJSON();
     }
-    
-    const costTracking: ReturnType<typeof CostTracking.prototype.toJSON> = costTrackingResponse?.[0]?.cost_tracking;
 
     return {
       document,
