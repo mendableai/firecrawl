@@ -153,6 +153,25 @@ const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networki
   };
 };
 
+app.get('/health', async (req: Request, res: Response) => {
+  try {
+    if (!browser || !context) {
+      await initializeBrowser();
+    }
+    
+    const testPage = await context.newPage();
+    await testPage.close();
+    
+    res.status(200).json({ status: 'healthy' });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({ 
+      status: 'unhealthy', 
+      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    });
+  }
+});
+
 app.post('/scrape', async (req: Request, res: Response) => {
   const { url, wait_after_load = 0, timeout = 15000, headers, check_selector }: UrlModel = req.body;
 

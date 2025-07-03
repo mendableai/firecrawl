@@ -23,6 +23,8 @@ import websockets
 import aiohttp
 import asyncio
 from pydantic import Field
+import ssl
+import certifi
 
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
@@ -571,6 +573,8 @@ class FirecrawlApp:
             scrape_params['maxAge'] = max_age
         if store_in_cache is not None:
             scrape_params['storeInCache'] = store_in_cache
+        if zero_data_retention is not None:
+            scrape_params['zeroDataRetention'] = zero_data_retention
         
         scrape_params.update(kwargs)
 
@@ -1372,6 +1376,8 @@ class FirecrawlApp:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if max_concurrency is not None:
             scrape_params['maxConcurrency'] = max_concurrency
+        if zero_data_retention is not None:
+            scrape_params['zeroDataRetention'] = zero_data_retention
         
         # Add any additional kwargs
         scrape_params.update(kwargs)
@@ -1423,6 +1429,7 @@ class FirecrawlApp:
         agent: Optional[AgentOptions] = None,
         max_concurrency: Optional[int] = None,
         idempotency_key: Optional[str] = None,
+        zero_data_retention: Optional[bool] = None,
         **kwargs
     ) -> BatchScrapeResponse:
         """
@@ -2762,7 +2769,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             aiohttp.ClientError: If the request fails after all retries.
             Exception: If max retries are exceeded or other errors occur.
         """
-        async with aiohttp.ClientSession() as session:
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        async with aiohttp.ClientSession(ssl=ssl_context) as session:
             for attempt in range(retries):
                 try:
                     async with session.request(

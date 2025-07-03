@@ -9,6 +9,7 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import { getURLDepth } from "../../scraper/WebScraper/utils/maxDepthUtils";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -693,6 +694,16 @@ export const crawlRequestSchema = crawlerOptions
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
+  .refine(
+    (data) => {
+      const urlDepth = getURLDepth(data.url);
+      return urlDepth <= data.maxDepth;
+    },
+    {
+      message: "URL depth exceeds the specified maxDepth",
+      path: ["url"]
+    }
+  )
   .transform((x) => {
     if (x.crawlEntireDomain !== undefined) {
       x.allowBackwardLinks = x.crawlEntireDomain;

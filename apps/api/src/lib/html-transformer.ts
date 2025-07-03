@@ -21,6 +21,7 @@ type TransformHtmlOptions = {
 class RustHTMLTransformer {
   private static instance: RustHTMLTransformer;
   private _extractLinks: KoffiFunction;
+  private _extractBaseHref: KoffiFunction;
   private _extractMetadata: KoffiFunction;
   private _transformHtml: KoffiFunction;
   private _freeString: KoffiFunction;
@@ -32,6 +33,7 @@ class RustHTMLTransformer {
     const cstn = "CString:" + crypto.randomUUID();
     const freedResultString = koffi.disposable(cstn, "string", this._freeString);
     this._extractLinks = lib.func("extract_links", freedResultString, ["string"]);
+    this._extractBaseHref = lib.func("extract_base_href", freedResultString, ["string"]);
     this._extractMetadata = lib.func("extract_metadata", freedResultString, ["string"]);
     this._transformHtml = lib.func("transform_html", freedResultString, ["string"]);
     this._getInnerJSON = lib.func("get_inner_json", freedResultString, ["string"]);
@@ -56,6 +58,18 @@ class RustHTMLTransformer {
           reject(err);
         } else {
           resolve(JSON.parse(res));
+        }
+      });
+    });
+  }
+
+  public async extractBaseHref(html: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      this._extractBaseHref.async(html, (err: Error, res: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(res);
         }
       });
     });
@@ -115,6 +129,17 @@ export async function extractLinks(
 
     const converter = await RustHTMLTransformer.getInstance();
     return await converter.extractLinks(html);
+}
+
+export async function extractBaseHref(
+  html: string | null | undefined,
+): Promise<string> {
+    if (!html) {
+        return "";
+    }
+
+    const converter = await RustHTMLTransformer.getInstance();
+    return await converter.extractBaseHref(html);
 }
 
 export async function extractMetadata(
