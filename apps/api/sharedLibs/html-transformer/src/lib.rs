@@ -1,14 +1,18 @@
 use std::{collections::HashMap, ffi::{CStr, CString}};
 
-use kuchikiki::{parse_html, traits::TendrilSink};
+use kuchikiki::{parse_html, traits::TendrilSink, NodeRef};
 use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
-fn _extract_base_href(html: &str) -> Option<String> {
-    let document = parse_html().one(html);
+fn _extract_base_href_from_document(document: &NodeRef) -> Option<String> {
     document.select("base[href]").unwrap().next()
         .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string()))
+}
+
+fn _extract_base_href(html: &str) -> Option<String> {
+    let document = parse_html().one(html);
+    _extract_base_href_from_document(&document)
 }
 
 /// Extracts base href from HTML
@@ -262,6 +266,7 @@ struct ImageSource {
 
 fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
     let mut document = parse_html().one(opts.html.as_ref());
+    let url = Url::parse(&_extract_base_href_from_document(&document).unwrap_or(opts.url)).map_err(|_| ())?;
     
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
@@ -351,8 +356,6 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
             img.attributes.borrow_mut().insert("src", biggest.url.clone());
         }
     }
-
-    let url = Url::parse(&_extract_base_href(opts.html.as_ref()).unwrap_or(opts.url)).map_err(|_| ())?;
     
     let src_images: Vec<_> = document.select("img[src]")?.collect();
     for img in src_images {
