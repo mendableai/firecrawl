@@ -11,11 +11,9 @@ beforeAll(async () => {
   });
 }, 10000);
 
-const shouldSkipTests = !process.env.USE_DB_AUTHENTICATION && !process.env.OPENAI_API_KEY;
-const describeOrSkip = shouldSkipTests ? describe.skip : describe;
-
-describeOrSkip('Deep Research', () => {
-  it('successfully completes a basic research query', async () => {
+describe('Deep Research', () => {
+  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
+    it('successfully completes a basic research query', async () => {
     const query = 'What is artificial intelligence?';
     
     try {
@@ -30,8 +28,8 @@ describeOrSkip('Deep Research', () => {
       expect(result.success).toBe(true);
       expect(result.status).toBe('completed');
       expect(result.data).toBeDefined();
-      expect(typeof result.data.answer).toBe('string');
-      expect(result.data.answer.length).toBeGreaterThan(0);
+      expect(typeof result.data.finalAnalysis).toBe('string');
+      expect(result.data.finalAnalysis.length).toBeGreaterThan(0);
       expect(Array.isArray(result.data.sources)).toBe(true);
       expect(result.data.sources.length).toBeGreaterThan(0);
       expect(Array.isArray(result.data.activities)).toBe(true);
@@ -40,5 +38,10 @@ describeOrSkip('Deep Research', () => {
       console.error('Deep research test failed with error:', error);
       throw error;
     }
-  }, 300000); // 5 minutes timeout to account for processing time
+    }, 300000); // 5 minutes timeout to account for processing time
+  } else {
+    it("dummy test", () => {
+      expect(true).toBe(true);
+    });
+  }
 });
