@@ -5,13 +5,15 @@ import { CostTracking } from "./extract/extraction-service";
 const creditsPerPDFPage = 1;
 const stealthProxyCostBonus = 4;
 
-export async function calculateCreditsToBeBilled(options: ScrapeOptions, internalOptions: InternalOptions, document: Document | null, costTracking: CostTracking, flags: TeamFlags) {
+export async function calculateCreditsToBeBilled(options: ScrapeOptions, internalOptions: InternalOptions, document: Document | null, costTracking: CostTracking | ReturnType<typeof CostTracking.prototype.toJSON>, flags: TeamFlags) {
+    const costTrackingJSON: ReturnType<typeof CostTracking.prototype.toJSON> = costTracking instanceof CostTracking ? costTracking.toJSON() : costTracking;
+
     if (document === null) {
         // Failure -- check cost tracking if FIRE-1
         let creditsToBeBilled = 0;
 
         if (options.agent?.model?.toLowerCase() === "fire-1" || options.extract?.agent?.model?.toLowerCase() === "fire-1" || options.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
-            creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
+            creditsToBeBilled = Math.ceil((costTrackingJSON.totalCost ?? 1) * 1800);
         } 
     
         return creditsToBeBilled;
@@ -23,14 +25,14 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
     }
 
     if (options.agent?.model?.toLowerCase() === "fire-1" || options.extract?.agent?.model?.toLowerCase() === "fire-1" || options.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
-        creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
+        creditsToBeBilled = Math.ceil((costTrackingJSON.totalCost ?? 1) * 1800);
     } 
 
     if (internalOptions.zeroDataRetention) {
         creditsToBeBilled += (flags?.zdrCost ?? 1);
     }
     
-    if (document.metadata.numPages !== undefined && document.metadata.numPages > 1) {
+    if (document.metadata?.numPages !== undefined && document.metadata.numPages > 1) {
         creditsToBeBilled += creditsPerPDFPage * (document.metadata.numPages - 1);
     }
 
