@@ -355,6 +355,19 @@ const fire1Refine = (obj) => {
 const fire1RefineOpts = {
   message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
 };
+const waitForRefine = (obj) => {
+  if (obj.waitFor && obj.timeout) {
+    if (typeof obj.timeout !== 'number' || obj.timeout <= 0) {
+      return false;
+    }
+    return obj.waitFor <= obj.timeout / 2;
+  }
+  return true;
+};
+const waitForRefineOpts = {
+  message: "waitFor must not exceed half of timeout",
+  path: ["waitFor"],
+};
 const extractRefine = (obj) => {
   const hasExtractFormat = obj.formats?.includes("extract");
   const hasExtractOptions = obj.extract !== undefined;
@@ -447,6 +460,7 @@ export const scrapeOptions = baseScrapeOptions
   )
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
@@ -531,6 +545,10 @@ export const extractV1Options = z
     (x) => (x.scrapeOptions ? fire1Refine(x.scrapeOptions) : true),
     fire1RefineOpts,
   )
+  .refine(
+    (x) => (x.scrapeOptions ? waitForRefine(x.scrapeOptions) : true),
+    waitForRefineOpts,
+  )
   .transform((x) => ({
     ...x,
     scrapeOptions: x.scrapeOptions
@@ -565,6 +583,7 @@ export const scrapeRequestSchema = baseScrapeOptions
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
@@ -604,6 +623,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
@@ -620,6 +640,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
@@ -672,6 +693,7 @@ export const crawlRequestSchema = crawlerOptions
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
+  .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .refine(
     (data) => {
       const urlDepth = getURLDepth(data.url);
@@ -1299,6 +1321,7 @@ export const searchRequestSchema = z
   )
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
+  .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
