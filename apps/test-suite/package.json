@@ -23,7 +23,7 @@
     "ts-jest": "^29.1.2"
   },
   "devDependencies": {
-    "@jest/globals": "^29.7.0",
+    "@jest/globals": "^30.0.3",
     "@types/jest": "^29.5.12",
     "@types/supertest": "^6.0.2",
     "artillery": "^2.0.19",
