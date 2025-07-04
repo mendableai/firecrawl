@@ -27,6 +27,7 @@ env:
   TEST_API_KEY_ZDR: ${{ secrets.TEST_API_KEY_ZDR }}
   TEST_TEAM_ID_ZDR: ${{ secrets.TEST_TEAM_ID_ZDR }}
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
+  FIRE_ENGINE_STAGING_URL: ${{ secrets.FIRE_ENGINE_STAGING_URL }}
   USE_DB_AUTHENTICATION: true
   SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
   ENV: ${{ secrets.ENV }}
