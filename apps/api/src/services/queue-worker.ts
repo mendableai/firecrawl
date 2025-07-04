@@ -1620,8 +1620,9 @@ app.get("/liveness", (req, res) => {
   }
 });
 
-app.listen(3005, () => {
-  _logger.info("Liveness endpoint is running on port 3005");
+const workerPort = process.env.PORT || 3005;
+app.listen(workerPort, () => {
+  _logger.info(`Liveness endpoint is running on port ${workerPort}`);
 });
 
 (async () => {

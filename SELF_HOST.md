@@ -42,6 +42,8 @@ Create an `.env` in the root directory using the template below.
 PORT=3002
 HOST=0.0.0.0
 
+# Note: PORT is used by both the main API server and worker liveness check endpoint
+
 # To turn on DB authentication, you need to set up Supabase.
 USE_DB_AUTHENTICATION=false
 
