@@ -6,9 +6,7 @@ on:
       - main
 
 env:
-  PORT: 3002
   REDIS_URL: redis://localhost:6379
-  HOST: 0.0.0.0
   ENV: ${{ secrets.ENV }}
   TEST_SUITE_SELF_HOSTED: true
   USE_GO_MARKDOWN_PARSER: true
@@ -100,9 +98,15 @@ jobs:
         working-directory: ./
       - name: Start server
         run: npm run start:production > api.log 2>&1 &
+        env:
+          PORT: 3002
+          HOST: 0.0.0.0
         working-directory: ./apps/api
       - name: Start worker
         run: npm run workers > worker.log 2>&1 &
+        env:
+          PORT: 3005
+          HOST: 0.0.0.0
         working-directory: ./apps/api
       - name: Start playwright
         if: matrix.engine == 'playwright'

@@ -7,11 +7,9 @@ on:
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
-  HOST: ${{ secrets.HOST }}
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  PORT: ${{ secrets.PORT }}
   REDIS_URL: ${{ secrets.REDIS_URL }}
   SUPABASE_ANON_TOKEN: ${{ secrets.SUPABASE_ANON_TOKEN }}
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
@@ -100,10 +98,16 @@ jobs:
         working-directory: ./apps/api/sharedLibs/pdf-parser
       - name: Start the application
         run: npm run start:production > api.log 2>&1 &
+        env:
+          PORT: 3002
+          HOST: 0.0.0.0
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
         run: npm run workers > worker.log 2>&1 &
+        env:
+          PORT: 3005
+          HOST: 0.0.0.0
         working-directory: ./apps/api
         id: start_workers
       - name: Start index worker
