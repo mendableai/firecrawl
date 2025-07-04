@@ -1,6 +1,7 @@
-use std::{collections::HashMap, ffi::{CStr, CString}};
+use std::{collections::{HashMap, HashSet}, ffi::{CStr, CString}};
 
-use kuchikiki::{parse_html, traits::TendrilSink, NodeRef};
+use nodesig::{get_node_signature, SignatureMode};
+use kuchikiki::{iter::NodeEdge, parse_html, traits::TendrilSink, NodeRef};
 use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
@@ -256,6 +257,7 @@ struct TranformHTMLOptions {
     include_tags: Vec<String>,
     exclude_tags: Vec<String>,
     only_main_content: bool,
+    omce_signatures: Option<Vec<String>>,
 }
 
 struct ImageSource {
@@ -267,7 +269,7 @@ struct ImageSource {
 fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
     let mut document = parse_html().one(opts.html.as_ref());
     let url = Url::parse(&_extract_base_href_from_document(&document).unwrap_or(opts.url)).map_err(|_| ())?;
-    
+
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
         let root = new_document.select_first("div")?;
@@ -300,6 +302,43 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
 
     while let Ok(x) = document.select_first("script") {
         x.as_node().detach();
+    }
+
+    // The first operation applied must be OMCE.
+    if opts.only_main_content {
+        if let Some(signatures) = opts.omce_signatures.as_ref() {
+            let mut nodes_to_drop: Vec<NodeRef> = Vec::new();
+
+            let modes = signatures.iter().map(|x| Into::<SignatureMode>::into(x.split(':').nth(1).unwrap().to_string())).collect::<HashSet<_>>();
+            for mode in modes {
+                let matcher = format!(":{}:", Into::<String>::into(mode));
+                let signatures = signatures.iter().filter(|x| x.contains(&matcher)).cloned().collect::<HashSet<_>>();
+                
+                for edge in document.traverse() {
+                    match edge {
+                        NodeEdge::Start(_) => {},
+                        NodeEdge::End(node) => {
+                            if node.as_element().is_none() {
+                                continue;
+                            }
+            
+                            if node.text_contents().trim().is_empty() {
+                                continue;
+                            }
+
+                            let signature = get_node_signature(&node, mode);
+                            if signatures.contains(&signature) {
+                                nodes_to_drop.push(node);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for node in nodes_to_drop {
+                node.detach();
+            }
+        }
     }
 
     for x in opts.exclude_tags.iter() {
