@@ -223,8 +223,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
   const timeout = (timeToRun ?? 300000) + totalWait;
 
-  // const shouldABTest = false;
-  const shouldABTest = !meta.internalOptions.zeroDataRetention && Math.random() <= (1/30);
+  const shouldABTest = false;
+  // const shouldABTest = !meta.internalOptions.zeroDataRetention && Math.random() <= (1/30);
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
