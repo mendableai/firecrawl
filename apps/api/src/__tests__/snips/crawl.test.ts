@@ -60,14 +60,32 @@ describe("Crawl tests", () => {
     }, 3 * scrapeTimeout + 3 * 5000);
 
     it.concurrent("ongoing crawls endpoint works", async () => {
+        const beforeCrawl = new Date();
+        
         const res = await asyncCrawl({
             url: "https://firecrawl.dev",
             limit: 3,
         }, identity);
 
         const ongoing = await crawlOngoing(identity);
-
-        expect(ongoing.crawls.find(x => x.id === res.id)).toBeDefined();
+        const afterCrawl = new Date();
+        
+        const crawlItem = ongoing.crawls.find(x => x.id === res.id);
+        expect(crawlItem).toBeDefined();
+        
+        if (crawlItem) {
+            expect(crawlItem.created_at).toBeDefined();
+            expect(typeof crawlItem.created_at).toBe("string");
+            
+            const createdAtDate = new Date(crawlItem.created_at);
+            expect(createdAtDate).toBeInstanceOf(Date);
+            expect(createdAtDate.getTime()).not.toBeNaN();
+            
+            expect(crawlItem.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+            
+            expect(createdAtDate.getTime()).toBeGreaterThanOrEqual(beforeCrawl.getTime() - 1000);
+            expect(createdAtDate.getTime()).toBeLessThanOrEqual(afterCrawl.getTime() + 1000);
+        }
 
         await asyncCrawlWaitForFinish(res.id, identity);
 
