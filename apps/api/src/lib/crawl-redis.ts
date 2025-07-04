@@ -330,7 +330,7 @@ export async function lockURLs(
   const logger = __logger.child({
     crawlId: id,
     module: "crawl-redis",
-    method: "lockURL",
+    method: "lockURLs",
     teamId: sc.team_id,
   });
 
