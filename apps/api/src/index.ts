@@ -30,7 +30,7 @@ const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
-const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
+const numCPUs = process.env.ENV === "local" ? 2 : os.availableParallelism();
 logger.info(`Number of CPUs: ${numCPUs} available`);
 
 // Install cacheable lookup for all other requests
