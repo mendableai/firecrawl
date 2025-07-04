@@ -3,7 +3,7 @@ import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { clearACUC, clearACUCTeam, getACUC } from "../../controllers/auth";
 import { redlock } from "../redlock";
 import { supabase_rr_service, supabase_service } from "../supabase";
-import { createPaymentIntent } from "./stripe";
+import { createInvoiceForAutoRecharge, createPaymentIntent } from "./stripe";
 import { issueCredits } from "./issue_credits";
 import { sendNotification, sendNotificationWithCustomDays } from "../notification/email_notification";
 import { NotificationType } from "../../types";
@@ -153,8 +153,7 @@ export async function autoCharge(
               // Set cooldown BEFORE attempting payment
               await setValue(cooldownKey, "true", AUTO_RECHARGE_COOLDOWN);
 
-              // Attempt to create a payment intent
-              const paymentStatus = await createPaymentIntent(
+              const paymentStatus = await createInvoiceForAutoRecharge(
                 chunk.team_id,
                 customer.stripe_customer_id,
               );
@@ -175,7 +174,7 @@ export async function autoCharge(
                 team_id: chunk.team_id,
                 initial_payment_status: paymentStatus.return_status,
                 credits_issued: issueCreditsSuccess ? AUTO_RECHARGE_CREDITS : 0,
-                stripe_charge_id: paymentStatus.charge_id,
+                stripe_invoice_id: paymentStatus.invoice_id,
               });
 
               // Send a notification if credits were successfully issued
