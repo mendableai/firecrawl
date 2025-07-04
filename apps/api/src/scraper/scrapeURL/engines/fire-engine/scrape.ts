@@ -65,6 +65,7 @@ const schema = z.object({
 });
 
 export const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL ?? "<mock-fire-engine-url>";
+export const fireEngineStagingURL = process.env.FIRE_ENGINE_STAGING_URL ?? "<mock-fire-engine-url>";
 
 export async function fireEngineScrape<
   Engine extends
@@ -76,6 +77,7 @@ export async function fireEngineScrape<
   request: FireEngineScrapeRequestCommon & Engine,
   mock: MockState | null,
   abort?: AbortSignal,
+  production = true,
 ): Promise<z.infer<typeof schema>> {
   const scrapeRequest = await Sentry.startSpan(
     {
@@ -86,7 +88,7 @@ export async function fireEngineScrape<
     },
     async (span) => {
       return await robustFetch({
-        url: `${fireEngineURL}/scrape`,
+        url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape`,
         method: "POST",
         headers: {
           ...(Sentry.isInitialized()

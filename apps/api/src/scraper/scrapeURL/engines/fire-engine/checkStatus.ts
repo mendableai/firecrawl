@@ -13,7 +13,7 @@ import {
   FEPageLoadFailed
 } from "../../error";
 import { MockState } from "../../lib/mock";
-import { fireEngineURL } from "./scrape";
+import { fireEngineStagingURL, fireEngineURL } from "./scrape";
 import { getDocFromGCS } from "../../../../lib/gcs-jobs";
 import { Meta } from "../..";
 
@@ -133,6 +133,7 @@ export async function fireEngineCheckStatus(
   jobId: string,
   mock: MockState | null,
   abort?: AbortSignal,
+  production = true,
 ): Promise<FireEngineCheckStatusSuccess> {
   let status = await Sentry.startSpan(
     {
@@ -143,7 +144,7 @@ export async function fireEngineCheckStatus(
     },
     async (span) => {
       return await robustFetch({
-        url: `${fireEngineURL}/scrape/${jobId}`,
+        url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape/${jobId}`,
         method: "GET",
         logger: logger.child({ method: "fireEngineCheckStatus/robustFetch" }),
         headers: {
