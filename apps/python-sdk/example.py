@@ -1,7 +1,8 @@
-from firecrawl import JsonConfig, FirecrawlApp
+from firecrawl import JsonConfig, FirecrawlApp, AsyncFirecrawlApp
 from pydantic import BaseModel, Field
 from typing import List
 import time
+import asyncio
 app = FirecrawlApp(api_url="https://api.firecrawl.dev")
 
 # Scrape a website:
@@ -139,3 +140,12 @@ class ExtractSchema(BaseModel):
 extract_config = JsonConfig(schema=ExtractSchema.model_json_schema())
 data = app.scrape_url('https://docs.firecrawl.dev/', formats=['json'], json_options=extract_config)
 print(data.json)
+
+async_app = AsyncFirecrawlApp(api_url="https://api.firecrawl.dev")
+
+async def main():
+    result = await async_app.scrape_url('example.com', formats=["markdown", "html"])
+    print("Async Scrape Result:")
+    print(result.markdown)
+
+asyncio.run(main())
