@@ -34,8 +34,7 @@ setup(
         'asyncio',
         'nest-asyncio',
         'pydantic',
-        'aiohttp',
-        'certifi'
+        'aiohttp'
     ],
     python_requires=">=3.8",
     classifiers=[
