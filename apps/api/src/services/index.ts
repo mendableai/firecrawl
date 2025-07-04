@@ -334,3 +334,29 @@ export async function queryIndexAtDomainSplitLevel(hostname: string, limit: numb
     iteration++;
   }
 }
+
+export async function queryOMCESignatures(hostname: string, maxAge = 2 * 24 * 60 * 60 * 1000): Promise<string[]> {
+  if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
+    return [];
+  }
+
+  const domainSplitsHash = generateDomainSplits(hostname).map(x => hashURL(x));
+
+  const level = domainSplitsHash.length - 1;
+  if (domainSplitsHash.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await index_supabase_service
+    .rpc("query_omce_signatures", {
+      i_domain_hash: domainSplitsHash[level],
+      i_newer_than: new Date(Date.now() - maxAge).toISOString(),
+    });
+
+  if (error) {
+    _logger.warn("Error querying index (omce)", { error, hostname });
+    return [];
+  }
+
+  return data?.[0]?.signatures ?? [];
+}

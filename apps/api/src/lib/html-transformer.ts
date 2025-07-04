@@ -16,6 +16,7 @@ type TransformHtmlOptions = {
   include_tags: string[],
   exclude_tags: string[],
   only_main_content: boolean,
+  omce_signatures?: string[],
 };
 
 class RustHTMLTransformer {
