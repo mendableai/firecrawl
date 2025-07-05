@@ -5,3 +5,4 @@ websockets
 nest-asyncio
 pydantic
 aiohttp
+certifi
