@@ -35,21 +35,21 @@
 
 # 🔥 Firecrawl
 
-Empower your AI apps with clean data from any website. Featuring advanced scraping, crawling, and data extraction capabilities.
+Empower your AI applications with clean data from any website. Featuring advanced scraping, crawling, and data extraction capabilities.
 
-_This repository is in development, and we’re still integrating custom modules into the mono repo. It's not fully ready for self-hosted deployment yet, but you can run it locally._
+_This repository is in development, and we’re still integrating custom modules into the mono repo. It's not fully ready for a self-hosted deployment yet, but you can run it locally._
 
 ## What is Firecrawl?
 
-[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required. Check out our [documentation](https://docs.firecrawl.dev).
+[Firecrawl](https://firecrawl.dev?ref=github) is an API service that accepts a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required. Check out our [documentation](https://docs.firecrawl.dev).
 
 _Pst. hey, you, join our stargazers :)_
 
 <a href="https://github.com/mendableai/firecrawl">
-  <img src="https://img.shields.io/github/stars/mendableai/firecrawl.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
+  <img src="https://img.shields.io/github/stars/mendableai/firecrawl.svg?style=social&label=Star&maxAge=2592000" alt="GitHub Stars:">
 </a>
 
-## How to use it?
+## How to Use it?
 
 We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.dev/playground). You can also self host the backend if you'd like.
 
@@ -217,7 +217,7 @@ Response:
 
 #### Map with search
 
-Map with `search` param allows you to search for specific urls inside a website.
+Map with `search` parameter allows you to search for specific URLs inside a website.
 
 ```bash cURL
 curl -X POST https://api.firecrawl.dev/v1/map \
@@ -452,7 +452,7 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
 
 ### Interacting with the page with Actions (Cloud-only)
 
-Firecrawl allows you to perform various actions on a web page before scraping its content. This is particularly useful for interacting with dynamic content, navigating through pages, or accessing content that requires user interaction.
+Firecrawl enables you to perform various actions on a web page before scraping its content. This is particularly useful for interacting with dynamic content, navigating through pages, or accessing content that requires user interaction.
 
 Here is an example of how to use actions to navigate to google.com, search for Firecrawl, click on the first result, and take a screenshot.
 
