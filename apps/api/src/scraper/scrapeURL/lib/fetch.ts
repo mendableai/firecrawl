@@ -112,8 +112,8 @@ export async function robustFetch<
             : {}),
       });
     } catch (error) {
-      if (error instanceof TimeoutSignal) {
-        throw error;
+      if (error instanceof TimeoutSignal || (error instanceof Error && error.name === "TimeoutError")) {
+        throw new TimeoutSignal();
       } else if (!ignoreFailure) {
         Sentry.captureException(error);
         if (tryCount > 1) {

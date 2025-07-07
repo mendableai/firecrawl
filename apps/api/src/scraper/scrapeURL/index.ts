@@ -368,7 +368,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           startedAt,
           finishedAt: Date.now(),
         };
-      } else if (error instanceof TimeoutError) {
+      } else if (error instanceof TimeoutError || (error instanceof Error && error.name === "TimeoutError")) {
         meta.logger.info("Engine " + engine + " timed out while scraping.", {
           error,
         });
@@ -435,10 +435,14 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   }
 
   if (result === null) {
-    throw new NoEnginesLeftError(
-      fallbackList.map((x) => x.engine),
-      meta.results,
-    );
+    if (Object.values(meta.results).every(x => x.state === "timeout")) {
+      throw new TimeoutSignal();
+    } else {
+      throw new NoEnginesLeftError(
+        fallbackList.map((x) => x.engine),
+        meta.results,
+      );
+    }
   }
 
   let document: Document = {
