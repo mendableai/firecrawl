@@ -110,12 +110,13 @@ describe("Scrape tests", () => {
     }, scrapeTimeout);
   });
 
-  it.concurrent("works with Punycode domains", async () => {
-    await scrape({
-      url: "http://xn--1lqv92a901a.xn--ses554g/",
-      timeout: scrapeTimeout,
-    }, identity);
-  }, scrapeTimeout);
+  // TEMP: domain broken
+  // it.concurrent("works with Punycode domains", async () => {
+  //   await scrape({
+  //     url: "http://xn--1lqv92a901a.xn--ses554g/",
+  //     timeout: scrapeTimeout,
+  //   }, identity);
+  // }, scrapeTimeout);
 
   it.concurrent("handles non-UTF-8 encodings", async () => {
     const response = await scrape({
