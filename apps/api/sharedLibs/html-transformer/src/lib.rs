@@ -371,13 +371,16 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
             };
 
             // split off the last character of the last token and parse as size
-            let indices = last_token.char_indices().map(|(i, _)| i).collect::<Vec<_>>();
-            if let Ok(parsed_size) = last_token[..indices[indices.len()-1]].parse() {
-                Some(ImageSource {
-                    url: if last_token_used { tok[0..tok.len()-1].join(" ") } else { tok.join(" ") },
-                    size: parsed_size,
-                    is_x: last_token.ends_with("x")
-                })
+            if let Some((last_index, _)) = last_token.char_indices().last() {
+                if let Ok(parsed_size) = last_token[..last_index].parse() {
+                    Some(ImageSource {
+                        url: if last_token_used { tok[0..tok.len()-1].join(" ") } else { tok.join(" ") },
+                        size: parsed_size,
+                        is_x: last_token.ends_with("x")
+                    })
+                } else {
+                    None
+                }
             } else {
                 None
             }
