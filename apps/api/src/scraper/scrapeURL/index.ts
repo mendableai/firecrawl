@@ -368,7 +368,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           startedAt,
           finishedAt: Date.now(),
         };
-      } else if (error instanceof TimeoutError) {
+      } else if (error instanceof TimeoutError || (error instanceof Error && error.name === "TimeoutError")) {
         meta.logger.info("Engine " + engine + " timed out while scraping.", {
           error,
         });
