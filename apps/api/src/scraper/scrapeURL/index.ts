@@ -435,10 +435,14 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   }
 
   if (result === null) {
-    throw new NoEnginesLeftError(
-      fallbackList.map((x) => x.engine),
-      meta.results,
-    );
+    if (Object.values(meta.results).every(x => x.state === "timeout")) {
+      throw new TimeoutSignal();
+    } else {
+      throw new NoEnginesLeftError(
+        fallbackList.map((x) => x.engine),
+        meta.results,
+      );
+    }
   }
 
   let document: Document = {
