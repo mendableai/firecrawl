@@ -94,8 +94,8 @@ class RustHTMLTransformer {
         if (err) {
           reject(err);
         } else {
-          if (res === "RUSTFC:ERROR") {
-            reject(new Error("Something went wrong on the Rust side."));
+          if (res === "RUSTFC:ERROR" || res.startsWith("RUSTFC:ERROR:")) {
+            reject(new Error(res.startsWith("RUSTFC:ERROR:") ? ("Something went wrong on the Rust side. " + res.split("RUSTFC:ERROR:")[1]) : "Something went wrong on the Rust side."));
           } else {
             resolve(res);
           }

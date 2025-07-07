@@ -262,20 +262,20 @@ struct TranformHTMLOptions {
 
 struct ImageSource {
     url: String,
-    size: i32,
+    size: f64,
     is_x: bool,
 }
 
-fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
+fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn std::error::Error>> {
     let mut document = parse_html().one(opts.html.as_ref());
-    let url = Url::parse(&_extract_base_href_from_document(&document).unwrap_or(opts.url)).map_err(|_| ())?;
+    let url = Url::parse(&_extract_base_href_from_document(&document).unwrap_or(opts.url))?;
 
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
-        let root = new_document.select_first("div")?;
+        let root = new_document.select_first("div").map_err(|_| "RUSTFC:ERROR:Failed to select root element")?;
 
         for x in opts.include_tags.iter() {
-            let matching_nodes: Vec<_> = document.select(x)?.collect();
+            let matching_nodes: Vec<_> = document.select(x).map_err(|_| "RUSTFC:ERROR:Failed to include_tags tags")?.collect();
             for tag in matching_nodes {
                 root.as_node().append(tag.as_node().clone());
             }
@@ -350,7 +350,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
 
     if opts.only_main_content {
         for x in EXCLUDE_NON_MAIN_TAGS.iter() {
-            let x: Vec<_> = document.select(x)?.collect();
+            let x: Vec<_> = document.select(x).map_err(|_| "RUSTFC:ERROR:Failed to select tags")?.collect();
             for tag in x {
                 if !FORCE_INCLUDE_MAIN_TAGS.iter().any(|x| tag.as_node().select(x).is_ok_and(|mut x| x.next().is_some())) {
                     tag.as_node().detach();
@@ -359,21 +359,28 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
         }
     }
 
-    let srcset_images: Vec<_> = document.select("img[srcset]")?.collect();
+    let srcset_images: Vec<_> = document.select("img[srcset]").map_err(|_| "RUSTFC:ERROR:Failed to select srcset images")?.collect();
     for img in srcset_images {
-        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(())?.split(",").filter_map(|x| {
+        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or("RUSTFC:ERROR:Failed to get srcset")?.split(",").filter_map(|x| {
             let tok: Vec<&str> = x.trim().split(" ").collect();
-            let tok_1 = if tok.len() > 1 && !tok[1].is_empty() {
-                tok[1]
+            let last_token = tok[tok.len() - 1]; // SAFETY: split is guaranteed to return at least one token
+            let (last_token, last_token_used) = if tok.len() > 1 && !last_token.is_empty() && (last_token.ends_with("x") || last_token.ends_with("w")) {
+                (last_token, true)
             } else {
-                "1x"
+                ("1x", false)
             };
-            if let Ok(parsed_size) = tok_1[..tok_1.len()-1].parse() {
-                Some(ImageSource {
-                    url: tok[0].to_string(),
-                    size: parsed_size,
-                    is_x: tok_1.ends_with("x")
-                })
+
+            // split off the last character of the last token and parse as size
+            if let Some((last_index, _)) = last_token.char_indices().last() {
+                if let Ok(parsed_size) = last_token[..last_index].parse() {
+                    Some(ImageSource {
+                        url: if last_token_used { tok[0..tok.len()-1].join(" ") } else { tok.join(" ") },
+                        size: parsed_size,
+                        is_x: last_token.ends_with("x")
+                    })
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -383,30 +390,30 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
             if let Some(src) = img.attributes.borrow().get("src").map(|x| x.to_string()) {
                 sizes.push(ImageSource {
                     url: src,
-                    size: 1,
+                    size: 1.0,
                     is_x: true,
                 });
             }
         }
 
-        sizes.sort_by(|a, b| b.size.cmp(&a.size));
+        sizes.sort_by(|a, b| b.size.partial_cmp(&a.size).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(biggest) = sizes.first() {
             img.attributes.borrow_mut().insert("src", biggest.url.clone());
         }
     }
     
-    let src_images: Vec<_> = document.select("img[src]")?.collect();
+    let src_images: Vec<_> = document.select("img[src]").map_err(|_| "RUSTFC:ERROR:Failed to select src images")?.collect();
     for img in src_images {
-        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or(())?;
+        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or("RUSTFC:ERROR:Failed to get src")?;
         if let Ok(new) = url.join(&old) {
             img.attributes.borrow_mut().insert("src", new.to_string());            
         }
     }
 
-    let href_anchors: Vec<_> = document.select("a[href]")?.collect();
+    let href_anchors: Vec<_> = document.select("a[href]").map_err(|_| "RUSTFC:ERROR:Failed to select href anchors")?.collect();
     for anchor in href_anchors {
-        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or(())?;
+        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or("RUSTFC:ERROR:Failed to get href")?;
         if let Ok(new) = url.join(&old) {
             anchor.attributes.borrow_mut().insert("href", new.to_string());            
         }
@@ -430,7 +437,7 @@ pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut libc:
 
     let out = match _transform_html_inner(opts) {
         Ok(x) => x,
-        Err(_) => "RUSTFC:ERROR".to_string(),
+        Err(e) => format!("RUSTFC:ERROR:{}", e),
     };
 
     CString::new(out).unwrap().into_raw()
