@@ -6,21 +6,21 @@ use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
-fn _extract_base_href_from_document(document: &NodeRef, url: &Url) -> String  {
-    if let Some(base) = document.select("base[href]").unwrap().next()
+fn _extract_base_href_from_document(document: &NodeRef, url: &Url) -> Result<String, Box<dyn std::error::Error>> {
+    if let Some(base) = document.select("base[href]").map_err(|_| "Failed to select base href".to_string())?.next()
             .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string())) {
         
         if let Ok(base) = url.join(&base) {
-            return base.to_string();
+            return Ok(base.to_string());
         }
     }
 
-    url.to_string()
+    Ok(url.to_string())
 }
 
-fn _extract_base_href(html: &str, url: &str) -> String {
+fn _extract_base_href(html: &str, url: &str) -> Result<String, Box<dyn std::error::Error>> {
     let document = parse_html().one(html);
-    let url = Url::parse(url).unwrap();
+    let url = Url::parse(url)?;
 
     _extract_base_href_from_document(&document, &url)
 }
@@ -31,9 +31,26 @@ fn _extract_base_href(html: &str, url: &str) -> String {
 /// Input must be a C HTML string and a C URL string. Output will be a string. Output string must be freed with free_string.
 #[no_mangle]
 pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char, url: *const libc::c_char) -> *mut libc::c_char {
-    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
-    let url = unsafe { CStr::from_ptr(url) }.to_str().unwrap();
-    let base_href = _extract_base_href(html, url);
+    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
+        }
+    };
+    let url = match unsafe { CStr::from_ptr(url) }.to_str().map_err(|_| ()) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR:Failed to parse input URL as C string").unwrap().into_raw();
+        }
+    };
+
+    let base_href = match _extract_base_href(html, url) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
+        }
+    };
+
     CString::new(base_href).unwrap().into_raw()
 }
 
@@ -43,15 +60,29 @@ pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char, url: *cons
 /// Input options must be a C HTML string. Output will be a JSON string array. Output string must be freed with free_string.
 #[no_mangle]
 pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
+    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
+        }
+    };
 
     let document = parse_html().one(html);
 
     let mut out: Vec<String> = Vec::new();
 
-    let anchors: Vec<_> = document.select("a[href]").unwrap().collect();
+    let anchors: Vec<_> = match document.select("a[href]").map_err(|_| "Failed to select links") {
+        Ok(x) => x.collect(),
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
+        }
+    };
+
     for anchor in anchors {
-        let mut href = anchor.attributes.borrow().get("href").unwrap().to_string();
+        let mut href = match anchor.attributes.borrow().get("href") {
+            Some(x) => x.to_string(),
+            None => continue,
+        };
         
         if href.starts_with("http:/") && !href.starts_with("http://") {
             href = format!("http://{}", &href[6..]);
@@ -62,12 +93,19 @@ pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut libc::
         out.push(href);
     }
 
-    CString::new(serde_json::ser::to_string(&out).unwrap()).unwrap().into_raw()
+    let links_out = match serde_json::ser::to_string(&out) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
+        }
+    };
+
+    CString::new(links_out).unwrap().into_raw()
 }
 
 macro_rules! insert_meta_name {
     ($out:ident, $document:ident, $metaName:expr, $outName:expr) => {
-        if let Some(x) = $document.select(&format!("meta[name=\"{}\"]", $metaName)).unwrap().next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
+        if let Some(x) = $document.select(&format!("meta[name=\"{}\"]", $metaName)).map_err(|_| "Failed to select meta name")?.next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
             $out.insert(($outName).to_string(), Value::String(x));
         }
     };
@@ -75,36 +113,29 @@ macro_rules! insert_meta_name {
 
 macro_rules! insert_meta_property {
     ($out:ident, $document:ident, $metaName:expr, $outName:expr) => {
-        if let Some(x) = $document.select(&format!("meta[property=\"{}\"]", $metaName)).unwrap().next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
+        if let Some(x) = $document.select(&format!("meta[property=\"{}\"]", $metaName)).map_err(|_| "Failed to select meta property")?.next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
             $out.insert(($outName).to_string(), Value::String(x));
         }
     };
 }
 
-/// Extracts metadata from HTML
-/// 
-/// # Safety
-/// Input options must be a C HTML string. Output will be a JSON object. Output string must be freed with free_string.
-#[no_mangle]
-pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
-
+fn _extract_metadata(html: &str) -> Result<String, Box<dyn std::error::Error>> {
     let document = parse_html().one(html);
     let mut out = HashMap::<String, Value>::new();
 
-    if let Some(title) = document.select("title").unwrap().next() {
+    if let Some(title) = document.select("title").map_err(|_| "Failed to select title")?.next() {
         out.insert("title".to_string(), Value::String(title.text_contents()));
     }
     // insert_meta_name!(out, document, "description", "description");
 
-    if let Some(favicon_link) = document.select("link[rel=\"icon\"]").unwrap().next()
+    if let Some(favicon_link) = document.select("link[rel=\"icon\"]").map_err(|_| "Failed to select favicon")?.next()
         .and_then(|x| x.attributes.borrow().get("href").map(|x| x.to_string()))
         .or_else(|| document.select("link[rel*=\"icon\"]").unwrap().next()
             .and_then(|x| x.attributes.borrow().get("href").map(|x| x.to_string()))) {
         out.insert("favicon".to_string(), Value::String(favicon_link));
     }
 
-    if let Some(lang) = document.select("html[lang]").unwrap().next().and_then(|x| x.attributes.borrow().get("lang").map(|x| x.to_string())) {
+    if let Some(lang) = document.select("html[lang]").map_err(|_| "Failed to select lang")?.next().and_then(|x| x.attributes.borrow().get("lang").map(|x| x.to_string())) {
         out.insert("language".to_string(), Value::String(lang));
     }
 
@@ -118,7 +149,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
     insert_meta_property!(out, document, "og:determiner", "ogDeterminer");
     insert_meta_property!(out, document, "og:locale", "ogLocale");
 
-    for meta in document.select("meta[property=\"og:locale:alternate\"]").unwrap() {
+    for meta in document.select("meta[property=\"og:locale:alternate\"]").map_err(|_| "Failed to select og locale alternate")? {
         let attrs = meta.attributes.borrow();
 
         if let Some(content) = attrs.get("content") {
@@ -152,7 +183,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
     insert_meta_name!(out, document, "dc.date.created", "dcDateCreated");
     insert_meta_name!(out, document, "dcterms.created", "dcTermsCreated");
 
-    for meta in document.select("meta").unwrap() {
+    for meta in document.select("meta").map_err(|_| "Failed to select meta")? {
         let meta = meta.as_node().as_element().unwrap();
         let attrs = meta.attributes.borrow();
 
@@ -195,7 +226,30 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
         }
     }
 
-    CString::new(serde_json::ser::to_string(&out).unwrap()).unwrap().into_raw()
+    Ok(serde_json::ser::to_string(&out)?)
+}
+
+/// Extracts metadata from HTML
+/// 
+/// # Safety
+/// Input options must be a C HTML string. Output will be a JSON object. Output string must be freed with free_string.
+#[no_mangle]
+pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut libc::c_char {
+    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
+        }
+    };
+
+    let metadata_out = match _extract_metadata(html) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
+        }
+    };
+
+    CString::new(metadata_out).unwrap().into_raw()
 }
 
 const EXCLUDE_NON_MAIN_TAGS: [&str; 41] = [
@@ -278,14 +332,14 @@ struct ImageSource {
 
 fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn std::error::Error>> {
     let mut document = parse_html().one(opts.html.as_ref());
-    let url = Url::parse(&_extract_base_href_from_document(&document, &Url::parse(&opts.url)?))?;
+    let url = Url::parse(&_extract_base_href_from_document(&document, &Url::parse(&opts.url)?)?)?;
 
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
-        let root = new_document.select_first("div").map_err(|_| "RUSTFC:ERROR:Failed to select root element")?;
+        let root = new_document.select_first("div").map_err(|_| "Failed to select root element")?;
 
         for x in opts.include_tags.iter() {
-            let matching_nodes: Vec<_> = document.select(x).map_err(|_| "RUSTFC:ERROR:Failed to include_tags tags")?.collect();
+            let matching_nodes: Vec<_> = document.select(x).map_err(|_| "Failed to include_tags tags")?.collect();
             for tag in matching_nodes {
                 root.as_node().append(tag.as_node().clone());
             }
@@ -360,7 +414,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
 
     if opts.only_main_content {
         for x in EXCLUDE_NON_MAIN_TAGS.iter() {
-            let x: Vec<_> = document.select(x).map_err(|_| "RUSTFC:ERROR:Failed to select tags")?.collect();
+            let x: Vec<_> = document.select(x).map_err(|_| "Failed to select tags")?.collect();
             for tag in x {
                 if !FORCE_INCLUDE_MAIN_TAGS.iter().any(|x| tag.as_node().select(x).is_ok_and(|mut x| x.next().is_some())) {
                     tag.as_node().detach();
@@ -369,9 +423,9 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
         }
     }
 
-    let srcset_images: Vec<_> = document.select("img[srcset]").map_err(|_| "RUSTFC:ERROR:Failed to select srcset images")?.collect();
+    let srcset_images: Vec<_> = document.select("img[srcset]").map_err(|_| "Failed to select srcset images")?.collect();
     for img in srcset_images {
-        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or("RUSTFC:ERROR:Failed to get srcset")?.split(",").filter_map(|x| {
+        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or("Failed to get srcset")?.split(",").filter_map(|x| {
             let tok: Vec<&str> = x.trim().split(" ").collect();
             let last_token = tok[tok.len() - 1]; // SAFETY: split is guaranteed to return at least one token
             let (last_token, last_token_used) = if tok.len() > 1 && !last_token.is_empty() && (last_token.ends_with("x") || last_token.ends_with("w")) {
@@ -413,17 +467,17 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
         }
     }
     
-    let src_images: Vec<_> = document.select("img[src]").map_err(|_| "RUSTFC:ERROR:Failed to select src images")?.collect();
+    let src_images: Vec<_> = document.select("img[src]").map_err(|_| "Failed to select src images")?.collect();
     for img in src_images {
-        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or("RUSTFC:ERROR:Failed to get src")?;
+        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or("Failed to get src")?;
         if let Ok(new) = url.join(&old) {
             img.attributes.borrow_mut().insert("src", new.to_string());            
         }
     }
 
-    let href_anchors: Vec<_> = document.select("a[href]").map_err(|_| "RUSTFC:ERROR:Failed to select href anchors")?.collect();
+    let href_anchors: Vec<_> = document.select("a[href]").map_err(|_| "Failed to select href anchors")?.collect();
     for anchor in href_anchors {
-        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or("RUSTFC:ERROR:Failed to get href")?;
+        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or("Failed to get href")?;
         if let Ok(new) = url.join(&old) {
             anchor.attributes.borrow_mut().insert("href", new.to_string());            
         }
@@ -463,7 +517,12 @@ fn _get_inner_json(html: &str) -> Result<String, ()> {
 /// Input must be a C HTML string. Output will be an HTML string. Output string must be freed with free_string.
 #[no_mangle]
 pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
+    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
+        }
+    };
 
     let out = match _get_inner_json(html) {
         Ok(x) => x,

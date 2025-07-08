@@ -40,7 +40,7 @@ function resolveUrlWithBaseHref(href: string, baseUrl: string, baseHref: string)
 
 async function extractLinksRust(html: string, baseUrl: string): Promise<string[]> {
   const hrefs = await _extractLinks(html);
-  const baseHref = await _extractBaseHref(html);
+  const baseHref = await _extractBaseHref(html, baseUrl);
   const links: string[] = [];
 
   hrefs.forEach(href => {
