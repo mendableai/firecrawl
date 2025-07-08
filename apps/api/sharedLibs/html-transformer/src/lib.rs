@@ -6,34 +6,24 @@ use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
-fn _extract_base_href_from_document(document: &NodeRef, url: &Url) -> String  {
-    if let Some(base) = document.select("base[href]").unwrap().next()
-            .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string())) {
-        
-        if let Ok(base) = url.join(&base) {
-            return base.to_string();
-        }
-    }
-
-    url.to_string()
+fn _extract_base_href_from_document(document: &NodeRef) -> Option<String> {
+    document.select("base[href]").unwrap().next()
+        .and_then(|base| base.attributes.borrow().get("href").map(|x| x.to_string()))
 }
 
-fn _extract_base_href(html: &str, url: &str) -> String {
+fn _extract_base_href(html: &str) -> Option<String> {
     let document = parse_html().one(html);
-    let url = Url::parse(url).unwrap();
-
-    _extract_base_href_from_document(&document, &url)
+    _extract_base_href_from_document(&document)
 }
 
 /// Extracts base href from HTML
 /// 
 /// # Safety
-/// Input must be a C HTML string and a C URL string. Output will be a string. Output string must be freed with free_string.
+/// Input must be a C HTML string. Output will be a string. Output string must be freed with free_string.
 #[no_mangle]
-pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char, url: *const libc::c_char) -> *mut libc::c_char {
+pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char) -> *mut libc::c_char {
     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
-    let url = unsafe { CStr::from_ptr(url) }.to_str().unwrap();
-    let base_href = _extract_base_href(html, url);
+    let base_href = _extract_base_href(html).unwrap_or_else(|| String::new());
     CString::new(base_href).unwrap().into_raw()
 }
 
@@ -278,7 +268,7 @@ struct ImageSource {
 
 fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn std::error::Error>> {
     let mut document = parse_html().one(opts.html.as_ref());
-    let url = Url::parse(&_extract_base_href_from_document(&document, &Url::parse(&opts.url)?))?;
+    let url = Url::parse(&_extract_base_href_from_document(&document).unwrap_or(opts.url))?;
 
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
