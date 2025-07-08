@@ -46,7 +46,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
 
             try {
                 await saveIndexToGCS(indexId, {
-                    url: normalizedURL,
+                    url: document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
                     html: document.rawHtml!,
                     statusCode: document.metadata.statusCode,
                     error: document.metadata.error,
