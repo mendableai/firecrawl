@@ -127,6 +127,17 @@ describe("Scrape tests", () => {
     expect(response.markdown).toContain("ぐ け げ こ ご さ ざ し じ す ず せ ぜ そ ぞ た");
   }, scrapeTimeout);
 
+  it.concurrent("links format works", async () => {
+    const response = await scrape({
+      url: "https://firecrawl.dev",
+      formats: ["links"],
+      timeout: scrapeTimeout,
+    }, identity);
+
+    expect(response.links).toBeDefined();
+    expect(response.links?.length).toBeGreaterThan(0);
+  });
+
   if (process.env.TEST_SUITE_SELF_HOSTED && process.env.PROXY_SERVER) {
     it.concurrent("self-hosted proxy works", async () => {
       const response = await scrape({
