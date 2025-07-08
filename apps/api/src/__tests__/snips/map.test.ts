@@ -1,19 +1,29 @@
-import { expectMapToSucceed, map } from "./lib";
+import { expectMapToSucceed, map, idmux, Identity } from "./lib";
+
+let identity: Identity;
+
+beforeAll(async () => {
+  identity = await idmux({
+    name: "map",
+    concurrency: 100,
+    credits: 1000000,
+  });
+}, 10000);
 
 describe("Map tests", () => {
   it.concurrent("basic map succeeds", async () => {
     const response = await map({
       url: "http://firecrawl.dev",
-    });
+    }, identity);
 
     expectMapToSucceed(response);
-  }, 10000);
+  }, 60000);
 
   it.concurrent("times out properly", async () => {
     const response = await map({
       url: "http://firecrawl.dev",
       timeout: 1
-    });
+    }, identity);
 
     expect(response.statusCode).toBe(408);
     expect(response.body.success).toBe(false);
@@ -25,7 +35,7 @@ describe("Map tests", () => {
       url: "https://www.hfea.gov.uk",
       sitemapOnly: true,
       useMock: "map-query-params",
-    });
+    }, identity);
 
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);

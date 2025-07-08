@@ -59,16 +59,21 @@ function compareExtractedData(previousData: any, currentData: any): any {
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("changeTracking")) {
+    if (meta.internalOptions.zeroDataRetention) {
+        document.warning = "Change tracking is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
+        return document;
+    }
+    
     const start = Date.now();
     const res = await supabase_service
         .rpc("diff_get_last_scrape_4", {
             i_team_id: meta.internalOptions.teamId,
-            i_url: document.metadata.sourceURL ?? meta.url,
+            i_url: document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
             i_tag: meta.options.changeTrackingOptions?.tag ?? null,
         });
     const end = Date.now();
     if (end - start > 100) {
-        meta.logger.debug("Diffing took a while", { time: end - start, params: { i_team_id: meta.internalOptions.teamId, i_url: document.metadata.sourceURL ?? meta.url } });
+        meta.logger.debug("Diffing took a while", { time: end - start, params: { i_team_id: meta.internalOptions.teamId, i_url: document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url } });
     }
 
     const data: {

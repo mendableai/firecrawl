@@ -10,17 +10,15 @@ import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
 import {
   PDFAntibotError,
   PDFInsufficientTimeError,
+  PDFPrefetchFailed,
   RemoveFeatureError,
   TimeoutError,
 } from "../../error";
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
-import {
-  getPdfResultFromCache,
-  savePdfResultToCache,
-} from "../../../../lib/gcs-pdf-cache";
 import { getPageCount } from "../../../../lib/pdf-parser";
+import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
@@ -94,6 +92,8 @@ async function scrapePDFWithRunPodMU(
     abort,
   });
 
+
+
   let status: string = podStart.status;
   let result: { markdown: string } | undefined = podStart.output;
 
@@ -140,13 +140,15 @@ async function scrapePDFWithRunPodMU(
     html: await marked.parse(result.markdown, { async: true }),
   };
 
-  try {
-    await savePdfResultToCache(base64Content, processorResult);
-  } catch (error) {
-    meta.logger.warn("Error saving PDF to cache", {
-      error,
-      tempFilePath,
-    });
+  if (!meta.internalOptions.zeroDataRetention) {
+    try {
+      await savePdfResultToCache(base64Content, processorResult);
+    } catch (error) {
+      meta.logger.warn("Error saving PDF to cache", {
+        error,
+        tempFilePath,
+      });
+    }
   }
 
   return processorResult;
@@ -179,21 +181,27 @@ export async function scrapePDF(
         "base64",
       );
       return {
-        url: meta.pdfPrefetch.url ?? meta.url,
+        url: meta.pdfPrefetch.url ?? meta.rewrittenUrl ?? meta.url,
         statusCode: meta.pdfPrefetch.status,
 
         html: content,
         markdown: content,
+
+        proxyUsed: meta.pdfPrefetch.proxyUsed,
       };
     } else {
-      const file = await fetchFileToBuffer(meta.url, {
+      const file = await fetchFileToBuffer(meta.rewrittenUrl ?? meta.url, {
         headers: meta.options.headers,
       });
 
       const ct = file.response.headers.get("Content-Type");
       if (ct && !ct.includes("application/pdf")) {
         // if downloaded file wasn't a PDF
-        throw new PDFAntibotError();
+        if (meta.pdfPrefetch === undefined) {
+          throw new PDFAntibotError();
+        } else {
+          throw new PDFPrefetchFailed();
+        }
       }
 
       const content = file.buffer.toString("base64");
@@ -203,6 +211,8 @@ export async function scrapePDF(
 
         html: content,
         markdown: content,
+
+        proxyUsed: "basic",
       };
     }
   }
@@ -210,7 +220,7 @@ export async function scrapePDF(
   const { response, tempFilePath } =
     meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null
       ? { response: meta.pdfPrefetch, tempFilePath: meta.pdfPrefetch.filePath }
-      : await downloadFile(meta.id, meta.url, {
+      : await downloadFile(meta.id, meta.rewrittenUrl ?? meta.url, {
           headers: meta.options.headers,
         });
 
@@ -220,7 +230,11 @@ export async function scrapePDF(
     const ct = r.headers.get("Content-Type");
     if (ct && !ct.includes("application/pdf")) {
       // if downloaded file wasn't a PDF
-      throw new PDFAntibotError();
+      if (meta.pdfPrefetch === undefined) {
+        throw new PDFAntibotError();
+      } else {
+        throw new PDFPrefetchFailed();
+      }
     }
   }
 
@@ -296,10 +310,12 @@ export async function scrapePDF(
   await unlink(tempFilePath);
 
   return {
-    url: response.url ?? meta.url,
+    url: response.url ?? meta.rewrittenUrl ?? meta.url,
     statusCode: response.status,
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",
     numPages: pageCount,
+
+    proxyUsed: "basic",
   };
 }

@@ -23,8 +23,6 @@ import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
 import { logger } from "../../lib/logger";
 import Redis from "ioredis";
-import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
-import { getIndexQueue } from "../../services/queue-service";
 import { generateURLSplits, queryIndexAtDomainSplitLevel, queryIndexAtSplitLevel } from "../../services/index";
 
 configDotenv();
@@ -44,7 +42,7 @@ interface MapResult {
   mapResults: MapDocument[];
 }
 
-async function queryIndex(url: string, limit: number, useIndex: boolean): Promise<string[]> {
+async function queryIndex(url: string, limit: number, useIndex: boolean, includeSubdomains: boolean): Promise<string[]> {
   if (!useIndex) {
     return [];
   }
@@ -54,9 +52,9 @@ async function queryIndex(url: string, limit: number, useIndex: boolean): Promis
     const urlObj = new URL(url);
     const hostname = urlObj.hostname;
 
-    // TEMP: this can be removed in 2 days
-    const domainLinks = await queryIndexAtDomainSplitLevel(hostname, limit);
-    const splitLinks = await queryIndexAtSplitLevel(url, limit);
+    // TEMP: this should be altered on June 15th 2025 7AM PT - mogery
+    const domainLinks = includeSubdomains ? await queryIndexAtDomainSplitLevel(hostname, limit, 14 * 24 * 60 * 60 * 1000) : [];
+    const splitLinks = await queryIndexAtSplitLevel(url, limit, 14 * 24 * 60 * 60 * 1000);
 
     return Array.from(new Set([...domainLinks, ...splitLinks]));
   } else {
@@ -80,6 +78,7 @@ export async function getMapResults({
   filterByPath = true,
   flags,
   useIndex = true,
+  timeout,
 }: {
   url: string;
   search?: string;
@@ -96,10 +95,13 @@ export async function getMapResults({
   filterByPath?: boolean;
   flags: TeamFlags;
   useIndex?: boolean;
+  timeout?: number;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
   let mapResults: MapDocument[] = [];
+
+  const zeroDataRetention = flags?.forceZDR ?? false;
 
   const sc: StoredCrawl = {
     originUrl: url,
@@ -131,7 +133,7 @@ export async function getMapResults({
       },
       true,
       true,
-      30000,
+      timeout ?? 30000,
       abort,
       mock,
     );
@@ -184,13 +186,14 @@ export async function getMapResults({
       );
       allResults = await Promise.all(pagePromises);
 
-      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+      if (!zeroDataRetention) {
+        await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+      }
     }
 
     // Parallelize sitemap index query with search results
-    const [sitemapIndexResult, indexResults, ...searchResults] = await Promise.all([
-      querySitemapIndex(url, abort),
-      queryIndex(url, limit, useIndex),
+    const [indexResults, ...searchResults] = await Promise.all([
+      queryIndex(url, limit, useIndex, includeSubdomains),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
@@ -198,14 +201,10 @@ export async function getMapResults({
       links.push(...indexResults);
     }
 
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-    // If sitemap is not ignored and either we have few URLs (<100) or the data is stale (>2 days old), fetch fresh sitemap
+    // If sitemap is not ignored, fetch sitemap
+    // This will attempt to find it in the index at first, or fetch a fresh one if it's older than 2 days
     if (
-      !ignoreSitemap &&
-      (sitemapIndexResult.urls.length < 100 ||
-        new Date(sitemapIndexResult.lastUpdated) < twoDaysAgo)
+      !ignoreSitemap
     ) {
       try {
         await crawler.tryGetSitemap(
@@ -214,7 +213,7 @@ export async function getMapResults({
           },
           true,
           false,
-          30000,
+          timeout ?? 30000,
           abort,
         );
       } catch (e) {
@@ -249,9 +248,6 @@ export async function getMapResults({
         });
       }
     }
-
-    // Add sitemap-index URLs
-    links.push(...sitemapIndexResult.urls);
 
     // Perform cosine similarity between the search query and the list of links
     if (search) {
@@ -308,19 +304,6 @@ export async function getMapResults({
     ? links
     : links.slice(0, limit);
 
-  //
-
-  await getIndexQueue().add(
-    id,
-    {
-      originUrl: url,
-      visitedUrls: linksToReturn.filter(link => link !== url),
-    },
-    {
-      priority: 10,
-    },
-  );
-
   return {
     success: true,
     links: linksToReturn,
@@ -337,6 +320,10 @@ export async function mapController(
 ) {
   const originalRequest = req.body;
   req.body = mapRequestSchema.parse(req.body);
+  
+  if (req.acuc?.flags?.forceZDR) {
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature." });
+  }
 
   logger.info("Map request", {
     request: req.body,
@@ -362,6 +349,7 @@ export async function mapController(
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
         useIndex: req.body.useIndex,
+        timeout: req.body.timeout,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {
@@ -405,6 +393,7 @@ export async function mapController(
     integration: req.body.integration,
     num_tokens: 0,
     credits_billed: 1,
+    zeroDataRetention: false, // not supported
   });
 
   const response = {

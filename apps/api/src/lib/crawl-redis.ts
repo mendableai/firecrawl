@@ -4,6 +4,7 @@ import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisEvictConnection } from "../services/redis";
 import { logger as _logger } from "./logger";
 import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
+import type { Logger } from "winston";
 
 export type StoredCrawl = {
   originUrl?: string;
@@ -14,6 +15,8 @@ export type StoredCrawl = {
   robots?: string;
   cancelled?: boolean;
   createdAt: number;
+  maxConcurrency?: number;
+  zeroDataRetention?: boolean;
 };
 
 export async function saveCrawl(id: string, crawl: StoredCrawl) {
@@ -23,6 +26,7 @@ export async function saveCrawl(id: string, crawl: StoredCrawl) {
     method: "saveCrawl",
     crawlId: id,
     teamId: crawl.team_id,
+    zeroDataRetention: crawl.zeroDataRetention,
   });
   await redisEvictConnection.set("crawl:" + id, JSON.stringify(crawl));
   await redisEvictConnection.expire("crawl:" + id, 24 * 60 * 60);
@@ -54,8 +58,8 @@ export async function getCrawlExpiry(id: string): Promise<Date> {
   return d;
 }
 
-export async function addCrawlJob(id: string, job_id: string) {
-  _logger.debug("Adding crawl job " + job_id + " to Redis...", {
+export async function addCrawlJob(id: string, job_id: string, __logger: Logger = _logger) {
+  __logger.debug("Adding crawl job " + job_id + " to Redis...", {
     jobId: job_id,
     module: "crawl-redis",
     method: "addCrawlJob",
@@ -65,10 +69,10 @@ export async function addCrawlJob(id: string, job_id: string) {
   await redisEvictConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60);
 }
 
-export async function addCrawlJobs(id: string, job_ids: string[]) {
+export async function addCrawlJobs(id: string, job_ids: string[], __logger: Logger = _logger) {
   if (job_ids.length === 0) return true;
 
-  _logger.debug("Adding crawl jobs to Redis...", {
+  __logger.debug("Adding crawl jobs to Redis...", {
     jobIds: job_ids,
     module: "crawl-redis",
     method: "addCrawlJobs",
@@ -82,8 +86,9 @@ export async function addCrawlJobDone(
   id: string,
   job_id: string,
   success: boolean,
+  __logger: Logger = _logger,
 ) {
-  _logger.debug("Adding done crawl job to Redis...", {
+  __logger.debug("Adding done crawl job to Redis...", {
     jobId: job_id,
     module: "crawl-redis",
     method: "addCrawlJobDone",
@@ -159,9 +164,9 @@ export async function finishCrawlKickoff(id: string) {
   );
 }
 
-export async function finishCrawlPre(id: string) {
+export async function finishCrawlPre(id: string, __logger: Logger = _logger) {
   if (await isCrawlFinished(id)) {
-    _logger.debug("Marking crawl as pre-finished.", {
+    __logger.debug("Marking crawl as pre-finished.", {
       module: "crawl-redis",
       method: "finishCrawlPre",
       crawlId: id,
@@ -181,8 +186,8 @@ export async function unPreFinishCrawl(id: string) {
   await redisEvictConnection.del("crawl:" + id + ":finished_pre");
 }
 
-export async function finishCrawl(id: string) {
-  _logger.debug("Marking crawl as finished.", {
+export async function finishCrawl(id: string, __logger: Logger = _logger) {
+  __logger.debug("Marking crawl as finished.", {
     module: "crawl-redis",
     method: "finishCrawl",
     crawlId: id,
@@ -278,35 +283,20 @@ export async function lockURL(
   sc: StoredCrawl,
   url: string,
 ): Promise<boolean> {
-  let logger = _logger.child({
-    crawlId: id,
-    module: "crawl-redis",
-    method: "lockURL",
-    preNormalizedURL: url,
-    teamId: sc.team_id,
-  });
-
   if (typeof sc.crawlerOptions?.limit === "number") {
     if (
       (await redisEvictConnection.scard("crawl:" + id + ":visited_unique")) >=
       sc.crawlerOptions.limit
     ) {
-      // logger.debug(
-      //   "Crawl has already hit visited_unique limit, not locking URL.",
-      // );
       return false;
     }
   }
-
-  url = normalizeURL(url, sc);
-  logger = logger.child({ url });
 
   let res: boolean;
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
     res = (await redisEvictConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
   } else {
     const permutations = generateURLPermutations(url).map((x) => x.href);
-    // logger.debug("Adding URL permutations for URL " + JSON.stringify(url) + "...", { permutations });
     const x = await redisEvictConnection.sadd(
       "crawl:" + id + ":visited",
       ...permutations,
@@ -324,9 +314,6 @@ export async function lockURL(
     );
   }
 
-  // logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-  //   res,
-  // });
   return res;
 }
 
@@ -335,14 +322,15 @@ export async function lockURLs(
   id: string,
   sc: StoredCrawl,
   urls: string[],
+  __logger: Logger = _logger,
 ): Promise<boolean> {
   if (urls.length === 0) return true;
 
   urls = urls.map((url) => normalizeURL(url, sc));
-  const logger = _logger.child({
+  const logger = __logger.child({
     crawlId: id,
     module: "crawl-redis",
-    method: "lockURL",
+    method: "lockURLs",
     teamId: sc.team_id,
   });
 
@@ -420,6 +408,7 @@ export function crawlToCrawler(
     regexOnFullURL: sc.crawlerOptions?.regexOnFullURL ?? false,
     maxDiscoveryDepth: sc.crawlerOptions?.maxDiscoveryDepth,
     currentDiscoveryDepth: crawlerOptions?.currentDiscoveryDepth ?? 0,
+    zeroDataRetention: (teamFlags?.forceZDR || sc.zeroDataRetention) ?? false,
   });
 
   if (sc.robots !== undefined) {

@@ -125,6 +125,7 @@ export interface CrawlScrapeOptions {
   proxy?: "basic" | "stealth" | "auto";
   storeInCache?: boolean;
   maxAge?: number;
+  parsePDF?: boolean;
 }
 
 export type Action = {
@@ -138,6 +139,7 @@ export type Action = {
 } | {
   type: "screenshot",
   fullPage?: boolean,
+  quality?: number,
 } | {
   type: "write",
   text: string,
@@ -174,6 +176,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
   }
   actions?: ActionsSchema;
   agent?: AgentOptions;
+  zeroDataRetention?: boolean;
 }
 
 export interface ActionsResult {
@@ -209,6 +212,7 @@ export interface CrawlParams {
   maxDiscoveryDepth?: number;
   limit?: number;
   allowBackwardLinks?: boolean;
+  crawlEntireDomain?: boolean;
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
@@ -226,6 +230,9 @@ export interface CrawlParams {
    * If not provided, the crawler may use the robots.txt crawl delay if available.
    */
   delay?: number;
+  allowSubdomains?: boolean;
+  maxConcurrency?: number;
+  zeroDataRetention?: boolean;
 }
 
 /**
@@ -1012,9 +1019,10 @@ export default class FirecrawlApp {
     idempotencyKey?: string,
     webhook?: CrawlParams["webhook"],
     ignoreInvalidURLs?: boolean,
+    maxConcurrency?: number,
   ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...params, origin: `js-sdk@${this.version}` };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, maxConcurrency, ...params, origin: `js-sdk@${this.version}` };
     if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
@@ -1241,10 +1249,12 @@ export default class FirecrawlApp {
     try {
       if (!params?.schema) {
         jsonSchema = undefined;
-      } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
-        jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
       } else {
-        jsonSchema = params.schema;
+        try {
+          jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+        } catch (_) {
+          jsonSchema = params.schema;
+        }
       }
     } catch (error: any) {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
@@ -1309,10 +1319,14 @@ export default class FirecrawlApp {
     let jsonSchema: any;
 
     try {
-      if (params?.schema instanceof zt.ZodType) {
-        jsonSchema = zodToJsonSchema(params.schema);
+      if (!params?.schema) {
+        jsonSchema = undefined;
       } else {
-        jsonSchema = params?.schema;
+        try {
+          jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+        } catch (_) {
+          jsonSchema = params.schema;
+        }
       }
     } catch (error: any) {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);

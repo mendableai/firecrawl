@@ -7,7 +7,6 @@ import { extractMetadata } from "../lib/extractMetadata";
 import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
-import { saveToCache } from "./cache";
 import { performAgent } from "./agent";
 
 import { deriveDiff } from "./diff";
@@ -48,14 +47,14 @@ export async function deriveHTMLFromRawHTML(
 
   document.html = await htmlTransform(
     document.rawHtml,
-    document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+    document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
     meta.options,
   );
   return document;
 }
 
 export async function deriveMarkdownFromHTML(
-  _meta: Meta,
+  meta: Meta,
   document: Document,
 ): Promise<Document> {
   if (document.html === undefined) {
@@ -76,6 +75,28 @@ export async function deriveMarkdownFromHTML(
   }
 
   document.markdown = await parseMarkdown(document.html);
+
+  if (meta.options.onlyMainContent === true && 
+      (!document.markdown || document.markdown.trim().length === 0)) {
+    
+    meta.logger.info("Main content extraction resulted in empty markdown, falling back to full content extraction");
+    
+    const fallbackMeta = {
+      ...meta,
+      options: {
+        ...meta.options,
+        onlyMainContent: false
+      }
+    };
+    
+    document = await deriveHTMLFromRawHTML(fallbackMeta, document);
+    document.markdown = await parseMarkdown(document.html);
+    
+    meta.logger.info("Fallback to full content extraction completed", {
+      markdownLength: document.markdown?.length || 0
+    });
+  }
+
   return document;
 }
 
@@ -88,7 +109,7 @@ export async function deriveLinksFromHTML(meta: Meta, document: Document): Promi
       );
     }
 
-    document.links = await extractLinks(document.html, meta.url);
+    document.links = await extractLinks(document.html, document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url);
   }
 
   return document;
@@ -202,7 +223,6 @@ export function coerceFieldsToFormats(
 
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
-  saveToCache,
   deriveHTMLFromRawHTML,
   deriveMarkdownFromHTML,
   deriveLinksFromHTML,

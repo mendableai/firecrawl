@@ -12,10 +12,14 @@ export async function getLinksFromSitemap(
     sitemapUrl,
     urlsHandler,
     mode = "axios",
+    maxAge = 0,
+    zeroDataRetention,
   }: {
     sitemapUrl: string;
     urlsHandler(urls: string[]): unknown;
     mode?: "axios" | "fire-engine";
+    maxAge?: number;
+    zeroDataRetention: boolean;
   },
   logger: Logger,
   crawlId: string,
@@ -40,15 +44,17 @@ export async function getLinksFromSitemap(
       const response = await scrapeURL(
         "sitemap;" + crawlId,
         sitemapUrl,
-        scrapeOptions.parse({ formats: ["rawHtml"], useMock: mock }),
+        scrapeOptions.parse({ formats: ["rawHtml"], useMock: mock, maxAge }),
         {
           forceEngine: [
+            ...(maxAge > 0 ? ["index" as const] : []),
             "fetch",
             ...((mode === "fire-engine" && useFireEngine) ? ["fire-engine;tlsclient" as const] : []),
           ],
           v0DisableJsDom: true,
           abort,
           teamId: "sitemap",
+          zeroDataRetention,
         },
         new CostTracking(),
       );
@@ -99,7 +105,7 @@ export async function getLinksFromSitemap(
         .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
-        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId, sitemapsHit, abort, mock),
+        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode, zeroDataRetention }, logger, crawlId, sitemapsHit, abort, mock),
       );
 
       const results = await Promise.all(sitemapPromises);
@@ -119,7 +125,7 @@ export async function getLinksFromSitemap(
         // Recursively fetch links from additional sitemaps
         const sitemapPromises = xmlSitemaps.map((sitemapUrl) =>
           getLinksFromSitemap(
-            { sitemapUrl: sitemapUrl, urlsHandler, mode },
+            { sitemapUrl: sitemapUrl, urlsHandler, mode, zeroDataRetention },
             logger,
             crawlId,
             sitemapsHit,

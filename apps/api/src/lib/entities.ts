@@ -1,4 +1,4 @@
-import type { Document as V1Document } from "../controllers/v1/types";
+import type { Document as V1Document, Action } from "../controllers/v1/types";
 
 export interface Progress {
   current: number;
@@ -11,42 +11,6 @@ export interface Progress {
   currentDocumentUrl?: string;
   currentDocument?: Document;
 }
-
-export type Action =
-  | {
-      type: "wait";
-      milliseconds?: number;
-      selector?: string;
-    }
-  | {
-      type: "click";
-      selector: string;
-      all?: boolean;
-    }
-  | {
-      type: "screenshot";
-      fullPage?: boolean;
-    }
-  | {
-      type: "write";
-      text: string;
-    }
-  | {
-      type: "press";
-      key: string;
-    }
-  | {
-      type: "scroll";
-      direction?: "up" | "down";
-      selector?: string;
-    }
-  | {
-      type: "scrape";
-    }
-  | {
-      type: "executeJavascript";
-      script: string;
-    };
 
 export type PageOptions = {
   includeMarkdown?: boolean;

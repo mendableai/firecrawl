@@ -210,13 +210,17 @@ export async function getACUC(
 
     const chunk: AuthCreditUsageChunk | null =
       data.length === 0 ? null : data[0].team_id === null ? null : data[0];
+    
+    if (chunk) {
+      chunk.is_extract = isExtract;
+    }
 
     // NOTE: Should we cache null chunks? - mogery
     if (chunk !== null && useCache) {
       setCachedACUC(api_key, isExtract, chunk);
     }
 
-    return chunk ? { ...chunk, is_extract: isExtract } : null;
+    return chunk;
   } else {
     return null;
   }

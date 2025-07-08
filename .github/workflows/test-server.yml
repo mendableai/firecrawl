@@ -4,18 +4,12 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - apps/api/**
-  # schedule:
-  #   - cron: '0 */4 * * *'
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
-  HOST: ${{ secrets.HOST }}
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  PORT: ${{ secrets.PORT }}
   REDIS_URL: ${{ secrets.REDIS_URL }}
   SUPABASE_ANON_TOKEN: ${{ secrets.SUPABASE_ANON_TOKEN }}
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
@@ -25,7 +19,13 @@ env:
   INDEX_SUPABASE_ANON_TOKEN: ${{ secrets.INDEX_SUPABASE_ANON_TOKEN }}
   INDEX_SUPABASE_URL: ${{ secrets.INDEX_SUPABASE_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+  TEST_TEAM_ID: ${{ secrets.TEST_TEAM_ID }}
+  TEST_API_KEY_CONCURRENCY: ${{ secrets.TEST_API_KEY_CONCURRENCY }}
+  TEST_TEAM_ID_CONCURRENCY: ${{ secrets.TEST_TEAM_ID_CONCURRENCY }}
+  TEST_API_KEY_ZDR: ${{ secrets.TEST_API_KEY_ZDR }}
+  TEST_TEAM_ID_ZDR: ${{ secrets.TEST_TEAM_ID_ZDR }}
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
+  FIRE_ENGINE_STAGING_URL: ${{ secrets.FIRE_ENGINE_STAGING_URL }}
   USE_DB_AUTHENTICATION: true
   SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
   ENV: ${{ secrets.ENV }}
@@ -41,6 +41,7 @@ env:
   VERTEX_CREDENTIALS: ${{ secrets.VERTEX_CREDENTIALS }}
   USE_GO_MARKDOWN_PARSER: true
   SENTRY_ENVIRONMENT: dev
+  IDMUX_URL: ${{ secrets.IDMUX_URL }}
 
 jobs:
   test:
@@ -76,7 +77,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.19'
+          go-version: '1.24'
           cache-dependency-path: ./apps/api/sharedLibs/go-html-to-md/go.sum
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -98,10 +99,16 @@ jobs:
         working-directory: ./apps/api/sharedLibs/pdf-parser
       - name: Start the application
         run: npm run start:production > api.log 2>&1 &
+        env:
+          PORT: 3002
+          HOST: 0.0.0.0
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
         run: npm run workers > worker.log 2>&1 &
+        env:
+          PORT: 3005
+          HOST: 0.0.0.0
         working-directory: ./apps/api
         id: start_workers
       - name: Start index worker

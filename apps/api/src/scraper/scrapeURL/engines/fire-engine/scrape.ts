@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 import { z } from "zod";
 
-import { Action } from "../../../../lib/entities";
+import { Action } from "../../../../controllers/v1/types";
 import { robustFetch } from "../../lib/fetch";
 import { MockState } from "../../lib/mock";
 
@@ -29,6 +29,8 @@ export type FireEngineScrapeRequestCommon = {
   mobileProxy?: boolean; // leave it undefined if user doesn't specify
 
   timeout?: number;
+  saveScrapeResultToGCS?: boolean;
+  zeroDataRetention?: boolean;
 };
 
 export type FireEngineScrapeRequestChromeCDP = {
@@ -38,7 +40,6 @@ export type FireEngineScrapeRequestChromeCDP = {
   blockMedia?: true; // cannot be false
   mobile?: boolean;
   disableSmartWaitCache?: boolean;
-  saveScrapeResultToGCS?: boolean;
 };
 
 export type FireEngineScrapeRequestPlaywright = {
@@ -64,6 +65,7 @@ const schema = z.object({
 });
 
 export const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL ?? "<mock-fire-engine-url>";
+export const fireEngineStagingURL = process.env.FIRE_ENGINE_STAGING_URL ?? "<mock-fire-engine-url>";
 
 export async function fireEngineScrape<
   Engine extends
@@ -75,6 +77,7 @@ export async function fireEngineScrape<
   request: FireEngineScrapeRequestCommon & Engine,
   mock: MockState | null,
   abort?: AbortSignal,
+  production = true,
 ): Promise<z.infer<typeof schema>> {
   const scrapeRequest = await Sentry.startSpan(
     {
@@ -85,7 +88,7 @@ export async function fireEngineScrape<
     },
     async (span) => {
       return await robustFetch({
-        url: `${fireEngineURL}/scrape`,
+        url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape`,
         method: "POST",
         headers: {
           ...(Sentry.isInitialized()

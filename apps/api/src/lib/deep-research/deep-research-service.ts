@@ -130,12 +130,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             skipTlsVerification: false,
             removeBase64Images: false,
             fastMode: false,
-            blockAds: false,
-            maxAge: 0,
+            blockAds: true,
+            maxAge: 4 * 60 * 60 * 1000,
             storeInCache: true,
-            __experimental_cache: true,
           },
-        }, logger, costTracking, acuc?.flags ?? null);
+        }, logger, acuc?.flags ?? null);
         return response.length > 0 ? response : [];
       });
 
@@ -165,10 +164,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       // Filter out already seen URLs and track new ones
       const newSearchResults: typeof searchResults = [];
       for (const result of searchResults) {
-        if (!result.url || state.hasSeenUrl(result.url)) {
+        if (!result.document.url || state.hasSeenUrl(result.document.url)) {
           continue;
         }
-        state.addSeenUrl(result.url);
+        state.addSeenUrl(result.document.url);
         
         urlsAnalyzed++;
         if (urlsAnalyzed >= maxUrls) {
@@ -184,10 +183,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       }
 
       await state.addSources(newSearchResults.map((result) => ({
-        url: result.url ?? "",
-        title: result.title ?? "",
-        description: result.description ?? "",
-        icon: result.metadata?.favicon ?? "",
+        url: result.document.url ?? "",
+        title: result.document.title ?? "",
+        description: result.document.description ?? "",
+        icon: result.document.metadata?.favicon ?? "",
       })));
       logger.debug(
         "[Deep Research] New unique results count:",
@@ -219,8 +218,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
       await state.addFindings(
         newSearchResults.map((result) => ({
-          text: result.markdown ?? "",
-          source: result.url ?? "",
+          text: result.document.markdown ?? "",
+          source: result.document.url ?? "",
         })),
       );
 
@@ -366,6 +365,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       tokens_billed: 0,
       cost_tracking: costTracking,
       credits_billed,
+      zeroDataRetention: false, // not supported
     });
     await updateDeepResearch(researchId, {
       status: "completed",

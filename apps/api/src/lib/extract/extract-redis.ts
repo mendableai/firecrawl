@@ -40,6 +40,8 @@ export type StoredExtract = {
     [key: string]: string[];
   };
   sessionIds?: string[];
+  tokensBilled?: number;
+  zeroDataRetention?: boolean;
 };
 
 // Reduce TTL to 6 hours instead of 24

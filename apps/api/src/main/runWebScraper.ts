@@ -77,6 +77,7 @@ export async function runWebScraper({
     module: "runWebscraper",
     scrapeId: bull_job_id,
     jobId: bull_job_id,
+    zeroDataRetention: internalOptions?.zeroDataRetention,
   });
   const tries = is_crawl ? 3 : 1;
 

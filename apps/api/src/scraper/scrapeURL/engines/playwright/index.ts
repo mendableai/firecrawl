@@ -18,7 +18,7 @@ export async function scrapeURLWithPlaywright(
         "Content-Type": "application/json",
       },
       body: {
-        url: meta.url,
+        url: meta.rewrittenUrl ?? meta.url,
         wait_after_load: meta.options.waitFor,
         timeout,
         headers: meta.options.headers,
@@ -48,10 +48,12 @@ export async function scrapeURLWithPlaywright(
   }
 
   return {
-    url: meta.url, // TODO: impove redirect following
+    url: meta.rewrittenUrl ?? meta.url, // TODO: impove redirect following
     html: response.content,
     statusCode: response.pageStatusCode,
     error: response.pageError,
     contentType: response.contentType,
+
+    proxyUsed: "basic",
   };
 }

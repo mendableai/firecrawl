@@ -4,14 +4,9 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - apps/api/**
-      - apps/playwright-service-ts/**
 
 env:
-  PORT: 3002
   REDIS_URL: redis://localhost:6379
-  HOST: 0.0.0.0
   ENV: ${{ secrets.ENV }}
   TEST_SUITE_SELF_HOSTED: true
   USE_GO_MARKDOWN_PARSER: true
@@ -67,7 +62,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.19'
+          go-version: '1.24'
           cache-dependency-path: ./apps/api/sharedLibs/go-html-to-md/go.sum
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -103,9 +98,15 @@ jobs:
         working-directory: ./
       - name: Start server
         run: npm run start:production > api.log 2>&1 &
+        env:
+          PORT: 3002
+          HOST: 0.0.0.0
         working-directory: ./apps/api
       - name: Start worker
         run: npm run workers > worker.log 2>&1 &
+        env:
+          PORT: 3005
+          HOST: 0.0.0.0
         working-directory: ./apps/api
       - name: Start playwright
         if: matrix.engine == 'playwright'

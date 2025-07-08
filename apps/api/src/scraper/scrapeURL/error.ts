@@ -50,8 +50,13 @@ export class RemoveFeatureError extends Error {
 }
 
 export class SSLError extends Error {
-  constructor() {
-    super("An SSL error occurred while scraping the URL. If you're not inputting any sensitive data, try scraping with `skipTlsVerification: true`.");
+  constructor(skipTlsVerification: boolean) {
+    super(
+      "An SSL error occurred while scraping the URL. "
+      + (skipTlsVerification
+        ? "Since you have `skipTlsVerification` enabled, this means that the TLS configuration of the target site is completely broken. Try scraping the plain HTTP version of the page."
+        : "If you're not inputting any sensitive data, try scraping with `skipTlsVerification: true`.")
+    );
   }
 }
 
@@ -93,8 +98,32 @@ export class PDFInsufficientTimeError extends Error {
   }
 }
 
+export class DNSResolutionError extends Error {
+  constructor(hostname: string) {
+    super(`DNS resolution failed for hostname: ${hostname}. Please check if the domain is valid and accessible.`);
+  }
+}
+
 export class IndexMissError extends Error {
   constructor() {
     super("Index doesn't have the page we're looking for");
+  }
+}
+
+export class ZDRViolationError extends Error {
+  constructor(feature: string) {
+    super(`${feature} is not supported when using zeroDataRetention. Please contact support@firecrawl.com to unblock this feature.`);
+  }
+}
+
+export class PDFPrefetchFailed extends Error {
+  constructor() {
+    super("Failed to prefetch PDF that is protected by anti-bot. Please contact help@firecrawl.com");
+  }
+}
+
+export class FEPageLoadFailed extends Error {
+  constructor() {
+    super("The page failed to load with the specified timeout. Please increase the timeout parameter in your request.");
   }
 }

@@ -16,18 +16,19 @@ import {
 import {
   ActionError,
   EngineError,
+  DNSResolutionError,
   SiteError,
   SSLError,
   TimeoutError,
   UnsupportedFileError,
+  FEPageLoadFailed,
 } from "../../error";
 import * as Sentry from "@sentry/node";
-import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
-import { TimeoutSignal } from "../../../../controllers/v1/types";
+import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -38,17 +39,20 @@ async function performFireEngineScrape<
     | FireEngineScrapeRequestPlaywright
     | FireEngineScrapeRequestTLSClient,
 >(
+  meta: Meta,
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
   timeout: number,
   mock: MockState | null,
   abort?: AbortSignal,
+  production = true,
 ): Promise<FireEngineCheckStatusSuccess> {
   const scrape = await fireEngineScrape(
     logger.child({ method: "fireEngineScrape" }),
     request,
     mock,
     abort,
+    production,
   );
 
   const startTime = Date.now();
@@ -67,6 +71,8 @@ async function performFireEngineScrape<
         }),
         scrape.jobId,
         mock,
+        undefined,
+        production,
       );
       throw new Error("Error limit hit. See e.cause.errors for errors.", {
         cause: { errors },
@@ -86,10 +92,12 @@ async function performFireEngineScrape<
 
     try {
       status = await fireEngineCheckStatus(
+        meta,
         logger.child({ method: "fireEngineCheckStatus" }),
         scrape.jobId,
         mock,
         abort,
+        production,
       );
     } catch (error) {
       if (error instanceof StillProcessingError) {
@@ -98,8 +106,10 @@ async function performFireEngineScrape<
         error instanceof EngineError ||
         error instanceof SiteError ||
         error instanceof SSLError ||
+        error instanceof DNSResolutionError ||
         error instanceof ActionError ||
-        error instanceof UnsupportedFileError
+        error instanceof UnsupportedFileError ||
+        error instanceof FEPageLoadFailed
       ) {
         fireEngineDelete(
           logger.child({
@@ -108,6 +118,8 @@ async function performFireEngineScrape<
           }),
           scrape.jobId,
           mock,
+          undefined,
+          production,
         );
         logger.debug("Fire-engine scrape job failed.", {
           error,
@@ -122,6 +134,8 @@ async function performFireEngineScrape<
           }),
           scrape.jobId,
           mock,
+          undefined,
+          production,
         );
         throw error;
       } else {
@@ -165,6 +179,8 @@ async function performFireEngineScrape<
     }),
     scrape.jobId,
     mock,
+    undefined,
+    production,
   );
 
   return status;
@@ -207,9 +223,12 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
   const timeout = (timeToRun ?? 300000) + totalWait;
 
+  // const shouldABTest = false;
+  const shouldABTest = !meta.internalOptions.zeroDataRetention && Math.random() <= (1/30);
+
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
     engine: "chrome-cdp",
     instantReturn: true,
     skipTlsVerification: meta.options.skipTlsVerification,
@@ -225,11 +244,37 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
-    saveScrapeResultToGCS: meta.internalOptions.saveScrapeResultToGCS,
-    // TODO: scrollXPaths
+    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
+  if (shouldABTest) {
+    (async () => {
+      try {
+        meta.logger.info("AB-testing fire-engine", { request });
+
+        await performFireEngineScrape(
+          meta,
+          meta.logger.child({
+            method: "scrapeURLWithFireEngineChromeCDP/callFireEngineAB",
+            request,
+          }),
+          request,
+          timeout,
+          meta.mock,
+          meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+          false,
+        );
+
+        meta.logger.info("AB-testing fire-engine success", { request });
+      } catch (error) {
+        meta.logger.error("AB-testing fire-engine failed", { error });
+      }
+    })();
+  }
+
   let response = await performFireEngineScrape(
+    meta,
     meta.logger.child({
       method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
       request,
@@ -238,6 +283,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout,
     meta.mock,
     meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    true,
   );
 
   if (
@@ -283,9 +329,12 @@ export async function scrapeURLWithFireEngineChromeCDP(
             screenshots: response.screenshots ?? [],
             scrapes: response.actionContent ?? [],
             javascriptReturns: (response.actionResults ?? []).filter(x => x.type === "executeJavascript").map(x => JSON.parse((x.result as any as { return: string }).return)),
+            pdfs: (response.actionResults ?? []).filter(x => x.type === "pdf").map(x => x.result.link),
           },
         }
       : {}),
+
+    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }
 
@@ -298,7 +347,7 @@ export async function scrapeURLWithFireEnginePlaywright(
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
     engine: "playwright",
     instantReturn: true,
 
@@ -312,11 +361,14 @@ export async function scrapeURLWithFireEnginePlaywright(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
+    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
   let response = await performFireEngineScrape(
+    meta,
     meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+      method: "scrapeURLWithFireEnginePlaywright/callFireEngine",
       request,
     }),
     request,
@@ -348,6 +400,8 @@ export async function scrapeURLWithFireEnginePlaywright(
           screenshot: response.screenshots[0],
         }
       : {}),
+
+    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }
 
@@ -359,7 +413,7 @@ export async function scrapeURLWithFireEngineTLSClient(
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {
-    url: meta.url,
+    url: meta.rewrittenUrl ?? meta.url,
     engine: "tlsclient",
     instantReturn: true,
 
@@ -372,11 +426,14 @@ export async function scrapeURLWithFireEngineTLSClient(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
+    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
   let response = await performFireEngineScrape(
+    meta,
     meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+      method: "scrapeURLWithFireEngineTLSClient/callFireEngine",
       request,
     }),
     request,
@@ -402,5 +459,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
     ) ?? [])[1] ?? undefined,
+
+    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }

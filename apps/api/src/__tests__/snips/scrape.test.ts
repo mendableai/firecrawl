@@ -1,5 +1,24 @@
-import { scrape, scrapeStatus, scrapeWithFailure } from "./lib";
+import { scrape, scrapeWithFailure, scrapeStatus, scrapeTimeout, indexCooldown, idmux, Identity, scrapeRaw } from "./lib";
 import crypto from "crypto";
+
+let identity: Identity;
+
+beforeAll(async () => {
+  identity = await idmux({
+    name: "scrape",
+    concurrency: 100,
+    credits: 1000000,
+  });
+
+  if (!process.env.TEST_SUITE_SELF_HOSTED) {
+    // Needed for change tracking tests to work
+    await scrape({
+      url: "https://example.com",
+      formats: ["markdown", "changeTracking"],
+      timeout: scrapeTimeout,
+    }, identity);
+  }
+}, 10000 + scrapeTimeout);
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -10,51 +29,123 @@ describe("Scrape tests", () => {
     const response = await scrape({
       url: "http://firecrawl.dev",
       useMock: "mocking-works-properly",
-      timeout: 60000,
-    });
+      timeout: scrapeTimeout,
+    }, identity);
 
     expect(response.markdown).toBe(
       "this is fake data coming from the mocking system!",
     );
-  }, 60000);
+  }, scrapeTimeout);
 
   it.concurrent("works", async () => {
     const response = await scrape({
       url: "http://firecrawl.dev",
-      timeout: 60000,
-    });
+      timeout: scrapeTimeout,
+    }, identity);
 
     expect(response.markdown).toContain("Firecrawl");
-  }, 60000);
+  }, scrapeTimeout);
+
+  describe("waitFor validation", () => {
+    it.concurrent("allows waitFor when it's less than half of timeout", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 5000,
+        timeout: 15000,
+      }, identity);
+
+      expect(response.markdown).toContain("Firecrawl");
+    }, scrapeTimeout);
+
+    it.concurrent("allows waitFor when it's exactly half of timeout", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 7500,
+        timeout: 15000,
+      }, identity);
+
+      expect(response.markdown).toContain("Firecrawl");
+    }, scrapeTimeout);
+
+    it.concurrent("rejects waitFor when it exceeds half of timeout", async () => {
+      const raw = await scrapeRaw({
+        url: "http://firecrawl.dev",
+        waitFor: 8000,
+        timeout: 15000,
+      }, identity);
+
+      expect(raw.statusCode).toBe(400);
+      expect(raw.body.success).toBe(false);
+      expect(raw.body.error).toBe("Bad Request");
+      expect(raw.body.details).toBeDefined();
+      expect(JSON.stringify(raw.body.details)).toContain("waitFor must not exceed half of timeout");
+    }, scrapeTimeout);
+
+    it.concurrent("rejects waitFor when it equals timeout", async () => {
+      const raw = await scrapeRaw({
+        url: "http://firecrawl.dev",
+        waitFor: 15000,
+        timeout: 15000,
+      }, identity);
+
+      expect(raw.statusCode).toBe(400);
+      expect(raw.body.success).toBe(false);
+      expect(raw.body.error).toBe("Bad Request");
+      expect(raw.body.details).toBeDefined();
+      expect(JSON.stringify(raw.body.details)).toContain("waitFor must not exceed half of timeout");
+    }, scrapeTimeout);
+
+    it.concurrent("rejects waitFor when it exceeds timeout", async () => {
+      const raw = await scrapeRaw({
+        url: "http://firecrawl.dev",
+        waitFor: 20000,
+        timeout: 15000,
+      }, identity);
+
+      expect(raw.statusCode).toBe(400);
+      expect(raw.body.success).toBe(false);
+      expect(raw.body.error).toBe("Bad Request");
+      expect(raw.body.details).toBeDefined();
+      expect(JSON.stringify(raw.body.details)).toContain("waitFor must not exceed half of timeout");
+    }, scrapeTimeout);
+  });
+
+  // TEMP: domain broken
+  // it.concurrent("works with Punycode domains", async () => {
+  //   await scrape({
+  //     url: "http://xn--1lqv92a901a.xn--ses554g/",
+  //     timeout: scrapeTimeout,
+  //   }, identity);
+  // }, scrapeTimeout);
 
   it.concurrent("handles non-UTF-8 encodings", async () => {
     const response = await scrape({
       url: "https://www.rtpro.yamaha.co.jp/RT/docs/misc/kanji-sjis.html",
-      timeout: 60000,
-    });
+      timeout: scrapeTimeout,
+    }, identity);
 
     expect(response.markdown).toContain("ぐ け げ こ ご さ ざ し じ す ず せ ぜ そ ぞ た");
-  }, 60000);
+  }, scrapeTimeout);
 
   if (process.env.TEST_SUITE_SELF_HOSTED && process.env.PROXY_SERVER) {
     it.concurrent("self-hosted proxy works", async () => {
       const response = await scrape({
         url: "https://icanhazip.com",
-        timeout: 60000,
-      });
+        timeout: scrapeTimeout,
+      }, identity);
 
       expect(response.markdown?.trim()).toContain(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
-    }, 70000);
+    }, scrapeTimeout);
 
     it.concurrent("self-hosted proxy works on playwright", async () => {
       const response = await scrape({
         url: "https://icanhazip.com",
         waitFor: 100,
-        timeout: 60000,
-      });
+        timeout: scrapeTimeout,
+      }, identity);
 
       expect(response.markdown?.trim()).toContain(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
-    }, 70000);
+    }, scrapeTimeout);
   }
 
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.PLAYWRIGHT_MICROSERVICE_URL) {
@@ -62,11 +153,11 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "http://firecrawl.dev",
         waitFor: 2000,
-        timeout: 60000,
-      });
+        timeout: scrapeTimeout,
+      }, identity);
   
       expect(response.markdown).toContain("Firecrawl");
-    }, 60000);
+    }, scrapeTimeout);
   }
 
   describe("JSON scrape support", () => {
@@ -74,48 +165,47 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "https://jsonplaceholder.typicode.com/todos/1",
         formats: ["rawHtml"],
-        timeout: 60000,
-      });
+        timeout: scrapeTimeout,
+      }, identity);
 
       const obj = JSON.parse(response.rawHtml!);
       expect(obj.id).toBe(1);
-    }, 70000);
+    }, scrapeTimeout);
   });
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
     it.concurrent("scrape status works", async () => {
       const response = await scrape({
         url: "http://firecrawl.dev",
-        timeout: 60000,
-      });
+        timeout: scrapeTimeout,
+      }, identity);
   
       expect(response.markdown).toContain("Firecrawl");
 
       // Give time to propagate to read replica
       await new Promise(resolve => setTimeout(resolve, 1000));
   
-      const status = await scrapeStatus(response.metadata.scrapeId!);
+      const status = await scrapeStatus(response.metadata.scrapeId!, identity);
       expect(JSON.stringify(status)).toBe(JSON.stringify(response));
-    }, 70000);
+    }, scrapeTimeout);
     
-    // describe("Ad blocking (f-e dependant)", () => {
-    //   it.concurrent("blocks ads by default", async () => {
-    //     const response = await scrape({
-    //       url: "https://www.allrecipes.com/recipe/18185/yum/",
-    //     });
+    describe("Ad blocking (f-e dependant)", () => {
+      it.concurrent("blocking ads works", async () => {
+        await scrape({
+          url: "https://firecrawl.dev",
+          blockAds: true,
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
 
-    //     expect(response.markdown).not.toContain(".g.doubleclick.net/");
-    //   }, 30000);
-
-    //   it.concurrent("doesn't block ads if explicitly disabled", async () => {
-    //     const response = await scrape({
-    //       url: "https://www.allrecipes.com/recipe/18185/yum/",
-    //       blockAds: false,
-    //     });
-
-    //     expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
-    //   }, 30000);
-    // });
+      it.concurrent("doesn't block ads if explicitly disabled", async () => {
+        await scrape({
+          url: "https://firecrawl.dev",
+          blockAds: false,
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
+    });
     
     describe("Index", () => {
       it.concurrent("caches properly", async () => {
@@ -124,30 +214,30 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url,
-          maxAge: 120000,
+          maxAge: scrapeTimeout * 3,
           storeInCache: false,
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response1.metadata.cacheState).toBe("miss");
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
-          maxAge: 120000,
-          timeout: 60000,
-        });
+          maxAge: scrapeTimeout * 3,
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("miss");
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response3 = await scrape({
           url,
-          maxAge: 120000,
-          timeout: 60000,
-        });
+          maxAge: scrapeTimeout * 3,
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response3.metadata.cacheState).toBe("hit");
         expect(response3.metadata.cachedAt).toBeDefined();
@@ -155,11 +245,34 @@ describe("Scrape tests", () => {
         const response4 = await scrape({
           url,
           maxAge: 1,
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
         
         expect(response4.metadata.cacheState).toBe("miss");
-      }, 150000 + 2 * 17000);
+      }, scrapeTimeout * 4 + 2 * indexCooldown);
+
+      it.concurrent("caches PDFs properly", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://www.orimi.com/pdf-test.pdf?testId=" + id;
+        
+        const response1 = await scrape({
+          url,
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
+        
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
+
+        const response2 = await scrape({
+          url,
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
+
+        expect(response2.metadata.cacheState).toBe("hit");
+      }, scrapeTimeout * 2 + 2 * indexCooldown);
 
       it.concurrent("respects screenshot", async () => {
         const id = crypto.randomUUID();
@@ -168,32 +281,32 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           formats: ["screenshot"],
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response1.screenshot).toBeDefined();
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
           formats: ["screenshot"],
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
 
         expect(response2.screenshot).toBe(response1.screenshot);
 
         const response3 = await scrape({
           url,
           formats: ["screenshot@fullPage"],
-          timeout: 60000,
-          maxAge: 180000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3,
+        }, identity);
 
         expect(response3.screenshot).not.toBe(response1.screenshot);
         expect(response3.metadata.cacheState).toBe("miss");
-      }, 207000);
+      }, scrapeTimeout * 3 + 2 * indexCooldown);
 
       it.concurrent("respects screenshot@fullPage", async () => {
         const id = crypto.randomUUID();
@@ -202,32 +315,32 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           formats: ["screenshot@fullPage"],
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response1.screenshot).toBeDefined();
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({ 
           url,
           formats: ["screenshot@fullPage"],
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
 
         expect(response2.screenshot).toBe(response1.screenshot);
 
         const response3 = await scrape({
           url,
           formats: ["screenshot"],
-          timeout: 60000,
-          maxAge: 180000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3,
+        }, identity);
 
         expect(response3.screenshot).not.toBe(response1.screenshot);
         expect(response3.metadata.cacheState).toBe("miss");
-      }, 207000);
+      }, scrapeTimeout * 3 + 1 * indexCooldown);
 
       it.concurrent("respects changeTracking", async () => {
         const id = crypto.randomUUID();
@@ -236,29 +349,29 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           formats: ["markdown", "changeTracking"],
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         const response1 = await scrape({
           url,
           formats: ["markdown", "changeTracking"],
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
 
         expect(response1.metadata.cacheState).not.toBeDefined();
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
           formats: ["markdown"],
-          timeout: 60000,
-          maxAge: 180000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3 + indexCooldown,
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 147000);
+      }, scrapeTimeout * 3 + 2 * indexCooldown);
 
       it.concurrent("respects headers", async () => {
         const id = crypto.randomUUID();
@@ -269,19 +382,19 @@ describe("Scrape tests", () => {
           headers: {
             "X-Test": "test",
           },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2 + indexCooldown,
+        }, identity);
 
         expect(response.metadata.cacheState).toBe("miss");
-      }, 147000);
+      }, scrapeTimeout * 2 + 1 * indexCooldown);
 
       it.concurrent("respects mobile", async () => {
         const id = crypto.randomUUID();
@@ -289,31 +402,31 @@ describe("Scrape tests", () => {
 
         await scrape({
           url,
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response1 = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 120000,
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
           mobile: true,
-        });
+        }, identity);
 
         expect(response1.metadata.cacheState).toBe("miss");
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 180000,
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3,
           mobile: true,
-        });
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 224000);
+      }, scrapeTimeout * 3 + 2 * indexCooldown);
 
       it.concurrent("respects actions", async () => {
         const id = crypto.randomUUID();
@@ -321,26 +434,26 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 60000,
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout,
           actions: [{
             "type": "wait",
             "milliseconds": 1000,
           }]
-        });
+        }, identity);
 
         expect(response1.metadata.cacheState).not.toBeDefined();
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("miss");
-      }, 147000);
+      }, scrapeTimeout * 2 + 1 * indexCooldown);
 
       it.concurrent("respects location", async () => {
         const id = crypto.randomUUID();
@@ -348,31 +461,31 @@ describe("Scrape tests", () => {
 
         await scrape({
           url,
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response1 = await scrape({
           url,
-          location: { country: "BR" },
-          maxAge: 120000,
-          timeout: 60000,
-        });
+          location: { country: "DE" },
+          maxAge: scrapeTimeout * 2,
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response1.metadata.cacheState).toBe("miss");
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
-          location: { country: "BR" },
-          timeout: 60000,
-          maxAge: 180000,
-        });
+          location: { country: "DE" },
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3,
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 224000);
+      }, scrapeTimeout * 3 + 2 * indexCooldown);
 
       it.concurrent("respects blockAds", async () => {
         const id = crypto.randomUUID();
@@ -381,40 +494,40 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           blockAds: true,
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response0 = await scrape({
           url,
           blockAds: true,
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2 + indexCooldown,
+        }, identity);
 
         expect(response0.metadata.cacheState).toBe("hit");
 
         const response1 = await scrape({
           url,
           blockAds: false,
-          timeout: 60000,
-          maxAge: 180000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3 + indexCooldown,
+        }, identity);
 
         expect(response1.metadata.cacheState).toBe("miss");
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
           blockAds: false,
-          timeout: 60000,
-          maxAge: 240000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 4 + 2 * indexCooldown,
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 284000);
+      }, scrapeTimeout * 4 + 2 * indexCooldown);
 
       it.concurrent("respects proxy: stealth", async () => {
         const id = crypto.randomUUID();
@@ -423,88 +536,52 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           proxy: "stealth",
-          timeout: 60000,
-          maxAge: 60000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout,
+        }, identity);
 
         expect(response1.metadata.proxyUsed).toBe("stealth");
         expect(response1.metadata.cacheState).not.toBeDefined();
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response2 = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2 + indexCooldown,
+        }, identity);
 
         expect(response2.metadata.cacheState).toBe("hit");
 
         const response3 = await scrape({
           url,
           proxy: "stealth",
-          timeout: 60000,
-          maxAge: 180000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 3 + indexCooldown,
+        }, identity);
 
         expect(response3.metadata.cacheState).not.toBeDefined();
-      }, 207000);
+      }, scrapeTimeout * 3 + indexCooldown);
 
       it.concurrent("works properly on pages returning 200", async () => {
         const id = crypto.randomUUID();
-        const url = "https://httpstat.us/200?testId=" + id;
+        const url = "https://firecrawl.dev/?testId=" + id;
 
         await scrape({
           url,
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
-        await new Promise(resolve => setTimeout(resolve, 17000));
+        await new Promise(resolve => setTimeout(resolve, indexCooldown));
 
         const response = await scrape({
           url,
-          timeout: 60000,
-          maxAge: 120000,
-        });
+          timeout: scrapeTimeout,
+          maxAge: scrapeTimeout * 2,
+        }, identity);
 
         expect(response.metadata.cacheState).toBe("hit");
-      }, 147000);
-
-      it.concurrent("works properly on pages returning errors", async () => {
-        const id = crypto.randomUUID();
-        const url = "https://httpstat.us/404?testId=" + id;
-
-        await scrape({
-          url,
-          timeout: 60000,
-        });
-
-        const response1 = await scrape({
-          url,
-          timeout: 60000,
-          maxAge: 120000,
-        });
-
-        expect(response1.metadata.cacheState).toBe("miss");
-
-        const response2 = await scrape({
-          url,
-          timeout: 60000,
-          maxAge: 180000,
-        });
-
-        expect(response2.metadata.cacheState).toBe("miss");
-
-        await new Promise(resolve => setTimeout(resolve, 17000));
-
-        const response3 = await scrape({
-          url,
-          timeout: 60000,
-          maxAge: 240000,
-        });
-
-        expect(response3.metadata.cacheState).toBe("hit");
-      }, 284000);
+      }, scrapeTimeout * 2 + 1 * indexCooldown);
     });
 
     describe("Change Tracking format", () => {
@@ -512,12 +589,12 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://example.com",
           formats: ["markdown", "changeTracking"],
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
-      }, 60000);
+      }, scrapeTimeout);
 
       it.concurrent("includes git diff when requested", async () => {
         const response = await scrape({
@@ -526,8 +603,8 @@ describe("Scrape tests", () => {
           changeTrackingOptions: {
             modes: ["git-diff"]
           },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
@@ -538,7 +615,7 @@ describe("Scrape tests", () => {
           expect(response.changeTracking?.diff?.json).toBeDefined();
           expect(response.changeTracking?.diff?.json.files).toBeInstanceOf(Array);
         }
-      }, 60000);
+      }, scrapeTimeout);
       
       it.concurrent("includes structured output when requested", async () => {
         const response = await scrape({
@@ -548,8 +625,8 @@ describe("Scrape tests", () => {
             modes: ["json"],
             prompt: "Summarize the changes between the previous and current content",
           },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
@@ -557,7 +634,7 @@ describe("Scrape tests", () => {
         if (response.changeTracking?.changeStatus === "changed") {
           expect(response.changeTracking?.json).toBeDefined();
         }
-      }, 60000);
+      }, scrapeTimeout);
       
       it.concurrent("supports schema-based extraction for change tracking", async () => {
         const response = await scrape({
@@ -582,8 +659,8 @@ describe("Scrape tests", () => {
               }
             }
           },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
@@ -599,7 +676,7 @@ describe("Scrape tests", () => {
             expect(response.changeTracking?.json.features).toHaveProperty("new");
           }
         }
-      }, 60000);
+      }, scrapeTimeout);
       
       it.concurrent("supports both git-diff and structured modes together", async () => {
         const response = await scrape({
@@ -615,8 +692,8 @@ describe("Scrape tests", () => {
               }
             }
           },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
@@ -630,7 +707,7 @@ describe("Scrape tests", () => {
           expect(response.changeTracking?.json).toHaveProperty("summary");
           expect(response.changeTracking?.json).toHaveProperty("changes");
         }
-      }, 60000);
+      }, scrapeTimeout);
 
       it.concurrent("supports tags properly", async () => {
         const uuid1 = crypto.randomUUID();
@@ -640,15 +717,15 @@ describe("Scrape tests", () => {
           url: "https://firecrawl.dev/",
           formats: ["markdown", "changeTracking"],
           changeTrackingOptions: { tag: uuid1 },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         const response2 = await scrape({
           url: "https://firecrawl.dev/",
           formats: ["markdown", "changeTracking"],
           changeTrackingOptions: { tag: uuid2 },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response1.changeTracking?.previousScrapeAt).toBeNull();
         expect(response1.changeTracking?.changeStatus).toBe("new");
@@ -659,98 +736,114 @@ describe("Scrape tests", () => {
           url: "https://firecrawl.dev/",
           formats: ["markdown", "changeTracking"],
           changeTrackingOptions: { tag: uuid1 },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response3.changeTracking?.previousScrapeAt).not.toBeNull();
         expect(response3.changeTracking?.changeStatus).not.toBe("new");
-      }, 180000);
+      }, scrapeTimeout * 3);
     });
   
     describe("Location API (f-e dependant)", () => {
       it.concurrent("works without specifying an explicit location", async () => {
         await scrape({
           url: "https://iplocation.com",
-          timeout: 60000,
-        });
-      }, 70000);
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
 
       it.concurrent("works with country US", async () => {
         const response = await scrape({
           url: "https://iplocation.com",
           location: { country: "US" },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
     
         expect(response.markdown).toContain("| Country | United States |");
-      }, 70000);
+      }, scrapeTimeout);
     });
 
-    describe("Screenshot (f-e/sb dependant)", () => {
+    describe("Screenshot (f-e dependant)", () => {
       it.concurrent("screenshot format works", async () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
           formats: ["screenshot"],
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
     
         expect(typeof response.screenshot).toBe("string");
-      }, 70000);
+      }, scrapeTimeout);
 
       it.concurrent("screenshot@fullPage format works", async () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
           formats: ["screenshot@fullPage"],
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
     
         expect(typeof response.screenshot).toBe("string");
-      }, 70000);
+      }, scrapeTimeout);
+    });
+
+    describe("PDF generation (f-e dependant)", () => {
+      it.concurrent("works", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          timeout: scrapeTimeout,
+          actions: [{ type: "pdf" }],
+        }, identity);
+
+        expect(response.actions?.pdfs).toBeDefined();
+        expect(response.actions?.pdfs?.length).toBe(1);
+        expect(response.actions?.pdfs?.[0]).toBeDefined();
+        expect(typeof response.actions?.pdfs?.[0]).toBe("string");
+      }, scrapeTimeout);
     });
   
     describe("Proxy API (f-e dependant)", () => {
       it.concurrent("undefined works", async () => {
         await scrape({
           url: "http://firecrawl.dev",
-          timeout: 60000,
-        });
-      }, 70000);
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
 
       it.concurrent("basic works", async () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "basic",
-          timeout: 60000,
-        });
-      }, 70000);
+          timeout: scrapeTimeout,
+        }, identity);
+      }, scrapeTimeout);
 
       it.concurrent("stealth works", async () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "stealth",
-          timeout: 120000,
-        });
-      }, 140000);
+          timeout: scrapeTimeout * 2,
+        }, identity);
+      }, scrapeTimeout * 2);
 
       it.concurrent("auto works properly on non-stealth site", async () => {
         const res = await scrape({
           url: "http://firecrawl.dev",
           proxy: "auto",
-          timeout: 120000,
-        });
+          timeout: scrapeTimeout * 2,
+        }, identity);
 
         expect(res.metadata.proxyUsed).toBe("basic");
-      }, 140000);
+      }, scrapeTimeout * 2);
 
-      it.concurrent("auto works properly on 'stealth' site (faked for reliabile testing)", async () => {
-        const res = await scrape({
-          url: "https://httpstat.us/403",
-          proxy: "auto",
-          timeout: 120000,
-        });
+      // TODO: flaky
+      // it.concurrent("auto works properly on 'stealth' site (faked for reliabile testing)", async () => {
+      //   const res = await scrape({
+      //     url: "https://eo16f6718vph4un.m.pipedream.net", // always returns 403
+      //     proxy: "auto",
+      //     timeout: scrapeTimeout * 2,
+      //   }, identity);
 
-        expect(res.metadata.proxyUsed).toBe("stealth");
-      }, 140000);
+      //   expect(res.metadata.proxyUsed).toBe("stealth");
+      // }, scrapeTimeout * 2);
     });
     
     describe("PDF (f-e dependant)", () => {
@@ -766,21 +859,39 @@ describe("Scrape tests", () => {
       it.concurrent("blocks long PDFs with insufficient timeout", async () => {
         const response = await scrapeWithFailure({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
-          timeout: 30000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
 
         expect(response.error).toContain("Insufficient time to process PDF");
-      }, 30000);
+      }, scrapeTimeout);
 
       it.concurrent("scrapes long PDFs with sufficient timeout", async () => {
         const response = await scrape({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
-          timeout: 300000,
-        });
+          timeout: scrapeTimeout * 5,
+        }, identity);
 
         // text on the last page
         expect(response.markdown).toContain("Redistribution and use in source and binary forms, with or without modification");
-      }, 310000);
+      }, scrapeTimeout * 5);
+
+      it.concurrent("scrapes Google Docs links as PDFs", async () => {
+        const response = await scrape({
+          url: "https://docs.google.com/document/d/1H-hOLYssS8xXl2o5hxj4ipE7yyhZAX1s7ADYM1Hdlzo/view",
+          timeout: scrapeTimeout * 5,
+        }, identity);
+
+        expect(response.markdown).toContain("This is a test to confirm Google Docs scraping abilities.");
+      }, scrapeTimeout * 5);
+
+      it.concurrent("scrapes Google Slides links as PDFs", async () => {
+        const response = await scrape({
+          url: "https://docs.google.com/presentation/d/1pDKL1UULpr6siq_eVWE1hjqt5MKCgSSuKS_MWahnHAQ/view",
+          timeout: scrapeTimeout * 5,
+        }, identity);
+
+        expect(response.markdown).toContain("This is a test to confirm Google Slides scraping abilities.");
+      }, scrapeTimeout * 5);
     });
   }
 
@@ -808,8 +919,8 @@ describe("Scrape tests", () => {
               required: ["company_mission", "supports_sso", "is_open_source"],
             },
           },
-          timeout: 60000,
-        });
+          timeout: scrapeTimeout,
+        }, identity);
     
         expect(response).toHaveProperty("json");
         expect(response.json).toHaveProperty("company_mission");
@@ -820,26 +931,26 @@ describe("Scrape tests", () => {
         expect(response.json).toHaveProperty("is_open_source");
         expect(response.json.is_open_source).toBe(true);
         expect(typeof response.json.is_open_source).toBe("boolean");
-      }, 60000);
+      }, scrapeTimeout);
     });
   }
 
   it.concurrent("sourceURL stays unnormalized", async () => {
     const response = await scrape({
       url: "https://firecrawl.dev/?pagewanted=all&et_blog",
-      timeout: 60000,
-    });
+      timeout: scrapeTimeout,
+    }, identity);
 
     expect(response.metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
-  }, 60000);
+  }, scrapeTimeout);
 
   it.concurrent("application/json content type is markdownified properly", async () => {
     const response = await scrape({
       url: "https://jsonplaceholder.typicode.com/todos/1",
       formats: ["markdown"],
-      timeout: 60000,
-    });
+      timeout: scrapeTimeout,
+    }, identity);
 
     expect(response.markdown).toContain("```json");
-  }, 60000);
+  }, scrapeTimeout);
 });

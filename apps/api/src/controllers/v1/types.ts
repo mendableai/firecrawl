@@ -9,6 +9,7 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import { getURLDepth } from "../../scraper/WebScraper/utils/maxDepthUtils";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -23,6 +24,7 @@ export enum IntegrationEnum {
   MAKE = "make",
   FLOWISE = "flowise",
   METAGPT = "metagpt",
+  RELEVANCEAI = 'relevanceai',
 }
 
 export type Format =
@@ -41,7 +43,7 @@ export const url = z.preprocess(
     if (!protocolIncluded(x as string)) {
       x = `http://${x}`;
     }
-    
+
     // transforming the query parameters is breaking certain sites, so we're not doing it - mogery
     // try {
     //   const urlObj = new URL(x as string);
@@ -51,7 +53,7 @@ export const url = z.preprocess(
     //   }
     // } catch (e) {
     // }
-    
+
     return x;
   },
   z
@@ -60,7 +62,7 @@ export const url = z.preprocess(
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
       (x) =>
-        /\.[a-zA-Z\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F]{2,}(:\d+)?([\/?#]|$)/i.test(
+        /(\.[a-zA-Z0-9-\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F]{2,}|\.xn--[a-zA-Z0-9-]{1,})(:\d+)?([\/?#]|$)/i.test(
           x,
         ),
       "URL must have a valid top-level domain or be a valid path",
@@ -73,7 +75,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+  // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =
@@ -169,55 +171,65 @@ function calculateTotalWaitTime(
   return waitFor + actionWaitTime;
 }
 
-export const actionsSchema = z
-  .array(
-    z.union([
-      z
-        .object({
-          type: z.literal("wait"),
-          milliseconds: z.number().int().positive().finite().optional(),
-          selector: z.string().optional(),
-        })
-        .refine(
-          (data) =>
-            (data.milliseconds !== undefined || data.selector !== undefined) &&
-            !(data.milliseconds !== undefined && data.selector !== undefined),
-          {
-            message:
-              "Either 'milliseconds' or 'selector' must be provided, but not both.",
-          },
-        ),
-      z.object({
-        type: z.literal("click"),
-        selector: z.string(),
-        all: z.boolean().default(false),
-      }),
-      z.object({
-        type: z.literal("screenshot"),
-        fullPage: z.boolean().default(false),
-      }),
-      z.object({
-        type: z.literal("write"),
-        text: z.string(),
-      }),
-      z.object({
-        type: z.literal("press"),
-        key: z.string(),
-      }),
-      z.object({
-        type: z.literal("scroll"),
-        direction: z.enum(["up", "down"]).optional().default("down"),
+export const actionSchema = z
+  .union([
+    z
+      .object({
+        type: z.literal("wait"),
+        milliseconds: z.number().int().positive().finite().optional(),
         selector: z.string().optional(),
-      }),
-      z.object({
-        type: z.literal("scrape"),
-      }),
-      z.object({
-        type: z.literal("executeJavascript"),
-        script: z.string(),
-      }),
-    ]),
-  )
+      })
+      .refine(
+        (data) =>
+          (data.milliseconds !== undefined || data.selector !== undefined) &&
+          !(data.milliseconds !== undefined && data.selector !== undefined),
+        {
+          message:
+            "Either 'milliseconds' or 'selector' must be provided, but not both.",
+        },
+      ),
+    z.object({
+      type: z.literal("click"),
+      selector: z.string(),
+      all: z.boolean().default(false),
+    }),
+    z.object({
+      type: z.literal("screenshot"),
+      fullPage: z.boolean().default(false),
+      quality: z.number().min(1).max(100).optional(),
+    }),
+    z.object({
+      type: z.literal("write"),
+      text: z.string(),
+    }),
+    z.object({
+      type: z.literal("press"),
+      key: z.string(),
+    }),
+    z.object({
+      type: z.literal("scroll"),
+      direction: z.enum(["up", "down"]).optional().default("down"),
+      selector: z.string().optional(),
+    }),
+    z.object({
+      type: z.literal("scrape"),
+    }),
+    z.object({
+      type: z.literal("executeJavascript"),
+      script: z.string(),
+    }),
+    z.object({
+      type: z.literal("pdf"),
+      landscape: z.boolean().default(false),
+      scale: z.number().default(1),
+      format: z.enum(['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'Letter', 'Legal', 'Tabloid', 'Ledger']).default("Letter"),
+    }),
+  ]);
+
+export type Action = z.infer<typeof actionSchema>;
+
+export const actionsSchema = z
+  .array(actionSchema)
   .refine((actions) => actions.length <= MAX_ACTIONS, {
     message: `Number of actions cannot exceed ${MAX_ACTIONS}`,
   })
@@ -328,8 +340,10 @@ const baseScrapeOptions = z
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
     maxAge: z.number().int().gte(0).safe().default(0),
     storeInCache: z.boolean().default(true),
+    // @deprecated
     __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
+    __experimental_omce: z.boolean().default(false).optional(),
   })
   .strict(strictMessage);
 
@@ -341,6 +355,19 @@ const fire1Refine = (obj) => {
 }
 const fire1RefineOpts = {
   message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
+};
+const waitForRefine = (obj) => {
+  if (obj.waitFor && obj.timeout) {
+    if (typeof obj.timeout !== 'number' || obj.timeout <= 0) {
+      return false;
+    }
+    return obj.waitFor <= obj.timeout / 2;
+  }
+  return true;
+};
+const waitForRefineOpts = {
+  message: "waitFor must not exceed half of timeout",
+  path: ["waitFor"],
 };
 const extractRefine = (obj) => {
   const hasExtractFormat = obj.formats?.includes("extract");
@@ -434,6 +461,7 @@ export const scrapeOptions = baseScrapeOptions
   )
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
@@ -518,6 +546,10 @@ export const extractV1Options = z
     (x) => (x.scrapeOptions ? fire1Refine(x.scrapeOptions) : true),
     fire1RefineOpts,
   )
+  .refine(
+    (x) => (x.scrapeOptions ? waitForRefine(x.scrapeOptions) : true),
+    waitForRefineOpts,
+  )
   .transform((x) => ({
     ...x,
     scrapeOptions: x.scrapeOptions
@@ -547,10 +579,12 @@ export const scrapeRequestSchema = baseScrapeOptions
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     timeout: z.number().int().positive().finite().safe().default(30000),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
@@ -584,10 +618,13 @@ export const batchScrapeRequestSchema = baseScrapeOptions
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
     ignoreInvalidURLs: z.boolean().default(false),
+    maxConcurrency: z.number().positive().int().optional(),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
@@ -598,10 +635,13 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
     ignoreInvalidURLs: z.boolean().default(false),
+    maxConcurrency: z.number().positive().int().optional(),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
@@ -614,7 +654,8 @@ const crawlerOptions = z
     maxDepth: z.number().default(10), // default?
     maxDiscoveryDepth: z.number().optional(),
     limit: z.number().default(10000), // default?
-    allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
+    allowBackwardLinks: z.boolean().default(false), // DEPRECATED: use crawlEntireDomain
+    crawlEntireDomain: z.boolean().optional(),
     allowExternalLinks: z.boolean().default(false),
     allowSubdomains: z.boolean().default(false),
     ignoreRobotsTxt: z.boolean().default(false),
@@ -631,7 +672,8 @@ const crawlerOptions = z
 //   excludePaths?: string[];
 //   maxDepth?: number;
 //   limit?: number;
-//   allowBackwardLinks?: boolean; // >> TODO: CHANGE THIS NAME???
+//   allowBackwardLinks?: boolean; // DEPRECATED: use crawlEntireDomain
+//   crawlEntireDomain?: boolean;
 //   allowExternalLinks?: boolean;
 //   ignoreSitemap?: boolean;
 // };
@@ -646,14 +688,32 @@ export const crawlRequestSchema = crawlerOptions
     scrapeOptions: baseScrapeOptions.default({}),
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
+    maxConcurrency: z.number().positive().int().optional(),
+    zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
-  .transform((x) => ({
-    ...x,
-    scrapeOptions: extractTransform(x.scrapeOptions),
-  }));
+  .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
+  .refine(
+    (data) => {
+      const urlDepth = getURLDepth(data.url);
+      return urlDepth <= data.maxDepth;
+    },
+    {
+      message: "URL depth exceeds the specified maxDepth",
+      path: ["url"]
+    }
+  )
+  .transform((x) => {
+    if (x.crawlEntireDomain !== undefined) {
+      x.allowBackwardLinks = x.crawlEntireDomain;
+    }
+    return {
+      ...x,
+      scrapeOptions: extractTransform(x.scrapeOptions),
+    };
+  });
 
 // export type CrawlRequest = {
 //   url: string;
@@ -714,6 +774,7 @@ export type Document = {
       type: string;
       value: unknown;
     }[];
+    pdfs?: string[];
   };
   changeTracking?: {
     previousScrapeAt: string | null;
@@ -782,6 +843,7 @@ export type Document = {
     proxyUsed: "basic" | "stealth";
     cacheState?: "hit" | "miss";
     cachedAt?: string;
+    creditsUsed?: number;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
@@ -800,11 +862,11 @@ export type ErrorResponse = {
 export type ScrapeResponse =
   | ErrorResponse
   | {
-      success: true;
-      warning?: string;
-      data: Document;
-      scrape_id?: string;
-    };
+    success: true;
+    warning?: string;
+    data: Document;
+    scrape_id?: string;
+  };
 
 export interface ScrapeResponseRequestTest {
   statusCode: number;
@@ -843,6 +905,7 @@ export interface ExtractResponse {
   sources?: {
     [key: string]: string[];
   };
+  tokensUsed?: number;
 }
 
 export interface ExtractResponseRequestTest {
@@ -854,27 +917,27 @@ export interface ExtractResponseRequestTest {
 export type CrawlResponse =
   | ErrorResponse
   | {
-      success: true;
-      id: string;
-      url: string;
-    };
+    success: true;
+    id: string;
+    url: string;
+  };
 
 export type BatchScrapeResponse =
   | ErrorResponse
   | {
-      success: true;
-      id: string;
-      url: string;
-      invalidURLs?: string[];
-    };
+    success: true;
+    id: string;
+    url: string;
+    invalidURLs?: string[];
+  };
 
 export type MapResponse =
   | ErrorResponse
   | {
-      success: true;
-      links: string[];
-      scrape_id?: string;
-    };
+    success: true;
+    links: string[];
+    scrape_id?: string;
+  };
 
 export type CrawlStatusParams = {
   jobId: string;
@@ -887,47 +950,48 @@ export type ConcurrencyCheckParams = {
 export type ConcurrencyCheckResponse =
   | ErrorResponse
   | {
-      success: true;
-      concurrency: number;
-      maxConcurrency: number;
-    };
+    success: true;
+    concurrency: number;
+    maxConcurrency: number;
+  };
 
 export type CrawlStatusResponse =
   | ErrorResponse
   | {
-      success: true;
-      status: "scraping" | "completed" | "failed" | "cancelled";
-      completed: number;
-      total: number;
-      creditsUsed: number;
-      expiresAt: string;
-      next?: string;
-      data: Document[];
-    };
+    success: true;
+    status: "scraping" | "completed" | "failed" | "cancelled";
+    completed: number;
+    total: number;
+    creditsUsed: number;
+    expiresAt: string;
+    next?: string;
+    data: Document[];
+  };
 
 export type OngoingCrawlsResponse =
   | ErrorResponse
   | {
-      success: true;
-      crawls: {
-        id: string;
-        teamId: string;
-        url: string;
-        options: CrawlerOptions;
-      }[];
+    success: true;
+    crawls: {
+      id: string;
+      teamId: string;
+      url: string;
+      created_at: string;
+      options: CrawlerOptions;
+    }[];
   };
-      
+
 export type CrawlErrorsResponse =
   | ErrorResponse
   | {
-      errors: {
-        id: string;
-        timestamp?: string;
-        url: string;
-        error: string;
-      }[];
-      robotsBlocked: string[];
-    };
+    errors: {
+      id: string;
+      timestamp?: string;
+      url: string;
+      error: string;
+    }[];
+    robotsBlocked: string[];
+  };
 
 type AuthObject = {
   team_id: string;
@@ -977,6 +1041,9 @@ export type AuthCreditUsageChunk = {
 export type TeamFlags = {
   ignoreRobots?: boolean;
   unblockedDomains?: string[];
+  forceZDR?: boolean;
+  allowZDR?: boolean;
+  zdrCost?: number;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
@@ -1037,7 +1104,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     maxDepth: x.maxDepth,
     limit: x.limit,
     generateImgAltText: false,
-    allowBackwardCrawling: x.allowBackwardLinks,
+    allowBackwardCrawling: x.crawlEntireDomain ?? x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
@@ -1058,6 +1125,7 @@ export function toNewCrawlerOptions(x: any): CrawlerOptions {
     limit: x.limit,
     maxDepth: x.maxDepth,
     allowBackwardLinks: x.allowBackwardCrawling,
+    crawlEntireDomain: x.allowBackwardCrawling,
     allowExternalLinks: x.allowExternalContentLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
@@ -1081,6 +1149,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
       limit: x.maxCrawledLinks ?? x.limit,
       maxDepth: x.maxDepth,
       allowBackwardLinks: x.allowBackwardCrawling,
+      crawlEntireDomain: x.allowBackwardCrawling,
       allowExternalLinks: x.allowExternalContentLinks,
       allowSubdomains: x.allowSubdomains,
       ignoreRobotsTxt: x.ignoreRobotsTxt,
@@ -1120,7 +1189,7 @@ export function fromLegacyScrapeOptions(
           ? ("screenshot@fullPage" as const)
           : null,
         extractorOptions !== undefined &&
-        extractorOptions.mode.includes("llm-extraction")
+          extractorOptions.mode.includes("llm-extraction")
           ? ("extract" as const)
           : null,
         "links",
@@ -1144,12 +1213,12 @@ export function fromLegacyScrapeOptions(
       removeBase64Images: pageOptions.removeBase64Images,
       extract:
         extractorOptions !== undefined &&
-        extractorOptions.mode.includes("llm-extraction")
+          extractorOptions.mode.includes("llm-extraction")
           ? {
-              systemPrompt: extractorOptions.extractionPrompt,
-              prompt: extractorOptions.userPrompt,
-              schema: extractorOptions.extractionSchema,
-            }
+            systemPrompt: extractorOptions.extractionPrompt,
+            prompt: extractorOptions.userPrompt,
+            schema: extractorOptions.extractionSchema,
+          }
           : undefined,
       mobile: pageOptions.mobile,
       fastMode: pageOptions.useFastMode,
@@ -1242,6 +1311,7 @@ export const searchRequestSchema = z
               "screenshot",
               "screenshot@fullPage",
               "extract",
+              "json",
             ]),
           )
           .default([]),
@@ -1253,6 +1323,7 @@ export const searchRequestSchema = z
   )
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
+  .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
@@ -1264,10 +1335,10 @@ export type SearchRequestInput = z.input<typeof searchRequestSchema>;
 export type SearchResponse =
   | ErrorResponse
   | {
-      success: true;
-      warning?: string;
-      data: Document[];
-    };
+    success: true;
+    warning?: string;
+    data: Document[];
+  };
 
 export type TokenUsage = {
   promptTokens: number;

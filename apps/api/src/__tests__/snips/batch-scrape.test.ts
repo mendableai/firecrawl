@@ -1,14 +1,24 @@
-import { batchScrape } from "./lib";
+import { batchScrape, scrapeTimeout, idmux, Identity } from "./lib";
+
+let identity: Identity;
+
+beforeAll(async () => {
+  identity = await idmux({
+    name: "batch-scrape",
+    concurrency: 100,
+    credits: 1000000,
+  });
+}, 10000);
 
 describe("Batch scrape tests", () => {
     it.concurrent("works", async () => {
         const response = await batchScrape({
             urls: ["http://firecrawl.dev"]
-        });
+        }, identity);
         
         expect(response.data[0]).toHaveProperty("markdown");
         expect(response.data[0].markdown).toContain("Firecrawl");
-    }, 180000);
+    }, scrapeTimeout);
 
     if (!process.env.TEST_SUITE_SELF_HOSTED) {
         describe("JSON format", () => {
@@ -34,7 +44,7 @@ describe("Batch scrape tests", () => {
                             required: ["company_mission", "supports_sso", "is_open_source"],
                         },
                     },
-                });
+                }, identity);
             
                 expect(response.data[0]).toHaveProperty("json");
                 expect(response.data[0].json).toHaveProperty("company_mission");
@@ -52,8 +62,8 @@ describe("Batch scrape tests", () => {
     it.concurrent("sourceURL stays unnormalized", async () => {
         const response = await batchScrape({
             urls: ["https://firecrawl.dev/?pagewanted=all&et_blog"],
-        });
+        }, identity);
     
         expect(response.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
-    }, 35000);
+    }, scrapeTimeout);
 });

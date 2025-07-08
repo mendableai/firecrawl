@@ -22,6 +22,13 @@ import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
+import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
+import { supabase_service } from "../../services/supabase";
+
+interface DocumentWithCostTracking {
+  document: Document;
+  costTracking: ReturnType<typeof CostTracking.prototype.toJSON>;
+}
 
 // Used for deep research
 export async function searchAndScrapeSearchResult(
@@ -33,16 +40,15 @@ export async function searchAndScrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   },
   logger: Logger,
-  costTracking: CostTracking,
   flags: TeamFlags,
-): Promise<Document[]> {
+): Promise<DocumentWithCostTracking[]> {
   try {
     const searchResults = await search({
       query,
       num_results: 5,
     });
 
-    const documents = await Promise.all(
+    const documentsWithCostTracking = await Promise.all(
       searchResults.map((result) =>
         scrapeSearchResult(
           {
@@ -52,13 +58,12 @@ export async function searchAndScrapeSearchResult(
           },
           options,
           logger,
-          costTracking,
           flags,
         ),
       ),
     );
 
-    return documents;
+    return documentsWithCostTracking;
   } catch (error) {
     return [];
   }
@@ -73,16 +78,19 @@ async function scrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   },
   logger: Logger,
-  costTracking: CostTracking,
   flags: TeamFlags,
   directToBullMQ: boolean = false,
   isSearchPreview: boolean = false,
-): Promise<Document> {
+): Promise<DocumentWithCostTracking> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
     team_id: options.teamId,
     basePriority: 10,
   });
+  
+  const costTracking = new CostTracking();
+
+  const zeroDataRetention = flags?.forceZDR ?? false;
 
   try {
     if (isUrlBlocked(searchResult.url, flags)) {
@@ -93,6 +101,7 @@ async function scrapeSearchResult(
       url: searchResult.url,
       teamId: options.teamId,
       origin: options.origin,
+      zeroDataRetention,
     });
     await addScrapeJob(
       {
@@ -101,12 +110,13 @@ async function scrapeSearchResult(
         team_id: options.teamId,
         scrapeOptions: {
           ...options.scrapeOptions,
-          maxAge: 4 * 60 * 60 * 1000, // 4 hours, same as useCache
+          maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
         },
-        internalOptions: { teamId: options.teamId, useCache: true, bypassBilling: true },
+        internalOptions: { teamId: options.teamId, bypassBilling: true, zeroDataRetention },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
+        zeroDataRetention,
       },
       {},
       jobId,
@@ -115,7 +125,7 @@ async function scrapeSearchResult(
     );
 
     const doc: Document = await waitForJob(jobId, options.timeout);
-
+    
     logger.info("Scrape job completed", {
       scrapeId: jobId,
       url: searchResult.url,
@@ -124,12 +134,32 @@ async function scrapeSearchResult(
     });
     await getScrapeQueue().remove(jobId);
 
-    // Move SERP results to top level
-    return {
+    const document = {
       title: searchResult.title,
       description: searchResult.description,
       url: searchResult.url,
       ...doc,
+    };
+
+    let costTracking: ReturnType<typeof CostTracking.prototype.toJSON>;
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const { data: costTrackingResponse, error: costTrackingError } = await supabase_service.from("firecrawl_jobs")
+        .select("cost_tracking")
+        .eq("job_id", jobId);
+      
+      if (costTrackingError) {
+        logger.error("Error getting cost tracking", { error: costTrackingError });
+        throw costTrackingError;
+      }
+      
+      costTracking = costTrackingResponse?.[0]?.cost_tracking;
+    } else {
+      costTracking = new CostTracking().toJSON();
+    }
+
+    return {
+      document,
+      costTracking,
     };
   } catch (error) {
     logger.error(`Error in scrapeSearchResult: ${error}`, {
@@ -142,8 +172,8 @@ async function scrapeSearchResult(
     if (error?.message?.includes("Could not scrape url")) {
       statusCode = 403;
     }
-    // Return a minimal document with SERP results at top level
-    return {
+    
+    const document: Document = {
       title: searchResult.title,
       description: searchResult.description,
       url: searchResult.url,
@@ -152,6 +182,11 @@ async function scrapeSearchResult(
         error: error.message,
         proxyUsed: "basic",
       },
+    };
+
+    return {
+      document,
+      costTracking: new CostTracking().toJSON(),
     };
   }
 }
@@ -166,15 +201,22 @@ export async function searchController(
     teamId: req.auth.team_id,
     module: "search",
     method: "searchController",
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
+
+  if (req.acuc?.flags?.forceZDR) {
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature." });
+  }
 
   let responseData: SearchResponse = {
     success: true,
     data: [],
   };
   const startTime = new Date().getTime();
-  const costTracking = new CostTracking();
   const isSearchPreview = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  
+  let credits_billed = 0;
+  let allDocsWithCostTracking: DocumentWithCostTracking[] = [];
 
   try {
     req.body = searchRequestSchema.parse(req.body);
@@ -229,6 +271,7 @@ export async function searchController(
         title: r.title,
         description: r.description,
       })) as Document[];
+      credits_billed = responseData.data.length;
     } else {
       logger.info("Scraping search results");
       const scrapePromises = searchResults.map((result) =>
@@ -241,18 +284,18 @@ export async function searchController(
             scrapeOptions: req.body.scrapeOptions,
           },
           logger,
-          costTracking,
           req.acuc?.flags ?? null,
           (req.acuc?.price_credits ?? 0) <= 3000,
           isSearchPreview,
         ),
       );
 
-      const docs = await Promise.all(scrapePromises);
+      const docsWithCostTracking = await Promise.all(scrapePromises);
       logger.info("Scraping completed", {
-        num_docs: docs.length,
+        num_docs: docsWithCostTracking.length,
       });
 
+      const docs = docsWithCostTracking.map(item => item.document);
       const filteredDocs = docs.filter(
         (doc) =>
           doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
@@ -268,15 +311,37 @@ export async function searchController(
       } else {
         responseData.data = filteredDocs;
       }
-    }
 
-    const credits_billed = responseData.data.reduce((a, x) => {
-      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
-        return a + x.metadata.numPages;
-      } else {
-        return a + 1;
+      const finalDocsForBilling = responseData.data;
+      
+      const creditPromises = finalDocsForBilling.map(async (finalDoc) => {
+        const matchingDocWithCost = docsWithCostTracking.find(item => 
+          item.document.metadata && finalDoc.metadata && item.document.metadata.scrapeId === finalDoc.metadata.scrapeId
+        );
+        
+        if (matchingDocWithCost) {
+          return await calculateCreditsToBeBilled(
+            req.body.scrapeOptions,
+            { teamId: req.auth.team_id, bypassBilling: true, zeroDataRetention: false },
+            matchingDocWithCost.document, 
+            matchingDocWithCost.costTracking,
+            req.acuc.flags,
+          );
+        } else {
+          return 1;
+        }
+      });
+      
+      try {
+        const individualCredits = await Promise.all(creditPromises);
+        credits_billed = individualCredits.reduce((sum, credit) => sum + credit, 0);
+      } catch (error) {
+        logger.error("Error calculating credits for billing", { error });
+        credits_billed = responseData.data.length;
       }
-    }, 0)
+
+      allDocsWithCostTracking = docsWithCostTracking;
+    }
 
     // Bill team once for all successful results
     if (!isSearchPreview) {
@@ -312,8 +377,8 @@ export async function searchController(
         scrapeOptions: req.body.scrapeOptions,
         origin: req.body.origin,
         integration: req.body.integration,
-        cost_tracking: costTracking,
         credits_billed,
+        zeroDataRetention: false, // not supported
       },
       false,
       isSearchPreview,

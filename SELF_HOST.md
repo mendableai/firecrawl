@@ -42,6 +42,8 @@ Create an `.env` in the root directory using the template below.
 PORT=3002
 HOST=0.0.0.0
 
+# Note: PORT is used by both the main API server and worker liveness check endpoint
+
 # To turn on DB authentication, you need to set up Supabase.
 USE_DB_AUTHENTICATION=false
 
@@ -121,11 +123,13 @@ BULL_AUTH_KEY=CHANGEME
     docker compose up
     ```
 
-This will run a local instance of Firecrawl which can be accessed at `http://localhost:3002`.
+    If you encounter an error, make sure you're using `docker compose` and not `docker-compose`.
+    
+    This will run a local instance of Firecrawl which can be accessed at `http://localhost:3002`.
+    
+    You should be able to see the Bull Queue Manager UI on `http://localhost:3002/admin/CHANGEME/queues`.
 
-You should be able to see the Bull Queue Manager UI on `http://localhost:3002/admin/CHANGEME/queues`.
-
-4. *(Optional)* Test the API
+5. *(Optional)* Test the API
 
 If you’d like to test the crawl endpoint, you can run this:
 

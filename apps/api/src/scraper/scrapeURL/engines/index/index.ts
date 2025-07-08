@@ -7,7 +7,7 @@ import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
     const shouldCache = meta.options.storeInCache
-        && meta.winnerEngine !== "cache"
+        && !meta.internalOptions.zeroDataRetention
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
         && (
@@ -60,13 +60,34 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                 return document;
             }
 
+            let title = document.metadata.title ?? document.metadata.ogTitle ?? null;
+            let description = document.metadata.description ?? document.metadata.ogDescription ?? document.metadata.dcDescription ?? null;
+
+            if (typeof title === "string") {
+                title = title.trim();
+                if (title.length > 60) {
+                    title = title.slice(0, 57) + "...";
+                }
+            } else {
+                title = null;
+            }
+
+            if (typeof description === "string") {
+                description = description.trim();
+                if (description.length > 160) {
+                    description = description.slice(0, 157) + "...";
+                }
+            } else {
+                description = null;
+            }
+
             try {
                 await addIndexInsertJob({
                     id: indexId,
                     url: normalizedURL,
                     url_hash: urlHash,
                     original_url: document.metadata.sourceURL ?? meta.url,
-                    resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+                    resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
                     has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
                     has_screenshot_fullscreen: document.screenshot !== undefined && meta.featureFlags.has("screenshot@fullScreen"),
                     is_mobile: meta.options.mobile,
@@ -82,6 +103,8 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                         ...a,
                         [`domain_splits_${i}_hash`]: x,
                     }), {})),
+                    ...(title ? { title } : {}),
+                    ...(description ? { description } : {}),
                 });
             } catch (error) {
                 meta.logger.error("Failed to add document to index insert queue", {
@@ -176,6 +199,8 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
 
         cacheInfo: {
             created_at: new Date(data[0].created_at),
-        }
+        },
+
+        proxyUsed: doc.proxyUsed ?? "basic",
     };
 }
