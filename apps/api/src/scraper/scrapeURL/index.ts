@@ -315,7 +315,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         (engineResult.statusCode >= 200 && engineResult.statusCode < 300) ||
         engineResult.statusCode === 304;
       const hasNoPageError = engineResult.error === undefined;
-      const isLikelyProxyError = [403, 429].includes(engineResult.statusCode);
+      const isLikelyProxyError = [401, 403, 429].includes(engineResult.statusCode);
 
       meta.results[engine] = {
         state: "success",
