@@ -237,6 +237,36 @@ export async function getIndexInsertQueueLength(): Promise<number> {
   return await redisEvictConnection.llen(INDEX_INSERT_QUEUE_KEY) ?? 0;
 }
 
+const INDEX_RF_INSERT_QUEUE_KEY = "index-rf-insert-queue";
+const INDEX_RF_INSERT_BATCH_SIZE = 1000;
+
+export async function addIndexRFInsertJob(data: any) {
+  await redisEvictConnection.rpush(INDEX_RF_INSERT_QUEUE_KEY, JSON.stringify(data));
+}
+
+export async function getIndexRFInsertJobs(): Promise<any[]> {
+  const jobs = (await redisEvictConnection.lpop(INDEX_RF_INSERT_QUEUE_KEY, INDEX_RF_INSERT_BATCH_SIZE)) ?? [];
+  return jobs.map(x => JSON.parse(x));
+}
+
+export async function processIndexRFInsertJobs() {
+  const jobs = await getIndexRFInsertJobs();
+  if (jobs.length === 0) {
+    return;
+  }
+  _logger.info(`Index RF inserter found jobs to insert`, { jobCount: jobs.length });
+  try {
+    await index_supabase_service.from("request_frequency").insert(jobs);
+    _logger.info(`Index RF inserter inserted jobs`, { jobCount: jobs.length });
+  } catch (error) {
+    _logger.error(`Index RF inserter failed to insert jobs`, { error, jobCount: jobs.length });
+  }
+}
+
+export async function getIndexRFInsertQueueLength(): Promise<number> {
+  return await redisEvictConnection.llen(INDEX_RF_INSERT_QUEUE_KEY) ?? 0;
+}
+
 export async function queryIndexAtSplitLevel(url: string, limit: number, maxAge = 2 * 24 * 60 * 60 * 1000): Promise<string[]> {
   if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
     return [];
