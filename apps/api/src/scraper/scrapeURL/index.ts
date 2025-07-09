@@ -34,6 +34,7 @@ import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
+import { addIndexRFInsertJob, generateDomainSplits, hashURL, normalizeURLForIndex } from "../../services/index";
 
 export type ScrapeUrlResponse = (
   | {
@@ -502,6 +503,23 @@ export async function scrapeURL(
 
   if (meta.rewrittenUrl) {
     meta.logger.info("Rewriting URL");
+  }
+
+  const shouldRecordFrequency = meta.options.storeInCache && !meta.internalOptions.zeroDataRetention;
+  if (shouldRecordFrequency) {
+    (async () => {
+      try {
+        const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname);
+        const domainHash = hashURL(domainSplits.slice(-1)[0]);
+
+        await addIndexRFInsertJob({
+          domain_hash: domainHash,
+          url: meta.url,
+        });
+      } catch (error) {
+        meta.logger.warn("Failed to record frequency", { error });
+      }
+    })();
   }
 
   try {
