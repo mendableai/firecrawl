@@ -61,6 +61,7 @@ function checkCreditsMiddleware(
           logger.warn("Adjusting limit to remaining credits", {
             teamId: req.auth.team_id,
             remainingCredits,
+            originalLimit: (req.body as any).limit,
             request: req.body,
           });
           (req.body as any).limit = remainingCredits;
@@ -68,6 +69,15 @@ function checkCreditsMiddleware(
         }
 
         const currencyName = req.acuc.is_extract ? "tokens" : "credits"
+        let errorMessage;
+        if (remainingCredits === 0) {
+          errorMessage = `Insufficient ${currencyName} to perform this request. For more ${currencyName}, you can upgrade your plan at ${currencyName === "credits" ? "https://firecrawl.dev/pricing" : "https://www.firecrawl.dev/extract#pricing"}.`;
+        } else if (minimum && minimum > remainingCredits) {
+          errorMessage = `Insufficient ${currencyName} for the requested operation. You have ${remainingCredits} ${currencyName} remaining but need ${minimum}. For more ${currencyName}, you can upgrade your plan at ${currencyName === "credits" ? "https://firecrawl.dev/pricing" : "https://www.firecrawl.dev/extract#pricing"}.`;
+        } else {
+          errorMessage = `Insufficient ${currencyName} to perform this request. For more ${currencyName}, you can upgrade your plan at ${currencyName === "credits" ? "https://firecrawl.dev/pricing" : "https://www.firecrawl.dev/extract#pricing"}.`;
+        }
+        
         logger.error(
           `Insufficient ${currencyName}: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
           {
@@ -81,8 +91,7 @@ function checkCreditsMiddleware(
         if (!res.headersSent && req.auth.team_id !== "8c528896-7882-4587-a4b6-768b721b0b53") {
           return res.status(402).json({
             success: false,
-            error:
-              "Insufficient " + currencyName + " to perform this request. For more " + currencyName + ", you can upgrade your plan at " + (currencyName === "credits" ? "https://firecrawl.dev/pricing or try changing the request limit to a lower value" : "https://www.firecrawl.dev/extract#pricing") + ".",
+            error: errorMessage,
           });
         }
       }
