@@ -95,17 +95,9 @@ export async function crawlController(req: Request, res: Response) {
     } = await checkTeamCredits(chunk, team_id, limitCheck);
 
     if (!creditsCheckSuccess) {
-      let errorMessage;
-      if (remainingCredits === 0) {
-        errorMessage = "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com";
-      } else if (limitCheck > remainingCredits) {
-        errorMessage = `Insufficient credits for the requested limit of ${limitCheck}. You have ${remainingCredits} credits remaining. Please reduce your limit to ${remainingCredits} or fewer, or upgrade your plan at https://firecrawl.dev/pricing`;
-      } else {
-        errorMessage = "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com";
-      }
-      
       return res.status(402).json({
-        error: errorMessage,
+        error:
+          "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com",
       });
     }
 

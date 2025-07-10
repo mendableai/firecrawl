@@ -240,53 +240,12 @@ describe("Crawl tests", () => {
         expect(typeof response.body.id).toBe("string");
     });
 
-    describe("Credit validation error messages", () => {
+    describe("V1 credit validation error messages", () => {
         if (process.env.TEST_SUITE_SELF_HOSTED) {
             it("dummy", () => {
                 expect(true).toBe(true);
             });
         } else {
-            it.concurrent("V0 crawl shows clear error when limit exceeds remaining credits", async () => {
-                const identity = await idmux({
-                    name: "crawl/v0-limit-exceeds-credits",
-                    credits: 5,
-                });
-
-                const response = await request(TEST_URL)
-                    .post("/v0/crawl")
-                    .set("Authorization", `Bearer ${identity.apiKey}`)
-                    .set("Content-Type", "application/json")
-                    .send({
-                        url: "https://firecrawl.dev",
-                        crawlerOptions: { limit: 10 }
-                    });
-
-                expect(response.statusCode).toBe(402);
-                expect(response.body.error).toContain("Insufficient credits for the requested limit of 10");
-                expect(response.body.error).toContain("You have 5 credits remaining");
-                expect(response.body.error).toContain("reduce your limit to 5 or fewer");
-            });
-
-            it.concurrent("V0 crawl shows clear error when no credits remaining", async () => {
-                const identity = await idmux({
-                    name: "crawl/v0-no-credits",
-                    credits: 0,
-                });
-
-                const response = await request(TEST_URL)
-                    .post("/v0/crawl")
-                    .set("Authorization", `Bearer ${identity.apiKey}`)
-                    .set("Content-Type", "application/json")
-                    .send({
-                        url: "https://firecrawl.dev",
-                        crawlerOptions: { limit: 5 }
-                    });
-
-                expect(response.statusCode).toBe(402);
-                expect(response.body.error).toContain("Insufficient credits to perform this request");
-                expect(response.body.error).not.toContain("reduce your limit");
-            });
-
             it.concurrent("V1 crawl auto-adjusts limit when possible", async () => {
                 const identity = await idmux({
                     name: "crawl/v1-auto-adjust",
