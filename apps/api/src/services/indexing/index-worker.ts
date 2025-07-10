@@ -191,7 +191,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
   process.exit(0);
 };
 
-const INDEX_INSERT_INTERVAL = 15000;
+const INDEX_INSERT_INTERVAL = 3000;
 const WEBHOOK_INSERT_INTERVAL = 15000;
 
 // Start the workers

@@ -208,7 +208,7 @@ export function generateDomainSplits(hostname: string): string[] {
 }
 
 const INDEX_INSERT_QUEUE_KEY = "index-insert-queue";
-const INDEX_INSERT_BATCH_SIZE = 1000;
+const INDEX_INSERT_BATCH_SIZE = 100;
 
 export async function addIndexInsertJob(data: any) {
   await redisEvictConnection.rpush(INDEX_INSERT_QUEUE_KEY, JSON.stringify(data));
@@ -238,7 +238,7 @@ export async function getIndexInsertQueueLength(): Promise<number> {
 }
 
 const INDEX_RF_INSERT_QUEUE_KEY = "index-rf-insert-queue";
-const INDEX_RF_INSERT_BATCH_SIZE = 1000;
+const INDEX_RF_INSERT_BATCH_SIZE = 100;
 
 export async function addIndexRFInsertJob(data: any) {
   await redisEvictConnection.rpush(INDEX_RF_INSERT_QUEUE_KEY, JSON.stringify(data));
