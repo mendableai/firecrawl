@@ -182,9 +182,6 @@ const processPrecrawlJobInternal = async (token: string, job: Job) => {
         crypto.randomUUID(),
         10,
       );
-
-      // temp
-      break;
     }
 
   } catch (error) {
