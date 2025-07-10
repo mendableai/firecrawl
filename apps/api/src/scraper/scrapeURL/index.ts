@@ -509,6 +509,7 @@ export async function scrapeURL(
   if (shouldRecordFrequency) {
     (async () => {
       try {
+        meta.logger.info("Recording frequency");
         const normalizedURL = normalizeURLForIndex(meta.url);
         const urlHash = hashURL(normalizedURL);
 
@@ -530,15 +531,24 @@ export async function scrapeURL(
         const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname);
         const domainHash = hashURL(domainSplits.slice(-1)[0]);
 
-        await addIndexRFInsertJob({
+        const out = {
           domain_hash: domainHash,
           url: meta.url,
           age,
-        });
+        };
+
+        await addIndexRFInsertJob(out);
+        meta.logger.info("Recorded frequency", { out });
       } catch (error) {
         meta.logger.warn("Failed to record frequency", { error });
       }
     })();
+  } else {
+    meta.logger.info("Not recording frequency", {
+      useIndex,
+      storeInCache: meta.options.storeInCache,
+      zeroDataRetention: meta.internalOptions.zeroDataRetention,
+    });
   }
 
   try {
