@@ -534,7 +534,7 @@ export async function scrapeURL(
         const out = {
           domain_hash: domainHash,
           url: meta.url,
-          age,
+          age2: age,
         };
 
         await addIndexRFInsertJob(out);
