@@ -34,7 +34,7 @@ import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
-import { addIndexRFInsertJob, generateDomainSplits, hashURL, normalizeURLForIndex, useIndex } from "../../services/index";
+import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 
 export type ScrapeUrlResponse = (
   | {
@@ -509,12 +509,31 @@ export async function scrapeURL(
   if (shouldRecordFrequency) {
     (async () => {
       try {
+        const normalizedURL = normalizeURLForIndex(meta.url);
+        const urlHash = hashURL(normalizedURL);
+
+        let { data, error } = await index_supabase_service
+          .from("index")
+          .select("id, created_at, status")
+          .eq("url_hash", urlHash)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          meta.logger.warn("Failed to get age data", { error });
+        }
+
+        const age = data?.[0]
+          ? Date.now() - new Date(data[0].created_at).getTime()
+          : -1;
+        
         const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname);
         const domainHash = hashURL(domainSplits.slice(-1)[0]);
 
         await addIndexRFInsertJob({
           domain_hash: domainHash,
           url: meta.url,
+          age,
         });
       } catch (error) {
         meta.logger.warn("Failed to record frequency", { error });
