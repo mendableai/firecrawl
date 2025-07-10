@@ -226,7 +226,10 @@ export async function processIndexInsertJobs() {
   }
   _logger.info(`Index inserter found jobs to insert`, { jobCount: jobs.length });
   try {
-    await index_supabase_service.from("index").insert(jobs);
+    const { error } = await index_supabase_service.from("index").insert(jobs);
+    if (error) {
+      _logger.error(`Index inserter failed to insert jobs`, { error, jobCount: jobs.length });
+    }
     _logger.info(`Index inserter inserted jobs`, { jobCount: jobs.length });
   } catch (error) {
     _logger.error(`Index inserter failed to insert jobs`, { error, jobCount: jobs.length });
@@ -256,7 +259,10 @@ export async function processIndexRFInsertJobs() {
   }
   _logger.info(`Index RF inserter found jobs to insert`, { jobCount: jobs.length });
   try {
-    await index_supabase_service.from("request_frequency").insert(jobs);
+    const { error } = await index_supabase_service.from("request_frequency").insert(jobs);
+    if (error) {
+      _logger.error(`Index RF inserter failed to insert jobs`, { error, jobCount: jobs.length });
+    }
     _logger.info(`Index RF inserter inserted jobs`, { jobCount: jobs.length });
   } catch (error) {
     _logger.error(`Index RF inserter failed to insert jobs`, { error, jobCount: jobs.length });
