@@ -1,7 +1,7 @@
 export const protocolIncluded = (url: string) => {
   // if :// not in the start of the url assume http (maybe https?)
   // regex checks if :// appears before any .
-  return /^([^.:]+:\/\/)/.test(url);
+  return /^([^.:]+:\/\/)/i.test(url);
 };
 
 const getURLobj = (s: string) => {
