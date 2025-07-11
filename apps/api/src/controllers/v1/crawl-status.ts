@@ -274,11 +274,8 @@ export async function crawlStatusController(
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
-    const TEMP_FAIRE_TEAM_ID = "f96ad1a4-8102-4b35-9904-36fd517d3616";
-    
     if (
       crawlJob
-      && crawlJob.team_id !== TEMP_FAIRE_TEAM_ID
       && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
     ) {
       return res.status(404).json({ success: false, error: "Job expired" });
