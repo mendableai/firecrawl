@@ -344,6 +344,7 @@ import { getACUCTeam } from "../../../controllers/auth";
               teamId,
               origin: "extract",
               timeout,
+              flags: acuc?.flags ?? null,
             },
             urlTraces,
             logger.child({
@@ -624,6 +625,7 @@ import { getACUCTeam } from "../../../controllers/auth";
               teamId,
               origin: "extract",
               timeout,
+              flags: acuc?.flags ?? null,
             },
             urlTraces,
             logger.child({
