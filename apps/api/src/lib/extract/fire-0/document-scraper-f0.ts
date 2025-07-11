@@ -1,10 +1,11 @@
-import { Document, ScrapeOptions, URLTrace, scrapeOptions } from "../../../controllers/v1/types";
+import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions } from "../../../controllers/v1/types";
 import { logger } from "../../logger";
 import { getScrapeQueue } from "../../../services/queue-service";
 import { waitForJob } from "../../../services/queue-jobs";
 import { addScrapeJob } from "../../../services/queue-jobs";
 import { getJobPriority } from "../../job-priority";
 import type { Logger } from "winston";
+import { isUrlBlocked } from "../../../scraper/WebScraper/utils/blocklist";
 
 interface ScrapeDocumentOptions {
   url: string;
@@ -12,6 +13,7 @@ interface ScrapeDocumentOptions {
   origin: string;
   timeout: number;
   isSingleUrl?: boolean;
+  flags: TeamFlags | null;
 }
 
 export async function scrapeDocument_F0(
@@ -24,6 +26,10 @@ export async function scrapeDocument_F0(
   if (trace) {
     trace.status = "scraped";
     trace.timing.scrapedAt = new Date().toISOString();
+  }
+
+  if (isUrlBlocked(options.url, options.flags ?? null)) {
+    return null;
   }
 
   async function attemptScrape(timeout: number) {

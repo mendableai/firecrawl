@@ -147,6 +147,7 @@ export async function performGenerateLlmsTxt(
                 origin: "llmstxt",
                 timeout: 30000,
                 isSingleUrl: true,
+                flags: acuc?.flags ?? null,
               },
               [],
               logger,
