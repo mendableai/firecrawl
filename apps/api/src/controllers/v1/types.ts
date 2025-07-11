@@ -59,7 +59,7 @@ export const url = z.preprocess(
   z
     .string()
     .url()
-    .regex(/^https?:\/\//, "URL uses unsupported protocol")
+    .regex(/^https?:\/\//i, "URL uses unsupported protocol")
     .refine(
       (x) =>
         /(\.[a-zA-Z0-9-\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F]{2,}|\.xn--[a-zA-Z0-9-]{1,})(:\d+)?([\/?#]|$)/i.test(
