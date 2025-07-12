@@ -361,8 +361,8 @@ export async function extractData({
           const newExtractOptions = {
             ...extractOptions,
             markdown: markdown,
-            model: getModel("gemini-2.5-pro", "vertex"),
-            retryModel: getModel("gemini-2.5-pro", "google"),
+            model: getModel(process.env.MODEL_NAME || "gpt-4o-mini"),
+            retryModel: getModel("gpt-4o"),
             costTrackingOptions: {
               costTracking: extractOptions.costTrackingOptions.costTracking,
               metadata: {

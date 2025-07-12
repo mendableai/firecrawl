@@ -298,8 +298,8 @@ export async function rerankLinksWithLLM(
           let completion: any;
           try {
             const completionPromise = generateCompletions({
-              model: getModel("gemini-2.5-pro", "vertex"),
-              retryModel: getModel("gemini-2.5-pro", "google"),
+              model: getModel(process.env.MODEL_NAME || "gpt-4o-mini"),
+              retryModel: getModel("gpt-4o"),
               logger: logger.child({
                 method: "rerankLinksWithLLM",
                 chunk: chunkIndex + 1,
