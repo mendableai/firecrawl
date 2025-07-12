@@ -10,7 +10,7 @@ import {
 import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing } from "../billing/batch_billing";
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { processIndexInsertJobs, processIndexRFInsertJobs } from "..";
+import { processIndexInsertJobs, processIndexRFInsertJobs, processOMCEJobs } from "..";
 import { processWebhookInsertJobs } from "../webhook";
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
@@ -193,6 +193,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
 
 const INDEX_INSERT_INTERVAL = 3000;
 const WEBHOOK_INSERT_INTERVAL = 15000;
+const OMCE_INSERT_INTERVAL = 5000;
 
 // Start the workers
 (async () => {
@@ -222,10 +223,18 @@ const WEBHOOK_INSERT_INTERVAL = 15000;
     await processIndexRFInsertJobs();
   }, INDEX_INSERT_INTERVAL);
 
+  const omceInserterInterval = setInterval(async () => {
+    if (isShuttingDown) {
+      return;
+    }
+    await processOMCEJobs();
+  }, OMCE_INSERT_INTERVAL);
+
   // Wait for all workers to complete (which should only happen on shutdown)
   await Promise.all([billingWorkerPromise]);
 
   clearInterval(indexInserterInterval);
   clearInterval(webhookInserterInterval);
   clearInterval(indexRFInserterInterval);
+  clearInterval(omceInserterInterval);
 })();

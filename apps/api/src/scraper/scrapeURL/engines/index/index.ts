@@ -1,7 +1,7 @@
 import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits } from "../../../../services";
+import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits, addOMCEJob } from "../../../../services";
 import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
@@ -108,6 +108,14 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                 });
             } catch (error) {
                 meta.logger.error("Failed to add document to index insert queue", {
+                    error,
+                });
+            }
+
+            try {
+                await addOMCEJob([domainSplits.length - 1, domainSplitsHash.slice(-1)[0]]);
+            } catch (error) {
+                meta.logger.warn("Failed to add domain to OMCE job queue", {
                     error,
                 });
             }
