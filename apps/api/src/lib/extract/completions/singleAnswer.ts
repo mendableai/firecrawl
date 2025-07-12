@@ -51,8 +51,8 @@ export async function singleAnswerCompletion({
     },
     markdown: `${singleAnswerDocs.map((x, i) => `[START_PAGE (ID: ${i})]` + buildDocument(x)).join("\n")} [END_PAGE]\n`,
     isExtractEndpoint: true,
-    model: getModel("gemini-2.5-pro", "vertex"),
-    retryModel: getModel("gemini-2.5-pro", "google"),
+    model: getModel(process.env.MODEL_NAME || "gpt-4o-mini"),
+    retryModel: getModel("gpt-4o"),
     costTrackingOptions: {
       costTracking,
       metadata: {
