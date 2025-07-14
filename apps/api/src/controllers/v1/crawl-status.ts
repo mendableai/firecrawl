@@ -38,7 +38,7 @@ export type PseudoJob<T> = {
   failedReason?: string,
 }
 
-export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string}
+export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string }
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([
@@ -136,12 +136,12 @@ export async function crawlStatusController(
   isBatch = false,
 ) {
   const start =
-      typeof req.query.skip === "string" ? parseInt(req.query.skip, 10) : 0;
-    const end =
-      typeof req.query.limit === "string"
-        ? start + parseInt(req.query.limit, 10) - 1
-        : undefined;
-  
+    typeof req.query.skip === "string" ? parseInt(req.query.skip, 10) : 0;
+  const end =
+    typeof req.query.limit === "string"
+      ? start + parseInt(req.query.limit, 10) - 1
+      : undefined;
+
   const sc = await getCrawl(req.params.jobId);
 
   let status: Exclude<CrawlStatusResponse, ErrorResponse>["status"];
@@ -188,9 +188,9 @@ export async function crawlStatusController(
       sc.cancelled
         ? "cancelled"
         : validJobStatuses.every((x) => x[1] === "completed") &&
-            (sc.crawlerOptions
-              ? await isCrawlKickoffFinished(req.params.jobId)
-              : true)
+          (sc.crawlerOptions
+            ? await isCrawlKickoffFinished(req.params.jobId)
+            : true)
           ? "completed"
           : "scraping";
 
@@ -212,7 +212,7 @@ export async function crawlStatusController(
         .select('*', { count: 'exact', head: true })
         .eq("crawl_id", req.params.jobId)
         .eq("success", true)
-      
+
       totalCount = x.count ?? 0;
     }
 
@@ -221,7 +221,7 @@ export async function crawlStatusController(
         .rpc("credits_billed_by_crawl_id_1", {
           i_crawl_id: req.params.jobId,
         });
-      
+
       creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? (totalCount * (
         sc.scrapeOptions?.extract
           ? 5
@@ -252,7 +252,7 @@ export async function crawlStatusController(
       .eq("job_id", req.params.jobId)
       .limit(1)
       .throwOnError();
-    
+
     if (crawlJobError) {
       logger.error("Error getting crawl job", { error: crawlJobError });
       throw crawlJobError;
@@ -274,8 +274,13 @@ export async function crawlStatusController(
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
+    const teamIdsExcludedFromExpiry = [
+      "8f819703-1b85-4f7f-a6eb-e03841ec6617",
+    ];
+
     if (
       crawlJob
+      && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
       && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
     ) {
       return res.status(404).json({ success: false, error: "Job expired" });
