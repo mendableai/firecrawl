@@ -106,7 +106,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
  * Parameters for scraping operations.
  * Defines the options and configurations available for scraping web content.
  */
-export interface CrawlScrapeOptions {
+export interface CrawlScrapeOptions<ActionsSchema extends (Action[] | undefined) = undefined> {
   formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json" | "changeTracking")[];
   headers?: Record<string, string>;
   includeTags?: string[];
@@ -126,6 +126,7 @@ export interface CrawlScrapeOptions {
   storeInCache?: boolean;
   maxAge?: number;
   parsePDF?: boolean;
+  actions?: ActionsSchema[];
 }
 
 export type Action = {
@@ -157,7 +158,7 @@ export type Action = {
   script: string,
 };
 
-export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
+export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any> extends CrawlScrapeOptions {
   extract?: {
     prompt?: string;
     schema?: LLMSchema;
@@ -174,7 +175,6 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     modes?: ("json" | "git-diff")[];
     tag?: string | null;
   }
-  actions?: ActionsSchema;
   agent?: AgentOptions;
   zeroDataRetention?: boolean;
 }
