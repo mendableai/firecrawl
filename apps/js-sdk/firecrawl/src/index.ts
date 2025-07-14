@@ -618,7 +618,7 @@ export default class FirecrawlApp {
    */
   async scrapeUrl<T extends zt.ZodSchema, ActionsSchema extends (Action[] | undefined) = undefined>(
     url: string,
-    params?: ScrapeParams<T, ActionsSchema>
+    params?: ScrapeParams<T>
   ): Promise<ScrapeResponse<zt.infer<T>, ActionsSchema extends Action[] ? ActionsResult : never> | ErrorResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
