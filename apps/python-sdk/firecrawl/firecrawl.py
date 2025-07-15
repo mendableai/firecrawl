@@ -23,6 +23,8 @@ import websockets
 import aiohttp
 import asyncio
 from pydantic import Field
+import ssl
+import certifi
 
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
@@ -2771,7 +2773,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
             aiohttp.ClientError: If the request fails after all retries.
             Exception: If max retries are exceeded or other errors occur.
         """
-        async with aiohttp.ClientSession() as session:
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
             for attempt in range(retries):
                 try:
                     async with session.request(
