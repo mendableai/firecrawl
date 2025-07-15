@@ -505,7 +505,10 @@ export async function scrapeURL(
     meta.logger.info("Rewriting URL");
   }
 
-  const shouldRecordFrequency = useIndex && meta.options.storeInCache && !meta.internalOptions.zeroDataRetention;
+  const shouldRecordFrequency = useIndex
+    && meta.options.storeInCache
+    && !meta.internalOptions.zeroDataRetention
+    && internalOptions.teamId !== process.env.PRECRAWL_TEAM_ID;
   if (shouldRecordFrequency) {
     (async () => {
       try {
