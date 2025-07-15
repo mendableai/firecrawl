@@ -171,8 +171,7 @@ export async function crawlStatusController(
           .select("success, job_id")
           .eq("crawl_id", req.params.jobId)
           .order("date_added", { ascending: true })
-          .range(rangeStart, rangeEnd)
-          .throwOnError();
+          .range(rangeStart, rangeEnd);
 
         const rangeLength = rangeEnd - rangeStart;
 
