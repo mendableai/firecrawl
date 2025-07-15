@@ -100,7 +100,7 @@ const processPrecrawlJobInternal = async (token: string, job: Job) => {
   const teamId = process.env.PRECRAWL_TEAM_ID!;
 
   try {
-    const budget = 10000;
+    const budget = 100000;
     const { data, error } = await index_supabase_service.rpc("precrawl_get_top_domains", {
       i_newer_than: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
     });
