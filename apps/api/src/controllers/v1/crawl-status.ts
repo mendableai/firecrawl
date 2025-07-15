@@ -164,7 +164,7 @@ export async function crawlStatusController(
 
     if (jobStatuses.filter((x) => x[1] === "unknown").length > 0 && process.env.USE_DB_AUTHENTICATION === "true") {
       for (let rangeStart = 0;; rangeStart += 1000) {
-        const rangeEnd = Math.min(rangeStart + 1000, jobIDs.length);
+        const rangeEnd = rangeStart + 1000;
 
         const currentJobs = await supabase_service
           .from("firecrawl_jobs")
