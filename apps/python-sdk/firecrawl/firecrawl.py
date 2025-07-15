@@ -3374,7 +3374,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
-            self._handle_error(response, 'start batch scrape job')
+            await self._handle_error(response, 'start batch scrape job')
 
     async def crawl_url(
         self,
@@ -3493,7 +3493,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
             return await self._async_monitor_job_status(id, headers, poll_interval)
         else:
-            self._handle_error(response, 'start crawl job')
+            await self._handle_error(response, 'start crawl job')
 
 
     async def async_crawl_url(
@@ -3611,7 +3611,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
-            self._handle_error(response, 'start crawl job')
+            await self._handle_error(response, 'start crawl job')
 
     async def check_crawl_status(self, id: str) -> CrawlStatusResponse:
         """
