@@ -24,12 +24,6 @@ import aiohttp
 import asyncio
 from pydantic import Field
 
-# Suppress Pydantic warnings about attribute shadowing
-warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
-warnings.filterwarnings("ignore", message="Field name \"json\" in \"ChangeTrackingData\" shadows an attribute in parent \"BaseModel\"")
-warnings.filterwarnings("ignore", message="Field name \"schema\" in \"JsonConfig\" shadows an attribute in parent \"BaseModel\"")
-warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractParams\" shadows an attribute in parent \"BaseModel\"")
-warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ChangeTrackingOptions\" shadows an attribute in parent \"BaseModel\"")
 
 def get_version():
   try:
@@ -106,7 +100,7 @@ class ChangeTrackingData(pydantic.BaseModel):
     changeStatus: str  # "new" | "same" | "changed" | "removed"
     visibility: str  # "visible" | "hidden"
     diff: Optional[Dict[str, Any]] = None
-    json: Optional[Any] = None
+    json: Optional[Any] = pydantic.Field(None, alias='json')
 
 class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     """Document retrieved or processed by Firecrawl."""
@@ -116,7 +110,7 @@ class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     rawHtml: Optional[str] = None
     links: Optional[List[str]] = None
     extract: Optional[T] = None
-    json: Optional[T] = None
+    json: Optional[T] = pydantic.Field(None, alias='json')
     screenshot: Optional[str] = None
     metadata: Optional[Any] = None
     actions: Optional[ActionsResult] = None
@@ -139,7 +133,7 @@ class WebhookConfig(pydantic.BaseModel):
 class ChangeTrackingOptions(pydantic.BaseModel):
     """Configuration for change tracking."""
     modes: Optional[List[Literal["git-diff", "json"]]] = None
-    schema: Optional[Any] = None
+    schema: Optional[Any] = pydantic.Field(None, alias='schema')
     prompt: Optional[str] = None
     tag: Optional[str] = None
 
@@ -219,7 +213,7 @@ class ExtractAgent(pydantic.BaseModel):
 class JsonConfig(pydantic.BaseModel):
     """Configuration for extraction."""
     prompt: Optional[str] = None
-    schema: Optional[Any] = None
+    schema: Optional[Any] = pydantic.Field(None, alias='schema')
     systemPrompt: Optional[str] = None
     agent: Optional[ExtractAgent] = None
 
@@ -317,7 +311,7 @@ class MapResponse(pydantic.BaseModel):
 class ExtractParams(pydantic.BaseModel):
     """Parameters for extracting information from URLs."""
     prompt: Optional[str] = None
-    schema: Optional[Any] = None
+    schema: Optional[Any] = pydantic.Field(None, alias='schema')
     systemPrompt: Optional[str] = None
     allowExternalLinks: Optional[bool] = None
     enableWebSearch: Optional[bool] = None
