@@ -769,11 +769,13 @@ const workerFun = async (
       }
 
       async function afterJobDone(job: Job<any, any, string>) {
-        if (job.id) {
-          runningJobs.delete(job.id);
+        try {
+          await concurrentJobDone(job);
+        } finally {
+          if (job.id) {
+            runningJobs.delete(job.id);
+          }
         }
-
-        await concurrentJobDone(job);
       }
 
       if (job.data && job.data.sentry && Sentry.isInitialized()) {

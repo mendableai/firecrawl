@@ -11,7 +11,7 @@ import {
 import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing } from "../billing/batch_billing";
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { index_supabase_service, processIndexInsertJobs, processIndexRFInsertJobs } from "..";
+import { index_supabase_service, processIndexInsertJobs, processIndexRFInsertJobs, processOMCEJobs } from "..";
 import { processWebhookInsertJobs } from "../webhook";
 import { scrapeOptions as scrapeOptionsSchema, crawlRequestSchema, toLegacyCrawlerOptions } from "../../controllers/v1/types";
 import { StoredCrawl, crawlToCrawler, saveCrawl } from "../../lib/crawl-redis";
@@ -301,8 +301,9 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
   process.exit(0);
 };
 
-const INDEX_INSERT_INTERVAL = 15000;
+const INDEX_INSERT_INTERVAL = 3000;
 const WEBHOOK_INSERT_INTERVAL = 15000;
+const OMCE_INSERT_INTERVAL = 5000;
 
 // Start the workers
 (async () => {
@@ -335,10 +336,18 @@ const WEBHOOK_INSERT_INTERVAL = 15000;
     await processIndexRFInsertJobs();
   }, INDEX_INSERT_INTERVAL);
 
+  const omceInserterInterval = setInterval(async () => {
+    if (isShuttingDown) {
+      return;
+    }
+    await processOMCEJobs();
+  }, OMCE_INSERT_INTERVAL);
+
   // Wait for all workers to complete (which should only happen on shutdown)
   await Promise.all([billingWorkerPromise, precrawlWorkerPromise]);
 
   clearInterval(indexInserterInterval);
   clearInterval(webhookInserterInterval);
   clearInterval(indexRFInserterInterval);
+  clearInterval(omceInserterInterval);
 })();
