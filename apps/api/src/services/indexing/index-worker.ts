@@ -112,76 +112,81 @@ const processPrecrawlJobInternal = async (token: string, job: Job) => {
 
     const total_hits = data.reduce((a, x) => a + x.count, 0);
     for (const item of data) {
-      const urlObj = new URL(item.example_url);
-      urlObj.pathname = "/";
-      urlObj.search = "";
-      urlObj.hash = "";
-
-      const url = urlObj.toString();
-      const limit = Math.round(item.count / total_hits * budget);
-
-      logger.info("Running pre-crawl", { url, limit, hits: item.count, budget });
-
-      const crawlerOptions = {
-        ...crawlRequestSchema.parse({ url, limit }),
-        url: undefined,
-        scrapeOptions: undefined,
-      };
-      const scrapeOptions = scrapeOptionsSchema.parse({});
-    
-      const sc: StoredCrawl = {
-        originUrl: url,
-        crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
-        scrapeOptions,
-        internalOptions: {
-          disableSmartWaitCache: true,
-          teamId,
-          saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
-          zeroDataRetention: true,
-        }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
-        team_id: teamId,
-        createdAt: Date.now(),
-        maxConcurrency: undefined,
-        zeroDataRetention: false,
-      };
-
-      const crawlId = uuidv4();
-    
-      const crawler = crawlToCrawler(crawlId, sc, null);
-    
       try {
-        sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
-        const robotsCrawlDelay = crawler.getRobotsCrawlDelay();
-        if (robotsCrawlDelay !== null && !sc.crawlerOptions.delay) {
-          sc.crawlerOptions.delay = robotsCrawlDelay;
-        }
-      } catch (e) {
-        logger.debug("Failed to get robots.txt (this is probably fine!)", {
-          error: e,
-        });
-      }
-    
-      await saveCrawl(crawlId, sc);
-    
-      await _addScrapeJobToBullMQ(
-        {
-          url: url,
-          mode: "kickoff" as const,
+        const urlObj = new URL(item.example_url);
+        urlObj.pathname = "/";
+        urlObj.search = "";
+        urlObj.hash = "";
+
+        const url = urlObj.toString();
+
+        const limit = Math.round(item.count / total_hits * budget);
+
+        logger.info("Running pre-crawl", { url, limit, hits: item.count, budget });
+
+        const crawlerOptions = {
+          ...crawlRequestSchema.parse({ url, limit }),
+          url: undefined,
+          scrapeOptions: undefined,
+        };
+        const scrapeOptions = scrapeOptionsSchema.parse({});
+      
+        const sc: StoredCrawl = {
+          originUrl: url,
+          crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
+          scrapeOptions,
+          internalOptions: {
+            disableSmartWaitCache: true,
+            teamId,
+            saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+            zeroDataRetention: true,
+          }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
           team_id: teamId,
-          crawlerOptions,
-          scrapeOptions: sc.scrapeOptions,
-          internalOptions: sc.internalOptions,
-          origin: "precrawl",
-          integration: null,
-          crawl_id: crawlId,
-          webhook: undefined,
-          v1: true,
+          createdAt: Date.now(),
+          maxConcurrency: undefined,
           zeroDataRetention: false,
-        },
-        {},
-        crypto.randomUUID(),
-        10,
-      );
+        };
+
+        const crawlId = uuidv4();
+      
+        const crawler = crawlToCrawler(crawlId, sc, null);
+      
+        try {
+          sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
+          const robotsCrawlDelay = crawler.getRobotsCrawlDelay();
+          if (robotsCrawlDelay !== null && !sc.crawlerOptions.delay) {
+            sc.crawlerOptions.delay = robotsCrawlDelay;
+          }
+        } catch (e) {
+          logger.debug("Failed to get robots.txt (this is probably fine!)", {
+            error: e,
+          });
+        }
+      
+        await saveCrawl(crawlId, sc);
+      
+        await _addScrapeJobToBullMQ(
+          {
+            url: url,
+            mode: "kickoff" as const,
+            team_id: teamId,
+            crawlerOptions,
+            scrapeOptions: sc.scrapeOptions,
+            internalOptions: sc.internalOptions,
+            origin: "precrawl",
+            integration: null,
+            crawl_id: crawlId,
+            webhook: undefined,
+            v1: true,
+            zeroDataRetention: false,
+          },
+          {},
+          crypto.randomUUID(),
+          10,
+        );
+      } catch (e) {
+        logger.error("Error processing one cycle of the precrawl job", { error: e });
+      }
     }
 
   } catch (error) {
