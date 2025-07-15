@@ -69,12 +69,16 @@ class RustCrawler {
             return reject(new Error("Something went wrong on the Rust side."));
           }
 
-          const raw = JSON.parse(res);
-          const result: FilterLinksResult = {
-            links: raw.links,
-            denial_reasons: new Map(Object.entries(raw.denial_reasons)),
+          try {
+            const raw = JSON.parse(res);
+            const result: FilterLinksResult = {
+              links: raw.links,
+              denial_reasons: new Map(Object.entries(raw.denial_reasons)),
+            }
+            resolve(result);
+          } catch (e) {
+            reject(e);
           }
-          resolve(result);
         }
       });
     });

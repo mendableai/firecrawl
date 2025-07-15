@@ -27,6 +27,7 @@ RUN cd /app/sharedLibs/go-html-to-md && \
 FROM rust:1-slim AS rust-base
 COPY sharedLibs/html-transformer /app/sharedLibs/html-transformer
 COPY sharedLibs/pdf-parser /app/sharedLibs/pdf-parser
+COPY sharedLibs/crawler /app/sharedLibs/crawler
 
 # Install Rust dependencies and build transformer lib
 RUN cd /app/sharedLibs/html-transformer && \
