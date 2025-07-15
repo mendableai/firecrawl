@@ -91,12 +91,12 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
                 url.path()
             };
 
-            if excludes_regex.iter().any(|regex| regex.is_match(exinc_path)) {
+            if !excludes_regex.is_empty() && excludes_regex.iter().any(|regex| regex.is_match(exinc_path)) {
                 denial_reasons.insert(link.clone(), "EXCLUDE_PATTERN".to_string());
                 return false;
             }
 
-            if !includes_regex.iter().any(|regex| regex.is_match(exinc_path)) {
+            if !includes_regex.is_empty() && !includes_regex.iter().any(|regex| regex.is_match(exinc_path)) {
                 denial_reasons.insert(link.clone(), "INCLUDE_PATTERN".to_string());
                 return false;
             }
