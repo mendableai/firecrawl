@@ -8,9 +8,12 @@ use GuzzleHttp\Exception\RequestException;
 use Psr\Log\LoggerInterface;
 
 class FirecrawlApp {
-    public const API_VERSION = "v1";
-    public const CRAWL_URL = "/".self::API_VERSION."/crawl/";
-    public const SCRAP_URL = "/".self::API_VERSION."/scrape/";
+    public const API_VERSION      = "v1";
+    public const CRAWL_URL        = "/".self::API_VERSION."/crawl/";
+    public const SCRAP_URL        = "/".self::API_VERSION."/scrape/";
+    public const BATCH_SCRAPE_URL = "/".self::API_VERSION."/batch/scrape/";
+    public const MAP_URL          = "/".self::API_VERSION."/map/";
+    public const SEARCH_URL       = "/".self::API_VERSION."/search/";
     private $apiKey;
     private $apiUrl;
     public $client;
@@ -83,6 +86,19 @@ class FirecrawlApp {
     }
 
     /**
+     * Convenience wrapper for LLM extraction (formats=['json'] + jsonOptions)
+     */
+    public function extractUrl(string $url, array $jsonOptions, array $params = []): array
+    {
+        $params = array_merge($params, [
+            'formats'    => ['json'],
+            'jsonOptions' => $jsonOptions,
+        ]);
+
+        return $this->scrapeUrl($url, $params);
+    }
+
+    /**
      * Initiate a crawl for a URL.
      *
      * @param string $url The URL to crawl.
@@ -115,6 +131,83 @@ class FirecrawlApp {
             $this->logger->error("HTTP error during crawl for URL: $url - " . $e->getMessage());
             throw new FirecrawlException('HTTP Error: ' . $e->getMessage());
         }
+    }
+
+    public function crawlUrlAsync(string $url, array $params = []): array
+    {
+        return $this->crawlUrl($url, $params, false);
+    }
+
+    public function checkCrawlStatus(string $jobId): array
+    {
+        return $this->get(self::CRAWL_URL . $jobId);
+    }
+
+    public function cancelCrawl(string $jobId): array
+    {
+        return $this->delete(self::CRAWL_URL . $jobId);
+    }
+
+    private function post(string $path, array $body): array
+    {
+        try {
+            $res = $this->client->post($path, ['json' => $body]);
+            return json_decode($res->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (RequestException $e) {
+            $this->logger->error($e->getMessage());
+            throw new FirecrawlException($e->getMessage());
+        }
+    }
+
+    private function get(string $path): array
+    {
+        try {
+            $res = $this->client->get($path);
+            return json_decode($res->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (RequestException $e) {
+            $this->logger->error($e->getMessage());
+            throw new FirecrawlException($e->getMessage());
+        }
+    }
+
+    private function delete(string $path): array
+    {
+        try {
+            $res = $this->client->delete($path);
+            return json_decode($res->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (RequestException $e) {
+            $this->logger->error($e->getMessage());
+            throw new FirecrawlException($e->getMessage());
+        }
+    }
+
+    public function batchScrape(
+        array $urls,
+        array $params        = [],
+        bool  $waitUntilDone = true,
+        int   $pollInterval  = 10
+    ): array {
+        $resp = $this->post(self::BATCH_SCRAPE_URL, array_merge(['urls' => $urls], $params));
+
+        if (!$waitUntilDone) {
+            return $resp;
+        }
+
+        if (!isset($resp['id'])) {
+            throw new FirecrawlException('Batch scrape job initiation failed');
+        }
+
+        return $this->monitorJobStatus($resp['id'], $pollInterval, self::BATCH_SCRAPE_URL);
+    }
+
+    public function mapUrl(string $url, array $params = []): array
+    {
+        return $this->post(self::MAP_URL, array_merge(['url' => $url], $params));
+    }
+
+    public function search(string $query, array $params = []): array
+    {
+        return $this->post(self::SEARCH_URL, array_merge(['query' => $query], $params));
     }
 
     /**
