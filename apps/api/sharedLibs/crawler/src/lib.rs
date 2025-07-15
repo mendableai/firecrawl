@@ -8,7 +8,7 @@ use robotstxt::DefaultMatcher;
 #[derive(Deserialize)]
 struct FilterLinksCall {
     links: Vec<String>,
-    limit: u32,
+    limit: Option<u32>,
     max_depth: u32,
     base_url: String,
     initial_url: String,
@@ -127,9 +127,13 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
             }
 
             true
-        })
-        .take(data.limit as usize)
-        .collect();
+        });
+
+    let links = if let Some(limit) = data.limit {
+        links.take(limit as usize).collect::<Vec<_>>()
+    } else {
+        links.collect::<Vec<_>>()
+    };
 
     Ok(FilterLinksResult {
         links,

@@ -147,7 +147,7 @@ export class WebCrawler {
     try {
       const res = await filterLinks({
         links: sitemapLinks,
-        limit,
+        limit: isFinite(limit) ? limit : undefined,
         max_depth: maxDepth,
         base_url: this.baseUrl,
         initial_url: this.initialUrl,
