@@ -10,6 +10,7 @@ import https from "https";
 import { redisEvictConnection } from "../../services/redis";
 import { extractLinks } from "../../lib/html-transformer";
 import { TimeoutSignal } from "../../controllers/v1/types";
+import { filterLinks } from "../../lib/crawler";
 
 export interface FilterResult {
   allowed: boolean;
@@ -45,6 +46,7 @@ export class WebCrawler {
   private visited: Set<string> = new Set();
   private crawledUrls: Map<string, string> = new Map();
   private limit: number;
+  private robotsTxt: string;
   private robotsTxtUrl: string;
   public robots: Robot;
   private robotsCrawlDelay: number | null = null;
@@ -103,8 +105,9 @@ export class WebCrawler {
     this.includes = Array.isArray(includes) ? includes : [];
     this.excludes = Array.isArray(excludes) ? excludes : [];
     this.limit = limit;
+    this.robotsTxt = "";
     this.robotsTxtUrl = `${this.baseUrl}${this.baseUrl.endsWith("/") ? "" : "/"}robots.txt`;
-    this.robots = robotsParser(this.robotsTxtUrl, "");
+    this.robots = robotsParser(this.robotsTxtUrl, this.robotsTxt);
     // Deprecated, use limit instead
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
     this.maxCrawledDepth = maxCrawledDepth ?? 10;
@@ -120,12 +123,12 @@ export class WebCrawler {
     this.currentDiscoveryDepth = currentDiscoveryDepth ?? 0;
   }
 
-  public filterLinks(
+  public async filterLinks(
     sitemapLinks: string[],
     limit: number,
     maxDepth: number,
     fromMap: boolean = false,
-  ): FilterLinksResult {
+  ): Promise<FilterLinksResult> {
     const denialReasons = new Map<string, string>();
 
     if (this.currentDiscoveryDepth === this.maxDiscoveryDepth) {
@@ -139,6 +142,37 @@ export class WebCrawler {
     // If the initial URL is a sitemap.xml, skip filtering
     if (this.initialUrl.endsWith("sitemap.xml") && fromMap) {
       return { links: sitemapLinks.slice(0, limit), denialReasons };
+    }
+
+    try {
+      const res = await filterLinks({
+        links: sitemapLinks,
+        limit,
+        max_depth: maxDepth,
+        base_url: this.baseUrl,
+        initial_url: this.initialUrl,
+        regex_on_full_url: this.regexOnFullURL,
+        excludes: this.excludes,
+        includes: this.includes,
+        allow_backward_crawling: this.allowBackwardCrawling,
+        ignore_robots_txt: this.ignoreRobotsTxt,
+        robots_txt: this.robotsTxt,
+      });
+
+      const fancyDenialReasons = new Map<string, string>();
+      res.denial_reasons.forEach((value, key) => {
+        fancyDenialReasons.set(key, DenialReason[value]);
+      });
+
+      return {
+        links: res.links,
+        denialReasons: fancyDenialReasons,
+      };
+    } catch (error) {
+      this.logger.error("Error filtering links in Rust, falling back to JS", {
+        error,
+        method: "filterLinks",
+      });
     }
 
     const filteredLinks = sitemapLinks
@@ -284,7 +318,8 @@ export class WebCrawler {
   }
 
   public importRobotsTxt(txt: string) {
-    this.robots = robotsParser(this.robotsTxtUrl, txt);
+    this.robotsTxt = txt;
+    this.robots = robotsParser(this.robotsTxtUrl, this.robotsTxt);
     const delay = this.robots.getCrawlDelay("FireCrawlAgent") || this.robots.getCrawlDelay("FirecrawlAgent");
     this.robotsCrawlDelay = delay !== undefined ? delay : null;
   }
@@ -318,7 +353,7 @@ export class WebCrawler {
       if (fromMap && onlySitemap) {
         return await urlsHandler(urls);
       } else {
-        let filteredLinksResult = this.filterLinks(
+        let filteredLinksResult = await this.filterLinks(
           [...new Set(urls)].filter(x => this.filterURL(x, this.initialUrl).allowed),
           leftOfLimit,
           this.maxCrawledDepth,
