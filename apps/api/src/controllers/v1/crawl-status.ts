@@ -162,6 +162,42 @@ export async function crawlStatusController(
       ),
     );
 
+    if (jobStatuses.filter((x) => x[1] === "unknown").length > 0 && process.env.USE_DB_AUTHENTICATION === "true") {
+      for (let rangeStart = 0;; rangeStart += 1000) {
+        const rangeEnd = Math.min(rangeStart + 1000, jobIDs.length);
+
+        const currentJobs = await supabase_service
+          .from("firecrawl_jobs")
+          .select("success, job_id")
+          .eq("crawl_id", req.params.jobId)
+          .order("date_added", { ascending: true })
+          .range(rangeStart, rangeEnd)
+          .throwOnError();
+
+        const rangeLength = rangeEnd - rangeStart;
+
+        if (currentJobs.error) {
+          logger.error("Error getting current jobs", { error: currentJobs.error });
+          continue;
+        }
+
+        const data = currentJobs.data ?? [];
+
+        for (const job of data) {
+          let index = jobStatuses.findIndex((x) => x[0] === job.job_id);
+          if (index !== -1) {
+            jobStatuses[index] = [job.job_id, job.success ? "completed" : "failed"];
+          } else {
+            jobStatuses.push([job.job_id, job.success ? "completed" : "failed"]);
+          }
+        }
+
+        if (data.length < rangeLength) {
+          break;
+        }
+      }
+    }
+
     const throttledJobsSet = new Set(await getConcurrencyLimitedJobs(req.auth.team_id));
     const activeJobsSet = new Set(await getCrawlConcurrencyLimitActiveJobs(req.params.jobId));
 
