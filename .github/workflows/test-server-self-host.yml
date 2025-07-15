@@ -82,6 +82,11 @@ jobs:
           cargo build --release
           chmod +x target/release/libpdf_parser.so
         working-directory: ./apps/api/sharedLibs/pdf-parser
+      - name: Build crawler
+        run: |
+          cargo build --release
+          chmod +x target/release/libcrawler.so
+        working-directory: ./apps/api/sharedLibs/crawler
       - name: Set up SearXNG
         if: matrix.search == 'searxng'
         run: |
