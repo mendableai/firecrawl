@@ -8,7 +8,7 @@ use robotstxt::DefaultMatcher;
 #[derive(Deserialize)]
 struct FilterLinksCall {
     links: Vec<String>,
-    limit: Option<u32>,
+    limit: Option<i64>,
     max_depth: u32,
     base_url: String,
     initial_url: String,
@@ -59,6 +59,18 @@ fn _get_url_depth(path: &str) -> u32 {
 
 fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std::error::Error>> {
     let mut denial_reasons = HashMap::new();
+
+    let limit = data.limit.and_then(|x| if x < 0 { Some(0) } else { Some(x as usize) });
+
+    let limit = if let Some(limit) = limit {
+        limit
+    } else {
+        return Ok(FilterLinksResult {
+            links: Vec::with_capacity(0),
+            denial_reasons,
+        });
+    };
+
     let base_url = Url::parse(&data.base_url)?;
     let initial_url = Url::parse(&data.initial_url)?;
 
@@ -127,13 +139,9 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
             }
 
             true
-        });
-
-    let links = if let Some(limit) = data.limit {
-        links.take(limit as usize).collect::<Vec<_>>()
-    } else {
-        links.collect::<Vec<_>>()
-    };
+        })
+        .take(limit)
+        .collect::<Vec<_>>();
 
     Ok(FilterLinksResult {
         links,
