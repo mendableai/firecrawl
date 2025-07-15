@@ -141,8 +141,8 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
 pub unsafe extern "C" fn filter_links(data: *const libc::c_char) -> *mut libc::c_char {
     let data = match serde_json::from_slice(unsafe { CStr::from_ptr(data).to_bytes() }) {
         Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input data as C string").unwrap().into_raw();
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:Failed to parse input data as C string: {}", e)).unwrap().into_raw();
         }
     };
 
