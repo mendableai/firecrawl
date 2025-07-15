@@ -16,7 +16,7 @@ pub struct MapOptions {
     pub include_subdomains: Option<bool>,
 
     /// Maximum number of links to return (default: `5000`)
-    pub exclude_tags: Option<u32>,
+    pub limit: Option<u32>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -59,7 +59,9 @@ impl FirecrawlApp {
             .await
             .map_err(|e| FirecrawlError::HttpError(format!("Mapping {:?}", url.as_ref()), e))?;
 
-        let response = self.handle_response::<MapResponse>(response, "scrape URL").await?;
+        let response = self
+            .handle_response::<MapResponse>(response, "scrape URL")
+            .await?;
 
         Ok(response.links)
     }

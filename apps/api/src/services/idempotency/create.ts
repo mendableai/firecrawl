@@ -1,11 +1,9 @@
 import { Request } from "express";
 import { supabase_service } from "../supabase";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 
-export async function createIdempotencyKey(
-  req: Request,
-): Promise<string> {
-  const idempotencyKey = req.headers['x-idempotency-key'] as string;
+export async function createIdempotencyKey(req: Request): Promise<string> {
+  const idempotencyKey = req.headers["x-idempotency-key"] as string;
   if (!idempotencyKey) {
     throw new Error("No idempotency key provided in the request headers.");
   }
@@ -15,7 +13,7 @@ export async function createIdempotencyKey(
     .insert({ key: idempotencyKey });
 
   if (error) {
-    Logger.error(`Failed to create idempotency key: ${error}`);
+    logger.error(`Failed to create idempotency key: ${error}`);
     throw error;
   }
 

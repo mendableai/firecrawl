@@ -1,4 +1,8 @@
-use firecrawl::{crawl::CrawlOptions, scrape::{ExtractOptions, ScrapeFormats, ScrapeOptions}, FirecrawlApp};
+use firecrawl::{
+    crawl::CrawlOptions,
+    scrape::{ExtractOptions, ScrapeFormats, ScrapeOptions},
+    FirecrawlApp,
+};
 use serde_json::json;
 
 #[tokio::main]
@@ -19,19 +23,20 @@ async fn main() {
 
     // Crawl a website
     let crawl_options = CrawlOptions {
-        exclude_paths: vec![ "blog/*".into() ].into(),
+        exclude_paths: vec!["blog/*".into()].into(),
         ..Default::default()
     };
-    
-    let crawl_result = app
-        .crawl_url("https://mendable.ai", crawl_options)
-        .await;
+
+    let crawl_result = app.crawl_url("https://mendable.ai", crawl_options).await;
 
     match crawl_result {
-        Ok(data) => println!("Crawl Result (used {} credits):\n{:#?}", data.credits_used, data.data),
+        Ok(data) => println!(
+            "Crawl Result (used {} credits):\n{:#?}",
+            data.credits_used, data.data
+        ),
         Err(e) => eprintln!("Crawl failed: {}", e),
     }
-    
+
     // Scrape with Extract
     let json_schema = json!({
         "type": "object",
@@ -57,11 +62,12 @@ async fn main() {
     });
 
     let llm_extraction_options = ScrapeOptions {
-        formats: vec![ ScrapeFormats::Extract ].into(),
+        formats: vec![ScrapeFormats::Extract].into(),
         extract: ExtractOptions {
             schema: json_schema.into(),
             ..Default::default()
-        }.into(),
+        }
+        .into(),
         ..Default::default()
     };
 
@@ -75,9 +81,7 @@ async fn main() {
     }
 
     // Map a website (Alpha)
-    let map_result = app
-        .map_url("https://firecrawl.dev", None)
-        .await;
+    let map_result = app.map_url("https://firecrawl.dev", None).await;
 
     match map_result {
         Ok(data) => println!("Mapped URLs: {:#?}", data),

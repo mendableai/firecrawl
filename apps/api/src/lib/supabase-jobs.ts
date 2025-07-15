@@ -1,5 +1,6 @@
-import { supabase_service } from "../services/supabase";
-import { Logger } from "./logger";
+import type { Logger } from "winston";
+import { supabase_rr_service, supabase_service } from "../services/supabase";
+import { logger } from "./logger";
 import * as Sentry from "@sentry/node";
 
 /**
@@ -8,7 +9,7 @@ import * as Sentry from "@sentry/node";
  * @returns {any | null} Job
  */
 export const supabaseGetJobById = async (jobId: string) => {
-  const { data, error } = await supabase_service
+  const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select("*")
     .eq("job_id", jobId)
@@ -31,13 +32,13 @@ export const supabaseGetJobById = async (jobId: string) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsById = async (jobIds: string[]) => {
-  const { data, error } = await supabase_service
+  const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select()
     .in("job_id", jobIds);
 
   if (error) {
-    Logger.error(`Error in supabaseGetJobsById: ${error}`);
+    logger.error(`Error in supabaseGetJobsById: ${error}`);
     Sentry.captureException(error);
     return [];
   }
@@ -55,13 +56,13 @@ export const supabaseGetJobsById = async (jobIds: string[]) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
-  const { data, error } = await supabase_service
+  const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select()
-    .eq("crawl_id", crawlId)
+    .eq("crawl_id", crawlId);
 
   if (error) {
-    Logger.error(`Error in supabaseGetJobsByCrawlId: ${error}`);
+    logger.error(`Error in supabaseGetJobsByCrawlId: ${error}`);
     Sentry.captureException(error);
     return [];
   }
@@ -73,15 +74,17 @@ export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
   return data;
 };
 
-
-export const supabaseGetJobByIdOnlyData = async (jobId: string) => {
-  const { data, error } = await supabase_service
+export const supabaseGetJobByIdOnlyData = async (jobId: string, logger?: Logger) => {
+  const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
-    .select("docs, team_id")
+    .select("team_id")
     .eq("job_id", jobId)
     .single();
 
   if (error) {
+    if (logger) {
+      logger.error("Error in supabaseGetJobByIdOnlyData", { error });
+    }
     return null;
   }
 

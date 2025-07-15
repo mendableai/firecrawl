@@ -24,39 +24,59 @@ pub enum ScrapeFormats {
     Links,
 
     /// Will result in a URL to a screenshot of the page.
-    /// 
+    ///
     /// Can not be used in conjunction with `ScrapeFormats::ScreenshotFullPage`.
     #[serde(rename = "screenshot")]
     Screenshot,
 
     /// Will result in a URL to a full-page screenshot of the page.
-    /// 
+    ///
     /// Can not be used in conjunction with `ScrapeFormats::Screenshot`.
     #[serde(rename = "screenshot@fullPage")]
     ScreenshotFullPage,
 
     /// Will result in the results of an LLM extraction.
-    /// 
-    /// See `ScrapeOptions.extract` for more options.
-    #[serde(rename = "extract")]
-    Extract,
+    ///
+    /// See `ScrapeOptions.json_options` for more options.
+    #[serde(rename = "json")]
+    Json,
 }
 
-#[serde_with::skip_serializing_none]
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ExtractOptions {
-    /// Schema the output should adhere to, provided in JSON Schema format.
-    pub schema: Option<Value>,
-
-    pub system_prompt: Option<String>,
-
-    /// Extraction prompt to send to the LLM agent along with the page content.
+pub struct AgentOptionsJson {
+    pub model: String,
     pub prompt: Option<String>,
 }
 
 #[serde_with::skip_serializing_none]
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonOptions {
+    /// Schema the output should adhere to, provided in JSON Schema format.
+    pub schema: Option<Value>,
+
+    /// System prompt to send to the LLM agent along with the page content.
+    pub system_prompt: Option<String>,
+
+    /// Extraction prompt to send to the LLM agent along with the page content.
+    pub prompt: Option<String>,
+
+    /// Agent options for JSON extraction.
+    pub agent: Option<AgentOptionsJson>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOptions {
+    pub model: String,
+    pub prompt: Option<String>,
+    pub session_id: Option<String>,
+    pub wait_before_closing_ms: Option<u32>,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrapeOptions {
     /// Formats to extract from the page. (default: `[ Markdown ]`)
@@ -66,12 +86,12 @@ pub struct ScrapeOptions {
     pub only_main_content: Option<bool>,
 
     /// HTML tags to exclusively include.
-    /// 
+    ///
     /// For example, if you pass `div`, you will only get content from `<div>`s and their children.
     pub include_tags: Option<Vec<String>>,
 
     /// HTML tags to exclude.
-    /// 
+    ///
     /// For example, if you pass `img`, you will never get image URLs in your results.
     pub exclude_tags: Option<Vec<String>>,
 
@@ -84,8 +104,11 @@ pub struct ScrapeOptions {
     // Timeout before returning an error, in milliseconds. (default: `60000`)
     pub timeout: Option<u32>,
 
-    /// Extraction options, to be used in conjunction with `ScrapeFormats::Extract`.
-    pub extract: Option<ExtractOptions>,
+    /// JSON extraction options, to be used in conjunction with `ScrapeFormats::Json`.
+    pub json_options: Option<JsonOptions>,
+
+    /// Agent options for smart scrape.
+    pub agent: Option<AgentOptions>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -131,7 +154,9 @@ impl FirecrawlApp {
             .await
             .map_err(|e| FirecrawlError::HttpError(format!("Scraping {:?}", url.as_ref()), e))?;
 
-        let response = self.handle_response::<ScrapeResponse>(response, "scrape URL").await?;
+        let response = self
+            .handle_response::<ScrapeResponse>(response, "scrape URL")
+            .await?;
 
         Ok(response.data)
     }

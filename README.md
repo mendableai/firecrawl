@@ -56,7 +56,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 Check out the following resources to get started:
 - [x] **API**: [Documentation](https://docs.firecrawl.dev/api-reference/introduction)
 - [x] **SDKs**: [Python](https://docs.firecrawl.dev/sdks/python), [Node](https://docs.firecrawl.dev/sdks/node), [Go](https://docs.firecrawl.dev/sdks/go), [Rust](https://docs.firecrawl.dev/sdks/rust)
-- [x] **LLM Frameworks**: [Langchain (python)](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/), [Langchain (js)](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl), [Llama Index](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader), [Crew.ai](https://docs.crewai.com/), [Composio](https://composio.dev/tools/firecrawl/all), [PraisonAI](https://docs.praison.ai/firecrawl/)
+- [x] **LLM Frameworks**: [Langchain (python)](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/), [Langchain (js)](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl), [Llama Index](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader), [Crew.ai](https://docs.crewai.com/), [Composio](https://composio.dev/tools/firecrawl/all), [PraisonAI](https://docs.praison.ai/firecrawl/), [Superinterface](https://superinterface.ai/docs/assistants/functions/firecrawl), [Vectorize](https://docs.vectorize.io/integrations/source-connectors/firecrawl)
 - [x] **Low-code Frameworks**: [Dify](https://dify.ai/blog/dify-ai-blog-integrated-with-firecrawl), [Langflow](https://docs.langflow.org/), [Flowise AI](https://docs.flowiseai.com/integrations/langchain/document-loaders/firecrawl), [Cargo](https://docs.getcargo.io/integration/firecrawl), [Pipedream](https://pipedream.com/apps/firecrawl/)
 - [x] **Others**: [Zapier](https://zapier.com/apps/firecrawl/integrations), [Pabbly Connect](https://www.pabbly.com/connect/integrations/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
@@ -72,14 +72,17 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - [**Scrape**](#scraping): scrapes a URL and get its content in LLM-ready format (markdown, structured data via [LLM Extract](#llm-extraction-beta), screenshot, html)
 - [**Crawl**](#crawling): scrapes all the URLs of a web page and return content in LLM-ready format
 - [**Map**](#map-alpha): input a website and get all the website urls - extremely fast
+- [**Search**](#search): search the web and get full content from results
+- [**Extract**](#extract): get structured data from single page, multiple pages or entire websites with AI.
 
 ### Powerful Capabilities
 - **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
 - **The hard stuff**: proxies, anti-bot mechanisms, dynamic content (js-rendered), output parsing, orchestration
 - **Customizability**: exclude tags, crawl behind auth walls with custom headers, max crawl depth, etc...
-- **Media parsing**: pdfs, docx, images.
-- **Reliability first**: designed to get the data you need - no matter how hard it is.
+- **Media parsing**: pdfs, docx, images
+- **Reliability first**: designed to get the data you need - no matter how hard it is
 - **Actions**: click, scroll, input, wait and more before extracting data
+- **Batching (New)**: scrape thousands of URLs at the same time with a new async endpoint.
 
 You can find all of Firecrawl's capabilities and how to use them in our [documentation](https://docs.firecrawl.dev)
 
@@ -93,7 +96,7 @@ curl -X POST https://api.firecrawl.dev/v1/crawl \
     -H 'Authorization: Bearer fc-YOUR_API_KEY' \
     -d '{
       "url": "https://docs.firecrawl.dev",
-      "limit": 100,
+      "limit": 10,
       "scrapeOptions": {
         "formats": ["markdown", "html"]
       }
@@ -184,7 +187,7 @@ Response:
 }
 ```
 
-### Map (Alpha)
+### Map
 
 Used to map a URL and get urls of the website. This returns most links present on the website.
 
@@ -239,6 +242,131 @@ Response will be an ordered list from the most relevant to the least relevant.
 }
 ```
 
+### Search
+
+Search the web and get full content from results
+
+Firecrawl’s search API allows you to perform web searches and optionally scrape the search results in one operation.
+
+- Choose specific output formats (markdown, HTML, links, screenshots)
+- Search the web with customizable parameters (language, country, etc.)
+- Optionally retrieve content from search results in various formats
+- Control the number of results and set timeouts
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer fc-YOUR_API_KEY" \
+  -d '{
+    "query": "what is firecrawl?",
+    "limit": 5
+  }'
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "url": "https://firecrawl.dev",
+      "title": "Firecrawl | Home Page",
+      "description": "Turn websites into LLM-ready data with Firecrawl"
+    },
+    {
+      "url": "https://docs.firecrawl.dev",
+      "title": "Documentation | Firecrawl",
+      "description": "Learn how to use Firecrawl in your own applications"
+    }
+  ]
+}
+```
+
+#### With content scraping
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer fc-YOUR_API_KEY" \
+  -d '{
+    "query": "what is firecrawl?",
+    "limit": 5,
+    "scrapeOptions": {
+      "formats": ["markdown", "links"]
+    }
+  }'
+```
+
+### Extract (Beta)
+
+Get structured data from entire websites with a prompt and/or a schema.
+
+You can extract structured data from one or multiple URLs, including wildcards:
+
+Single Page:
+Example: https://firecrawl.dev/some-page
+
+Multiple Pages / Full Domain
+Example: https://firecrawl.dev/*
+
+When you use /*, Firecrawl will automatically crawl and parse all URLs it can discover in that domain, then extract the requested data.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/extract \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "urls": [
+        "https://firecrawl.dev/*", 
+        "https://docs.firecrawl.dev/", 
+        "https://www.ycombinator.com/companies"
+      ],
+      "prompt": "Extract the company mission, whether it is open source, and whether it is in Y Combinator from the page.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "company_mission": {
+            "type": "string"
+          },
+          "is_open_source": {
+            "type": "boolean"
+          },
+          "is_in_yc": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "company_mission",
+          "is_open_source",
+          "is_in_yc"
+        ]
+      }
+    }'
+```
+
+```json
+{
+  "success": true,
+  "id": "44aa536d-f1cb-4706-ab87-ed0386685740",
+  "urlTrace": []
+}
+```
+
+If you are using the sdks, it will auto pull the response for you:
+
+```json
+{
+  "success": true,
+  "data": {
+    "company_mission": "Firecrawl is the easiest way to extract data from the web. Developers use us to reliably convert URLs into LLM-ready markdown or structured data with a single API call.",
+    "supports_sso": false,
+    "is_open_source": true,
+    "is_in_yc": true
+  }
+}
+```
+
 ### LLM Extraction (Beta)
 
 Used to extract structured data from scraped pages.
@@ -249,8 +377,8 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://www.mendable.ai/",
-      "formats": ["extract"],
-      "extract": {
+      "formats": ["json"],
+      "jsonOptions": {
         "schema": {
           "type": "object",
           "properties": {
@@ -295,7 +423,7 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
       "ogSiteName": "Mendable",
       "sourceURL": "https://mendable.ai/"
     },
-    "llm_extraction": {
+    "json": {
       "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
       "supports_sso": true,
       "is_open_source": false,
@@ -315,8 +443,8 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://docs.firecrawl.dev/",
-      "formats": ["extract"],
-      "extract": {
+      "formats": ["json"],
+      "jsonOptions": {
         "prompt": "Extract the company mission from the page."
       }
     }'
@@ -350,41 +478,21 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     }'
 ```
 
+### Batch Scraping Multiple URLs (New)
 
-### Search (v0) (Beta)
-
-Used to search the web, get the most relevant results, scrape each page and return the markdown.
+You can now batch scrape multiple URLs at the same time. It is very similar to how the /crawl endpoint works. It submits a batch scrape job and returns a job ID to check the status of the batch scrape.
 
 ```bash
-curl -X POST https://api.firecrawl.dev/v0/search \
+curl -X POST https://api.firecrawl.dev/v1/batch/scrape \
     -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
-      "query": "firecrawl",
-      "pageOptions": {
-        "fetchPageContent": true // false for a fast serp api
-      }
+      "urls": ["https://docs.firecrawl.dev", "https://docs.firecrawl.dev/sdks/overview"],
+      "formats" : ["markdown", "html"]
     }'
 ```
 
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "url": "https://mendable.ai",
-      "markdown": "# Markdown Content",
-      "provider": "web-scraper",
-      "metadata": {
-        "title": "Mendable | AI for CX and Sales",
-        "description": "AI for CX and Sales",
-        "language": null,
-        "sourceURL": "https://www.mendable.ai/"
-      }
-    }
-  ]
-}
-```
+
 
 ## Using Python SDK
 
@@ -398,23 +506,23 @@ pip install firecrawl-py
 
 ```python
 from firecrawl.firecrawl import FirecrawlApp
+from firecrawl.firecrawl import ScrapeOptions
 
 app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 
 # Scrape a website:
 scrape_status = app.scrape_url(
   'https://firecrawl.dev', 
-  params={'formats': ['markdown', 'html']}
+  formats=["markdown", "html"]
 )
 print(scrape_status)
 
 # Crawl a website:
 crawl_status = app.crawl_url(
-  'https://firecrawl.dev', 
-  params={
-    'limit': 100, 
-    'scrapeOptions': {'formats': ['markdown', 'html']}
-  },
+  'https://firecrawl.dev',
+  limit=100,
+  scrape_options=ScrapeOptions(
+    formats=["markdown", "html"],),
   poll_interval=30
 )
 print(crawl_status)
@@ -425,27 +533,20 @@ print(crawl_status)
 With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
 
 ```python
-
-from firecrawl.firecrawl import FirecrawlApp
-
-app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
-
 class ArticleSchema(BaseModel):
     title: str
-    points: int
+    points: int 
     by: str
     commentsURL: str
 
 class TopArticlesSchema(BaseModel):
-    top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
+    top: List[ArticleSchema] = Field(..., description="Top 5 stories")
 
-data = app.scrape_url('https://news.ycombinator.com', {
-    'formats': ['extract'],
-    'extract': {
-        'schema': TopArticlesSchema.model_json_schema()
-    }
-})
-print(data["extract"])
+json_config = JsonConfig(schema=TopArticlesSchema.model_json_schema())
+
+llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["json"], json=json_config)
+
+print(llm_extraction_result.json)
 ```
 
 ## Using the Node SDK
@@ -483,7 +584,7 @@ const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
   scrapeOptions: {
     formats: ['markdown', 'html'],
   }
-} as CrawlParams, true, 30) as CrawlStatusResponse;
+} satisfies CrawlParams, true, 30) satisfies CrawlStatusResponse;
 
 if (crawlResponse) {
   console.log(crawlResponse)
@@ -493,7 +594,7 @@ if (crawlResponse) {
 
 ### Extracting structured data from a URL
 
-With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how you to use it:
+With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how to use it:
 
 ```js
 import FirecrawlApp from "@mendable/firecrawl-js";
@@ -519,10 +620,10 @@ const schema = z.object({
 });
 
 const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: schema },
+  jsonOptions: { extractionSchema: schema },
 });
 
-console.log(scrapeResult.data["llm_extraction"]);
+console.log(scrapeResult.data["json"]);
 ```
 
 ## Open Source vs Cloud Offering

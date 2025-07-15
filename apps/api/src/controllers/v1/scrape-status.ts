@@ -1,38 +1,54 @@
 import { Response } from "express";
 import { supabaseGetJobByIdOnlyData } from "../../lib/supabase-jobs";
-import { scrapeStatusRateLimiter } from "../../services/rate-limiter";
+import { getJob } from "./crawl-status";
+import { logger as _logger } from "../../lib/logger";
 
 export async function scrapeStatusController(req: any, res: any) {
-  try {
-    const rateLimiter = scrapeStatusRateLimiter;
-    const incomingIP = (req.headers["x-forwarded-for"] ||
-      req.socket.remoteAddress) as string;
-    const iptoken = incomingIP;
-    await rateLimiter.consume(iptoken);
+  const logger = _logger.child({
+    module: "scrape-status",
+    method: "scrapeStatusController",
+    teamId: req.auth.team_id,
+    jobId: req.params.jobId,
+    scrapeId: req.params.jobId,
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
+  });
 
-    const job = await supabaseGetJobByIdOnlyData(req.params.jobId);
-
-    if(job.team_id !== "41bdbfe1-0579-4d9b-b6d5-809f16be12f5"){
-      return res.status(403).json({
-        success: false,
-        error: "You are not allowed to access this resource.",
-      });
-    }
-    return res.status(200).json({
-      success: true,
-      data: job?.docs[0],
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message == "Too Many Requests") {
-      return res.status(429).json({
-        success: false,
-        error: "Rate limit exceeded. Please try again later.",
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        error: "An unexpected error occurred.",
-      });
-    }
+  if (req.acuc?.flags?.forceZDR) {
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on scrape status. Please contact support@firecrawl.com to unblock this feature." });
   }
+
+  const job = await supabaseGetJobByIdOnlyData(req.params.jobId, logger);
+
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: "Job not found.",
+    });
+  }
+
+  if (
+    job?.team_id !== req.auth.team_id
+  ) {
+    return res.status(403).json({
+      success: false,
+      error: "You are not allowed to access this resource.",
+    });
+  }
+
+  const jobData = await getJob(req.params.jobId);
+  const data = Array.isArray(jobData?.returnvalue)
+    ? jobData?.returnvalue[0]
+    : jobData?.returnvalue;
+  
+  if (!data) {
+    return res.status(404).json({
+      success: false,
+      error: "Job not found.",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data,
+  });
 }

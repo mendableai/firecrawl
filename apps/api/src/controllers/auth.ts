@@ -3,21 +3,19 @@ import { getRateLimiter } from "../services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
-  PlanType,
   RateLimiterMode,
 } from "../types";
-import { supabase_service } from "../services/supabase";
+import { supabase_rr_service, supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { redlock } from "../services/redlock";
-import { getValue } from "../services/redis";
+import { deleteKey, getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
-import { AuthCreditUsageChunk } from "./v1/types";
+import { AuthCreditUsageChunk, AuthCreditUsageChunkFromTeam } from "./v1/types";
 // const { data, error } = await supabase_service
 //     .from('api_keys')
 //     .select(`
@@ -39,17 +37,19 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
 
 export async function setCachedACUC(
   api_key: string,
+  is_extract: boolean,
   acuc:
     | AuthCreditUsageChunk
-    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk)
+    | null
+    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null),
 ) {
-  const cacheKeyACUC = `acuc_${api_key}`;
+  const cacheKeyACUC = `acuc_${api_key}_${is_extract ? "extract" : "scrape"}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
 
   try {
     await redlock.using([redLockKey], 10000, {}, async (signal) => {
       if (typeof acuc === "function") {
-        acuc = acuc(JSON.parse(await getValue(cacheKeyACUC)));
+        acuc = acuc(JSON.parse((await getValue(cacheKeyACUC)) ?? "null"));
 
         if (acuc === null) {
           if (signal.aborted) {
@@ -64,49 +64,264 @@ export async function setCachedACUC(
         throw signal.error;
       }
 
-      // Cache for 10 minutes. This means that changing subscription tier could have
-      // a maximum of 10 minutes of a delay. - mogery
+      // Cache for 10 minutes. - mogery
       await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
     });
   } catch (error) {
-    Logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
+    logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
   }
 }
 
+const mockPreviewACUC: (team_id: string, is_extract: boolean) => AuthCreditUsageChunk = (team_id, is_extract) => ({
+  api_key: "preview",
+  team_id,
+  sub_id: null,
+  sub_current_period_start: null,
+  sub_current_period_end: null,
+  sub_user_id: null,
+  price_id: null,
+  rate_limits: {
+    crawl: 2,
+    scrape: 10,
+    extract: 10,
+    search: 5,
+    map: 5,
+    preview: 5,
+    crawlStatus: 500,
+    extractStatus: 500,
+    extractAgentPreview: 1,
+    scrapeAgentPreview: 5,
+  },
+  price_credits: 99999999,
+  credits_used: 0,
+  coupon_credits: 99999999,
+  adjusted_credits_used: 0,
+  remaining_credits: 99999999,
+  total_credits_sum: 99999999,
+  plan_priority: {
+    bucketLimit: 25,
+    planModifier: 0.1,
+  },
+  concurrency: is_extract ? 200 : 2,
+  flags: null,
+  is_extract,
+});
+
+const mockACUC: () => AuthCreditUsageChunk = () => ({
+  api_key: "bypass",
+  team_id: "bypass",
+  sub_id: "bypass",
+  sub_current_period_start: new Date().toISOString(),
+  sub_current_period_end: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  sub_user_id: "bypass",
+  price_id: "bypass",
+  rate_limits: {
+    crawl: 99999999,
+    scrape: 99999999,
+    extract: 99999999,
+    search: 99999999,
+    map: 99999999,
+    preview: 99999999,
+    crawlStatus: 99999999,
+    extractStatus: 99999999,
+    extractAgentPreview: 99999999,
+    scrapeAgentPreview: 99999999,
+  },
+  price_credits: 99999999,
+  credits_used: 0,
+  coupon_credits: 99999999,
+  adjusted_credits_used: 0,
+  remaining_credits: 99999999,
+  total_credits_sum: 99999999,
+  plan_priority: {
+    bucketLimit: 25,
+    planModifier: 0.1,
+  },
+  concurrency: 99999999,
+  flags: null,
+  is_extract: false,
+});
+
 export async function getACUC(
   api_key: string,
-  cacheOnly = false
+  cacheOnly = false,
+  useCache = true,
+  mode?: RateLimiterMode,
 ): Promise<AuthCreditUsageChunk | null> {
-  const cacheKeyACUC = `acuc_${api_key}`;
+  let isExtract =
+      mode === RateLimiterMode.Extract ||
+      mode === RateLimiterMode.ExtractStatus ||
+      mode === RateLimiterMode.ExtractAgentPreview;
 
-  const cachedACUC = await getValue(cacheKeyACUC);
+  if (api_key === process.env.PREVIEW_TOKEN) {
+    const acuc = mockPreviewACUC(api_key, isExtract);
+    acuc.is_extract = isExtract;
+    return acuc;
+  }
+  
+  if (process.env.USE_DB_AUTHENTICATION !== "true") {
+    const acuc = mockACUC();
+    acuc.is_extract = isExtract;
+    return acuc;
+  }
 
-  if (cachedACUC !== null) {
-    return JSON.parse(cachedACUC);
-  } else if (!cacheOnly) {
+  const cacheKeyACUC = `acuc_${api_key}_${isExtract ? "extract" : "scrape"}`;
+
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
+
+  if (!cacheOnly) {
     let data;
     let error;
     let retries = 0;
     const maxRetries = 5;
-
     while (retries < maxRetries) {
-      ({ data, error } = await supabase_service.rpc(
-        "auth_credit_usage_chunk_test_3",
-        { input_key: api_key }
+      const client =
+        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+      ({ data, error } = await client.rpc(
+        "auth_credit_usage_chunk_32",
+        { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
+        { get: true },
       ));
 
       if (!error) {
         break;
       }
 
-      Logger.warn(
-        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`
+      logger.warn(
+        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
+        { error }
       );
       retries++;
       if (retries === maxRetries) {
         throw new Error(
           "Failed to retrieve authentication and credit usage data after 3 attempts: " +
-            JSON.stringify(error)
+            JSON.stringify(error),
+        );
+      }
+
+      // Wait for a short time before retrying
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    const chunk: AuthCreditUsageChunk | null =
+      data.length === 0 ? null : data[0].team_id === null ? null : data[0];
+    
+    if (chunk) {
+      chunk.is_extract = isExtract;
+    }
+
+    // NOTE: Should we cache null chunks? - mogery
+    if (chunk !== null && useCache) {
+      setCachedACUC(api_key, isExtract, chunk);
+    }
+
+    return chunk;
+  } else {
+    return null;
+  }
+}
+
+export async function setCachedACUCTeam(
+  team_id: string,
+  is_extract: boolean,
+  acuc:
+    | AuthCreditUsageChunkFromTeam
+    | null
+    | ((acuc: AuthCreditUsageChunkFromTeam) => AuthCreditUsageChunkFromTeam | null),
+) {
+  const cacheKeyACUC = `acuc_team_${team_id}_${is_extract ? "extract" : "scrape"}`;
+  const redLockKey = `lock_${cacheKeyACUC}`;
+
+  try {
+    await redlock.using([redLockKey], 10000, {}, async (signal) => {
+      if (typeof acuc === "function") {
+        acuc = acuc(JSON.parse((await getValue(cacheKeyACUC)) ?? "null"));
+
+        if (acuc === null) {
+          if (signal.aborted) {
+            throw signal.error;
+          }
+
+          return;
+        }
+      }
+
+      if (signal.aborted) {
+        throw signal.error;
+      }
+
+      // Cache for 10 minutes. - mogery
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
+    });
+  } catch (error) {
+    logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
+  }
+}
+
+export async function getACUCTeam(
+  team_id: string,
+  cacheOnly = false,
+  useCache = true,
+  mode?: RateLimiterMode,
+): Promise<AuthCreditUsageChunkFromTeam | null> {
+  let isExtract =
+      mode === RateLimiterMode.Extract ||
+      mode === RateLimiterMode.ExtractStatus ||
+      mode === RateLimiterMode.ExtractAgentPreview;
+
+  if (team_id.startsWith("preview")) {
+    const acuc = mockPreviewACUC(team_id, isExtract);
+    return acuc;
+  }
+  
+  if (process.env.USE_DB_AUTHENTICATION !== "true") {
+    const acuc = mockACUC();
+    acuc.is_extract = isExtract;
+    return acuc;
+  }
+
+  const cacheKeyACUC = `acuc_team_${team_id}_${isExtract ? "extract" : "scrape"}`;
+
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
+
+  if (!cacheOnly) {
+    let data;
+    let error;
+    let retries = 0;
+    const maxRetries = 5;
+    
+    while (retries < maxRetries) {
+      const client =
+        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+      ({ data, error } = await client.rpc(
+        "auth_credit_usage_chunk_32_from_team",
+        { input_team: team_id, i_is_extract: isExtract, tally_untallied_credits: true },
+        { get: true },
+      ));
+
+      if (!error) {
+        break;
+      }
+
+      logger.warn(
+        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
+        { error }
+      );
+      retries++;
+      if (retries === maxRetries) {
+        throw new Error(
+          "Failed to retrieve authentication and credit usage data after 3 attempts: " +
+            JSON.stringify(error),
         );
       }
 
@@ -118,48 +333,61 @@ export async function getACUC(
       data.length === 0 ? null : data[0].team_id === null ? null : data[0];
 
     // NOTE: Should we cache null chunks? - mogery
-    if (chunk !== null) {
-      setCachedACUC(api_key, chunk);
+    if (chunk !== null && useCache) {
+      setCachedACUCTeam(team_id, isExtract, chunk);
     }
 
-    return chunk;
+    return chunk ? { ...chunk, is_extract: isExtract } : null;
   } else {
     return null;
   }
 }
 
+export async function clearACUC(api_key: string): Promise<void> {
+  // Delete cache for all rate limiter modes
+  const modes = [true, false];
+  await Promise.all(
+    modes.map(async (mode) => {
+      const cacheKey = `acuc_${api_key}_${mode ? "extract" : "scrape"}`;
+      await deleteKey(cacheKey);
+    }),
+  );
+
+  // Also clear the base cache key
+  await deleteKey(`acuc_${api_key}`);
+}
+
+export async function clearACUCTeam(team_id: string): Promise<void> {
+  // Delete cache for all rate limiter modes
+  const modes = [true, false];
+  await Promise.all(
+    modes.map(async (mode) => {
+      const cacheKey = `acuc_team_${team_id}_${mode ? "extract" : "scrape"}`;
+      await deleteKey(cacheKey);
+    }),
+  );
+
+  // Also clear the base cache key
+  await deleteKey(`acuc_team_${team_id}`);
+}
+
 export async function authenticateUser(
   req,
   res,
-  mode?: RateLimiterMode
+  mode?: RateLimiterMode,
 ): Promise<AuthResponse> {
-  return withAuth(supaAuthenticateUser)(req, res, mode);
-}
-
-function setTrace(team_id: string, api_key: string) {
-  try {
-    setTraceAttributes({
-      team_id,
-      api_key,
-    });
-  } catch (error) {
-    Sentry.captureException(error);
-    Logger.error(`Error setting trace attributes: ${error.message}`);
-  }
+  return withAuth(supaAuthenticateUser, {
+    success: true,
+    chunk: null,
+    team_id: "bypass",
+  })(req, res, mode);
 }
 
 export async function supaAuthenticateUser(
   req,
   res,
-  mode?: RateLimiterMode
-): Promise<{
-  success: boolean;
-  team_id?: string;
-  error?: string;
-  status?: number;
-  plan?: PlanType;
-  chunk?: AuthCreditUsageChunk;
-}> {
+  mode?: RateLimiterMode,
+): Promise<AuthResponse> {
   const authHeader =
     req.headers.authorization ??
     (req.headers["sec-websocket-protocol"]
@@ -177,25 +405,31 @@ export async function supaAuthenticateUser(
     };
   }
 
-  const incomingIP = (req.headers["x-forwarded-for"] ||
+  const incomingIP = (req.headers["x-preview-ip"] || req.headers["x-forwarded-for"] ||
     req.socket.remoteAddress) as string;
   const iptoken = incomingIP + token;
 
   let rateLimiter: RateLimiterRedis;
-  let subscriptionData: { team_id: string; plan: string } | null = null;
+  let subscriptionData: { team_id: string} | null = null;
   let normalizedApi: string;
 
   let teamId: string | null = null;
   let priceId: string | null = null;
-  let chunk: AuthCreditUsageChunk;
-
+  let chunk: AuthCreditUsageChunk | null = null;
   if (token == "this_is_just_a_preview_token") {
+    throw new Error(
+      "Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.",
+    );
+  }
+  if (token == process.env.PREVIEW_TOKEN) {
     if (mode == RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
+    } else if (mode == RateLimiterMode.ExtractStatus) {
+      rateLimiter = getRateLimiter(RateLimiterMode.ExtractStatus, token);
     } else {
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
     }
-    teamId = "preview";
+    teamId = `preview_${iptoken}`;
   } else {
     normalizedApi = parseApi(token);
     if (!normalizedApiIsUuid(normalizedApi)) {
@@ -206,7 +440,7 @@ export async function supaAuthenticateUser(
       };
     }
 
-    chunk = await getACUC(normalizedApi);
+    chunk = await getACUC(normalizedApi, false, true, mode);
 
     if (chunk === null) {
       return {
@@ -219,66 +453,28 @@ export async function supaAuthenticateUser(
     teamId = chunk.team_id;
     priceId = chunk.price_id;
 
-    const plan = getPlanByPriceId(priceId);
-    // HyperDX Logging
-    setTrace(teamId, normalizedApi);
     subscriptionData = {
       team_id: teamId,
-      plan,
     };
-    switch (mode) {
-      case RateLimiterMode.Crawl:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Crawl,
-          token,
-          subscriptionData.plan
-        );
-        break;
-      case RateLimiterMode.Scrape:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Scrape,
-          token,
-          subscriptionData.plan,
-          teamId
-        );
-        break;
-      case RateLimiterMode.Search:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Search,
-          token,
-          subscriptionData.plan
-        );
-        break;
-      case RateLimiterMode.Map:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Map,
-          token,
-          subscriptionData.plan
-        );
-        break;
-      case RateLimiterMode.CrawlStatus:
-        rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
-        break;
-
-      case RateLimiterMode.Preview:
-        rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
-        break;
-      default:
-        rateLimiter = getRateLimiter(RateLimiterMode.Crawl, token);
-        break;
-      // case RateLimiterMode.Search:
-      //   rateLimiter = await searchRateLimiter(RateLimiterMode.Search, token);
-      //   break;
-    }
+    rateLimiter = getRateLimiter(
+      mode ?? RateLimiterMode.Crawl,
+      chunk.rate_limits,
+    );
   }
 
   const team_endpoint_token =
-    token === "this_is_just_a_preview_token" ? iptoken : teamId;
+    token === process.env.PREVIEW_TOKEN ? iptoken : teamId;
 
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    Logger.error(`Rate limit exceeded: ${rateLimiterRes}`);
+    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, {
+      teamId,
+      priceId,
+      mode,
+      rateLimits: chunk?.rate_limits,
+      rateLimiterRes,
+    });
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
@@ -297,15 +493,20 @@ export async function supaAuthenticateUser(
   }
 
   if (
-    token === "this_is_just_a_preview_token" &&
+    token === process.env.PREVIEW_TOKEN &&
     (mode === RateLimiterMode.Scrape ||
       mode === RateLimiterMode.Preview ||
       mode === RateLimiterMode.Map ||
       mode === RateLimiterMode.Crawl ||
       mode === RateLimiterMode.CrawlStatus ||
+      mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.Search)
   ) {
-    return { success: true, team_id: "preview" };
+    return {
+      success: true,
+      team_id: `preview_${iptoken}`,
+      chunk: null,
+    };
     // check the origin of the request and make sure its from firecrawl.dev
     // const origin = req.headers.origin;
     // if (origin && origin.includes("firecrawl.dev")){
@@ -320,31 +521,7 @@ export async function supaAuthenticateUser(
 
   return {
     success: true,
-    team_id: subscriptionData.team_id,
-    plan: (subscriptionData.plan ?? "") as PlanType,
+    team_id: teamId ?? undefined,
     chunk,
   };
-}
-function getPlanByPriceId(price_id: string): PlanType {
-  switch (price_id) {
-    case process.env.STRIPE_PRICE_ID_STARTER:
-      return "starter";
-    case process.env.STRIPE_PRICE_ID_STANDARD:
-      return "standard";
-    case process.env.STRIPE_PRICE_ID_SCALE:
-      return "scale";
-    case process.env.STRIPE_PRICE_ID_HOBBY:
-    case process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
-      return "hobby";
-    case process.env.STRIPE_PRICE_ID_STANDARD_NEW:
-    case process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
-      return "standardnew";
-    case process.env.STRIPE_PRICE_ID_GROWTH:
-    case process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
-      return "growth";
-    case process.env.STRIPE_PRICE_ID_GROWTH_DOUBLE_MONTHLY:
-      return "growthdouble";
-    default:
-      return "free";
-  }
 }

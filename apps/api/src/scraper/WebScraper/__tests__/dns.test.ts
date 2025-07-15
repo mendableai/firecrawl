@@ -1,5 +1,5 @@
-import CacheableLookup  from 'cacheable-lookup';
-import https from 'node:https';
+import CacheableLookup from "cacheable-lookup";
+import https from "node:https";
 import axios from "axios";
 
 describe("DNS", () => {

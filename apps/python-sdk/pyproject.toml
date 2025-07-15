@@ -12,17 +12,19 @@ dependencies = [
     "requests",
     "python-dotenv",
     "websockets",
-    "nest-asyncio"
+    "nest-asyncio",
+    "pydantic",
+    "aiohttp"
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
 maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
-license = {text = "GNU Affero General Public License v3 (AGPLv3)"}
+license = {text = "MIT License"}
 
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Web Environment",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",

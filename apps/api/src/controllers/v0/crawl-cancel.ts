@@ -2,24 +2,30 @@ import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { supabase_service } from "../../../src/services/supabase";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { getCrawl, saveCrawl } from "../../../src/lib/crawl-redis";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
+import { redisEvictConnection } from "../../../src/services/redis";
 configDotenv();
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
 
-    const { success, team_id, error, status } = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.CrawlStatus
-    );
-    if (!success) {
-      return res.status(status).json({ error });
+    const auth = await authenticateUser(req, res, RateLimiterMode.CrawlStatus);
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id } = auth;
+
+    if (auth.chunk?.flags?.forceZDR) {
+      return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
+    }
+
+    redisEvictConnection.sadd("teams_using_v0", team_id)
+      .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
@@ -46,15 +52,15 @@ export async function crawlCancelController(req: Request, res: Response) {
       sc.cancelled = true;
       await saveCrawl(req.params.jobId, sc);
     } catch (error) {
-      Logger.error(error);
+      logger.error(error);
     }
 
     res.json({
-      status: "cancelled"
+      status: "cancelled",
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

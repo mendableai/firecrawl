@@ -4,48 +4,63 @@ import {
   CrawlRequest,
   crawlRequestSchema,
   CrawlResponse,
-  legacyCrawlerOptions,
-  legacyScrapeOptions,
   RequestWithAuth,
+  toLegacyCrawlerOptions,
 } from "./types";
-import {
-  addCrawlJob,
-  addCrawlJobs,
-  crawlToCrawler,
-  lockURL,
-  lockURLs,
-  saveCrawl,
-  StoredCrawl,
-} from "../../lib/crawl-redis";
+import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
-import { getScrapeQueue } from "../../services/queue-service";
-import { addScrapeJob } from "../../services/queue-jobs";
-import { Logger } from "../../lib/logger";
-import { getJobPriority } from "../../lib/job-priority";
-import { callWebhook } from "../../services/webhook";
+import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
+import { logger as _logger } from "../../lib/logger";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
-  res: Response<CrawlResponse>
+  res: Response<CrawlResponse>,
 ) {
+  const preNormalizedBody = req.body;
   req.body = crawlRequestSchema.parse(req.body);
 
+  if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
+    return res.status(400).json({
+      success: false,
+      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+    });
+  }
+
+  const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
+
   const id = uuidv4();
+  const logger = _logger.child({
+    crawlId: id,
+    module: "api/v1",
+    method: "crawlController",
+    teamId: req.auth.team_id,
+    zeroDataRetention,
+  });
+
+  logger.debug("Crawl " + id + " starting", {
+    request: req.body,
+    originalRequest: preNormalizedBody,
+    account: req.account,
+  });
 
   await logCrawl(id, req.auth.team_id);
 
-  let { remainingCredits } = req.account;
-  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-  if(!useDbAuthentication){
+  let { remainingCredits } = req.account!;
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
+  if (!useDbAuthentication) {
     remainingCredits = Infinity;
   }
 
-  const crawlerOptions = legacyCrawlerOptions(req.body);
-  const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
+  const crawlerOptions = {
+    ...req.body,
+    url: undefined,
+    scrapeOptions: undefined,
+  };
+  const scrapeOptions = req.body.scrapeOptions;
 
   // TODO: @rafa, is this right? copied from v0
-  if (Array.isArray(crawlerOptions.includes)) {
-    for (const x of crawlerOptions.includes) {
+  if (Array.isArray(crawlerOptions.includePaths)) {
+    for (const x of crawlerOptions.includePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -54,8 +69,8 @@ export async function crawlController(
     }
   }
 
-  if (Array.isArray(crawlerOptions.excludes)) {
-    for (const x of crawlerOptions.excludes) {
+  if (Array.isArray(crawlerOptions.excludePaths)) {
+    for (const x of crawlerOptions.excludePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -64,110 +79,71 @@ export async function crawlController(
     }
   }
 
+  const originalLimit = crawlerOptions.limit;
   crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
-  
+  logger.debug("Determined limit: " + crawlerOptions.limit, {
+    remainingCredits,
+    bodyLimit: originalLimit,
+    originalBodyLimit: preNormalizedBody.limit,
+  });
+
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions,
-    pageOptions,
+    crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
+    scrapeOptions,
+    internalOptions: {
+      disableSmartWaitCache: true,
+      teamId: req.auth.team_id,
+      saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+      zeroDataRetention,
+    }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
-    plan: req.auth.plan,
+    maxConcurrency: req.body.maxConcurrency !== undefined ? Math.min(req.body.maxConcurrency, req.acuc.concurrency) : undefined,
+    zeroDataRetention,
   };
 
-  const crawler = crawlToCrawler(id, sc);
+  const crawler = crawlToCrawler(id, sc, req.acuc?.flags ?? null);
 
   try {
-    sc.robots = await crawler.getRobotsTxt();
+    sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
+    const robotsCrawlDelay = crawler.getRobotsCrawlDelay();
+    if (robotsCrawlDelay !== null && !sc.crawlerOptions.delay) {
+      sc.crawlerOptions.delay = robotsCrawlDelay;
+    }
   } catch (e) {
-    Logger.debug(
-      `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
-        e
-      )}`
-    );
+    logger.debug("Failed to get robots.txt (this is probably fine!)", {
+      error: e,
+    });
   }
 
   await saveCrawl(id, sc);
 
-  const sitemap = sc.crawlerOptions.ignoreSitemap
-    ? null
-    : await crawler.tryGetSitemap();
-
-  if (sitemap !== null && sitemap.length > 0) {
-    let jobPriority = 20;
-      // If it is over 1000, we need to get the job priority,
-      // otherwise we can use the default priority of 20
-      if(sitemap.length > 1000){
-        // set base to 21
-        jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
-      }
-    const jobs = sitemap.map((x) => {
-      const url = x.url;
-      const uuid = uuidv4();
-      return {
-        name: uuid,
-        data: {
-          url,
-          mode: "single_urls",
-          team_id: req.auth.team_id,
-          plan: req.auth.plan,
-          crawlerOptions,
-          pageOptions,
-          origin: "api",
-          crawl_id: id,
-          sitemapped: true,
-          webhook: req.body.webhook,
-          v1: true,
-        },
-        opts: {
-          jobId: uuid,
-          priority: 20,
-        },
-      };
-    });
-
-    await lockURLs(
-      id,
-      jobs.map((x) => x.data.url)
-    );
-    await addCrawlJobs(
-      id,
-      jobs.map((x) => x.opts.jobId)
-    );
-    await getScrapeQueue().addBulk(jobs);
-  } else {
-    await lockURL(id, sc, req.body.url);
-    const job = await addScrapeJob(
-      {
-        url: req.body.url,
-        mode: "single_urls",
-        crawlerOptions: crawlerOptions,
-        team_id: req.auth.team_id,
-        plan: req.auth.plan,
-        pageOptions: pageOptions,
-        origin: "api",
-        crawl_id: id,
-        webhook: req.body.webhook,
-        v1: true,
-      },
-      {
-        priority: 15,
-      }
-    );
-    await addCrawlJob(id, job.id);
-  }
-
-  if(req.body.webhook) {
-    await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "crawl.started");
-  }
+  await _addScrapeJobToBullMQ(
+    {
+      url: req.body.url,
+      mode: "kickoff" as const,
+      team_id: req.auth.team_id,
+      crawlerOptions,
+      scrapeOptions: sc.scrapeOptions,
+      internalOptions: sc.internalOptions,
+      origin: req.body.origin,
+      integration: req.body.integration,
+      crawl_id: id,
+      webhook: req.body.webhook,
+      v1: true,
+      zeroDataRetention: zeroDataRetention || false,
+    },
+    {},
+    crypto.randomUUID(),
+    10,
+  );
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
-  
+
   return res.status(200).json({
     success: true,
     id,
     url: `${protocol}://${req.get("host")}/v1/crawl/${id}`,
   });
 }
-
-

@@ -1,68 +1,114 @@
-import { Request, Response } from "express";
-import { Logger } from "../../lib/logger";
+import { Response } from "express";
+import { logger as _logger } from "../../lib/logger";
 import {
   Document,
-  legacyDocumentConverter,
-  legacyExtractorOptions,
-  legacyScrapeOptions,
   RequestWithAuth,
   ScrapeRequest,
   scrapeRequestSchema,
   ScrapeResponse,
 } from "./types";
-import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
-import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
-import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
-import { PlanType } from "../../types";
+import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
-  res: Response<ScrapeResponse>
+  res: Response<ScrapeResponse>,
 ) {
+  const jobId = uuidv4();
+  const preNormalizedBody = { ...req.body };
+
+  if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
+    return res.status(400).json({
+      success: false,
+      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+    });
+  }
+
+  const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
+
+  const logger = _logger.child({
+    method: "scrapeController",
+    jobId,
+    scrapeId: jobId,
+    teamId: req.auth.team_id,
+    team_id: req.auth.team_id,
+    zeroDataRetention,
+  });
+ 
+  logger.debug("Scrape " + jobId + " starting", {
+    scrapeId: jobId,
+    request: req.body,
+    originalRequest: preNormalizedBody,
+    account: req.account,
+  });
+
   req.body = scrapeRequestSchema.parse(req.body);
-  let earlyReturn = false;
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
-  const pageOptions = legacyScrapeOptions(req.body);
-  const extractorOptions = req.body.extract ? legacyExtractorOptions(req.body.extract) : undefined;
-  const jobId = uuidv4();
 
   const startTime = new Date().getTime();
   const jobPriority = await getJobPriority({
-    plan: req.auth.plan as PlanType,
     team_id: req.auth.team_id,
     basePriority: 10,
   });
 
-  const job = await addScrapeJob(
+  const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  
+  await addScrapeJob(
     {
       url: req.body.url,
       mode: "single_urls",
-      crawlerOptions: {},
       team_id: req.auth.team_id,
-      plan: req.auth.plan,
-      pageOptions,
-      extractorOptions,
-      origin: req.body.origin,
-      is_scrape: true,
+      scrapeOptions: {
+        ...req.body,
+        ...(req.body.__experimental_cache ? {
+          maxAge: req.body.maxAge ?? 4 * 60 * 60 * 1000, // 4 hours
+        } : {}),
+      },
+      internalOptions: {
+        teamId: req.auth.team_id,
+        saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        unnormalizedSourceURL: preNormalizedBody.url,
+        bypassBilling: isDirectToBullMQ,
+        zeroDataRetention,
+      },
+      origin,
+      integration: req.body.integration,
+      startTime,
+      zeroDataRetention,
     },
     {},
     jobId,
-    jobPriority
+    jobPriority,
+    isDirectToBullMQ,
   );
 
-  const totalWait = (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds : 0) + a, 0);
+  const totalWait =
+    (req.body.waitFor ?? 0) +
+    (req.body.actions ?? []).reduce(
+      (a, x) => (x.type === "wait" ? (x.milliseconds ?? 0) : 0) + a,
+      0,
+    );
 
-  let doc: any | undefined;
+  let doc: Document;
   try {
-    doc = (await waitForJob(job.id, timeout + totalWait))[0];
+    doc = await waitForJob(jobId, timeout + totalWait);
   } catch (e) {
-    Logger.error(`Error in scrapeController: ${e}`);
-    if (e instanceof Error && e.message.startsWith("Job wait")) {
+    logger.error(`Error in scrapeController`, {
+      startTime,
+    });
+
+    if (zeroDataRetention) {
+      await getScrapeQueue().remove(jobId);
+    }
+
+    if (
+      e instanceof Error &&
+      (e.message.startsWith("Job wait") || e.message === "timeout")
+    ) {
       return res.status(408).json({
         success: false,
         error: "Request timed out",
@@ -70,82 +116,22 @@ export async function scrapeController(
     } else {
       return res.status(500).json({
         success: false,
-        error: `(Internal server error) - ${e && e?.message ? e.message : e} ${
-          extractorOptions && extractorOptions.mode !== "markdown"
-            ? " - Could be due to LLM parsing issues"
-            : ""
-        }`,
+        error: `(Internal server error) - ${e && e.message ? e.message : e}`,
       });
     }
   }
 
-  await job.remove();
-
-  if (!doc) {
-    console.error("!!! PANIC DOC IS", doc, job);
-    return res.status(200).json({
-      success: true,
-      warning: "No page found",
-      data: doc,
-    });
-  }
-
-  delete doc.index;
-  delete doc.provider;
-
-  const endTime = new Date().getTime();
-  const timeTakenInSeconds = (endTime - startTime) / 1000;
-  const numTokens =
-    doc && doc.markdown
-      ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
-      : 0;
-
-  let creditsToBeBilled = 1; // Assuming 1 credit per document
-  if (earlyReturn) {
-    // Don't bill if we're early returning
-    return;
-  }
-  if(req.body.extract && req.body.formats.includes("extract")) {
-    creditsToBeBilled = 5;
-  }
-
-  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(error => {
-    Logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
-    // Optionally, you could notify an admin or add to a retry queue here
-  });
-
-  if (!pageOptions || !pageOptions.includeRawHtml) {
+  await getScrapeQueue().remove(jobId);
+  
+  if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
     }
   }
 
-  if(pageOptions && pageOptions.includeExtract) {
-    if(!pageOptions.includeMarkdown && doc && doc.markdown) {
-      delete doc.markdown;
-    }
-  }
-
-  logJob({
-    job_id: jobId,
-    success: true,
-    message: "Scrape completed",
-    num_docs: 1,
-    docs: [doc],
-    time_taken: timeTakenInSeconds,
-    team_id: req.auth.team_id,
-    mode: "scrape",
-    url: req.body.url,
-    crawlerOptions: {},
-    pageOptions: pageOptions,
-    origin: origin,
-    extractor_options: extractorOptions,
-    num_tokens: numTokens,
-  });
-
   return res.status(200).json({
     success: true,
-    data: legacyDocumentConverter(doc),
+    data: doc,
     scrape_id: origin?.includes("website") ? jobId : undefined,
   });
 }

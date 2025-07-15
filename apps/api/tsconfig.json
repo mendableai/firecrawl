@@ -1,23 +1,28 @@
 {
   "compilerOptions": {
     "rootDir": "./src",
-    "lib": ["es6","DOM"],
+    "lib": ["ES2022", "DOM"],
 
     // or higher
-    "target": "ES2020",
+    "target": "ES2022",
 
-    "module": "commonjs",
+    "module": "NodeNext",
     "esModuleInterop": true,
     "sourceMap": true,
     "outDir": "./dist/src",
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "baseUrl": ".",
-
-    "paths": {
-      "*": ["node_modules/*", "src/types/*"],
-    },
+    "strictNullChecks": true,
 
     "inlineSources": true
   },
-  "include": ["src/","src/**/*", "services/db/supabase.ts", "utils/utils.ts", "services/db/supabaseEmbeddings.ts", "utils/EventEmmitter.ts", "src/services/queue-service.ts"]
+  "include": [
+    "src/",
+    "src/**/*",
+    "services/db/supabase.ts",
+    "utils/utils.ts",
+    "services/db/supabaseEmbeddings.ts",
+    "utils/EventEmmitter.ts",
+    "src/services/queue-service.ts"
+  ]
 }

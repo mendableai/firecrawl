@@ -9,7 +9,7 @@ use crate::crawl::CrawlStatus;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FirecrawlAPIError {
     /// Always false.
-    success: bool,
+    pub success: bool,
 
     /// Error message
     pub error: String,
@@ -42,4 +42,6 @@ pub enum FirecrawlError {
     APIError(String, FirecrawlAPIError),
     #[error("Crawl job failed: {0}")]
     CrawlJobFailed(String, CrawlStatus),
+    #[error("Missuse: {0}")]
+    Missuse(String),
 }

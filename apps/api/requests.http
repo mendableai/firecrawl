@@ -1,82 +1,133 @@
+# Pick your baseUrl here:
+# @baseUrl = http://localhost:3002
+@baseUrl = https://api.firecrawl.dev
+
+### Scrape Website
+# @name scrape
+POST {{baseUrl}}/v1/scrape HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "url": "https://firecrawl.dev"
+}
+
 ### Crawl Website
-POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer fc-
+# @name crawl
+POST {{baseUrl}}/v1/crawl HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-    "url":"corterix.com"
+  "url":"https://firecrawl.dev"
 }
 
-### Check Job Status
-GET http://localhost:3002/v1/crawl/1dd0f924-a36f-4b96-94ea-32ed954dac67 HTTP/1.1
-Authorization: Bearer fc-
+### Check Crawl Status
+@crawlId = {{crawl.response.body.$.id}}
+# @name crawlStatus
+GET {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+### Cancel Crawl
+@crawlId = {{crawl.response.body.$.id}}
+# @name cancelCrawl
+DELETE {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-### Check Job Status
-GET http://localhost:3002/v0/jobs/active HTTP/1.1
-
-
-### Scrape Website
-POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer fc-
+### Extract website
+# @name extract
+POST {{baseUrl}}/v1/extract HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url": "firecrawl.dev"
+  "urls": ["https://firecrawl.dev"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "companyName": {
+        "type": "string"
+      },
+      "companyDescription": {
+        "type": "string"
+      }
+    }
+  },
+  "agent": {
+    "model": "fire-1"
+  },
+  "origin": "api-sdk"
 }
 
-## "reoveTags": [],
-  # "mode": "crawl",
-  # "crawlerOptions": {
-  #     "allowBackwardCrawling": false
-  # },
-  # "pageOptions": {
-  #   "onlyMainContent": false,
-  #   "includeHtml": false,
-  #   "parsePDF": true
-  # }
+### Check Extract Status
+@extractId = {{extract.response.body.$.id}}
+# @name extractStatus
+GET {{baseUrl}}/v1/extract/{{extractId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-
-
-
-
-
-
-
-### Scrape Website
-POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer 
+### Batch Scrape Websites
+# @name batchScrape
+POST {{baseUrl}}/v1/batch/scrape HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-    "url":"https://mendable.ai"
+  "urls": [
+    "firecrawl.dev",
+    "mendable.ai"
+  ]
 }
 
+### Check Batch Scrape Status
+@batchScrapeId = {{batchScrape.response.body.$.id}}
+# @name batchScrapeStatus
+GET {{baseUrl}}/v1/crawl/{{batchScrapeId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-
-### Check Job Status
-GET http://localhost:3002/v0/crawl/status/a6053912-d602-4709-841f-3d2cb46fea0a HTTP/1.1
-Authorization: Bearer 
-
-### Get Job Result
-
-POST https://api.firecrawl.dev/v0/crawl HTTP/1.1
-Authorization: Bearer 
+### Map Website
+# @name map
+POST {{baseUrl}}/v1/map HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-    "url":"https://mendable.ai"
+  "url": "firecrawl.dev",
+  "sitemapOnly": true
 }
 
-### Check Job Status
-GET https://api.firecrawl.dev/v0/crawl/status/cfcb71ac-23a3-4da5-bd85-d4e58b871d66
-Authorization: Bearer 
-
-### Get Active Jobs Count
-GET http://localhost:3002/serverHealthCheck
+### Generate LLMs TXT
+# @name generateLlmsTxt
+POST {{baseUrl}}/v1/llmstxt HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
-### Notify Server Health Check
-GET http://localhost:3002/serverHealthCheck/notify
+{
+  "url": "https://firecrawl.dev",
+  "maxUrls": 1,
+  "showFullText": false,
+  "cache": true
+}
+
+
+### Check Generate LLMs TXT Status
+@generateLlmsTxtId = {{generateLlmsTxt.response.body.$.id}}
+# @name generateLlmsTxtStatus
+GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+
+### Search
+# @name search
+POST {{baseUrl}}/v1/search HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
+{
+  "query": "firecrawl",
+  "limit": 50
+}
+
+### Get Active Crawls
+# @name activeCrawls
+GET {{baseUrl}}/v1/crawl/active HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}

@@ -1,0 +1,158 @@
+name: Self-hosted Server Test Suite
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  REDIS_URL: redis://localhost:6379
+  ENV: ${{ secrets.ENV }}
+  TEST_SUITE_SELF_HOSTED: true
+  USE_GO_MARKDOWN_PARSER: true
+  FIRECRAWL_DEBUG_FILTER_LINKS: true
+  SENTRY_ENVIRONMENT: dev
+
+jobs:
+  test:
+    name: Run tests
+    strategy:
+      matrix:
+        ai: ["openai", "no-ai"]
+        search: ["searxng", "google"]
+        engine: ["playwright", "fetch"]
+        # proxy: ["proxy", "no-proxy"]
+        proxy: ["proxy"]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    env:
+      OPENAI_API_KEY: ${{ matrix.ai == 'openai' && secrets.OPENAI_API_KEY || '' }}
+      SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'http://localhost:3434' || '' }}
+      PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && 'http://localhost:3003/scrape' || '' }}
+      PROXY_SERVER: ${{ matrix.proxy == 'proxy' && secrets.PROXY_SERVER || '' }}
+      PROXY_USERNAME: ${{ matrix.proxy == 'proxy' && secrets.PROXY_USERNAME || '' }}
+      PROXY_PASSWORD: ${{ matrix.proxy == 'proxy' && secrets.PROXY_PASSWORD || '' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: './apps/api/pnpm-lock.yaml'
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Install Playwright dependencies
+        if: matrix.engine == 'playwright'
+        run: |
+          pnpm install
+          pnpm exec playwright install-deps
+          pnpm exec playwright install
+        working-directory: ./apps/playwright-service-ts
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: ./apps/api/sharedLibs/go-html-to-md/go.sum
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Build go-html-to-md
+        run: |
+          go mod tidy
+          go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go
+          chmod +x html-to-markdown.so
+        working-directory: ./apps/api/sharedLibs/go-html-to-md
+      - name: Build html-transformer
+        run: |
+          cargo build --release
+          chmod +x target/release/libhtml_transformer.so
+        working-directory: ./apps/api/sharedLibs/html-transformer
+      - name: Build pdf-parser
+        run: |
+          cargo build --release
+          chmod +x target/release/libpdf_parser.so
+        working-directory: ./apps/api/sharedLibs/pdf-parser
+      - name: Build crawler
+        run: |
+          cargo build --release
+          chmod +x target/release/libcrawler.so
+        working-directory: ./apps/api/sharedLibs/crawler
+      - name: Set up SearXNG
+        if: matrix.search == 'searxng'
+        run: |
+          mkdir searxng
+
+          echo "use_default_settings: true
+          search:
+            formats: [html, json, csv]
+          server:
+            secret_key: 'fcsecret'" > searxng/settings.yml
+          
+          docker run -d -p 3434:8080 -v "${PWD}/searxng:/etc/searxng" --name searxng searxng/searxng
+          pnpx wait-on tcp:3434 -t 30s
+        working-directory: ./
+      - name: Start server
+        run: npm run start:production > api.log 2>&1 &
+        env:
+          PORT: 3002
+          HOST: 0.0.0.0
+        working-directory: ./apps/api
+      - name: Start worker
+        run: npm run workers > worker.log 2>&1 &
+        env:
+          PORT: 3005
+          HOST: 0.0.0.0
+        working-directory: ./apps/api
+      - name: Start playwright
+        if: matrix.engine == 'playwright'
+        run: npm run dev > playwright.log 2>&1 &
+        working-directory: ./apps/playwright-service-ts
+        env:
+          PORT: 3003
+      - name: Wait for server
+        run: pnpx wait-on tcp:3002 -t 60s
+      - name: Wait for playwright
+        if: matrix.engine == 'playwright'
+        run: pnpx wait-on tcp:3003 -t 15s
+      - name: Run snippet tests
+        run: |
+          npm run test:snips
+        working-directory: ./apps/api
+      - name: Kill instances
+        if: always()
+        run: pkill -9 node
+      - name: Kill SearXNG
+        if: always() && matrix.search == 'searxng'
+        run: |
+          docker logs searxng > searxng.log 2>&1
+          docker kill searxng
+        working-directory: ./
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
+          path: |
+            ./apps/api/api.log
+            ./apps/api/worker.log
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.playwright
+        with:
+          name: Playwright Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.proxy }})
+          path: |
+            ./apps/playwright-service-ts/playwright.log
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.search == 'searxng'
+        with:
+          name: SearXNG (${{ matrix.ai }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
+          path: |
+            ./searxng.log

@@ -9,3 +9,5 @@ dump.rdb
 
 .rdb
 .sentryclirc
+
+.env.*

@@ -3,24 +3,36 @@ import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../../src/lib/logger";
-import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
+import { logger } from "../../../src/lib/logger";
+import {
+  addCrawlJob,
+  crawlToCrawler,
+  finishCrawlKickoff,
+  lockURL,
+  saveCrawl,
+  StoredCrawl,
+} from "../../../src/lib/crawl-redis";
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
+import { fromLegacyScrapeOptions } from "../v1/types";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
-    const { success, error, status, team_id:a, plan } = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.Preview
-    );
+    const auth = await authenticateUser(req, res, RateLimiterMode.Preview);
 
-    const team_id = "preview";
+    const incomingIP = (req.headers["x-forwarded-for"] ||
+      req.socket.remoteAddress) as string;
+    const iptoken = incomingIP + process.env.PREVIEW_TOKEN;
+    const team_id = `preview_${iptoken}`;
 
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
+    }
+    
+    if (auth.chunk?.flags?.forceZDR) {
+      return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
     }
 
     let url = req.body.url;
@@ -35,17 +47,18 @@ export async function crawlPreviewController(req: Request, res: Response) {
         .json({ error: e.message ?? e });
     }
 
-    if (isUrlBlocked(url)) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-        });
+    if (isUrlBlocked(url, auth.chunk?.flags ?? null)) {
+      return res.status(403).json({
+        error: BLOCKLISTED_URL_MESSAGE,
+      });
     }
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false, removeTags: [] };
+    const pageOptions = req.body.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      removeTags: [],
+    };
 
     // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
     //   try {
@@ -71,7 +84,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     //       documents: docs,
     //     });
     //   } catch (error) {
-    //     Logger.error(error);
+    //     logger.error(error);
     //     return res.status(500).json({ error: error.message });
     //   }
     // }
@@ -84,57 +97,80 @@ export async function crawlPreviewController(req: Request, res: Response) {
       robots = await this.getRobotsTxt();
     } catch (_) {}
 
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
+      pageOptions,
+      undefined,
+      undefined,
+      team_id
+    );
+
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
-      pageOptions,
+      scrapeOptions,
+      internalOptions,
       team_id,
-      plan,
       robots,
       createdAt: Date.now(),
     };
 
     await saveCrawl(id, sc);
 
-    const crawler = crawlToCrawler(id, sc);
+    const crawler = crawlToCrawler(id, sc, auth.chunk?.flags ?? null);
 
-    const sitemap = sc.crawlerOptions?.ignoreSitemap ? null : await crawler.tryGetSitemap();
+    await finishCrawlKickoff(id);
 
-    if (sitemap !== null) {
-      for (const url of sitemap.map(x => x.url)) {
-        await lockURL(id, sc, url);
-        const job = await addScrapeJob({
+    const sitemap = sc.crawlerOptions?.ignoreSitemap
+      ? 0
+      : await crawler.tryGetSitemap(async (urls) => {
+          for (const url of urls) {
+            await lockURL(id, sc, url);
+            const jobId = uuidv4();
+            await addScrapeJob(
+              {
+                url,
+                mode: "single_urls",
+                team_id,
+                crawlerOptions,
+                scrapeOptions,
+                internalOptions,
+                origin: "website-preview",
+                crawl_id: id,
+                sitemapped: true,
+                zeroDataRetention: false, // not supported on v0
+              },
+              {},
+              jobId,
+            );
+            await addCrawlJob(id, jobId, logger);
+          }
+        });
+
+    if (sitemap === 0) {
+      await lockURL(id, sc, url);
+      const jobId = uuidv4();
+      await addScrapeJob(
+        {
           url,
           mode: "single_urls",
-          crawlerOptions: crawlerOptions,
           team_id,
-          plan,
-          pageOptions: pageOptions,
+          crawlerOptions,
+          scrapeOptions,
+          internalOptions,
           origin: "website-preview",
           crawl_id: id,
-          sitemapped: true,
-        });
-        await addCrawlJob(id, job.id);
-      }
-    } else {
-      await lockURL(id, sc, url);
-      const job = await addScrapeJob({
-        url,
-        mode: "single_urls",
-        crawlerOptions: crawlerOptions,
-        team_id,
-        plan,
-        pageOptions: pageOptions,
-        origin: "website-preview",
-        crawl_id: id,
-      });
-      await addCrawlJob(id, job.id);
+          zeroDataRetention: false, // not supported on v0
+        },
+        {},
+        jobId,
+      );
+      await addCrawlJob(id, jobId, logger);
     }
 
     res.json({ jobId: id });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

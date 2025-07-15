@@ -1,3 +1,5 @@
+import type { Document as V1Document, Action } from "../controllers/v1/types";
+
 export interface Progress {
   current: number;
   total: number;
@@ -9,26 +11,6 @@ export interface Progress {
   currentDocumentUrl?: string;
   currentDocument?: Document;
 }
-
-export type Action = {
-  type: "wait",
-  milliseconds: number,
-} | {
-  type: "click",
-  selector: string,
-} | {
-  type: "screenshot",
-  fullPage?: boolean,
-} | {
-  type: "write",
-  text: string,
-} | {
-  type: "press",
-  key: string,
-} | {
-  type: "scroll",
-  direction: "up" | "down"
-};
 
 export type PageOptions = {
   includeMarkdown?: boolean;
@@ -54,14 +36,21 @@ export type PageOptions = {
   geolocation?: {
     country?: string;
   };
+  skipTlsVerification?: boolean;
+  removeBase64Images?: boolean;
+  mobile?: boolean;
 };
 
 export type ExtractorOptions = {
-  mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
+  mode:
+    | "markdown"
+    | "llm-extraction"
+    | "llm-extraction-from-markdown"
+    | "llm-extraction-from-raw-html";
   extractionPrompt?: string;
   extractionSchema?: Record<string, any>;
   userPrompt?: string;
-}
+};
 
 export type SearchOptions = {
   limit?: number;
@@ -85,7 +74,7 @@ export type CrawlerOptions = {
   mode?: "default" | "fast"; // have a mode of some sort
   allowBackwardCrawling?: boolean;
   allowExternalContentLinks?: boolean;
-}
+};
 
 export type WebScraperOptions = {
   jobId: string;
@@ -123,12 +112,13 @@ export class Document {
   provider?: string;
   warning?: string;
   actions?: {
-    screenshots: string[];
-  }
+    screenshots?: string[];
+    scrapes?: ScrapeActionContent[];
+  };
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
-  
+
   constructor(data: Partial<Document>) {
     if (!data.content) {
       throw new Error("Missing required fields");
@@ -145,21 +135,25 @@ export class Document {
   }
 }
 
-
 export class SearchResult {
   url: string;
   title: string;
   description: string;
 
   constructor(url: string, title: string, description: string) {
-      this.url = url;
-      this.title = title;
-      this.description = description;
+    this.url = url;
+    this.title = title;
+    this.description = description;
   }
 
   toString(): string {
-      return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
+    return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
+}
+
+export interface ScrapeActionContent {
+  url: string;
+  html: string;
 }
 
 export interface FireEngineResponse {
@@ -167,10 +161,10 @@ export interface FireEngineResponse {
   screenshots?: string[];
   pageStatusCode?: number;
   pageError?: string;
+  scrapeActionContent?: ScrapeActionContent[];
 }
 
-
-export interface FireEngineOptions{
+export interface FireEngineOptions {
   mobileProxy?: boolean;
   method?: string;
   engine?: string;

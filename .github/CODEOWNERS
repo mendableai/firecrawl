@@ -1,0 +1,91 @@
+# Firecrawl Ownership Chart
+
+# api
+
+## V1 API
+/apps/api/src/routes/v1.ts                      @mogery @nickscamara
+
+### /scrape
+/apps/api/src/controllers/v1/scrape*            @mogery
+
+### /crawl
+/apps/api/src/controllers/v1/crawl*             @mogery
+
+### /batch/scrape
+/apps/api/src/controllers/v1/batch-scrape*      @mogery 
+
+### /extract
+/apps/api/src/controllers/v1/extract*           @nickscamara
+/apps/api/src/lib/extract/*                     @nickscamara
+/apps/api/src/lib/generic-ai.ts                 @mogery @nickscamara # (AI SDK)
+
+### /map
+/apps/api/src/controllers/v1/map*               @nickscamara
+/apps/api/src/lib/map-cosine.ts                 @nickscamara
+
+### /search
+/apps/api/src/controllers/v1/search*            @nickscamara
+/apps/api/src/search/*                          @nickscamara
+
+### /llmstxt
+/apps/api/src/controllers/v1/generate-llmstxt*  @ericciarla
+/apps/api/src/lib/generate-llmstxt/*            @ericciarla
+
+### /deep-research
+/apps/api/src/controllers/v1/deep-research*     @nickscamara
+/apps/api/src/lib/deep-research/*               @nickscamara
+
+### Input Validation/Zod
+/apps/api/src/controllers/v1/types.ts           @mogery
+
+## V0 API, deprecated
+/apps/api/src/controllers/v0/*                  @mogery @nickscamara
+/apps/api/src/routes/v0.ts                      @mogery @nickscamara
+
+# Worker
+
+## scrapeURL
+/apps/api/src/scraper/scrapeURL/*               @mogery
+
+### crawler
+/apps/api/src/lib/crawl-redis*                  @mogery
+
+### remnants of WebScraper/WebCrawler
+/apps/api/src/scraper/WebScraper/*              @mogery @nickscamara
+
+## concurrency limits
+/apps/api/src/lib/concurrency-limit.ts          @mogery @nickscamara
+
+## BullMQ-related code
+/apps/api/src/services/queue-worker.ts          @mogery @nickscamara
+/apps/api/src/main/runWebScraper.ts             @mogery @nickscamara
+/apps/api/src/services/queue*                   @mogery @nickscamara
+/apps/api/src/lib/job-priority.ts               @nickscamara @mogery
+
+# Shared Libraries
+/apps/api/sharedLibs/go-html-to-md/*            @tomkosm
+/apps/api/src/lib/html-to-markdown.ts           @tomkosm
+/apps/api/sharedLibs/html-transformer/*         @mogery
+/apps/api/src/lib/html-transformer.ts           @mogery
+
+# playwright-serice-ts
+/apps/playwright-service-ts/*                   @mogery
+
+# self-hosting
+/docker-compose.yaml                            @mogery
+/SELF_HOST.md                                   @mogery
+
+# SDKs
+/apps/python-sdk/*                              @rafaelsideguide @nickscamara
+/apps/js-sdk/*                                  @mogery @nickscamara
+/apps/rust-sdk/*                                @mogery
+/apps/go-sdk/*                                  @rafaelsideguide
+
+# CI/CD and GitHub Workflows
+/.github/*                                      @mogery @rafaelsideguide
+
+# Tests
+/apps/api/src/__tests__/snips/*                 @mogery
+
+# Examples
+/examples/*                                     @ericciarla @nickscamara

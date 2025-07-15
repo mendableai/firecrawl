@@ -1,10 +1,5 @@
 import request from "supertest";
 import dotenv from "dotenv";
-import {
-  FirecrawlCrawlResponse,
-  FirecrawlCrawlStatusResponse,
-  FirecrawlScrapeResponse,
-} from "../../types";
 
 dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
@@ -28,28 +23,26 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlScrapeResponse = await request(TEST_URL).post(
-        "/v0/scrape"
-      );
+      const response: any = await request(TEST_URL).post("/v0/scrape");
       expect(response.statusCode).toBe(401);
     });
 
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
       "should return a successful response with a valid API key",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -64,36 +57,36 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data.metadata.pageError).toBeUndefined();
         expect(response.body.data.metadata.title).toBe("Roast My Website");
         expect(response.body.data.metadata.description).toBe(
-          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️",
         );
         expect(response.body.data.metadata.keywords).toBe(
-          "Roast My Website,Roast,Website,GitHub,Firecrawl"
+          "Roast My Website,Roast,Website,GitHub,Firecrawl",
         );
         expect(response.body.data.metadata.robots).toBe("follow, index");
         expect(response.body.data.metadata.ogTitle).toBe("Roast My Website");
         expect(response.body.data.metadata.ogDescription).toBe(
-          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️",
         );
         expect(response.body.data.metadata.ogUrl).toBe(
-          "https://www.roastmywebsite.ai"
+          "https://www.roastmywebsite.ai",
         );
         expect(response.body.data.metadata.ogImage).toBe(
-          "https://www.roastmywebsite.ai/og.png"
+          "https://www.roastmywebsite.ai/og.png",
         );
         expect(response.body.data.metadata.ogLocaleAlternate).toStrictEqual([]);
         expect(response.body.data.metadata.ogSiteName).toBe("Roast My Website");
         expect(response.body.data.metadata.sourceURL).toBe(
-          "https://roastmywebsite.ai"
+          "https://roastmywebsite.ai",
         );
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     it.concurrent(
       "should return a successful response with a valid API key and includeHtml set to true",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -113,13 +106,13 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     it.concurrent(
       "should return a successful response for a valid scrape with PDF file",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -131,18 +124,18 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("content");
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.content).toContain(
-          "We present spectrophotometric observations of the Broad Line Radio Galaxy"
+          "We present spectrophotometric observations of the Broad Line Radio Galaxy",
         );
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
       "should return a successful response for a valid scrape with PDF file without explicit .pdf extension",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -154,23 +147,22 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("content");
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.content).toContain(
-          "We present spectrophotometric observations of the Broad Line Radio Galaxy"
+          "We present spectrophotometric observations of the Broad Line Radio Galaxy",
         );
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
       "should return a successful response with a valid API key with removeTags option",
       async () => {
-        const responseWithoutRemoveTags: FirecrawlScrapeResponse =
-          await request(TEST_URL)
-            .post("/v0/scrape")
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .set("Content-Type", "application/json")
-            .send({ url: "https://www.scrapethissite.com/" });
+        const responseWithoutRemoveTags: any = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://www.scrapethissite.com/" });
         expect(responseWithoutRemoveTags.statusCode).toBe(200);
         expect(responseWithoutRemoveTags.body).toHaveProperty("data");
         expect(responseWithoutRemoveTags.body.data).toHaveProperty("content");
@@ -178,19 +170,19 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(responseWithoutRemoveTags.body.data).toHaveProperty("metadata");
         expect(responseWithoutRemoveTags.body.data).not.toHaveProperty("html");
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "Scrape This Site"
+          "Scrape This Site",
         );
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "Lessons and Videos"
+          "Lessons and Videos",
         ); // #footer
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "[Sandbox]("
+          "[Sandbox](",
         ); // .nav
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "web scraping"
+          "web scraping",
         ); // strong
 
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -209,13 +201,13 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data.content).not.toContain("[Sandbox]("); // .nav
         expect(response.body.data.content).not.toContain("web scraping"); // strong
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     it.concurrent(
       "should return a successful response for a scrape with 400 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -228,16 +220,16 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(400);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "bad request"
+          "bad request",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
       "should return a successful response for a scrape with 401 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -250,16 +242,16 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(401);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "unauthorized"
+          "unauthorized",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
       "should return a successful response for a scrape with 403 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -272,16 +264,16 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(403);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "forbidden"
+          "forbidden",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
       "should return a successful response for a scrape with 404 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -294,7 +286,7 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(404);
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -313,13 +305,13 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(405);
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
       "should return a successful response for a scrape with 500 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -332,34 +324,32 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(500);
       },
-      60000
+      60000,
     ); // 60 seconds
   });
 
   describe("POST /v0/crawl", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlCrawlResponse = await request(TEST_URL).post(
-        "/v0/crawl"
-      );
+      const response: any = await request(TEST_URL).post("/v0/crawl");
       expect(response.statusCode).toBe(401);
     });
 
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
       "should return a successful response with a valid API key for crawl",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -367,15 +357,15 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("jobId");
         expect(response.body.jobId).toMatch(
-          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/,
         );
-      }
+      },
     );
 
     it.concurrent(
       "should return a successful response with a valid API key and valid includes option",
       async () => {
-        const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
+        const crawlResponse: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -387,7 +377,7 @@ describe("E2E Tests for v0 API Routes", () => {
             },
           });
 
-        let response: FirecrawlCrawlStatusResponse;
+        let response: any;
         let isFinished = false;
 
         while (!isFinished) {
@@ -410,7 +400,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThan(5);
         urls.forEach((url: string) => {
@@ -426,19 +416,19 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].content).toContain("Mendable");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      180000
+      180000,
     ); // 180 seconds
 
     it.concurrent(
       "should return a successful response with a valid API key and valid excludes option",
       async () => {
-        const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
+        const crawlResponse: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -451,7 +441,7 @@ describe("E2E Tests for v0 API Routes", () => {
           });
 
         let isFinished = false;
-        let response: FirecrawlCrawlStatusResponse;
+        let response: any;
 
         while (!isFinished) {
           response = await request(TEST_URL)
@@ -468,27 +458,25 @@ describe("E2E Tests for v0 API Routes", () => {
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
-        const completedResponse: FirecrawlCrawlStatusResponse = await request(
-          TEST_URL
-        )
+        const completedResponse: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThan(5);
         urls.forEach((url: string) => {
           expect(url.startsWith("https://wwww.mendable.ai/blog/")).toBeFalsy();
         });
       },
-      90000
+      90000,
     ); // 90 seconds
 
     it.concurrent(
       "should return a successful response with max depth option for a valid crawl job",
       async () => {
-        const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
+        const crawlResponse: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -498,7 +486,7 @@ describe("E2E Tests for v0 API Routes", () => {
           });
         expect(crawlResponse.statusCode).toBe(200);
 
-        const response: FirecrawlCrawlStatusResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
         expect(response.statusCode).toBe(200);
@@ -516,9 +504,7 @@ describe("E2E Tests for v0 API Routes", () => {
             await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
           }
         }
-        const completedResponse: FirecrawlCrawlStatusResponse = await request(
-          TEST_URL
-        )
+        const completedResponse: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
@@ -530,15 +516,15 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
-        expect(urls.length).toBeGreaterThanOrEqual(1);
+        expect(urls.length).toBeGreaterThan(1);
 
         // Check if all URLs have a maximum depth of 1
         urls.forEach((url: string) => {
@@ -552,14 +538,14 @@ describe("E2E Tests for v0 API Routes", () => {
           expect(depth).toBeLessThanOrEqual(2);
         });
       },
-      180000
+      180000,
     );
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlCrawlResponse = await request(TEST_URL).post(
-        "/v0/crawlWebsitePreview"
+      const response: any = await request(TEST_URL).post(
+        "/v0/crawlWebsitePreview",
       );
       expect(response.statusCode).toBe(401);
     });
@@ -567,19 +553,19 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/crawlWebsitePreview")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
       "should return a timeout error when scraping takes longer than the specified timeout",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -587,7 +573,7 @@ describe("E2E Tests for v0 API Routes", () => {
 
         expect(response.statusCode).toBe(408);
       },
-      3000
+      3000,
     );
   });
 
@@ -606,7 +592,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .set("Content-Type", "application/json")
           .send({ query: "test" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
@@ -622,7 +608,7 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(response.body.success).toBe(true);
         expect(response.body).toHaveProperty("data");
       },
-      60000
+      60000,
     ); // 60 seconds timeout
   });
 
@@ -639,7 +625,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .get("/v0/crawl/status/123")
           .set("Authorization", `Bearer invalid-api-key`);
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
@@ -649,7 +635,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .get("/v0/crawl/status/invalidJobId")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
         expect(response.statusCode).toBe(404);
-      }
+      },
     );
 
     it.concurrent(
@@ -690,21 +676,23 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].content).toContain("Firecrawl");
-        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
+          200,
+        );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
 
         const childrenLinks = completedResponse.body.data.filter(
           (doc) =>
             doc.metadata &&
             doc.metadata.sourceURL &&
-            doc.metadata.sourceURL.includes("firecrawl.dev/blog")
+            doc.metadata.sourceURL.includes("firecrawl.dev/blog"),
         );
 
         expect(childrenLinks.length).toBe(completedResponse.body.data.length);
       },
-      180000
+      180000,
     ); // 120 seconds
 
     // TODO: review the test below
@@ -760,7 +748,10 @@ describe("E2E Tests for v0 API Routes", () => {
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://docs.tatum.io", crawlerOptions: { limit: 200 } });
+          .send({
+            url: "https://docs.tatum.io",
+            crawlerOptions: { limit: 200 },
+          });
 
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -776,7 +767,8 @@ describe("E2E Tests for v0 API Routes", () => {
         await new Promise((r) => setTimeout(r, 10000));
         const completedResponse = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .maxResponseSize(4000000000);
 
         expect(completedResponse.statusCode).toBe(200);
         expect(completedResponse.body).toHaveProperty("status");
@@ -794,22 +786,22 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(completedResponse.body.data).toEqual(expect.arrayContaining([]));
         expect(completedResponse.body).toHaveProperty("partial_data");
         expect(completedResponse.body.partial_data[0]).toHaveProperty(
-          "content"
+          "content",
         );
         expect(completedResponse.body.partial_data[0]).toHaveProperty(
-          "markdown"
+          "markdown",
         );
         expect(completedResponse.body.partial_data[0]).toHaveProperty(
-          "metadata"
+          "metadata",
         );
         expect(
-          completedResponse.body.partial_data[0].metadata.pageStatusCode
+          completedResponse.body.partial_data[0].metadata.pageStatusCode,
         ).toBe(200);
         expect(
-          completedResponse.body.partial_data[0].metadata.pageError
+          completedResponse.body.partial_data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
   });
 
@@ -864,7 +856,7 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(llmExtraction.is_open_source).toBe(false);
         expect(typeof llmExtraction.is_open_source).toBe("boolean");
       },
-      60000
+      60000,
     ); // 60 secs
   });
 });

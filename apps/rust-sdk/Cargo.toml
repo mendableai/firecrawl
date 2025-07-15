@@ -1,13 +1,13 @@
 [package]
 name = "firecrawl"
 author= "Mendable.ai"
-version = "1.0.0"
+version = "1.2.0"
 edition = "2021"
 license = "MIT"
 homepage = "https://www.firecrawl.dev/"
 repository ="https://github.com/mendableai/firecrawl"
 description = "Rust SDK for Firecrawl API."
-authors = ["Gergő Móricz <mogery@firecrawl.dev>", "sanix-darker <sanixdk@gmail.com>"]
+authors = ["Gergő Móricz <mogery@firecrawl.dev>", "sanix-darker <sanixdk@gmail.com>", "kkharji <kkharji@protonmail.com>"]
 
 [lib]
 path = "src/lib.rs"
@@ -23,13 +23,18 @@ log = "^0.4"
 thiserror = "^1.0"
 uuid = { version = "^1.10", features = ["v4"] }
 tokio = { version = "^1", features = ["full"] }
+futures = "0.3.31"
+schemars = "0.8.22"
 
 [dev-dependencies]
 clippy = "^0.0.302"
-rustfmt = "^0.10"
 assert_matches = "^1.5"
 dotenvy = "^0.15"
 tokio = { version = "1", features = ["full"] }
+mockito = "1.7.0"
+clap = { version ="4.5.35", features = ["derive"] }
+axum = { version = "0.8.3", features = ["tokio", "macros"] }
+bat = "0.25.0"
 
 [build-dependencies]
 tokio = { version = "1", features = ["full"] }
