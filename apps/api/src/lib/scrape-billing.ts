@@ -32,7 +32,7 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
         creditsToBeBilled += (flags?.zdrCost ?? 1);
     }
     
-    if (document.metadata?.numPages !== undefined && document.metadata.numPages > 1) {
+    if (options.parsePDF && document.metadata?.numPages !== undefined && document.metadata.numPages > 1) {
         creditsToBeBilled += creditsPerPDFPage * (document.metadata.numPages - 1);
     }
 
