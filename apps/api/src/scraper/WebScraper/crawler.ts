@@ -55,6 +55,7 @@ export class WebCrawler {
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
+  private ignoreSitemap: boolean;
   private regexOnFullURL: boolean;
   private logger: typeof _logger;
   private sitemapsHit: Set<string> = new Set();
@@ -76,6 +77,7 @@ export class WebCrawler {
     allowExternalContentLinks = false,
     allowSubdomains = false,
     ignoreRobotsTxt = false,
+    ignoreSitemap = false,
     regexOnFullURL = false,
     maxDiscoveryDepth,
     currentDiscoveryDepth,
@@ -94,6 +96,7 @@ export class WebCrawler {
     allowExternalContentLinks?: boolean;
     allowSubdomains?: boolean;
     ignoreRobotsTxt?: boolean;
+    ignoreSitemap?: boolean;
     regexOnFullURL?: boolean;
     maxDiscoveryDepth?: number;
     currentDiscoveryDepth?: number;
@@ -116,6 +119,7 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
+    this.ignoreSitemap = ignoreSitemap ?? false;
     this.regexOnFullURL = regexOnFullURL ?? false;
     this.zeroDataRetention = zeroDataRetention ?? false;
     this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler", zeroDataRetention: this.zeroDataRetention });
@@ -144,35 +148,41 @@ export class WebCrawler {
       return { links: sitemapLinks.slice(0, limit), denialReasons };
     }
 
-    try {
-      const res = await filterLinks({
-        links: sitemapLinks,
-        limit: isFinite(limit) ? limit : undefined,
-        max_depth: maxDepth,
-        base_url: this.baseUrl,
-        initial_url: this.initialUrl,
-        regex_on_full_url: this.regexOnFullURL,
-        excludes: this.excludes,
-        includes: this.includes,
-        allow_backward_crawling: this.allowBackwardCrawling,
-        ignore_robots_txt: this.ignoreRobotsTxt,
-        robots_txt: this.robotsTxt,
-      });
-
-      const fancyDenialReasons = new Map<string, string>();
-      res.denial_reasons.forEach((value, key) => {
-        fancyDenialReasons.set(key, DenialReason[value]);
-      });
-
-      return {
-        links: res.links,
-        denialReasons: fancyDenialReasons,
-      };
-    } catch (error) {
-      this.logger.error("Error filtering links in Rust, falling back to JS", {
-        error,
+    if (this.ignoreSitemap) {
+      this.logger.debug("Skipping Rust filterLinks due to ignoreSitemap=true", {
         method: "filterLinks",
       });
+    } else {
+      try {
+        const res = await filterLinks({
+          links: sitemapLinks,
+          limit: isFinite(limit) ? limit : undefined,
+          max_depth: maxDepth,
+          base_url: this.baseUrl,
+          initial_url: this.initialUrl,
+          regex_on_full_url: this.regexOnFullURL,
+          excludes: this.excludes,
+          includes: this.includes,
+          allow_backward_crawling: this.allowBackwardCrawling,
+          ignore_robots_txt: this.ignoreRobotsTxt,
+          robots_txt: this.robotsTxt,
+        });
+
+        const fancyDenialReasons = new Map<string, string>();
+        res.denial_reasons.forEach((value, key) => {
+          fancyDenialReasons.set(key, DenialReason[value]);
+        });
+
+        return {
+          links: res.links,
+          denialReasons: fancyDenialReasons,
+        };
+      } catch (error) {
+        this.logger.error("Error filtering links in Rust, falling back to JS", {
+          error,
+          method: "filterLinks",
+        });
+      }
     }
 
     const filteredLinks = sitemapLinks

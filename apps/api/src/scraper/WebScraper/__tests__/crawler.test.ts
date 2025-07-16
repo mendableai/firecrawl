@@ -73,4 +73,51 @@ describe("WebCrawler", () => {
     expect(filteredLinks.links.length).toBe(limit); // Check if the number of results respects the limit
     expect(filteredLinks.links).toEqual([initialUrl, initialUrl + "/page1"]);
   });
+
+  it("should skip Rust filterLinks when ignoreSitemap is true", async () => {
+    const initialUrl = "http://example.com";
+    const testLinks = [initialUrl, initialUrl + "/page1"];
+
+    crawler = new WebCrawler({
+      jobId: "TEST",
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      ignoreSitemap: true,
+      maxCrawledDepth: 10,
+    });
+
+    const loggerSpy = jest.spyOn(crawler["logger"], "debug");
+
+    const filteredLinks = await crawler["filterLinks"](testLinks, 10, 10);
+
+    expect(loggerSpy).toHaveBeenCalledWith(
+      "Skipping Rust filterLinks due to ignoreSitemap=true",
+      { method: "filterLinks" }
+    );
+    expect(filteredLinks.links.length).toBeGreaterThan(0);
+  });
+
+  it("should use Rust filterLinks when ignoreSitemap is false", async () => {
+    const initialUrl = "http://example.com";
+    const testLinks = [initialUrl, initialUrl + "/page1"];
+
+    crawler = new WebCrawler({
+      jobId: "TEST",
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      ignoreSitemap: false,
+      maxCrawledDepth: 10,
+    });
+
+    const loggerSpy = jest.spyOn(crawler["logger"], "debug");
+
+    const filteredLinks = await crawler["filterLinks"](testLinks, 10, 10);
+
+    expect(loggerSpy).not.toHaveBeenCalledWith(
+      "Skipping Rust filterLinks due to ignoreSitemap=true",
+      { method: "filterLinks" }
+    );
+  });
 });
