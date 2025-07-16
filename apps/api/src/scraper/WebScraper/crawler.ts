@@ -157,6 +157,7 @@ export class WebCrawler {
         allow_backward_crawling: this.allowBackwardCrawling,
         ignore_robots_txt: this.ignoreRobotsTxt,
         robots_txt: this.robotsTxt,
+        from_map: fromMap,
       });
 
       const fancyDenialReasons = new Map<string, string>();

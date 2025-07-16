@@ -23,6 +23,7 @@ export type FilterLinksCall = {
   allow_backward_crawling: boolean,
   ignore_robots_txt: boolean,
   robots_txt: string,
+  from_map: boolean,
 }
 
 export type FilterLinksResult = {

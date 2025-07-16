@@ -1294,6 +1294,7 @@ async function processJob(job: Job & { id: string }, token: string) {
             ),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10,
+            job.data.sitemapped || false,
           );
           logger.debug("Discovered " + links.links.length + " links...", {
             linksLength: links.links.length,
@@ -1364,6 +1365,7 @@ async function processJob(job: Job & { id: string }, token: string) {
               [doc.metadata.url ?? doc.metadata.sourceURL!],
               1,
               sc.crawlerOptions?.maxDepth ?? 10,
+              job.data.sitemapped || false,
             );
             if (filterResult.links.length === 0) {
               const url = doc.metadata.url ?? doc.metadata.sourceURL!;

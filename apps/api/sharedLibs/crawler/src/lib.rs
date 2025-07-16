@@ -18,6 +18,7 @@ struct FilterLinksCall {
     allow_backward_crawling: bool,
     ignore_robots_txt: bool,
     robots_txt: String,
+    from_map: bool,
 }
 
 #[derive(Serialize)]
@@ -60,16 +61,21 @@ fn _get_url_depth(path: &str) -> u32 {
 fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std::error::Error>> {
     let mut denial_reasons = HashMap::new();
 
-    let limit = data.limit.and_then(|x| if x < 0 { Some(0) } else { Some(x as usize) });
-
-    let limit = if let Some(limit) = limit {
-        limit
-    } else {
+    if data.initial_url.ends_with("sitemap.xml") && data.from_map {
+        let links = if let Some(limit) = data.limit.and_then(|x| if x < 0 { Some(0) } else { Some(x as usize) }) {
+            data.links.into_iter().take(limit).collect()
+        } else {
+            data.links
+        };
         return Ok(FilterLinksResult {
-            links: Vec::with_capacity(0),
+            links,
             denial_reasons,
         });
-    };
+    }
+
+    let limit = data.limit.and_then(|x| if x < 0 { Some(0) } else { Some(x as usize) });
+
+    let effective_limit = limit.unwrap_or(usize::MAX);
 
     let base_url = Url::parse(&data.base_url)?;
     let initial_url = Url::parse(&data.initial_url)?;
@@ -140,7 +146,7 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
 
             true
         })
-        .take(limit)
+        .take(effective_limit)
         .collect::<Vec<_>>();
 
     Ok(FilterLinksResult {
