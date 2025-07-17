@@ -149,9 +149,6 @@ export class WebCrawler {
     }
 
     if (this.ignoreSitemap) {
-      this.logger.debug("Skipping Rust filterLinks due to ignoreSitemap=true", {
-        method: "filterLinks",
-      });
     } else {
       try {
         const res = await filterLinks({
