@@ -291,20 +291,24 @@ export async function scrapeURLWithFireEngineChromeCDP(
     );
   } catch (error) {
     if (error instanceof DatadomeError && !request.ddAntibot) {
-      meta.logger.info("Datadome detected, retrying with ddAntibot: true");
-      const retryRequest = { ...request, ddAntibot: true };
-      response = await performFireEngineScrape(
-        meta,
-        meta.logger.child({
-          method: "scrapeURLWithFireEngineChromeCDP/callFireEngineRetry",
-          request: retryRequest,
-        }),
-        retryRequest,
-        timeout,
-        meta.mock,
-        meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-        true,
-      );
+      if (meta.options.proxy === "stealth" || meta.options.proxy === "auto") {
+        meta.logger.info("Datadome detected, retrying with ddAntibot: true", { proxy: meta.options.proxy });
+        const retryRequest = { ...request, ddAntibot: true };
+        response = await performFireEngineScrape(
+          meta,
+          meta.logger.child({
+            method: "scrapeURLWithFireEngineChromeCDP/callFireEngineRetry",
+            request: retryRequest,
+          }),
+          retryRequest,
+          timeout,
+          meta.mock,
+          meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+          true,
+        );
+      } else {
+        throw new Error("Datadome anti-bot protection detected. Please use 'stealth' or 'auto' proxy mode to bypass this protection.");
+      }
     } else {
       throw error;
     }
@@ -358,7 +362,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
         }
       : {}),
 
-    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+    proxyUsed: response.usedMobileProxy ? "stealth" : (meta.options.proxy === "auto" && request.ddAntibot ? "stealth" : "basic"),
   };
 }
 
