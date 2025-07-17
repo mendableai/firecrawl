@@ -628,7 +628,19 @@ export class WebCrawler {
   }
 
   private noSections(link: string): boolean {
-    return !link.includes("#");
+    // Allow URLs with hash fragments that represent actual routes/pages (like SPAs)
+    // but block simple anchor links within the same page
+    if (!link.includes("#")) {
+      return true;
+    }
+    
+    // Check if the hash fragment looks like a route (contains forward slashes and has substantial content)
+    const hashPart = link.split("#")[1];
+    if (hashPart && hashPart.length > 1 && hashPart.includes("/")) {
+      return true;
+    }
+    
+    return false;
   }
 
   private isInternalLink(link: string): boolean {
