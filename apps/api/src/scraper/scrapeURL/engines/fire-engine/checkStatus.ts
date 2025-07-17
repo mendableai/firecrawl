@@ -10,7 +10,8 @@ import {
   SSLError,
   UnsupportedFileError,
   DNSResolutionError,
-  FEPageLoadFailed
+  FEPageLoadFailed,
+  DatadomeError,
 } from "../../error";
 import { MockState } from "../../lib/mock";
 import { fireEngineStagingURL, fireEngineURL } from "./scrape";
@@ -216,6 +217,11 @@ export async function fireEngineCheckStatus(
       (status.error.includes("Element") || status.error.includes("Javascript execution failed"))
     ) {
       throw new ActionError(status.error.split("Error: ")[1]);
+    } else if (
+      typeof status.error === "string" &&
+      status.error.includes("Datadome")
+    ) {
+      throw new DatadomeError();
     } else {
       throw new EngineError("Scrape job failed", {
         cause: {

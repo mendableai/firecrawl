@@ -22,6 +22,7 @@ import {
   TimeoutError,
   UnsupportedFileError,
   FEPageLoadFailed,
+  DatadomeError,
 } from "../../error";
 import * as Sentry from "@sentry/node";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
@@ -246,6 +247,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
+    ddAntibot: false,
   };
 
   if (shouldABTest) {
@@ -273,18 +275,40 @@ export async function scrapeURLWithFireEngineChromeCDP(
     })();
   }
 
-  let response = await performFireEngineScrape(
-    meta,
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+  let response;
+  try {
+    response = await performFireEngineScrape(
+      meta,
+      meta.logger.child({
+        method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+        request,
+      }),
       request,
-    }),
-    request,
-    timeout,
-    meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-    true,
-  );
+      timeout,
+      meta.mock,
+      meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+      true,
+    );
+  } catch (error) {
+    if (error instanceof DatadomeError && !request.ddAntibot) {
+      meta.logger.info("Datadome detected, retrying with ddAntibot: true");
+      const retryRequest = { ...request, ddAntibot: true };
+      response = await performFireEngineScrape(
+        meta,
+        meta.logger.child({
+          method: "scrapeURLWithFireEngineChromeCDP/callFireEngineRetry",
+          request: retryRequest,
+        }),
+        retryRequest,
+        timeout,
+        meta.mock,
+        meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+        true,
+      );
+    } else {
+      throw error;
+    }
+  }
 
   if (
     meta.options.formats.includes("screenshot") ||
@@ -320,7 +344,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    )?.[1] as string) ?? undefined,
 
     screenshot: response.screenshot,
     ...(actions.length > 0
@@ -393,7 +417,7 @@ export async function scrapeURLWithFireEnginePlaywright(
 
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    )?.[1] as string) ?? undefined,
 
     ...(response.screenshots !== undefined && response.screenshots.length > 0
       ? {
@@ -458,7 +482,7 @@ export async function scrapeURLWithFireEngineTLSClient(
 
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    )?.[1] as string) ?? undefined,
 
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
