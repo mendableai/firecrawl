@@ -100,7 +100,7 @@ class ChangeTrackingData(pydantic.BaseModel):
     changeStatus: str  # "new" | "same" | "changed" | "removed"
     visibility: str  # "visible" | "hidden"
     diff: Optional[Dict[str, Any]] = None
-    json: Optional[Any] = pydantic.Field(None, alias='json')
+    json_field: Optional[Any] = pydantic.Field(None, alias='json')
 
 class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     """Document retrieved or processed by Firecrawl."""
@@ -110,7 +110,7 @@ class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     rawHtml: Optional[str] = None
     links: Optional[List[str]] = None
     extract: Optional[T] = None
-    json: Optional[T] = pydantic.Field(None, alias='json')
+    json_field: Optional[T] = pydantic.Field(None, alias='json')
     screenshot: Optional[str] = None
     metadata: Optional[Any] = None
     actions: Optional[ActionsResult] = None
@@ -133,7 +133,7 @@ class WebhookConfig(pydantic.BaseModel):
 class ChangeTrackingOptions(pydantic.BaseModel):
     """Configuration for change tracking."""
     modes: Optional[List[Literal["git-diff", "json"]]] = None
-    schema: Optional[Any] = pydantic.Field(None, alias='schema')
+    schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
     prompt: Optional[str] = None
     tag: Optional[str] = None
 
@@ -213,7 +213,7 @@ class ExtractAgent(pydantic.BaseModel):
 class JsonConfig(pydantic.BaseModel):
     """Configuration for extraction."""
     prompt: Optional[str] = None
-    schema: Optional[Any] = pydantic.Field(None, alias='schema')
+    schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
     systemPrompt: Optional[str] = None
     agent: Optional[ExtractAgent] = None
 
@@ -311,7 +311,7 @@ class MapResponse(pydantic.BaseModel):
 class ExtractParams(pydantic.BaseModel):
     """Parameters for extracting information from URLs."""
     prompt: Optional[str] = None
-    schema: Optional[Any] = pydantic.Field(None, alias='schema')
+    schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
     systemPrompt: Optional[str] = None
     allowExternalLinks: Optional[bool] = None
     enableWebSearch: Optional[bool] = None
@@ -425,7 +425,7 @@ class ExtractParams(pydantic.BaseModel):
     Parameters for the extract operation.
     """
     prompt: Optional[str] = None
-    schema: Optional[Any] = pydantic.Field(None, alias='schema')
+    schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
     system_prompt: Optional[str] = None
     allow_external_links: Optional[bool] = False
     enable_web_search: Optional[bool] = False
