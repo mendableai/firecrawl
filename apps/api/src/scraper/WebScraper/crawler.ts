@@ -148,8 +148,7 @@ export class WebCrawler {
       return { links: sitemapLinks.slice(0, limit), denialReasons };
     }
 
-    if (this.ignoreSitemap) {
-    } else {
+    if (!this.ignoreSitemap) {
       try {
         const res = await filterLinks({
           links: sitemapLinks,
