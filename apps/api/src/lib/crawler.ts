@@ -88,7 +88,6 @@ class RustCrawler {
 export async function filterLinks(
   call: FilterLinksCall,
 ): Promise<FilterLinksResult> {
-    console.log(call);
     const converter = await RustCrawler.getInstance();
     return await converter.filterLinks(call);
 }
