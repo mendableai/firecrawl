@@ -25,7 +25,7 @@ import {
   DatadomeError,
 } from "../../error";
 import * as Sentry from "@sentry/node";
-import { specialtyScrapeCheck } from "../utils/specialtyHandler";
+import { specialtyScrapeCheck, checkDatadomeError } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
@@ -247,7 +247,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
-    ddAntibot: false,
+    ddAntibot: meta.featureFlags.has("ddAntibot"),
   };
 
   if (shouldABTest) {
@@ -290,28 +290,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
       true,
     );
   } catch (error) {
-    if (error instanceof DatadomeError && !request.ddAntibot) {
-      if (meta.options.proxy === "stealth" || meta.options.proxy === "auto") {
-        meta.logger.info("Datadome detected, retrying with ddAntibot: true", { proxy: meta.options.proxy });
-        const retryRequest = { ...request, ddAntibot: true };
-        response = await performFireEngineScrape(
-          meta,
-          meta.logger.child({
-            method: "scrapeURLWithFireEngineChromeCDP/callFireEngineRetry",
-            request: retryRequest,
-          }),
-          retryRequest,
-          timeout,
-          meta.mock,
-          meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-          true,
-        );
-      } else {
-        throw new Error("Datadome anti-bot protection detected. Please use 'stealth' or 'auto' proxy mode to bypass this protection.");
-      }
-    } else {
-      throw error;
-    }
+    checkDatadomeError(error as Error, meta);
+    throw error;
   }
 
   if (
@@ -362,7 +342,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
         }
       : {}),
 
-    proxyUsed: response.usedMobileProxy ? "stealth" : (meta.options.proxy === "auto" && request.ddAntibot ? "stealth" : "basic"),
+    proxyUsed: response.usedMobileProxy ? "stealth" : (meta.options.proxy === "auto" && meta.featureFlags.has("ddAntibot") ? "stealth" : "basic"),
   };
 }
 

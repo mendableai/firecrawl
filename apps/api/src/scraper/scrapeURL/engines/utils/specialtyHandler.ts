@@ -1,5 +1,5 @@
 import { Logger } from "winston";
-import { AddFeatureError } from "../../error";
+import { AddFeatureError, DatadomeError } from "../../error";
 import { FireEngineCheckStatusSuccess } from "../fire-engine/checkStatus";
 import path from "path";
 import os from "os";
@@ -51,5 +51,15 @@ export async function specialtyScrapeCheck(
   ) {
     // .docx
     throw new AddFeatureError(["docx"]);
+  }
+}
+
+export function checkDatadomeError(error: Error, meta: Meta): void {
+  if (error instanceof DatadomeError) {
+    if (meta.options.proxy === "stealth" || meta.options.proxy === "auto") {
+      throw new AddFeatureError(["ddAntibot"]);
+    } else {
+      throw new Error("Datadome anti-bot protection detected. Please use 'stealth' or 'auto' proxy mode to bypass this protection.");
+    }
   }
 }
