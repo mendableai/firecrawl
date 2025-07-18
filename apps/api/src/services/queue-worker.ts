@@ -1159,11 +1159,14 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
     }
 
+    const teamFlags = (await getACUCTeam(job.data.team_id))?.flags ?? null;
+
     const pipeline = await Promise.race([
       startWebScraperPipeline({
         job,
         token,
         costTracking,
+        teamFlags,
       }),
       ...(remainingTime !== undefined
         ? [

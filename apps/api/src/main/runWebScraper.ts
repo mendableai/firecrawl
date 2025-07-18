@@ -5,7 +5,7 @@ import {
   RunWebScraperResult,
 } from "../types";
 import { billTeam } from "../services/billing/credit_billing";
-import { Document } from "../controllers/v1/types";
+import { Document, TeamFlags } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
 import { logger as _logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
@@ -22,10 +22,12 @@ export async function startWebScraperPipeline({
   job,
   token,
   costTracking,
+  teamFlags,
 }: {
   job: Job<WebScraperOptions> & { id: string };
   token: string;
   costTracking: CostTracking;
+  teamFlags: TeamFlags;
 }) {
   return await runWebScraper({
     url: job.data.url,
@@ -54,6 +56,7 @@ export async function startWebScraperPipeline({
     is_crawl: !!(job.data.crawl_id && job.data.crawlerOptions !== null),
     urlInvisibleInCurrentCrawl: job.data.crawlerOptions?.urlInvisibleInCurrentCrawl ?? false,
     costTracking,
+    teamFlags,
   });
 }
 
@@ -71,6 +74,7 @@ export async function runWebScraper({
   is_crawl = false,
   urlInvisibleInCurrentCrawl = false,
   costTracking,
+  teamFlags,
 }: RunWebScraperParams): Promise<ScrapeUrlResponse> {
   const logger = _logger.child({
     method: "runWebScraper",
@@ -105,6 +109,7 @@ export async function runWebScraper({
         ...internalOptions,
         urlInvisibleInCurrentCrawl,
         teamId: internalOptions?.teamId ?? team_id,
+        teamFlags,
       }, costTracking);
       if (!response.success) {
         if (response.error instanceof Error) {

@@ -1044,6 +1044,7 @@ export type TeamFlags = {
   forceZDR?: boolean;
   allowZDR?: boolean;
   zdrCost?: number;
+  respectRobotsOnScrapes?: boolean;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
