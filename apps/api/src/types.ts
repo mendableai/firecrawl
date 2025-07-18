@@ -76,7 +76,6 @@ export interface RunWebScraperParams {
   is_crawl?: boolean;
   urlInvisibleInCurrentCrawl?: boolean;
   costTracking: CostTracking;
-  teamFlags?: TeamFlags;
 }
 
 export type RunWebScraperResult =
