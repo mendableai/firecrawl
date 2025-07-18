@@ -9,6 +9,7 @@ Firecrawl now supports respecting `robots.txt` rules for scrape operations as an
 - **Opt-in by default**: Unlike crawls (which respect robots.txt by default), scrapes will NOT respect robots.txt unless explicitly enabled
 - **Team-level flag**: The feature is controlled by the `respectRobotsOnScrapes` team flag
 - **User agent**: Firecrawl identifies itself as `FireCrawlAgent` or `FirecrawlAgent` when checking robots.txt rules
+- **Shared implementation**: This feature uses the same robots.txt checking logic as our crawl functionality for consistency
 
 ## Enabling the Feature
 
@@ -34,6 +35,7 @@ When `respectRobotsOnScrapes` is enabled:
 1. Before scraping any URL, Firecrawl will fetch and parse the website's `robots.txt` file
 2. If the URL is disallowed for the `FireCrawlAgent` user agent, the scrape will fail with error: "URL blocked by robots.txt"
 3. If robots.txt cannot be fetched (e.g., 404 error), the scrape will proceed normally
+4. The same robots.txt parsing and checking logic used for crawls is applied to scrapes
 
 ## Example
 
@@ -59,3 +61,4 @@ POST /api/v1/scrape
 - This feature only affects the `/api/v1/scrape` endpoint
 - Crawl operations (`/api/v1/crawl`) already respect robots.txt by default (can be disabled with `ignoreRobots` flag)
 - The `skipTlsVerification` option in scrape requests also applies to fetching robots.txt
+- The implementation is shared with the crawl functionality to ensure consistent behavior across all operations

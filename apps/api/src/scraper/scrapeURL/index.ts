@@ -35,10 +35,7 @@ import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
-import robotsParser, { Robot } from "robots-parser";
-import axios from "axios";
-import { axiosTimeout } from "../../lib/timeout";
-import https from "https";
+import { checkRobotsTxt } from "../../lib/robots-txt";
 
 export type ScrapeUrlResponse = (
   | {
@@ -497,34 +494,6 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   };
 }
 
-async function checkRobotsTxt(url: string, skipTlsVerification: boolean = false, logger: Logger): Promise<boolean> {
-  try {
-    const urlObj = new URL(url);
-    const robotsTxtUrl = `${urlObj.protocol}//${urlObj.host}/robots.txt`;
-    
-    let extraArgs: any = {};
-    if (skipTlsVerification) {
-      extraArgs.httpsAgent = new https.Agent({
-        rejectUnauthorized: false,
-      });
-    }
-    
-    const response = await axios.get(robotsTxtUrl, {
-      timeout: axiosTimeout,
-      ...extraArgs,
-    });
-    
-    const robots: Robot = robotsParser(robotsTxtUrl, response.data);
-    const isAllowed = (robots.isAllowed(url, "FireCrawlAgent") || robots.isAllowed(url, "FirecrawlAgent")) ?? true;
-    
-    return isAllowed;
-  } catch (error) {
-    // If we can't fetch robots.txt, assume it's allowed
-    logger.debug("Failed to fetch robots.txt, allowing scrape", { error, url });
-    return true;
-  }
-}
-
 export async function scrapeURL(
   id: string,
   url: string,
@@ -541,7 +510,12 @@ export async function scrapeURL(
   // Check robots.txt if team has opted in to respect it for scrapes
   if (internalOptions.teamFlags?.respectRobotsOnScrapes) {
     const urlToCheck = meta.rewrittenUrl || meta.url;
-    const isAllowed = await checkRobotsTxt(urlToCheck, options.skipTlsVerification, meta.logger);
+    const isAllowed = await checkRobotsTxt(
+      urlToCheck, 
+      options.skipTlsVerification, 
+      meta.logger,
+      internalOptions.abort
+    );
     
     if (!isAllowed) {
       meta.logger.info("URL blocked by robots.txt", { url: urlToCheck });
