@@ -96,6 +96,7 @@ const allowedKeywords = [
   "://facebook.com/ads/library",
   "://www.facebook.com/ads/library",
   "://meta.com/experiences",
+  "://www.meta.com/experiences",
 ];
 
 export function decryptedBlocklist(list: string[]): string[] {
