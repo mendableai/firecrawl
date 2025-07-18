@@ -94,6 +94,7 @@ const allowedKeywords = [
   "://developers.facebook.com",
   "://developers.meta.com",
   "://facebook.com/ads/library",
+  "://www.facebook.com/ads/library",
   "://meta.com/experiences",
 ];
 
