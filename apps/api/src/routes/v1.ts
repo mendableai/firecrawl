@@ -29,6 +29,7 @@ import { extractStatusController } from "../controllers/v1/extract-status";
 import { creditUsageController } from "../controllers/v1/credit-usage";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { searchController } from "../controllers/v1/search";
+import { searchWithWalletController } from "../controllers/v1/search-with-wallet";
 import { crawlErrorsController } from "../controllers/v1/crawl-errors";
 import { generateLLMsTextController } from "../controllers/v1/generate-llmstxt";
 import { generateLLMsTextStatusController } from "../controllers/v1/generate-llmstxt-status";
@@ -36,6 +37,9 @@ import { deepResearchController } from "../controllers/v1/deep-research";
 import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 import { tokenUsageController } from "../controllers/v1/token-usage";
 import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
+import { generatePaymentHeaderController } from "../controllers/v1/generate-payment-header";
+import { protectedDataController } from '../controllers/v1/protected-data';
+import { paymentMiddleware } from "x402-express";
 
 function checkCreditsMiddleware(
   _minimum?: number,
@@ -173,6 +177,34 @@ export function wrap(
 expressWs(express());
 
 export const v1Router = express.Router();
+
+// First, configure the payment middleware with your routes
+v1Router.use(
+  paymentMiddleware(
+    process.env.X402_PAY_TO_ADDRESS as `0x${string}` || "0x0000000000000000000000000000000000000000",
+    {
+      // Define your routes and their payment requirements
+      "GET /protected-data": {
+        price: process.env.X402_ENDPOINT_PRICE_USD || "0.01",
+        network: "base-sepolia",
+        config: {
+          description: "Access premium protected data API",
+          mimeType: "application/json",
+          maxTimeoutSeconds: 300,
+        }
+      },
+      "POST /search-with-wallet": {
+        price: process.env.X402_ENDPOINT_PRICE_USD || "0.01",
+        network: "base-sepolia",
+        config: {
+          description: "Search with wallet payment API",
+          mimeType: "application/json",
+          maxTimeoutSeconds: 300,
+        }
+      },
+    },
+  ),
+);
 
 v1Router.post(
   "/scrape",
@@ -341,4 +373,21 @@ v1Router.get(
   "/team/token-usage",
   authMiddleware(RateLimiterMode.ExtractStatus),
   wrap(tokenUsageController),
+);
+
+v1Router.post(
+  "/generate-payment-header",
+  authMiddleware(RateLimiterMode.GeneratePaymentHeader),
+  wrap(generatePaymentHeaderController),
+);
+
+v1Router.get("/protected-data",
+  authMiddleware(RateLimiterMode.Search),
+  wrap(protectedDataController),
+);
+
+v1Router.post(
+  "/search-with-wallet",
+  authMiddleware(RateLimiterMode.Search),
+  wrap(searchWithWalletController),
 );

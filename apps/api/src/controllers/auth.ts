@@ -91,6 +91,7 @@ const mockPreviewACUC: (team_id: string, is_extract: boolean) => AuthCreditUsage
     extractStatus: 500,
     extractAgentPreview: 1,
     scrapeAgentPreview: 5,
+    generatePaymentHeader: 2,
   },
   price_credits: 99999999,
   credits_used: 0,
@@ -426,6 +427,8 @@ export async function supaAuthenticateUser(
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
     } else if (mode == RateLimiterMode.ExtractStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.ExtractStatus, token);
+    } else if (mode == RateLimiterMode.GeneratePaymentHeader) {
+      rateLimiter = getRateLimiter(RateLimiterMode.GeneratePaymentHeader, token);
     } else {
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
     }

@@ -162,6 +162,7 @@ export enum RateLimiterMode {
   Extract = "extract",
   ExtractStatus = "extractStatus",
   ExtractAgentPreview = "extractAgentPreview",
+  GeneratePaymentHeader = "generatePaymentHeader",
 }
 
 export type AuthResponse =

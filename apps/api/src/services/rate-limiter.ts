@@ -33,6 +33,7 @@ const fallbackRateLimits: AuthCreditUsageChunk["rate_limits"] = {
   crawlStatus: 25000,
   extractAgentPreview: 10,
   scrapeAgentPreview: 10,
+  generatePaymentHeader: 2,
 };
 
 export function getRateLimiter(
