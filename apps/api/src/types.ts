@@ -5,6 +5,7 @@ import {
   ScrapeOptions,
   Document as V1Document,
   webhookSchema,
+  TeamFlags,
 } from "./controllers/v1/types";
 import { ExtractorOptions, Document } from "./lib/entities";
 import { InternalOptions } from "./scraper/scrapeURL";
@@ -75,6 +76,7 @@ export interface RunWebScraperParams {
   is_crawl?: boolean;
   urlInvisibleInCurrentCrawl?: boolean;
   costTracking: CostTracking;
+  teamFlags?: TeamFlags;
 }
 
 export type RunWebScraperResult =
