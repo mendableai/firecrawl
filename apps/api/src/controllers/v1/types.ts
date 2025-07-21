@@ -697,8 +697,12 @@ export const crawlRequestSchema = crawlerOptions
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .refine(
     (data) => {
-      const urlDepth = getURLDepth(data.url);
-      return urlDepth <= data.maxDepth;
+      try {
+        const urlDepth = getURLDepth(data.url);
+        return urlDepth <= data.maxDepth;
+      } catch (e) {
+        return false;
+      }
     },
     {
       message: "URL depth exceeds the specified maxDepth",
