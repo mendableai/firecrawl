@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, usize};
 use serde::{Deserialize, Serialize};
 use std::ffi::{CStr, CString};
 use url::Url;
@@ -60,16 +60,16 @@ fn _get_url_depth(path: &str) -> u32 {
 fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std::error::Error>> {
     let mut denial_reasons = HashMap::new();
 
-    let limit = data.limit.and_then(|x| if x < 0 { Some(0) } else { Some(x as usize) });
+    let limit = data.limit
+        .and_then(|x| if x < 0 { Some(0) } else { Some(x as usize) })
+        .unwrap_or(usize::MAX);
 
-    let limit = if let Some(limit) = limit {
-        limit
-    } else {
+    if limit == 0 {
         return Ok(FilterLinksResult {
             links: Vec::with_capacity(0),
             denial_reasons,
         });
-    };
+    }
 
     let base_url = Url::parse(&data.base_url)?;
     let initial_url = Url::parse(&data.initial_url)?;

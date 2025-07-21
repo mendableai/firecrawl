@@ -164,6 +164,16 @@ export class WebCrawler {
         fancyDenialReasons.set(key, DenialReason[value]);
       });
 
+      if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+        for (const link of res.links) {
+          this.logger.debug(`${link} OK`);
+        }
+
+        for (const [link, reason] of fancyDenialReasons) {
+          this.logger.debug(`${link} ${reason}`);
+        }
+      }
+
       return {
         links: res.links,
         denialReasons: fancyDenialReasons,
