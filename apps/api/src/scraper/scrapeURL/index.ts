@@ -508,7 +508,7 @@ export async function scrapeURL(
   }
 
   if (internalOptions.teamFlags?.checkRobotsOnScrape) {
-    logger.info("Checking robots.txt", {
+    meta.logger.info("Checking robots.txt", {
       checkRobotsOnScrape: internalOptions.teamFlags?.checkRobotsOnScrape,
       url: meta.rewrittenUrl || meta.url,
     });
