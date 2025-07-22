@@ -244,7 +244,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
-    ddAntibot: meta.featureFlags.has("stealthProxy") || meta.options.proxy === "auto",
+    ddAntibot: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
