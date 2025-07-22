@@ -122,6 +122,5 @@ export async function scrapeURLWithFetch(
     ) ?? [])[1] ?? undefined,
 
     proxyUsed: "basic",
-    usedDDAntibot: undefined,
   };
 }

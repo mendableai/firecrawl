@@ -55,6 +55,5 @@ export async function scrapeURLWithPlaywright(
     contentType: response.contentType,
 
     proxyUsed: "basic",
-    usedDDAntibot: undefined,
   };
 }

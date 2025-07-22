@@ -188,7 +188,6 @@ export async function scrapePDF(
         markdown: content,
 
         proxyUsed: meta.pdfPrefetch.proxyUsed,
-        usedDDAntibot: undefined,
       };
     } else {
       const file = await fetchFileToBuffer(meta.rewrittenUrl ?? meta.url, {
@@ -214,7 +213,6 @@ export async function scrapePDF(
         markdown: content,
 
         proxyUsed: "basic",
-        usedDDAntibot: undefined,
       };
     }
   }
@@ -319,6 +317,5 @@ export async function scrapePDF(
     numPages: pageCount,
 
     proxyUsed: "basic",
-    usedDDAntibot: undefined,
   };
 }

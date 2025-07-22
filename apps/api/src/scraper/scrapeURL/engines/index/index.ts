@@ -217,6 +217,5 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
         },
 
         proxyUsed: doc.proxyUsed ?? "basic",
-        usedDDAntibot: undefined,
     };
 }
