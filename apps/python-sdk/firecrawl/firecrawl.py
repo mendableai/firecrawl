@@ -1372,8 +1372,8 @@ class FirecrawlApp:
             if isinstance(json_options, dict) and "schema" in json_options:
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
-        if actions is not None:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if actions:
+            scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if max_concurrency is not None:
@@ -1513,8 +1513,8 @@ class FirecrawlApp:
             if isinstance(json_options, dict) and "schema" in json_options:
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
-        if actions is not None:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if actions:
+            scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if max_concurrency is not None:
@@ -1649,8 +1649,8 @@ class FirecrawlApp:
             if isinstance(json_options, dict) and "schema" in json_options:
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
-        if actions is not None:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if actions:
+            scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if max_concurrency is not None:
@@ -3074,7 +3074,6 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
-
         if 'extract' in scrape_params and scrape_params['extract'] and 'schema' in scrape_params['extract']:
             scrape_params['extract']['schema'] = self._ensure_schema_dict(scrape_params['extract']['schema'])
         if 'jsonOptions' in scrape_params and scrape_params['jsonOptions'] and 'schema' in scrape_params['jsonOptions']:
@@ -3199,8 +3198,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if isinstance(json_options, dict) and "schema" in json_options:
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
-        if actions is not None:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
 
@@ -3339,8 +3337,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if isinstance(json_options, dict) and "schema" in json_options:
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
-        if actions is not None:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if actions:
+            scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(exclude_none=True)
         if zero_data_retention is not None:
