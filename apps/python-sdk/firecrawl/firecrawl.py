@@ -520,6 +520,9 @@ class FirecrawlApp:
         Raises:
           Exception: If scraping fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "scrape_url")
+        
         _headers = self._prepare_headers()
 
         # Build scrape parameters
