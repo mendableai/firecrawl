@@ -459,6 +459,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       numPages: result.result.numPages,
       contentType: result.result.contentType,
       proxyUsed: meta.featureFlags.has("stealthProxy") ? "stealth" : "basic",
+      usedDDAntibot: result.result.usedDDAntibot,
       ...((meta.results["index"] || meta.results["index;documents"]) ? (
         result.result.cacheInfo ? {
           cacheState: "hit",

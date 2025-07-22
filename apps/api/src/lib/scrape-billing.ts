@@ -40,5 +40,9 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
         creditsToBeBilled += stealthProxyCostBonus;
     }
 
+    if (document?.metadata?.usedDDAntibot === true && document?.metadata?.proxyUsed !== "stealth") {
+        creditsToBeBilled += stealthProxyCostBonus;
+    }
+
     return creditsToBeBilled;
 }

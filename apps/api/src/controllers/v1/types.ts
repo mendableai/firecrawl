@@ -845,6 +845,7 @@ export type Document = {
     numPages?: number;
     contentType?: string;
     proxyUsed: "basic" | "stealth";
+    usedDDAntibot?: boolean;
     cacheState?: "hit" | "miss";
     cachedAt?: string;
     creditsUsed?: number;

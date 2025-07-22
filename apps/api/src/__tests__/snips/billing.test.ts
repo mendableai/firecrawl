@@ -521,5 +521,51 @@ describe("Billing tests", () => {
 
             expect(rc1 - rc2).toBe(7);
         }, 120000);
+
+        it.concurrent("bills DD antibot correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills DD antibot correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+            
+            const scrapeResult = await scrape({
+                url: "https://firecrawl.dev",
+                proxy: "auto",
+            }, identity);
+
+            if (scrapeResult.metadata.usedDDAntibot) {
+                expect(scrapeResult.metadata.creditsUsed).toBe(5);
+            } else {
+                expect(scrapeResult.metadata.creditsUsed).toBe(1);
+            }
+
+            await sleepForBatchBilling();
+
+            const rc2 = (await creditUsage(identity)).remaining_credits;
+            expect(rc1 - rc2).toBe(scrapeResult.metadata.creditsUsed);
+        }, 120000);
+
+        it.concurrent("bills single charge when both mobile proxy and DD antibot used", async () => {
+            const identity = await idmux({
+                name: "billing/bills single charge for both proxies",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+            
+            const scrapeResult = await scrape({
+                url: "https://firecrawl.dev",
+                proxy: "stealth",
+            }, identity);
+
+            expect(scrapeResult.metadata.creditsUsed).toBe(5);
+
+            await sleepForBatchBilling();
+
+            const rc2 = (await creditUsage(identity)).remaining_credits;
+            expect(rc1 - rc2).toBe(5);
+        }, 120000);
     }
 });
