@@ -58,11 +58,20 @@ export function isUrlAllowedByRobots(
   for (const userAgent of userAgents) {
     let isAllowed = robots.isAllowed(url, userAgent);
 
+    if (isAllowed == null) {
+      isAllowed = true;
+    }
+
     // Also check with trailing slash if URL doesn't have one
     // This catches cases like "Disallow: /path/" when user requests "/path"
     if (isAllowed && !url.endsWith("/")) {
       const urlWithSlash = url + "/";
-      const isAllowedWithSlash = robots.isAllowed(urlWithSlash, userAgent);
+      let isAllowedWithSlash = robots.isAllowed(urlWithSlash, userAgent);
+      
+      if (isAllowedWithSlash == null) {
+        isAllowedWithSlash = true;
+      }
+      
       // If the trailing slash version is explicitly disallowed, block it
       if (!isAllowedWithSlash) {
         isAllowed = false;
