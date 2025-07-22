@@ -1159,6 +1159,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
     }
 
+
     const pipeline = await Promise.race([
       startWebScraperPipeline({
         job,

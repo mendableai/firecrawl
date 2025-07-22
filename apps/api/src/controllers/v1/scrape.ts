@@ -74,6 +74,7 @@ export async function scrapeController(
         unnormalizedSourceURL: preNormalizedBody.url,
         bypassBilling: isDirectToBullMQ,
         zeroDataRetention,
+        teamFlags: req.acuc?.flags ?? null,
       },
       origin,
       integration: req.body.integration,

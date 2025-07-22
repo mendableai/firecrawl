@@ -11,6 +11,7 @@ import { redisEvictConnection } from "../../services/redis";
 import { extractLinks } from "../../lib/html-transformer";
 import { TimeoutSignal } from "../../controllers/v1/types";
 import { filterLinks } from "../../lib/crawler";
+import { fetchRobotsTxt, createRobotsChecker, isUrlAllowedByRobots } from "../../lib/robots-txt";
 
 export interface FilterResult {
   allowed: boolean;
@@ -304,23 +305,14 @@ export class WebCrawler {
   }
 
   public async getRobotsTxt(skipTlsVerification = false, abort?: AbortSignal): Promise<string> {
-    let extraArgs = {};
-    if (skipTlsVerification) {
-      extraArgs["httpsAgent"] = new https.Agent({
-        rejectUnauthorized: false,
-      });
-    }
-    const response = await axios.get(this.robotsTxtUrl, {
-      timeout: axiosTimeout,
-      signal: abort,
-      ...extraArgs,
-    });
-    return response.data;
+    return fetchRobotsTxt(this.initialUrl, skipTlsVerification, abort);
   }
 
   public importRobotsTxt(txt: string) {
     this.robotsTxt = txt;
-    this.robots = robotsParser(this.robotsTxtUrl, this.robotsTxt);
+    const checker = createRobotsChecker(this.initialUrl, txt);
+    this.robots = checker.robots;
+    this.robotsTxtUrl = checker.robotsTxtUrl;
     const delay = this.robots.getCrawlDelay("FireCrawlAgent") || this.robots.getCrawlDelay("FirecrawlAgent");
     this.robotsCrawlDelay = delay !== undefined ? delay : null;
   }
@@ -578,9 +570,7 @@ export class WebCrawler {
   ): boolean {
     return ignoreRobotsTxt
       ? true
-      : this.robots
-        ? ((this.robots.isAllowed(url, "FireCrawlAgent") || this.robots.isAllowed(url, "FirecrawlAgent")) ?? true)
-        : true;
+      : isUrlAllowedByRobots(url, this.robots);
   }
 
   private matchesExcludes(url: string, onlyDomains: boolean = false): boolean {
