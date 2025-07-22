@@ -98,6 +98,8 @@ const allowedKeywords = [
   "://meta.com/experiences",
   "://www.meta.com/experiences",
   "://creditcards.aa.com",
+  "://aa.org",
+  "://www.aa.org",
 ];
 
 export function decryptedBlocklist(list: string[]): string[] {
