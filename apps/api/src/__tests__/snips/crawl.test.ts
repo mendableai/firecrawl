@@ -13,11 +13,23 @@ beforeAll(async () => {
 
 describe("Crawl tests", () => {
     it.concurrent("works", async () => {
-        await crawl({
+        const results = await crawl({
             url: "https://firecrawl.dev",
             limit: 10,
         }, identity);
+
+        expect(results.completed).toBe(10);
     }, 10 * scrapeTimeout);
+
+    it.concurrent("works with ignoreSitemap: true", async () => {
+        const results = await crawl({
+            url: "https://firecrawl.dev",
+            limit: 10,
+            ignoreSitemap: true,
+        }, identity);
+
+        expect(results.completed).toBe(10);
+    });
 
     it.concurrent("filters URLs properly", async () => {
         const res = await crawl({
