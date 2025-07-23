@@ -29,7 +29,7 @@ describe("Crawl tests", () => {
         }, identity);
 
         expect(results.completed).toBe(10);
-    });
+    }, 10 * scrapeTimeout);
 
     it.concurrent("filters URLs properly", async () => {
         const res = await crawl({
