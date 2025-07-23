@@ -28,7 +28,7 @@ import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
 
 const { createBullBoard } = require("@bull-board/api");
-const { BullAdapter } = require("@bull-board/api/bullAdapter");
+const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { ExpressAdapter } = require("@bull-board/express");
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
@@ -55,12 +55,12 @@ serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [
-    new BullAdapter(getScrapeQueue()),
-    new BullAdapter(getExtractQueue()),
-    new BullAdapter(getGenerateLlmsTxtQueue()),
-    new BullAdapter(getDeepResearchQueue()),
-    new BullAdapter(getBillingQueue()),
-    new BullAdapter(getPrecrawlQueue()),
+    new BullMQAdapter(getScrapeQueue()),
+    new BullMQAdapter(getExtractQueue()),
+    new BullMQAdapter(getGenerateLlmsTxtQueue()),
+    new BullMQAdapter(getDeepResearchQueue()),
+    new BullMQAdapter(getBillingQueue()),
+    new BullMQAdapter(getPrecrawlQueue()),
   ],
   serverAdapter: serverAdapter,
 });
