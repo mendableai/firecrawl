@@ -18,6 +18,7 @@ dependencies = [
  "libc",
  "regex",
  "robotstxt",
+ "roxmltree",
  "serde",
  "serde_json",
  "url",
@@ -241,6 +242,12 @@ name = "robotstxt"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbc52377db80e3fec3a2c748ca603b8b6cacdd34ff89ff4b742a635361d4b4a7"
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "ryu"
