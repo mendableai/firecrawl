@@ -1016,8 +1016,8 @@ describe("Scrape tests", () => {
         timeout: scrapeTimeout,
       }, identity);
 
-      expect(response.success).toBe(true);
       expect(response.markdown).toBeDefined();
+      expect(response.metadata).toBeDefined();
     }, scrapeTimeout);
 
     it.concurrent("should work with __experimental_omceDomain and other experimental flags", async () => {
@@ -1028,8 +1028,8 @@ describe("Scrape tests", () => {
         timeout: scrapeTimeout,
       }, identity);
 
-      expect(response.success).toBe(true);
       expect(response.markdown).toBeDefined();
+      expect(response.metadata).toBeDefined();
     }, scrapeTimeout);
   });
 });
