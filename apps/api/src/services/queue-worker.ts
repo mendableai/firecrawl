@@ -1631,6 +1631,11 @@ app.listen(workerPort, () => {
 (async () => {
   async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
     if (args.failedReason === "job stalled more than allowable limit") {
+      const set = await redisEvictConnection.set("stalled-job-cleaner:" + args.jobId, "1", "EX", 60 * 60 * 24, "NX");
+      if (!set) {
+        return;
+      }
+
       let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener" });
       const job = await getScrapeQueue().getJob(args.jobId);
       if (job && job.data.crawl_id) {
@@ -1638,15 +1643,24 @@ app.listen(workerPort, () => {
         logger.warn("Job stalled more than allowable limit");
 
         const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
+        if (job.mode === "kickoff") {
+          await finishCrawlKickoff(job.data.crawl_id);
+          if (sc) {
+            await finishCrawlIfNeeded(job, sc);
+          }
+        } else {
+          const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
   
-        logger.debug("Declaring job as done...");
-        await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
-        await redisEvictConnection.srem(
-          "crawl:" + job.data.crawl_id + ":visited_unique",
-          normalizeURL(job.data.url, sc),
-        );
-  
-        await finishCrawlIfNeeded(job, sc);
+          logger.debug("Declaring job as done...");
+          await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
+          await redisEvictConnection.srem(
+            "crawl:" + job.data.crawl_id + ":visited_unique",
+            normalizeURL(job.data.url, sc),
+          );
+    
+          await finishCrawlIfNeeded(job, sc);
+        }
       } else {
         logger.warn("Job stalled more than allowable limit");
       }
