@@ -220,7 +220,10 @@ pub unsafe extern "C" fn filter_links(data: *const libc::c_char) -> *mut libc::c
 }
 
 fn _parse_sitemap_xml(xml_content: &str) -> Result<ParsedSitemap, Box<dyn std::error::Error>> {
-    let doc = roxmltree::Document::parse(xml_content)?;
+    let doc = roxmltree::Document::parse_with_options(
+        xml_content,
+        roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() },
+    )?;
     let root = doc.root_element();
     
     match root.tag_name().name() {

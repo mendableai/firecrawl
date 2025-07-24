@@ -109,6 +109,11 @@ export async function getLinksFromSitemap(
       try {
         parsed = await parseSitemapXml(content);
       } catch (parseError) {
+        logger.warn("Rust XML parsing failed, falling back to JavaScript logic", {
+          method: "getLinksFromSitemap",
+          sitemapUrl,
+          error: parseError.message,
+        });
         parsed = await parseStringPromise(content);
       }
       
