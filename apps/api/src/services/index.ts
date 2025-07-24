@@ -188,7 +188,20 @@ export function generateURLSplits(url: string): string[] {
   return [...new Set(urls.map(x => normalizeURLForIndex(x)))];
 }
 
-export function generateDomainSplits(hostname: string): string[] {
+export function generateDomainSplits(hostname: string, fakeDomain?: string): string[] {
+  if (fakeDomain) {
+    const parsed = psl.parse(hostname);
+    if (parsed === null) return [fakeDomain];
+    
+    const fakeParsed = psl.parse(fakeDomain);
+    if (fakeParsed === null) return [fakeDomain];
+    
+    if (parsed.subdomain) {
+      return [fakeParsed.domain, `${parsed.subdomain}.${fakeParsed.domain}`];
+    }
+    return [fakeParsed.domain];
+  }
+
   const parsed = psl.parse(hostname);
   if (parsed === null) {
     return [];

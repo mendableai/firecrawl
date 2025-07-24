@@ -392,6 +392,7 @@ const baseScrapeOptions = z
     __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
     __experimental_omce: z.boolean().default(false).optional(),
+    __experimental_omceDomain: z.string().optional(),
   })
   .strict(strictMessage);
 

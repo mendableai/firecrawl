@@ -1,5 +1,6 @@
 import { scrape, scrapeWithFailure, scrapeStatus, scrapeTimeout, indexCooldown, idmux, Identity, scrapeRaw } from "./lib";
 import crypto from "crypto";
+import { generateDomainSplits } from "../../services/index";
 
 let identity: Identity;
 
@@ -964,4 +965,71 @@ describe("Scrape tests", () => {
 
     expect(response.markdown).toContain("```json");
   }, scrapeTimeout);
+
+  describe("__experimental_omceDomain functionality", () => {
+    describe("generateDomainSplits unit tests", () => {
+      it("should return original domain splits when no fake domain provided", () => {
+        const result = generateDomainSplits("example.com");
+        expect(result).toEqual(["example.com"]);
+      });
+
+      it("should return fake domain when provided without subdomains", () => {
+        const result = generateDomainSplits("example.com", "fake.com");
+        expect(result).toEqual(["fake.com"]);
+      });
+
+      it("should preserve subdomain structure with fake domain", () => {
+        const result = generateDomainSplits("sub.example.com", "fake.com");
+        expect(result).toEqual(["fake.com", "sub.fake.com"]);
+      });
+
+      it("should handle multiple subdomains with fake domain", () => {
+        const result = generateDomainSplits("a.b.example.com", "fake.com");
+        expect(result).toEqual(["fake.com", "a.b.fake.com"]);
+      });
+
+      it("should handle www subdomain with fake domain", () => {
+        const result = generateDomainSplits("www.example.com", "fake.com");
+        expect(result).toEqual(["fake.com", "www.fake.com"]);
+      });
+
+      it("should return fake domain when original hostname is invalid", () => {
+        const result = generateDomainSplits("invalid", "fake.com");
+        expect(result).toEqual(["fake.com"]);
+      });
+
+      it("should return fake domain when fake domain is invalid", () => {
+        const result = generateDomainSplits("example.com", "invalid");
+        expect(result).toEqual(["invalid"]);
+      });
+
+      it("should handle complex subdomain structures", () => {
+        const result = generateDomainSplits("api.v1.service.example.com", "test.org");
+        expect(result).toEqual(["test.org", "api.v1.service.test.org"]);
+      });
+    });
+
+    it.concurrent("should accept __experimental_omceDomain flag in scrape request", async () => {
+      const response = await scrape({
+        url: "https://example.com",
+        __experimental_omceDomain: "fake-domain.com",
+        timeout: scrapeTimeout,
+      }, identity);
+
+      expect(response.success).toBe(true);
+      expect(response.markdown).toBeDefined();
+    }, scrapeTimeout);
+
+    it.concurrent("should work with __experimental_omceDomain and other experimental flags", async () => {
+      const response = await scrape({
+        url: "https://example.com",
+        __experimental_omceDomain: "test-domain.org",
+        __experimental_omce: true,
+        timeout: scrapeTimeout,
+      }, identity);
+
+      expect(response.success).toBe(true);
+      expect(response.markdown).toBeDefined();
+    }, scrapeTimeout);
+  });
 });
