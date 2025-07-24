@@ -1,7 +1,7 @@
 import express from "express";
 import { RateLimiterMode } from "../types";
 import expressWs from "express-ws";
-import { searchController } from "../controllers/v1/search";
+import { searchController } from "../controllers/v2/search";
 import {
   authMiddleware,
   checkCreditsMiddleware,
