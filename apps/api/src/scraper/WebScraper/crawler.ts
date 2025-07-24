@@ -145,37 +145,46 @@ export class WebCrawler {
       return { links: sitemapLinks.slice(0, limit), denialReasons };
     }
 
-    // NOTE: Temporarily disabling this until we fix the issue with it only returning 1 result sometimes.
-    // try {
-    //   const res = await filterLinks({
-    //     links: sitemapLinks,
-    //     limit: isFinite(limit) ? limit : undefined,
-    //     max_depth: maxDepth,
-    //     base_url: this.baseUrl,
-    //     initial_url: this.initialUrl,
-    //     regex_on_full_url: this.regexOnFullURL,
-    //     excludes: this.excludes,
-    //     includes: this.includes,
-    //     allow_backward_crawling: this.allowBackwardCrawling,
-    //     ignore_robots_txt: this.ignoreRobotsTxt,
-    //     robots_txt: this.robotsTxt,
-    //   });
+    try {
+      const res = await filterLinks({
+        links: sitemapLinks,
+        limit: isFinite(limit) ? limit : undefined,
+        max_depth: maxDepth,
+        base_url: this.baseUrl,
+        initial_url: this.initialUrl,
+        regex_on_full_url: this.regexOnFullURL,
+        excludes: this.excludes,
+        includes: this.includes,
+        allow_backward_crawling: this.allowBackwardCrawling,
+        ignore_robots_txt: this.ignoreRobotsTxt,
+        robots_txt: this.robotsTxt,
+      });
 
-    //   const fancyDenialReasons = new Map<string, string>();
-    //   res.denial_reasons.forEach((value, key) => {
-    //     fancyDenialReasons.set(key, DenialReason[value]);
-    //   });
+      const fancyDenialReasons = new Map<string, string>();
+      res.denial_reasons.forEach((value, key) => {
+        fancyDenialReasons.set(key, DenialReason[value]);
+      });
 
-    //   return {
-    //     links: res.links,
-    //     denialReasons: fancyDenialReasons,
-    //   };
-    // } catch (error) {
-    //   this.logger.error("Error filtering links in Rust, falling back to JS", {
-    //     error,
-    //     method: "filterLinks",
-    //   });
-    // }
+      if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+        for (const link of res.links) {
+          this.logger.debug(`${link} OK`);
+        }
+
+        for (const [link, reason] of fancyDenialReasons) {
+          this.logger.debug(`${link} ${reason}`);
+        }
+      }
+
+      return {
+        links: res.links,
+        denialReasons: fancyDenialReasons,
+      };
+    } catch (error) {
+      this.logger.error("Error filtering links in Rust, falling back to JS", {
+        error,
+        method: "filterLinks",
+      });
+    }
 
     const filteredLinks = sitemapLinks
       .filter((link) => {
