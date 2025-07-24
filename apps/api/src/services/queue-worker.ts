@@ -149,7 +149,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
       let lastUrls: string[] = [];
       const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
-      if (useDbAuthentication) {
+      if (useDbAuthentication && sc.scrapeOptions.formats.includes("changeTracking")) {
         lastUrls = (
           (
             await supabase_service.rpc("diff_get_last_crawl_urls", {
