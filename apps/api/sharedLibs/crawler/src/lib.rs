@@ -53,8 +53,25 @@ struct SitemapIndex {
     sitemap: Vec<SitemapEntry>,
 }
 
+#[derive(Serialize, Debug)]
+struct SitemapInstruction {
+    action: String,
+    urls: Vec<String>,
+    count: usize,
+}
+
+#[derive(Serialize, Debug)]
+struct SitemapProcessingResult {
+    instructions: Vec<SitemapInstruction>,
+    total_count: usize,
+}
+
 fn _is_file(url: &Url) -> bool {
     let file_extensions = vec![
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
         ".css",
         ".js",
         ".ico",
@@ -273,6 +290,102 @@ pub unsafe extern "C" fn parse_sitemap_xml(data: *const libc::c_char) -> *mut li
     CString::new(result).unwrap().into_raw()
 }
 
+fn _process_sitemap(xml_content: &str) -> Result<SitemapProcessingResult, Box<dyn std::error::Error>> {
+    let parsed = _parse_sitemap_xml(xml_content)?;
+    let mut instructions = Vec::new();
+    let mut total_count = 0;
+    
+    match parsed {
+        ParsedSitemap::SitemapIndex { sitemapindex } => {
+            let sitemap_urls: Vec<String> = sitemapindex.sitemap
+                .iter()
+                .filter_map(|sitemap| {
+                    if !sitemap.loc.is_empty() {
+                        Some(sitemap.loc[0].trim().to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            if !sitemap_urls.is_empty() {
+                instructions.push(SitemapInstruction {
+                    action: "recurse".to_string(),
+                    urls: sitemap_urls.clone(),
+                    count: sitemap_urls.len(),
+                });
+                total_count += sitemap_urls.len();
+            }
+        },
+        ParsedSitemap::Urlset { urlset } => {
+            let mut xml_sitemaps = Vec::new();
+            let mut valid_urls = Vec::new();
+            
+            for url_entry in urlset.url {
+                if !url_entry.loc.is_empty() {
+                    let url = url_entry.loc[0].trim();
+                    if url.to_lowercase().ends_with(".xml") {
+                        xml_sitemaps.push(url.to_string());
+                    } else if let Ok(parsed_url) = Url::parse(url) {
+                        if !_is_file(&parsed_url) {
+                            valid_urls.push(url.to_string());
+                        }
+                    }
+                }
+            }
+            
+            if !xml_sitemaps.is_empty() {
+                instructions.push(SitemapInstruction {
+                    action: "recurse".to_string(),
+                    urls: xml_sitemaps.clone(),
+                    count: xml_sitemaps.len(),
+                });
+                total_count += xml_sitemaps.len();
+            }
+            
+            if !valid_urls.is_empty() {
+                instructions.push(SitemapInstruction {
+                    action: "process".to_string(),
+                    urls: valid_urls.clone(),
+                    count: valid_urls.len(),
+                });
+                total_count += valid_urls.len();
+            }
+        }
+    }
+    
+    Ok(SitemapProcessingResult {
+        instructions,
+        total_count,
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn process_sitemap(data: *const libc::c_char) -> *mut libc::c_char {
+    let xml_content = match unsafe { CStr::from_ptr(data).to_str() } {
+        Ok(s) => s,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:Failed to parse input data as UTF-8 string: {}", e)).unwrap().into_raw();
+        }
+    };
+
+    let result = match _process_sitemap(xml_content) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
+        }
+    };
+
+    let result = match serde_json::to_string(&result) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:Failed to serialize result as JSON {}", e)).unwrap().into_raw();
+        }
+    };
+
+    CString::new(result).unwrap().into_raw()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,6 +461,53 @@ mod tests {
 
         let result = _parse_sitemap_xml(xml_content);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_process_sitemap_urlset() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/page1</loc>
+  </url>
+  <url>
+    <loc>https://example.com/sitemap2.xml</loc>
+  </url>
+  <url>
+    <loc>https://example.com/image.png</loc>
+  </url>
+</urlset>"#;
+
+        let result = _process_sitemap(xml_content).unwrap();
+        assert_eq!(result.instructions.len(), 2);
+        
+        let recurse_instruction = result.instructions.iter().find(|i| i.action == "recurse").unwrap();
+        assert_eq!(recurse_instruction.urls.len(), 1);
+        assert_eq!(recurse_instruction.urls[0], "https://example.com/sitemap2.xml");
+        
+        let process_instruction = result.instructions.iter().find(|i| i.action == "process").unwrap();
+        assert_eq!(process_instruction.urls.len(), 1);
+        assert_eq!(process_instruction.urls[0], "https://example.com/page1");
+    }
+
+    #[test]
+    fn test_process_sitemap_sitemapindex() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://example.com/sitemap1.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://example.com/sitemap2.xml</loc>
+  </sitemap>
+</sitemapindex>"#;
+
+        let result = _process_sitemap(xml_content).unwrap();
+        assert_eq!(result.instructions.len(), 1);
+        assert_eq!(result.instructions[0].action, "recurse");
+        assert_eq!(result.instructions[0].urls.len(), 2);
+        assert_eq!(result.instructions[0].urls[0], "https://example.com/sitemap1.xml");
+        assert_eq!(result.instructions[0].urls[1], "https://example.com/sitemap2.xml");
     }
 }
 
