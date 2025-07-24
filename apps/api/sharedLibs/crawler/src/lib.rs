@@ -165,11 +165,20 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
             }
 
             if !data.ignore_robots_txt {
-                let mut matcher = DefaultMatcher::default();
-                let allowed = matcher.allowed_by_robots(&data.robots_txt, vec![
-                    "FireCrawlAgent",
-                    "FirecrawlAgent",
-                ], url.as_str());
+                let robots_txt = data.robots_txt.clone();
+                let url_str = url.as_str().to_string();
+                let allowed = match std::panic::catch_unwind(|| {
+                    let mut matcher = DefaultMatcher::default();
+                    matcher.allowed_by_robots(&robots_txt, vec![
+                        "FireCrawlAgent",
+                        "FirecrawlAgent",
+                    ], &url_str)
+                }) {
+                    Ok(result) => result,
+                    Err(_) => {
+                        true
+                    }
+                };
 
                 if !allowed {
                     denial_reasons.insert(link.clone(), "ROBOTS_TXT".to_string());
@@ -508,6 +517,54 @@ mod tests {
         assert_eq!(result.instructions[0].urls.len(), 2);
         assert_eq!(result.instructions[0].urls[0], "https://example.com/sitemap1.xml");
         assert_eq!(result.instructions[0].urls[1], "https://example.com/sitemap2.xml");
+    }
+
+    #[test]
+    fn test_filter_links_with_invalid_robots_txt() {
+        let call = FilterLinksCall {
+            links: vec!["https://example.com/page1".to_string()],
+            limit: None,
+            max_depth: 3,
+            base_url: "https://example.com".to_string(),
+            initial_url: "https://example.com".to_string(),
+            regex_on_full_url: false,
+            excludes: vec![],
+            includes: vec![],
+            allow_backward_crawling: true,
+            ignore_robots_txt: false,
+            robots_txt: "<html><body>This is HTML, not robots.txt</body></html>".to_string(),
+        };
+
+        let result = _filter_links(call);
+        assert!(result.is_ok());
+        
+        let filter_result = result.unwrap();
+        assert_eq!(filter_result.links.len(), 1);
+        assert_eq!(filter_result.links[0], "https://example.com/page1");
+    }
+
+    #[test]
+    fn test_filter_links_with_valid_robots_txt() {
+        let call = FilterLinksCall {
+            links: vec!["https://example.com/admin".to_string()],
+            limit: None,
+            max_depth: 3,
+            base_url: "https://example.com".to_string(),
+            initial_url: "https://example.com".to_string(),
+            regex_on_full_url: false,
+            excludes: vec![],
+            includes: vec![],
+            allow_backward_crawling: true,
+            ignore_robots_txt: false,
+            robots_txt: "User-agent: *\nDisallow: /admin".to_string(),
+        };
+
+        let result = _filter_links(call);
+        assert!(result.is_ok());
+        
+        let filter_result = result.unwrap();
+        assert_eq!(filter_result.links.len(), 0);
+        assert!(filter_result.denial_reasons.contains_key("https://example.com/admin"));
     }
 }
 
