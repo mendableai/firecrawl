@@ -26,28 +26,29 @@ struct FilterLinksResult {
     denial_reasons: HashMap<String, String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct SitemapUrl {
     loc: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct SitemapEntry {
     loc: Vec<String>,
 }
 
-#[derive(Serialize)]
-struct ParsedSitemap {
-    urlset: Option<SitemapUrlset>,
-    sitemapindex: Option<SitemapIndex>,
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+enum ParsedSitemap {
+    Urlset { urlset: SitemapUrlset },
+    SitemapIndex { sitemapindex: SitemapIndex },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct SitemapUrlset {
     url: Vec<SitemapUrl>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct SitemapIndex {
     sitemap: Vec<SitemapEntry>,
 }
@@ -219,9 +220,8 @@ fn _parse_sitemap_xml(xml_content: &str) -> Result<ParsedSitemap, Box<dyn std::e
                 }
             }
             
-            Ok(ParsedSitemap {
-                urlset: None,
-                sitemapindex: Some(SitemapIndex { sitemap: sitemaps }),
+            Ok(ParsedSitemap::SitemapIndex { 
+                sitemapindex: SitemapIndex { sitemap: sitemaps } 
             })
         },
         "urlset" => {
@@ -237,9 +237,8 @@ fn _parse_sitemap_xml(xml_content: &str) -> Result<ParsedSitemap, Box<dyn std::e
                 }
             }
             
-            Ok(ParsedSitemap {
-                urlset: Some(SitemapUrlset { url: urls }),
-                sitemapindex: None,
+            Ok(ParsedSitemap::Urlset { 
+                urlset: SitemapUrlset { url: urls } 
             })
         },
         _ => {
@@ -272,6 +271,84 @@ pub unsafe extern "C" fn parse_sitemap_xml(data: *const libc::c_char) -> *mut li
     };
 
     CString::new(result).unwrap().into_raw()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_sitemap_xml_urlset() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/page1</loc>
+  </url>
+  <url>
+    <loc>https://example.com/page2</loc>
+  </url>
+</urlset>"#;
+
+        let result = _parse_sitemap_xml(xml_content).unwrap();
+        match result {
+            ParsedSitemap::Urlset { urlset } => {
+                assert_eq!(urlset.url.len(), 2);
+                assert_eq!(urlset.url[0].loc[0], "https://example.com/page1");
+                assert_eq!(urlset.url[1].loc[0], "https://example.com/page2");
+            }
+            _ => panic!("Expected Urlset variant"),
+        }
+    }
+
+    #[test]
+    fn test_parse_sitemap_xml_sitemapindex() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://example.com/sitemap1.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://example.com/sitemap2.xml</loc>
+  </sitemap>
+</sitemapindex>"#;
+
+        let result = _parse_sitemap_xml(xml_content).unwrap();
+        match result {
+            ParsedSitemap::SitemapIndex { sitemapindex } => {
+                assert_eq!(sitemapindex.sitemap.len(), 2);
+                assert_eq!(sitemapindex.sitemap[0].loc[0], "https://example.com/sitemap1.xml");
+                assert_eq!(sitemapindex.sitemap[1].loc[0], "https://example.com/sitemap2.xml");
+            }
+            _ => panic!("Expected SitemapIndex variant"),
+        }
+    }
+
+    #[test]
+    fn test_parse_sitemap_xml_invalid_root() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<invalid xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/page1</loc>
+  </url>
+</invalid>"#;
+
+        let result = _parse_sitemap_xml(xml_content);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid sitemap format"));
+    }
+
+    #[test]
+    fn test_parse_sitemap_xml_malformed() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/page1</loc>
+  </url>
+</urlset"#; // Missing closing >
+
+        let result = _parse_sitemap_xml(xml_content);
+        assert!(result.is_err());
+    }
 }
 
 /// Frees a string allocated in Rust-land.

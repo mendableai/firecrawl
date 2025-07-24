@@ -1,3 +1,4 @@
+import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
 import { scrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
@@ -94,7 +95,17 @@ export async function getLinksFromSitemap(
       }
     }
 
-    const parsed = await parseSitemapXml(content);
+    let parsed;
+    try {
+      parsed = await parseSitemapXml(content);
+    } catch (error) {
+      logger.warn("Rust sitemap parsing failed, falling back to JavaScript parser", {
+        method: "getLinksFromSitemap",
+        sitemapUrl,
+        error: error.message,
+      });
+      parsed = await parseStringPromise(content);
+    }
     const root = parsed.urlset || parsed.sitemapindex;
     let count = 0;
 
