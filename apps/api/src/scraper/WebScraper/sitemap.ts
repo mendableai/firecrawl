@@ -1,9 +1,9 @@
-import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
 import { scrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
+import { RustCrawler } from "../../lib/crawler";
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
   process.env.FIRE_ENGINE_BETA_URL !== undefined;
@@ -94,7 +94,8 @@ export async function getLinksFromSitemap(
       }
     }
 
-    const parsed = await parseStringPromise(content);
+    const crawler = await RustCrawler.getInstance();
+    const parsed = await crawler.parseSitemapXml(content);
     const root = parsed.urlset || parsed.sitemapindex;
     let count = 0;
 

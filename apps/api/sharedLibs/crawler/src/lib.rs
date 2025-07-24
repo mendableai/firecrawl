@@ -26,6 +26,32 @@ struct FilterLinksResult {
     denial_reasons: HashMap<String, String>,
 }
 
+#[derive(Serialize)]
+struct SitemapUrl {
+    loc: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct SitemapEntry {
+    loc: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct ParsedSitemap {
+    urlset: Option<SitemapUrlset>,
+    sitemapindex: Option<SitemapIndex>,
+}
+
+#[derive(Serialize)]
+struct SitemapUrlset {
+    url: Vec<SitemapUrl>,
+}
+
+#[derive(Serialize)]
+struct SitemapIndex {
+    sitemap: Vec<SitemapEntry>,
+}
+
 fn _is_file(url: &Url) -> bool {
     let file_extensions = vec![
         ".css",
@@ -159,6 +185,79 @@ pub unsafe extern "C" fn filter_links(data: *const libc::c_char) -> *mut libc::c
     };
 
     let result = match _filter_links(data) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
+        }
+    };
+
+    let result = match serde_json::to_string(&result) {
+        Ok(x) => x,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:Failed to serialize result as JSON {}", e)).unwrap().into_raw();
+        }
+    };
+
+    CString::new(result).unwrap().into_raw()
+}
+
+fn _parse_sitemap_xml(xml_content: &str) -> Result<ParsedSitemap, Box<dyn std::error::Error>> {
+    let doc = roxmltree::Document::parse(xml_content)?;
+    let root = doc.root_element();
+    
+    match root.tag_name().name() {
+        "sitemapindex" => {
+            let mut sitemaps = Vec::new();
+            
+            for sitemap_node in root.children().filter(|n| n.is_element() && n.tag_name().name() == "sitemap") {
+                if let Some(loc_node) = sitemap_node.children().find(|n| n.is_element() && n.tag_name().name() == "loc") {
+                    if let Some(loc_text) = loc_node.text() {
+                        sitemaps.push(SitemapEntry {
+                            loc: vec![loc_text.to_string()],
+                        });
+                    }
+                }
+            }
+            
+            Ok(ParsedSitemap {
+                urlset: None,
+                sitemapindex: Some(SitemapIndex { sitemap: sitemaps }),
+            })
+        },
+        "urlset" => {
+            let mut urls = Vec::new();
+            
+            for url_node in root.children().filter(|n| n.is_element() && n.tag_name().name() == "url") {
+                if let Some(loc_node) = url_node.children().find(|n| n.is_element() && n.tag_name().name() == "loc") {
+                    if let Some(loc_text) = loc_node.text() {
+                        urls.push(SitemapUrl {
+                            loc: vec![loc_text.to_string()],
+                        });
+                    }
+                }
+            }
+            
+            Ok(ParsedSitemap {
+                urlset: Some(SitemapUrlset { url: urls }),
+                sitemapindex: None,
+            })
+        },
+        _ => {
+            Err("Invalid sitemap format: root element must be 'sitemapindex' or 'urlset'".into())
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn parse_sitemap_xml(data: *const libc::c_char) -> *mut libc::c_char {
+    let xml_content = match unsafe { CStr::from_ptr(data).to_str() } {
+        Ok(s) => s,
+        Err(e) => {
+            return CString::new(format!("RUSTFC:ERROR:Failed to parse input data as UTF-8 string: {}", e)).unwrap().into_raw();
+        }
+    };
+
+    let result = match _parse_sitemap_xml(xml_content) {
         Ok(x) => x,
         Err(e) => {
             return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();

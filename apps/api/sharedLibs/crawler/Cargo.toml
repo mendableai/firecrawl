@@ -10,6 +10,7 @@ serde_json = "1.0"
 url = "2.5.4"
 regex = "1.11.1"
 robotstxt = "0.3.0"
+roxmltree = "0.20"
 
 [lib]
 crate-type = ["cdylib"]
