@@ -509,6 +509,7 @@ mod tests {
         assert_eq!(result.instructions[0].urls[0], "https://example.com/sitemap1.xml");
         assert_eq!(result.instructions[0].urls[1], "https://example.com/sitemap2.xml");
     }
+
 }
 
 /// Frees a string allocated in Rust-land.

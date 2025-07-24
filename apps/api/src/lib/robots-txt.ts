@@ -31,6 +31,16 @@ export async function fetchRobotsTxt(
     ...extraArgs,
   });
 
+  const contentType = (Object.entries(response.headers).find(
+    (x) => x[0].toLowerCase() === "content-type",
+  ) ?? [])[1] ?? "";
+
+  if (contentType.includes("text/html") || 
+      contentType.includes("application/json") ||
+      contentType.includes("application/xml")) {
+    return "";
+  }
+
   return response.data;
 }
 
