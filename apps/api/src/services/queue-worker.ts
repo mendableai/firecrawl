@@ -1636,8 +1636,8 @@ app.listen(workerPort, () => {
         return;
       }
 
-      let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener" });
       const job = await getScrapeQueue().getJob(args.jobId);
+      let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
       if (job && job.data.crawl_id) {
         logger = logger.child({ crawlId: job.data.crawl_id });
         logger.warn("Job stalled more than allowable limit");
