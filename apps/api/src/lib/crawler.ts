@@ -112,11 +112,14 @@ class RustCrawler {
   }
 }
 
-export { RustCrawler };
-
 export async function filterLinks(
   call: FilterLinksCall,
 ): Promise<FilterLinksResult> {
     const converter = await RustCrawler.getInstance();
     return await converter.filterLinks(call);
+}
+
+export async function parseSitemapXml(xmlContent: string): Promise<any> {
+    const converter = await RustCrawler.getInstance();
+    return await converter.parseSitemapXml(xmlContent);
 }
