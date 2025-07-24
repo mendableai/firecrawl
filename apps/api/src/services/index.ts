@@ -194,7 +194,7 @@ export function generateDomainSplits(hostname: string, fakeDomain?: string): str
     if (parsed === null) return [fakeDomain];
     
     const fakeParsed = psl.parse(fakeDomain);
-    if (fakeParsed === null) return [fakeDomain];
+    if (fakeParsed === null || fakeParsed.domain === null) return [fakeDomain];
     
     if (parsed.subdomain) {
       return [fakeParsed.domain, `${parsed.subdomain}.${fakeParsed.domain}`];
