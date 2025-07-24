@@ -1296,6 +1296,10 @@ export const searchRequestSchema = z
       .default(5),
     tbs: z.string().optional(),
     filter: z.string().optional(),
+    type: z.union([
+      z.enum(["web", "images", "news"]),
+      z.array(z.enum(["web", "images", "news"]))
+    ]).optional().default("web"),
     lang: z.string().optional().default("en"),
     country: z.string().optional().default("us"),
     location: z.string().optional(),
@@ -1343,6 +1347,11 @@ export type SearchResponse =
     success: true;
     warning?: string;
     data: Document[];
+  }
+  | {
+    success: true;
+    warning?: string;
+    data: import("../../lib/entities").SearchV2Response;
   };
 
 export type TokenUsage = {
