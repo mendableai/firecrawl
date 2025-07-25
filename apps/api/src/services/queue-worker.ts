@@ -1288,20 +1288,14 @@ async function processJob(job: Job & { id: string }, token: string) {
             job.data.crawlerOptions,
           );
 
-          const linksFromHtml = await crawler.extractLinksFromHTML(
-            rawHtml ?? "",
-            doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!,
-          );
-
-          console.log("lfh:", linksFromHtml);
-
           const links = await crawler.filterLinks(
-            linksFromHtml,
+            await crawler.extractLinksFromHTML(
+              rawHtml ?? "",
+              doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!,
+            ),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10,
           );
-
-          console.log(links);
 
           logger.debug("Discovered " + links.links.length + " links...", {
             linksLength: links.links.length,
