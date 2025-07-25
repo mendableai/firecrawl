@@ -651,7 +651,6 @@ const crawlerOptions = z
   .object({
     includePaths: z.string().array().default([]),
     excludePaths: z.string().array().default([]),
-    maxDepth: z.number().default(10), // default?
     maxDiscoveryDepth: z.number().optional(),
     limit: z.number().default(10000), // default?
     allowBackwardLinks: z.boolean().default(false), // DEPRECATED: use crawlEntireDomain
@@ -695,20 +694,6 @@ export const crawlRequestSchema = crawlerOptions
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
-  .refine(
-    (data) => {
-      try {
-        const urlDepth = getURLDepth(data.url);
-        return urlDepth <= data.maxDepth;
-      } catch (e) {
-        return false;
-      }
-    },
-    {
-      message: "URL depth exceeds the specified maxDepth",
-      path: ["url"]
-    }
-  )
   .transform((x) => {
     if (x.crawlEntireDomain !== undefined) {
       x.allowBackwardLinks = x.crawlEntireDomain;
@@ -1106,7 +1091,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     includes: x.includePaths,
     excludes: x.excludePaths,
     maxCrawledLinks: x.limit,
-    maxDepth: x.maxDepth,
+    maxDepth: 9999,
     limit: x.limit,
     generateImgAltText: false,
     allowBackwardCrawling: x.crawlEntireDomain ?? x.allowBackwardLinks,
@@ -1128,7 +1113,6 @@ export function toNewCrawlerOptions(x: any): CrawlerOptions {
     includePaths: x.includes,
     excludePaths: x.excludes,
     limit: x.limit,
-    maxDepth: x.maxDepth,
     allowBackwardLinks: x.allowBackwardCrawling,
     crawlEntireDomain: x.allowBackwardCrawling,
     allowExternalLinks: x.allowExternalContentLinks,
@@ -1152,7 +1136,6 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
       includePaths: x.includes,
       excludePaths: x.excludes,
       limit: x.maxCrawledLinks ?? x.limit,
-      maxDepth: x.maxDepth,
       allowBackwardLinks: x.allowBackwardCrawling,
       crawlEntireDomain: x.allowBackwardCrawling,
       allowExternalLinks: x.allowExternalContentLinks,
