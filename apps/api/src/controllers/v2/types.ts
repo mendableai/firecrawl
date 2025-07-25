@@ -10,6 +10,7 @@ import {
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
 import { getURLDepth } from "../../scraper/WebScraper/utils/maxDepthUtils";
+import { agentExtractModelValue, isAgentExtractModelValid } from "../v1/types";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -87,10 +88,6 @@ export const extractOptions = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
     schema: z.any().optional(),
-    systemPrompt: z
-      .string()
-      .max(10000)
-      .default(""),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
   })
@@ -100,6 +97,39 @@ export const extractOptions = z
     systemPrompt: "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
   }));
 
+export const extractOptionsWithAgent = z
+  .object({
+    mode: z.enum(["llm"]).default("llm"),
+    schema: z.any().optional(),
+    prompt: z.string().max(10000).optional(),
+    temperature: z.number().optional(),
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: isAgentExtractModelValid(data.agent?.model)
+      ? `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
+
+Key Instructions:
+1.  **Schema Adherence:** Populate the JSON object according to the structure defined in the schema.
+2.  **Content Grounding:** Extract information *only* if it is explicitly present in the provided markdown. Do NOT infer or fabricate information.
+3.  **Missing Information:** If a piece of information required by the schema cannot be found in the markdown, use \`null\` for that field's value.
+4.  **SmartScrape Recommendation:**
+    *   Assess if the *full* required data seems unavailable in the current markdown likely because:
+        - Content requires user interaction to reveal (e.g., clicking buttons, hovering, scrolling)
+        - Content uses pagination (e.g., "Load More" buttons, numbered pagination, infinite scroll)
+        - Content is dynamically loaded after user actions
+    *   If the content requires user interaction or pagination to be fully accessible, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
+    *   If the content is simply JavaScript rendered but doesn't require interaction, set \`shouldUseSmartscrape\` to \`false\`.
+5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`
+      : "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
@@ -364,7 +394,6 @@ const extractTransform = (obj) => {
       ...obj,
       extract: {
         prompt: obj.jsonOptions.prompt,
-        systemPrompt: obj.jsonOptions.systemPrompt,
         schema: obj.jsonOptions.schema,
         mode: "llm",
       },
