@@ -3,6 +3,7 @@ import { load } from "cheerio"; // rustified
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import robotsParser, { Robot } from "robots-parser";
+import psl from "psl";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
@@ -11,6 +12,7 @@ import { redisEvictConnection } from "../../services/redis";
 import { extractLinks } from "../../lib/html-transformer";
 import { TimeoutSignal } from "../../controllers/v1/types";
 import { filterLinks } from "../../lib/crawler";
+import { fetchRobotsTxt, createRobotsChecker, isUrlAllowedByRobots } from "../../lib/robots-txt";
 
 export interface FilterResult {
   allowed: boolean;
@@ -144,37 +146,46 @@ export class WebCrawler {
       return { links: sitemapLinks.slice(0, limit), denialReasons };
     }
 
-    // NOTE: Temporarily disabling this until we fix the issue with it only returning 1 result sometimes.
-    // try {
-    //   const res = await filterLinks({
-    //     links: sitemapLinks,
-    //     limit: isFinite(limit) ? limit : undefined,
-    //     max_depth: maxDepth,
-    //     base_url: this.baseUrl,
-    //     initial_url: this.initialUrl,
-    //     regex_on_full_url: this.regexOnFullURL,
-    //     excludes: this.excludes,
-    //     includes: this.includes,
-    //     allow_backward_crawling: this.allowBackwardCrawling,
-    //     ignore_robots_txt: this.ignoreRobotsTxt,
-    //     robots_txt: this.robotsTxt,
-    //   });
+    try {
+      const res = await filterLinks({
+        links: sitemapLinks,
+        limit: isFinite(limit) ? limit : undefined,
+        max_depth: maxDepth,
+        base_url: this.baseUrl,
+        initial_url: this.initialUrl,
+        regex_on_full_url: this.regexOnFullURL,
+        excludes: this.excludes,
+        includes: this.includes,
+        allow_backward_crawling: this.allowBackwardCrawling,
+        ignore_robots_txt: this.ignoreRobotsTxt,
+        robots_txt: this.robotsTxt,
+      });
 
-    //   const fancyDenialReasons = new Map<string, string>();
-    //   res.denial_reasons.forEach((value, key) => {
-    //     fancyDenialReasons.set(key, DenialReason[value]);
-    //   });
+      const fancyDenialReasons = new Map<string, string>();
+      res.denial_reasons.forEach((value, key) => {
+        fancyDenialReasons.set(key, DenialReason[value]);
+      });
 
-    //   return {
-    //     links: res.links,
-    //     denialReasons: fancyDenialReasons,
-    //   };
-    // } catch (error) {
-    //   this.logger.error("Error filtering links in Rust, falling back to JS", {
-    //     error,
-    //     method: "filterLinks",
-    //   });
-    // }
+      if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+        for (const link of res.links) {
+          this.logger.debug(`${link} OK`);
+        }
+
+        for (const [link, reason] of fancyDenialReasons) {
+          this.logger.debug(`${link} ${reason}`);
+        }
+      }
+
+      return {
+        links: res.links,
+        denialReasons: fancyDenialReasons,
+      };
+    } catch (error) {
+      this.logger.error("Error filtering links in Rust, falling back to JS", {
+        error,
+        method: "filterLinks",
+      });
+    }
 
     const filteredLinks = sitemapLinks
       .filter((link) => {
@@ -304,23 +315,14 @@ export class WebCrawler {
   }
 
   public async getRobotsTxt(skipTlsVerification = false, abort?: AbortSignal): Promise<string> {
-    let extraArgs = {};
-    if (skipTlsVerification) {
-      extraArgs["httpsAgent"] = new https.Agent({
-        rejectUnauthorized: false,
-      });
-    }
-    const response = await axios.get(this.robotsTxtUrl, {
-      timeout: axiosTimeout,
-      signal: abort,
-      ...extraArgs,
-    });
-    return response.data;
+    return fetchRobotsTxt(this.initialUrl, skipTlsVerification, abort);
   }
 
   public importRobotsTxt(txt: string) {
     this.robotsTxt = txt;
-    this.robots = robotsParser(this.robotsTxtUrl, this.robotsTxt);
+    const checker = createRobotsChecker(this.initialUrl, txt);
+    this.robots = checker.robots;
+    this.robotsTxtUrl = checker.robotsTxtUrl;
     const delay = this.robots.getCrawlDelay("FireCrawlAgent") || this.robots.getCrawlDelay("FirecrawlAgent");
     this.robotsCrawlDelay = delay !== undefined ? delay : null;
   }
@@ -578,9 +580,7 @@ export class WebCrawler {
   ): boolean {
     return ignoreRobotsTxt
       ? true
-      : this.robots
-        ? ((this.robots.isAllowed(url, "FireCrawlAgent") || this.robots.isAllowed(url, "FirecrawlAgent")) ?? true)
-        : true;
+      : isUrlAllowedByRobots(url, this.robots);
   }
 
   private matchesExcludes(url: string, onlyDomains: boolean = false): boolean {
@@ -654,9 +654,21 @@ export class WebCrawler {
   }
 
   private isSubdomain(link: string): boolean {
-    return new URL(link, this.baseUrl).hostname.endsWith(
-      "." + new URL(this.baseUrl).hostname.split(".").slice(-2).join("."),
-    );
+    try {
+      const linkUrl = new URL(link, this.baseUrl);
+      const baseUrl = new URL(this.baseUrl);
+      
+      const linkParsed = psl.parse(linkUrl.hostname);
+      const baseParsed = psl.parse(baseUrl.hostname);
+      
+      if (!linkParsed?.domain || !baseParsed?.domain) {
+        return false;
+      }
+      
+      return linkParsed.domain === baseParsed.domain;
+    } catch (error) {
+      return false;
+    }
   }
 
   public isFile(url: string): boolean {

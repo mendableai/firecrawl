@@ -95,7 +95,23 @@ export type AgentOptions = z.infer<typeof agentOptionsExtract>;
 export const extractOptions = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
-    schema: z.any().optional(),
+    schema: z
+      .any()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true; // Allow undefined schema
+          try {
+            const validate = ajv.compile(val);
+            return typeof validate === "function";
+          } catch (e) {
+            return false;
+          }
+        },
+        {
+          message: "Invalid JSON schema.",
+        },
+      ),
     systemPrompt: z
       .string()
       .max(10000)
@@ -112,7 +128,23 @@ export const extractOptions = z
 export const extractOptionsWithAgent = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
-    schema: z.any().optional(),
+    schema: z
+      .any()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true; // Allow undefined schema
+          try {
+            const validate = ajv.compile(val);
+            return typeof validate === "function";
+          } catch (e) {
+            return false;
+          }
+        },
+        {
+          message: "Invalid JSON schema.",
+        },
+      ),
     systemPrompt: z
       .string()
       .max(10000)
@@ -241,6 +273,13 @@ export const actionsSchema = z
     },
   );
 
+function transformIframeSelector(selector: string): string {
+  return selector.replace(/(?:^|[\s,])iframe(?=\s|$|[.#\[:,])/g, (match) => {
+    const prefix = match.match(/^[\s,]/)?.[0] || '';
+    return prefix + 'div[data-original-tag="iframe"]';
+  });
+}
+
 const baseScrapeOptions = z
   .object({
     formats: z
@@ -267,8 +306,12 @@ const baseScrapeOptions = z
         "The changeTracking format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
-    includeTags: z.string().array().optional(),
-    excludeTags: z.string().array().optional(),
+    includeTags: z.string().array()
+      .transform(tags => tags.map(transformIframeSelector))
+      .optional(),
+    excludeTags: z.string().array()
+      .transform(tags => tags.map(transformIframeSelector))
+      .optional(),
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
     waitFor: z
@@ -286,7 +329,23 @@ const baseScrapeOptions = z
     changeTrackingOptions: z
       .object({
         prompt: z.string().optional(),
-        schema: z.any().optional(),
+        schema: z
+          .any()
+          .optional()
+          .refine(
+            (val) => {
+              if (!val) return true; // Allow undefined schema
+              try {
+                const validate = ajv.compile(val);
+                return typeof validate === "function";
+              } catch (e) {
+                return false;
+              }
+            },
+            {
+              message: "Invalid JSON schema.",
+            },
+          ),
         modes: z.enum(["json", "git-diff"]).array().optional().default([]),
         tag: z.string().or(z.null()).default(null),
       })
@@ -344,6 +403,7 @@ const baseScrapeOptions = z
     __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
     __experimental_omce: z.boolean().default(false).optional(),
+    __experimental_omceDomain: z.string().optional(),
   })
   .strict(strictMessage);
 
@@ -697,8 +757,12 @@ export const crawlRequestSchema = crawlerOptions
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .refine(
     (data) => {
-      const urlDepth = getURLDepth(data.url);
-      return urlDepth <= data.maxDepth;
+      try {
+        const urlDepth = getURLDepth(data.url);
+        return urlDepth <= data.maxDepth;
+      } catch (e) {
+        return false;
+      }
     },
     {
       message: "URL depth exceeds the specified maxDepth",
@@ -1044,6 +1108,8 @@ export type TeamFlags = {
   forceZDR?: boolean;
   allowZDR?: boolean;
   zdrCost?: number;
+  checkRobotsOnScrape?: boolean;
+  allowTeammateInvites?: boolean;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;

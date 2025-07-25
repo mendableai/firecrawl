@@ -13,10 +13,22 @@ beforeAll(async () => {
 
 describe("Crawl tests", () => {
     it.concurrent("works", async () => {
-        await crawl({
+        const results = await crawl({
             url: "https://firecrawl.dev",
             limit: 10,
         }, identity);
+
+        expect(results.completed).toBe(10);
+    }, 10 * scrapeTimeout);
+
+    it.concurrent("works with ignoreSitemap: true", async () => {
+        const results = await crawl({
+            url: "https://firecrawl.dev",
+            limit: 10,
+            ignoreSitemap: true,
+        }, identity);
+
+        expect(results.completed).toBe(10);
     }, 10 * scrapeTimeout);
 
     it.concurrent("filters URLs properly", async () => {
@@ -194,6 +206,29 @@ describe("Crawl tests", () => {
             for (const page of res.data) {
                 const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
                 expect(url.hostname.endsWith("firecrawl.dev")).toBe(true);
+            }
+        }
+    }, 5 * scrapeTimeout);
+
+    it.concurrent("allowSubdomains correctly allows same registrable domain using PSL", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev",
+            allowSubdomains: true,
+            allowExternalLinks: false,
+            limit: 3,
+        }, identity);
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            expect(res.data.length).toBeGreaterThan(0);
+            for (const page of res.data) {
+                const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
+                const hostname = url.hostname;
+                
+                expect(
+                    hostname === "firecrawl.dev" || 
+                    hostname.endsWith(".firecrawl.dev")
+                ).toBe(true);
             }
         }
     }, 5 * scrapeTimeout);

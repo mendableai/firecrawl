@@ -13,7 +13,7 @@ import {
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-import { Job, Queue } from "bullmq";
+import { Job, Queue, QueueEvents } from "bullmq";
 import { logger as _logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
@@ -149,7 +149,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
       let lastUrls: string[] = [];
       const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
-      if (useDbAuthentication) {
+      if (useDbAuthentication && sc.scrapeOptions.formats.includes("changeTracking")) {
         lastUrls = (
           (
             await supabase_service.rpc("diff_get_last_crawl_urls", {
@@ -1159,6 +1159,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
     }
 
+
     const pipeline = await Promise.race([
       startWebScraperPipeline({
         job,
@@ -1628,6 +1629,47 @@ app.listen(workerPort, () => {
 });
 
 (async () => {
+  async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
+    if (args.failedReason === "job stalled more than allowable limit") {
+      const set = await redisEvictConnection.set("stalled-job-cleaner:" + args.jobId, "1", "EX", 60 * 60 * 24, "NX");
+      if (!set) {
+        return;
+      }
+
+      const job = await getScrapeQueue().getJob(args.jobId);
+      let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
+      if (job && job.data.crawl_id) {
+        logger = logger.child({ crawlId: job.data.crawl_id });
+        logger.warn("Job stalled more than allowable limit");
+
+        const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
+        if (job.mode === "kickoff") {
+          await finishCrawlKickoff(job.data.crawl_id);
+          if (sc) {
+            await finishCrawlIfNeeded(job, sc);
+          }
+        } else {
+          const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+  
+          logger.debug("Declaring job as done...");
+          await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
+          await redisEvictConnection.srem(
+            "crawl:" + job.data.crawl_id + ":visited_unique",
+            normalizeURL(job.data.url, sc),
+          );
+    
+          await finishCrawlIfNeeded(job, sc);
+        }
+      } else {
+        logger.warn("Job stalled more than allowable limit");
+      }
+    }
+  }
+
+  const scrapeQueueEvents = new QueueEvents(getScrapeQueue().name, { connection: redisConnection });
+  scrapeQueueEvents.on("failed", failedListener);
+
   await Promise.all([
     workerFun(getScrapeQueue(), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
@@ -1641,6 +1683,7 @@ app.listen(workerPort, () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
+  await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
   process.exit(0);
 })();

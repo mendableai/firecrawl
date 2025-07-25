@@ -5,7 +5,7 @@ import {
   RunWebScraperResult,
 } from "../types";
 import { billTeam } from "../services/billing/credit_billing";
-import { Document } from "../controllers/v1/types";
+import { Document, TeamFlags } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
 import { logger as _logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
