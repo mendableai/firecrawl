@@ -1011,7 +1011,7 @@ describe("Scrape tests", () => {
 
     it.concurrent("should accept __experimental_omceDomain flag in scrape request", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://httpbin.org/html",
         __experimental_omceDomain: "fake-domain.com",
         timeout: scrapeTimeout,
       }, identity);
@@ -1022,7 +1022,7 @@ describe("Scrape tests", () => {
 
     it.concurrent("should work with __experimental_omceDomain and other experimental flags", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://httpbin.org/html",
         __experimental_omceDomain: "test-domain.org",
         __experimental_omce: true,
         timeout: scrapeTimeout,
