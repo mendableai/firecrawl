@@ -159,7 +159,7 @@ async function scrapeX402SearchResult(
       costTracking,
     };
   } catch (error) {
-          logger.error(`Error in scrapeSearchResult [x402]: ${error}`, {
+    logger.error(`Error in scrapeSearchResult [x402]: ${error}`, {
       scrapeId: jobId,
       url: searchResult.url,
       teamId: options.teamId,
