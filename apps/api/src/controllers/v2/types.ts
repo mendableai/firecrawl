@@ -617,7 +617,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
-    ignoreInvalidURLs: z.boolean().default(false),
+    ignoreInvalidURLs: z.boolean().default(true),
     maxConcurrency: z.number().positive().int().optional(),
     zeroDataRetention: z.boolean().optional(),
   })
@@ -634,7 +634,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
-    ignoreInvalidURLs: z.boolean().default(false),
+    ignoreInvalidURLs: z.boolean().default(true),
     maxConcurrency: z.number().positive().int().optional(),
     zeroDataRetention: z.boolean().optional(),
   })
