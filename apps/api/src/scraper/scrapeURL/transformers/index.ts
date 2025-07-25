@@ -4,7 +4,7 @@ import { Document } from "../../../controllers/v1/types";
 import { htmlTransform } from "../lib/removeUnwantedElements";
 import { extractLinks } from "../lib/extractLinks";
 import { extractMetadata } from "../lib/extractMetadata";
-import { performLLMExtract } from "./llmExtract";
+import { performLLMExtract, performSummary } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { performAgent } from "./agent";
@@ -185,6 +185,17 @@ export function coerceFieldsToFormats(
     );
   }
 
+  if (!formats.has("summary") && document.summary !== undefined) {
+    meta.logger.warn(
+      "Removed summary from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
+    );
+    delete document.summary;
+  } else if (formats.has("summary") && document.summary === undefined) {
+    meta.logger.warn(
+      "Request had format summary, but there was no summary field in the result.",
+    );
+  }
+
   if (!formats.has("changeTracking") && document.changeTracking !== undefined) {
     meta.logger.warn(
       "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
@@ -230,6 +241,7 @@ export const transformerStack: Transformer[] = [
   uploadScreenshot,
   ...(useIndex ? [sendDocumentToIndex] : []),
   performLLMExtract,
+  performSummary,
   performAgent,
   deriveDiff,
   coerceFieldsToFormats,

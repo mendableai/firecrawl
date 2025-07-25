@@ -786,6 +786,62 @@ export async function performLLMExtract(
   return document;
 }
 
+export async function performSummary(
+  meta: Meta,
+  document: Document,
+): Promise<Document> {
+  if (meta.options.formats.includes("summary")) {
+    if (meta.internalOptions.zeroDataRetention) {
+      document.warning = "Summary mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
+      return document;
+    }
+
+    const generationOptions: GenerateCompletionsOptions = {
+      logger: meta.logger.child({
+        method: "performSummary/generateCompletions",
+      }),
+      options: {
+        mode: "llm",
+        systemPrompt: "You are a content summarization expert. Analyze the provided content and create a concise, informative summary that captures the key points, main ideas, and essential information. Focus on clarity and brevity while maintaining accuracy.",
+        prompt: "Summarize the main content and key points from this page.",
+      },
+      markdown: document.markdown,
+      previousWarning: document.warning,
+      model: getModel("gpt-4o-mini", "openai"),
+      retryModel: getModel("gpt-4o", "openai"),
+      costTrackingOptions: {
+        costTracking: meta.costTracking,
+        metadata: {
+          module: "scrapeURL",
+          method: "performSummary",
+        },
+      },
+    };
+
+    const {
+      extract: summaryText,
+      warning,
+      totalUsage,
+      model,
+    } = await generateCompletions(generationOptions);
+
+    if (warning) {
+      document.warning = warning + (document.warning ? " " + document.warning : "");
+    }
+
+    meta.logger.info("LLM summary generation token usage", {
+      model: model,
+      promptTokens: totalUsage.promptTokens,
+      completionTokens: totalUsage.completionTokens,
+      totalTokens: totalUsage.totalTokens,
+    });
+
+    document.summary = typeof summaryText === 'string' ? summaryText : String(summaryText || '');
+  }
+
+  return document;
+}
+
 export function removeDefaultProperty(schema: any): any {
   if (typeof schema !== "object" || schema === null) return schema;
 
