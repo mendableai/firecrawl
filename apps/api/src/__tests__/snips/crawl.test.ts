@@ -210,7 +210,7 @@ describe("Crawl tests", () => {
         }
     }, 5 * scrapeTimeout);
 
-    it.concurrent("allowSubdomains correctly rejects external domains with shared TLD", async () => {
+    it.concurrent("allowSubdomains correctly allows same registrable domain using PSL", async () => {
         const res = await crawl({
             url: "https://firecrawl.dev",
             allowSubdomains: true,
@@ -223,13 +223,12 @@ describe("Crawl tests", () => {
             expect(res.data.length).toBeGreaterThan(0);
             for (const page of res.data) {
                 const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
-                const hostname = url.hostname.replace(/^www\./, "");
-                const baseHostname = "firecrawl.dev";
+                const hostname = url.hostname;
                 
-                const isExactDomain = hostname === baseHostname;
-                const isTrueSubdomain = hostname !== baseHostname && hostname.endsWith("." + baseHostname);
-                
-                expect(isExactDomain || isTrueSubdomain).toBe(true);
+                expect(
+                    hostname === "firecrawl.dev" || 
+                    hostname.endsWith(".firecrawl.dev")
+                ).toBe(true);
             }
         }
     }, 5 * scrapeTimeout);

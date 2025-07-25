@@ -3,6 +3,7 @@ import { load } from "cheerio"; // rustified
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import robotsParser, { Robot } from "robots-parser";
+import psl from "psl";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
@@ -653,14 +654,21 @@ export class WebCrawler {
   }
 
   private isSubdomain(link: string): boolean {
-    const linkHostname = new URL(link, this.baseUrl).hostname;
-    const baseHostname = new URL(this.baseUrl).hostname;
-    
-    const normalizedLink = linkHostname.replace(/^www\./, "");
-    const normalizedBase = baseHostname.replace(/^www\./, "");
-    
-    return normalizedLink !== normalizedBase && 
-           normalizedLink.endsWith("." + normalizedBase);
+    try {
+      const linkUrl = new URL(link, this.baseUrl);
+      const baseUrl = new URL(this.baseUrl);
+      
+      const linkParsed = psl.parse(linkUrl.hostname);
+      const baseParsed = psl.parse(baseUrl.hostname);
+      
+      if (!linkParsed?.domain || !baseParsed?.domain) {
+        return false;
+      }
+      
+      return linkParsed.domain === baseParsed.domain;
+    } catch (error) {
+      return false;
+    }
   }
 
   public isFile(url: string): boolean {
