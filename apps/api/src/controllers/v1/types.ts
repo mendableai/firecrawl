@@ -36,6 +36,7 @@ export type Format =
   | "screenshot@fullPage"
   | "extract"
   | "json"
+  | "summary"
   | "changeTracking";
 
 export const url = z.preprocess(
@@ -292,6 +293,7 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
+        "summary",
         "changeTracking",
       ])
       .array()
@@ -830,6 +832,7 @@ export type Document = {
   screenshot?: string;
   extract?: any;
   json?: any;
+  summary?: string;
   warning?: string;
   actions?: {
     screenshots?: string[];
