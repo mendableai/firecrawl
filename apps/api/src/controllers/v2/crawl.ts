@@ -31,7 +31,7 @@ export async function crawlController(
   const id = uuidv4();
   const logger = _logger.child({
     crawlId: id,
-    module: "api/v1",
+    module: "api/v2",
     method: "crawlController",
     teamId: req.auth.team_id,
     zeroDataRetention,
