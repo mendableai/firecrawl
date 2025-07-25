@@ -283,6 +283,8 @@ export async function lockURL(
   sc: StoredCrawl,
   url: string,
 ): Promise<boolean> {
+  url = normalizeURL(url, sc);
+  
   if (typeof sc.crawlerOptions?.limit === "number") {
     if (
       (await redisEvictConnection.scard("crawl:" + id + ":visited_unique")) >=
