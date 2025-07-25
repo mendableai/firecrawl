@@ -81,7 +81,7 @@ export const url = z.preprocess(
 const strictMessage =
   "Unrecognized key in body -- please review the v1 API documentation for request body changes";
 
-export const agentExtractModelValue = 'fire-1'
+export const agentExtractModelValue = 'f0'
 export const isAgentExtractModelValid = (x: string | undefined) => x?.toLowerCase() === agentExtractModelValue;
 
 export const agentOptionsExtract = z
@@ -347,15 +347,6 @@ const baseScrapeOptions = z
   })
   .strict(strictMessage);
 
-const fire1Refine = (obj) => {
-  if (obj.agent?.model?.toLowerCase() === "fire-1" && obj.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
-    return false;
-  }
-  return true;
-}
-const fire1RefineOpts = {
-  message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
-};
 const waitForRefine = (obj) => {
   if (obj.waitFor && obj.timeout) {
     if (typeof obj.timeout !== 'number' || obj.timeout <= 0) {
@@ -460,7 +451,6 @@ export const scrapeOptions = baseScrapeOptions
     },
   )
   .refine(extractRefine, extractRefineOpts)
-  .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -543,10 +533,6 @@ export const extractV1Options = z
     extractRefineOpts,
   )
   .refine(
-    (x) => (x.scrapeOptions ? fire1Refine(x.scrapeOptions) : true),
-    fire1RefineOpts,
-  )
-  .refine(
     (x) => (x.scrapeOptions ? waitForRefine(x.scrapeOptions) : true),
     waitForRefineOpts,
   )
@@ -583,7 +569,6 @@ export const scrapeRequestSchema = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
-  .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -623,7 +608,6 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
-  .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -640,7 +624,6 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
-  .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -692,7 +675,6 @@ export const crawlRequestSchema = crawlerOptions
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
-  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => {
     if (x.crawlEntireDomain !== undefined) {
@@ -1314,7 +1296,6 @@ export const searchRequestSchema = z
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
-  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => ({
     ...x,
