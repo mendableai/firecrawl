@@ -558,7 +558,8 @@ export async function scrapeURL(
           ? Date.now() - new Date(data[0].created_at).getTime()
           : -1;
         
-        const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname);
+        const fakeDomain = meta.options.__experimental_omceDomain;
+        const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname, fakeDomain);
         const domainHash = hashURL(domainSplits.slice(-1)[0]);
 
         const out = {

@@ -39,7 +39,8 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             const urlObj = new URL(normalizedURL);
             const hostname = urlObj.hostname;
 
-            const domainSplits = generateDomainSplits(hostname);
+            const fakeDomain = meta.options.__experimental_omceDomain;
+            const domainSplits = generateDomainSplits(hostname, fakeDomain);
             const domainSplitsHash = domainSplits.map(split => hashURL(split));
 
             const indexId = crypto.randomUUID();
