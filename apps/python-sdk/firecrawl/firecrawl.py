@@ -636,6 +636,9 @@ class FirecrawlApp:
             location (Optional[str]): Geo-targeting
             timeout (Optional[int]): Request timeout in milliseconds
             scrape_options (Optional[ScrapeOptions]): Result scraping configuration
+            verify (Union[bool, str]): Whether to verify SSL certificates. Can be:
+                - False: Disable SSL verification (not recommended for production)
+                - str: Path to a CA_BUNDLE file or directory with certificates of trusted CAs.
             **kwargs: Additional keyword arguments for future compatibility
 
         Returns:
@@ -688,7 +691,8 @@ class FirecrawlApp:
         response = requests.post(
             f"{self.api_url}/v1/search",
             headers={"Authorization": f"Bearer {self.api_key}"},
-            json=params_dict
+            json=params_dict,
+            verify=kwargs.get('verify', False),
         )
 
         if response.status_code == 200:
