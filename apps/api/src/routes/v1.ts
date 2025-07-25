@@ -29,7 +29,7 @@ import { extractStatusController } from "../controllers/v1/extract-status";
 import { creditUsageController } from "../controllers/v1/credit-usage";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { searchController } from "../controllers/v1/search";
-import { searchWithWalletController } from "../controllers/v1/search-with-wallet";
+import { x402SearchController } from "../controllers/v1/x402-search";
 import { crawlErrorsController } from "../controllers/v1/crawl-errors";
 import { generateLLMsTextController } from "../controllers/v1/generate-llmstxt";
 import { generateLLMsTextStatusController } from "../controllers/v1/generate-llmstxt-status";
@@ -38,7 +38,6 @@ import { deepResearchStatusController } from "../controllers/v1/deep-research-st
 import { tokenUsageController } from "../controllers/v1/token-usage";
 import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
 import { generatePaymentHeaderController } from "../controllers/v1/generate-payment-header";
-import { protectedDataController } from '../controllers/v1/protected-data';
 import { paymentMiddleware } from "x402-express";
 
 function checkCreditsMiddleware(
@@ -178,28 +177,20 @@ expressWs(express());
 
 export const v1Router = express.Router();
 
-// First, configure the payment middleware with your routes
+// Configure payment middleware to enable micropayment-protected endpoints
+// This middleware handles payment verification and processing for premium API features
+// x402 payments protocol - https://github.com/coinbase/x402
 v1Router.use(
   paymentMiddleware(
     process.env.X402_PAY_TO_ADDRESS as `0x${string}` || "0x0000000000000000000000000000000000000000",
     {
-      // Define your routes and their payment requirements
-      "GET /protected-data": {
-        price: process.env.X402_ENDPOINT_PRICE_USD || "0.01",
-        network: "base-sepolia",
+      "POST /x402/search": {
+        price: process.env.X402_ENDPOINT_PRICE_USD as string,
+        network: process.env.X402_NETWORK as "base-sepolia" | "base" | "avalanche-fuji" | "avalanche" | "iotex",
         config: {
-          description: "Access premium protected data API",
+          description: "The search endpoint combines web search (SERP) with Firecrawl's scraping capabilities to return full page content for any query. Requires micropayment via X402 protocol",
           mimeType: "application/json",
-          maxTimeoutSeconds: 300,
-        }
-      },
-      "POST /search-with-wallet": {
-        price: process.env.X402_ENDPOINT_PRICE_USD || "0.01",
-        network: "base-sepolia",
-        config: {
-          description: "Search with wallet payment API",
-          mimeType: "application/json",
-          maxTimeoutSeconds: 300,
+          maxTimeoutSeconds: 120,
         }
       },
     },
@@ -381,13 +372,8 @@ v1Router.post(
   wrap(generatePaymentHeaderController),
 );
 
-v1Router.get("/protected-data",
-  authMiddleware(RateLimiterMode.Search),
-  wrap(protectedDataController),
-);
-
 v1Router.post(
-  "/search-with-wallet",
+  "/x402/search",
   authMiddleware(RateLimiterMode.Search),
-  wrap(searchWithWalletController),
+  wrap(x402SearchController),
 );

@@ -139,20 +139,13 @@ export async function generatePaymentHeaderController(req: RequestWithAuth<{}, G
       const baseUrl = `${protocol}://${host}`;
 
       switch (resource) {
-        case 'search-with-wallet':
-          return {
-            ...baseRequirements,
-            maxAmountRequired: "10000", // $0.001 in USDC base units - matches X402_SEARCH_WALLET_PRICE_USD
-            resource: `${baseUrl}/v1/search-with-wallet`,
-            description: "Search with wallet payment API",
-          };
-        case 'protected-data':
+        case 'x402/search':
         default:
           return {
             ...baseRequirements,
-            maxAmountRequired: "10000", // $0.01 in USDC base units - matches X402_ENDPOINT_PRICE_USD
-            resource: `${baseUrl}/v1/protected-data`,
-            description: "Access to protected data API",
+            maxAmountRequired: "10000", // $0.01 in USDC base units - matches X402_ENDPOINT_PRICE_USD ("20000" => $0.02)
+            resource: `${baseUrl}/v1/x402/search`,
+            description: "x402 search payment API",
           };
       }
     };
@@ -194,7 +187,7 @@ export async function generatePaymentHeaderController(req: RequestWithAuth<{}, G
         notes: {
           timeSensitive: `This payment header is time-sensitive (valid for ${duration})`,
           walletRequirement: "Make sure your wallet has USDC on Base Sepolia",
-          paymentAmount: resource === 'search-with-wallet' ? "1000 USDC (in base units = $0.001)" : "10000 USDC (in base units = $0.01)",
+          paymentAmount: "10000 USDC (in base units = $0.01)", // 20000 USDC (in base units = $0.02)
           generatedAt: new Date().toISOString(),
           team_id: req.auth?.team_id || req.acuc?.team_id
         }

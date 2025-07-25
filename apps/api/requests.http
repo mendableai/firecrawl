@@ -132,32 +132,6 @@ content-type: application/json
 GET {{baseUrl}}/v1/crawl/active HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-
-
-### Generate Payment Header for Protected Data
-# Generate a payment header for accessing protected data
-# Duration options: 1h, 1d, 1w
-# @name generatePaymentHeaderProtected
-POST {{baseUrl}}/v1/generate-payment-header HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "privateKey": "0X-PRIVATE-KEY-PRIVATE-KEY",
-  "duration": "1h",
-  "resource": "protected-data"
-}
-
-### Test Protected Data with Generated Payment Header
-# Use the payment header from the previous request
-@paymentHeaderProtected = {{generatePaymentHeaderProtected.response.body.data.paymentHeader}}
-# @name testProtectedData
-GET {{baseUrl}}/v1/protected-data HTTP/1.1
-Accept: application/json
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-X-Payment: {{paymentHeaderProtected}}
-
-
 ### Generate Payment Header for Search with Wallet
 # Generate a payment header for search with wallet
 # Duration options: 1h, 1d, 1w
@@ -169,18 +143,18 @@ content-type: application/json
 {
   "privateKey": "0X-PRIVATE-KEY-PRIVATE-KEY",
   "duration": "1h",
-  "resource": "search-with-wallet"
+  "resource": "x402/search"
 }
 
 ### Search with Wallet
 @paymentHeaderSearch = {{generatePaymentHeaderSearch.response.body.data.paymentHeader}}
 # @name searchWithWallet
-POST {{baseUrl}}/v1/search-with-wallet HTTP/1.1
+POST {{baseUrl}}/v1/x402/search HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 X-Payment: {{paymentHeaderSearch}}
 
 {
-  "query": "firecrawl",
+  "query": "Premier League fixtures for the 2025/26 season",
   "limit": 2
 }

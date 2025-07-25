@@ -10,12 +10,16 @@ import {
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
+import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { Mode } from "../../types";
 import { getScrapeQueue } from "../../services/queue-service";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
+import * as Sentry from "@sentry/node";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { logger as _logger } from "../../lib/logger";
+import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { supabase_service } from "../../services/supabase";
 
@@ -25,7 +29,7 @@ interface DocumentWithCostTracking {
 }
 
 // Used for deep research
-export async function searchAndScrapeSearchResultWithWallet(
+export async function searchAndScrapeX402SearchResult(
   query: string,
   options: {
     teamId: string;
@@ -33,6 +37,7 @@ export async function searchAndScrapeSearchResultWithWallet(
     timeout: number;
     scrapeOptions: ScrapeOptions;
   },
+  logger: Logger,
   flags: TeamFlags,
 ): Promise<DocumentWithCostTracking[]> {
   try {
@@ -43,13 +48,14 @@ export async function searchAndScrapeSearchResultWithWallet(
 
     const documentsWithCostTracking = await Promise.all(
       searchResults.map((result) =>
-        scrapeSearchResultWithWallet(
+        scrapeX402SearchResult(
           {
             url: result.url,
             title: result.title,
             description: result.description,
           },
           options,
+          logger,
           flags,
         ),
       ),
@@ -61,7 +67,7 @@ export async function searchAndScrapeSearchResultWithWallet(
   }
 }
 
-async function scrapeSearchResultWithWallet(
+async function scrapeX402SearchResult(
   searchResult: { url: string; title: string; description: string },
   options: {
     teamId: string;
@@ -69,6 +75,7 @@ async function scrapeSearchResultWithWallet(
     timeout: number;
     scrapeOptions: ScrapeOptions;
   },
+  logger: Logger,
   flags: TeamFlags,
   directToBullMQ: boolean = false,
   isSearchPreview: boolean = false,
@@ -87,6 +94,13 @@ async function scrapeSearchResultWithWallet(
     if (isUrlBlocked(searchResult.url, flags)) {
       throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
     }
+    logger.info("Adding scrape job [x402]", {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+      origin: options.origin,
+      zeroDataRetention,
+    });
     await addScrapeJob(
       {
         url: searchResult.url,
@@ -110,6 +124,12 @@ async function scrapeSearchResultWithWallet(
 
     const doc: Document = await waitForJob(jobId, options.timeout);
     
+            logger.info("Scrape job [x402] completed", {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+      origin: options.origin,
+    });
     await getScrapeQueue().remove(jobId);
 
     const document = {
@@ -139,6 +159,11 @@ async function scrapeSearchResultWithWallet(
       costTracking,
     };
   } catch (error) {
+          logger.error(`Error in scrapeSearchResult [x402]: ${error}`, {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+    });
 
     let statusCode = 0;
     if (error?.message?.includes("Could not scrape url")) {
@@ -163,28 +188,50 @@ async function scrapeSearchResultWithWallet(
   }
 }
 
-export async function searchWithWalletController(
+export async function x402SearchController(
   req: RequestWithAuth<{}, SearchResponse, SearchRequest>,
   res: Response<SearchResponse & { request?: any; }>,
 ) {
+  const jobId = uuidv4();
+  let logger = _logger.child({
+    jobId,
+    teamId: req.auth.team_id,
+    module: "x402-search",
+    method: "x402SearchController",
+    zeroDataRetention: req.acuc?.flags?.forceZDR,
+  });
+  
   if (req.acuc?.flags?.forceZDR) {
-    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search-with-wallet. Please contact support@firecrawl.com to unblock this feature." });
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on x402/search. Please contact support@firecrawl.com to unblock this feature." });
   }
-
+  
   let responseData: SearchResponse = {
     success: true,
     data: [],
   };
   const startTime = new Date().getTime();
   const isSearchPreview = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
-
+  
   try {
     req.body = searchRequestSchema.parse(req.body);
+    
+    // IMPORTANT NOTE: Force results to be at most 10 even if a larger limit is requested
+    const MAX_RESULTS = 10;
+    if (req.body.limit > MAX_RESULTS) {
+      req.body.limit = MAX_RESULTS;
+    }
+
+    logger = logger.child({
+      query: req.body.query,
+      origin: req.body.origin,
+    });
 
     let limit = req.body.limit;
 
     // Buffer results by 50% to account for filtered URLs
     const num_results_buffer = Math.floor(limit * 2);
+
+    logger.info("Searching [x402] for results");
 
     let searchResults = await search({
       query: req.body.query,
@@ -203,12 +250,17 @@ export async function searchWithWalletController(
       );
     }
 
+          logger.info("Searching [x402] completed", {
+      num_results: searchResults.length,
+    });
+
     // Filter blocked URLs early to avoid unnecessary billing
     if (searchResults.length > limit) {
       searchResults = searchResults.slice(0, limit);
     }
 
     if (searchResults.length === 0) {
+      logger.info("No search [x402] results found");
       responseData.warning = "No search results found";
     } else if (
       !req.body.scrapeOptions.formats ||
@@ -220,8 +272,9 @@ export async function searchWithWalletController(
         description: r.description,
       })) as Document[];
     } else {
+      logger.info("Scraping search [x402] results");
       const scrapePromises = searchResults.map((result) =>
-        scrapeSearchResultWithWallet(
+        scrapeX402SearchResult(
           result,
           {
             teamId: req.auth.team_id,
@@ -229,6 +282,7 @@ export async function searchWithWalletController(
             timeout: req.body.timeout,
             scrapeOptions: req.body.scrapeOptions,
           },
+          logger,
           req.acuc?.flags ?? null,
           (req.acuc?.price_credits ?? 0) <= 3000,
           isSearchPreview,
@@ -236,12 +290,19 @@ export async function searchWithWalletController(
       );
 
       const docsWithCostTracking = await Promise.all(scrapePromises);
+      logger.info("Scraping [x402] completed", {
+        num_docs: docsWithCostTracking.length,
+      });
 
       const docs = docsWithCostTracking.map(item => item.document);
       const filteredDocs = docs.filter(
         (doc) =>
           doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
       );
+
+      logger.info("Filtering [x402] completed", {
+        num_docs: filteredDocs.length,
+      });
 
       if (filteredDocs.length === 0) {
         responseData.data = docs;
@@ -250,6 +311,39 @@ export async function searchWithWalletController(
         responseData.data = filteredDocs;
       }
     }
+
+    const endTime = new Date().getTime();
+    const timeTakenInSeconds = (endTime - startTime) / 1000;
+
+    logger.info("Logging job", {
+      num_docs: responseData.data.length,
+      time_taken: timeTakenInSeconds,
+    });
+
+    logJob(
+      {
+        job_id: jobId,
+        success: true,
+        num_docs: responseData.data.length,
+        docs: responseData.data,
+        time_taken: timeTakenInSeconds,
+        team_id: req.auth.team_id,
+        mode: "x402-search",
+        url: req.body.query,
+        scrapeOptions: req.body.scrapeOptions,
+        crawlerOptions: {
+          ...req.body,
+          query: undefined,
+          scrapeOptions: undefined,
+        },
+        origin: req.body.origin,
+        integration: req.body.integration,
+        credits_billed: 0,
+        zeroDataRetention: false, // not supported
+      },
+      false,
+      isSearchPreview,
+    );
 
     return res.status(200).json(responseData);
   } catch (error) {
@@ -263,6 +357,8 @@ export async function searchWithWalletController(
       });
     }
 
+    Sentry.captureException(error);
+    logger.error("Unhandled error occurred in search [x402]", { error });
     return res.status(500).json({
       success: false,
       error: error.message,
