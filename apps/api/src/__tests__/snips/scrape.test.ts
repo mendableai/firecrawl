@@ -978,18 +978,18 @@ describe("Scrape tests", () => {
         expect(result).toEqual(["fake.com"]);
       });
 
-      it("should use fake domain directly without preserving subdomains", () => {
-        const result = generateDomainSplits("sub.example.com", "fake.com");
-        expect(result).toEqual(["fake.com"]);
+      it("should apply same splitting logic to fake domain with subdomains", () => {
+        const result = generateDomainSplits("sub.example.com", "api.fake.com");
+        expect(result).toEqual(["fake.com", "api.fake.com"]);
       });
 
-      it("should use fake domain directly for multiple subdomains", () => {
-        const result = generateDomainSplits("a.b.example.com", "fake.com");
-        expect(result).toEqual(["fake.com"]);
+      it("should apply splitting logic to fake domain with multiple subdomains", () => {
+        const result = generateDomainSplits("a.b.example.com", "x.y.fake.org");
+        expect(result).toEqual(["fake.org", "y.fake.org", "x.y.fake.org"]);
       });
 
-      it("should use fake domain directly for www subdomain", () => {
-        const result = generateDomainSplits("www.example.com", "fake.com");
+      it("should handle www subdomain in fake domain correctly", () => {
+        const result = generateDomainSplits("www.example.com", "www.fake.com");
         expect(result).toEqual(["fake.com"]);
       });
 
@@ -1004,8 +1004,8 @@ describe("Scrape tests", () => {
       });
 
       it("should handle complex subdomain structures with fake domain", () => {
-        const result = generateDomainSplits("api.v1.service.example.com", "test.org");
-        expect(result).toEqual(["test.org"]);
+        const result = generateDomainSplits("api.v1.service.example.com", "sub.test.org");
+        expect(result).toEqual(["test.org", "sub.test.org"]);
       });
     });
 

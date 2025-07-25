@@ -196,7 +196,17 @@ export function generateDomainSplits(hostname: string, fakeDomain?: string): str
     const fakeParsed = psl.parse(fakeDomain);
     if (fakeParsed === null || fakeParsed.domain === null) return [fakeDomain];
     
-    return [fakeParsed.domain];
+    const subdomains: string[] = (fakeParsed.subdomain ?? "").split(".").filter(x => x !== "");
+    if (subdomains.length === 1 && subdomains[0] === "www") {
+      return [fakeParsed.domain];
+    }
+
+    const domains: string[] = [];
+    for (let i = subdomains.length; i >= 0; i--) {
+      domains.push(subdomains.slice(i).concat([fakeParsed.domain]).join("."));
+    }
+
+    return domains;
   }
 
   const parsed = psl.parse(hostname);
