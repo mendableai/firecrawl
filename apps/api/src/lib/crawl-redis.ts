@@ -212,7 +212,7 @@ export async function getCrawlJobCount(id: string): Promise<number> {
 
 export function normalizeURL(url: string, sc: StoredCrawl): string {
   const urlO = new URL(url);
-  if (!sc.crawlerOptions || sc.crawlerOptions.ignoreQueryParameters) {
+  if (!sc || !sc.crawlerOptions || sc.crawlerOptions.ignoreQueryParameters) {
     urlO.search = "";
   }
   urlO.hash = "";
