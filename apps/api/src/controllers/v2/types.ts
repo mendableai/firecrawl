@@ -332,7 +332,7 @@ const baseScrapeOptions = z
         languages: z.string().array().optional(),
       })
       .optional(),
-    skipTlsVerification: z.boolean().default(false),
+    skipTlsVerification: z.boolean().default(true),
     removeBase64Images: z.boolean().default(true),
     fastMode: z.boolean().default(false),
     useMock: z.string().optional(),
