@@ -10,6 +10,7 @@ import {
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
 import { getURLDepth } from "../../scraper/WebScraper/utils/maxDepthUtils";
+import { agentExtractModelValue, isAgentExtractModelValid } from "../v1/types";
 
 export enum IntegrationEnum {
   DIFY = "dify",
