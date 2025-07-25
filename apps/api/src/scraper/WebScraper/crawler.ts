@@ -653,9 +653,14 @@ export class WebCrawler {
   }
 
   private isSubdomain(link: string): boolean {
-    return new URL(link, this.baseUrl).hostname.endsWith(
-      "." + new URL(this.baseUrl).hostname.split(".").slice(-2).join("."),
-    );
+    const linkHostname = new URL(link, this.baseUrl).hostname;
+    const baseHostname = new URL(this.baseUrl).hostname;
+    
+    const normalizedLink = linkHostname.replace(/^www\./, "");
+    const normalizedBase = baseHostname.replace(/^www\./, "");
+    
+    return normalizedLink !== normalizedBase && 
+           normalizedLink.endsWith("." + normalizedBase);
   }
 
   public isFile(url: string): boolean {

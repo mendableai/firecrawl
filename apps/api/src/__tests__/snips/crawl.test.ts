@@ -210,6 +210,31 @@ describe("Crawl tests", () => {
         }
     }, 5 * scrapeTimeout);
 
+    it.concurrent("allowSubdomains correctly rejects external domains with shared TLD", async () => {
+        const res = await crawl({
+            url: "https://example.co.uk",
+            allowSubdomains: true,
+            allowExternalLinks: false,
+            limit: 5,
+        }, identity);
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            for (const page of res.data) {
+                const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
+                const hostname = url.hostname.replace(/^www\./, "");
+                const baseHostname = "example.co.uk";
+                
+                const isExactDomain = hostname === baseHostname;
+                const isTrueSubdomain = hostname !== baseHostname && hostname.endsWith("." + baseHostname);
+                
+                expect(isExactDomain || isTrueSubdomain).toBe(true);
+                
+                expect(hostname.endsWith(".co.uk") && !hostname.endsWith("." + baseHostname) && hostname !== baseHostname).toBe(false);
+            }
+        }
+    }, 5 * scrapeTimeout);
+
     it.concurrent("rejects crawl when URL depth exceeds maxDepth", async () => {
         const response = await crawlStart({
             url: "https://firecrawl.dev/blog/category/deep/nested/path",
