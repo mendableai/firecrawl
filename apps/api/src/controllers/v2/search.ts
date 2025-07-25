@@ -161,7 +161,7 @@ export async function searchController(
   let logger = _logger.child({
     jobId,
     teamId: req.auth.team_id,
-    module: "search",
+    module: "api/v2",
     method: "searchController",
     zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
