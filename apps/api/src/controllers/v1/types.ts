@@ -36,6 +36,7 @@ export type Format =
   | "screenshot@fullPage"
   | "extract"
   | "json"
+  | "summary"
   | "changeTracking";
 
 export const url = z.preprocess(
@@ -285,6 +286,7 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
+        "summary",
         "changeTracking",
       ])
       .array()
@@ -422,15 +424,18 @@ const extractRefine = (obj) => {
   const hasExtractOptions = obj.extract !== undefined;
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
+  const hasSummaryFormat = obj.formats?.includes("summary");
+  const hasSummaryOptions = obj.extract !== undefined || obj.jsonOptions !== undefined;
   return (
     ((hasExtractFormat && hasExtractOptions) ||
       (!hasExtractFormat && !hasExtractOptions)) &&
-    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
+    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions)) &&
+    ((hasSummaryFormat && hasSummaryOptions) || (!hasSummaryFormat && !hasSummaryOptions))
   );
 };
 const extractRefineOpts = {
   message:
-    "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
+    "When 'extract', 'json', or 'summary' format is specified, corresponding options must be provided, and vice versa",
 };
 const extractTransform = (obj) => {
   // Handle timeout
@@ -818,6 +823,7 @@ export type Document = {
   screenshot?: string;
   extract?: any;
   json?: any;
+  summary?: string;
   warning?: string;
   actions?: {
     screenshots?: string[];
