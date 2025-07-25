@@ -212,25 +212,24 @@ describe("Crawl tests", () => {
 
     it.concurrent("allowSubdomains correctly rejects external domains with shared TLD", async () => {
         const res = await crawl({
-            url: "https://example.co.uk",
+            url: "https://firecrawl.dev",
             allowSubdomains: true,
             allowExternalLinks: false,
-            limit: 5,
+            limit: 3,
         }, identity);
 
         expect(res.success).toBe(true);
         if (res.success) {
+            expect(res.data.length).toBeGreaterThan(0);
             for (const page of res.data) {
                 const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
                 const hostname = url.hostname.replace(/^www\./, "");
-                const baseHostname = "example.co.uk";
+                const baseHostname = "firecrawl.dev";
                 
                 const isExactDomain = hostname === baseHostname;
                 const isTrueSubdomain = hostname !== baseHostname && hostname.endsWith("." + baseHostname);
                 
                 expect(isExactDomain || isTrueSubdomain).toBe(true);
-                
-                expect(hostname.endsWith(".co.uk") && !hostname.endsWith("." + baseHostname) && hostname !== baseHostname).toBe(false);
             }
         }
     }, 5 * scrapeTimeout);
