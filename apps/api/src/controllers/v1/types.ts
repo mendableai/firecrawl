@@ -1030,7 +1030,6 @@ export type AuthCreditUsageChunk = {
     extractStatus: number;
     extractAgentPreview?: number;
     scrapeAgentPreview?: number;
-    generatePaymentHeader?: number;
   };
   concurrency: number;
   flags: TeamFlags;
@@ -1377,34 +1376,3 @@ export class TimeoutSignal extends Error {
     super("Operation timed out");
   }
 }
-
-// Generate Payment Header Request
-export const generatePaymentHeaderRequestSchema = z.object({
-  privateKey: z.string(),
-  duration: z.enum(['1h', '1d', '1w']),
-  resource: z.string().optional().default('protected-data'),
-})
-
-export type GeneratePaymentHeaderRequest = z.infer<typeof generatePaymentHeaderRequestSchema>;
-export type GeneratePaymentHeaderRequestInput = z.input<typeof generatePaymentHeaderRequestSchema>;
-
-export type GeneratePaymentData = {
-  paymentHeader: string;
-  walletAddress: string;
-  duration: string;
-  validUntil: string;
-  notes: {
-    timeSensitive: string;
-    walletRequirement: string;
-    paymentAmount: string;
-    generatedAt: string;
-    [key: string]: string;
-  }
-}
-
-export type GeneratePaymentHeaderResponse =
-  | ErrorResponse
-  | {
-    success: true;
-    data: GeneratePaymentData;
-  };

@@ -132,22 +132,8 @@ content-type: application/json
 GET {{baseUrl}}/v1/crawl/active HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-### Generate Payment Header for Search with Wallet
-# Generate a payment header for search with wallet
-# Duration options: 1h, 1d, 1w
-# @name generatePaymentHeaderSearch
-POST {{baseUrl}}/v1/generate-payment-header HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "privateKey": "0X-PRIVATE-KEY-PRIVATE-KEY",
-  "duration": "1h",
-  "resource": "x402/search"
-}
-
 ### Search with Wallet
-@paymentHeaderSearch = {{generatePaymentHeaderSearch.response.body.data.paymentHeader}}
+@paymentHeaderSearch = 'EXAMPLE-PAYMENT-HEADER'
 # @name searchWithWallet
 POST {{baseUrl}}/v1/x402/search HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}

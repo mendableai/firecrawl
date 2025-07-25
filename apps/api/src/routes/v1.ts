@@ -37,7 +37,6 @@ import { deepResearchController } from "../controllers/v1/deep-research";
 import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 import { tokenUsageController } from "../controllers/v1/token-usage";
 import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
-import { generatePaymentHeaderController } from "../controllers/v1/generate-payment-header";
 import { paymentMiddleware } from "x402-express";
 
 function checkCreditsMiddleware(
@@ -364,12 +363,6 @@ v1Router.get(
   "/team/token-usage",
   authMiddleware(RateLimiterMode.ExtractStatus),
   wrap(tokenUsageController),
-);
-
-v1Router.post(
-  "/generate-payment-header",
-  authMiddleware(RateLimiterMode.GeneratePaymentHeader),
-  wrap(generatePaymentHeaderController),
 );
 
 v1Router.post(
