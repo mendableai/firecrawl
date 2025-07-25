@@ -2,6 +2,7 @@ import express from "express";
 import { RateLimiterMode } from "../types";
 import expressWs from "express-ws";
 import { searchController } from "../controllers/v2/search";
+import { scrapeController } from "../controllers/v2/scrape";
 import { batchScrapeController } from "../controllers/v2/batch-scrape";
 import { crawlStatusController } from "../controllers/v2/crawl-status";
 import {
@@ -19,6 +20,13 @@ v2Router.post(
   authMiddleware(RateLimiterMode.Search),
   checkCreditsMiddleware(),
   wrap(searchController),
+);
+
+v2Router.post(
+  "/scrape",
+  authMiddleware(RateLimiterMode.Scrape),
+  checkCreditsMiddleware(),
+  wrap(scrapeController),
 );
 
 v2Router.post(
