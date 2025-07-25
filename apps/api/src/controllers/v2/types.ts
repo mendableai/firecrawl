@@ -321,18 +321,15 @@ const extractRefine = (obj) => {
   const hasExtractOptions = obj.extract !== undefined;
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
-  const hasSummaryFormat = obj.formats?.includes("summary");
-  const hasSummaryOptions = obj.extract !== undefined || obj.jsonOptions !== undefined;
   return (
     ((hasExtractFormat && hasExtractOptions) ||
       (!hasExtractFormat && !hasExtractOptions)) &&
-    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions)) &&
-    ((hasSummaryFormat && hasSummaryOptions) || (!hasSummaryFormat && !hasSummaryOptions))
+    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
   );
 };
 const extractRefineOpts = {
   message:
-    "When 'extract', 'json', or 'summary' format is specified, corresponding options must be provided, and vice versa",
+    "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
 };
 const extractTransform = (obj) => {
   // Handle timeout

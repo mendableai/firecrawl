@@ -796,21 +796,14 @@ export async function performSummary(
       return document;
     }
 
-    const extractOptions = meta.options.extract || meta.options.jsonOptions;
-    if (!extractOptions) {
-      document.warning = "Summary format requires extract or jsonOptions to be provided." + (document.warning ? " " + document.warning : "")
-      return document;
-    }
-
     const generationOptions: GenerateCompletionsOptions = {
       logger: meta.logger.child({
         method: "performSummary/generateCompletions",
       }),
       options: {
-        ...extractOptions,
         mode: "llm",
-        systemPrompt: extractOptions.systemPrompt || "You are a content summarization expert. Analyze the provided content and create a concise, informative summary that captures the key points, main ideas, and essential information. Focus on clarity and brevity while maintaining accuracy.",
-        prompt: extractOptions.prompt || "Summarize the main content and key points from this page.",
+        systemPrompt: "You are a content summarization expert. Analyze the provided content and create a concise, informative summary that captures the key points, main ideas, and essential information. Focus on clarity and brevity while maintaining accuracy.",
+        prompt: "Summarize the main content and key points from this page.",
       },
       markdown: document.markdown,
       previousWarning: document.warning,
