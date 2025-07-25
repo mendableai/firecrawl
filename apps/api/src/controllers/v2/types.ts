@@ -81,12 +81,10 @@ export const url = z.preprocess(
 const strictMessage =
   "Unrecognized key in body -- please review the v1 API documentation for request body changes";
 
-export const agentExtractModelValue = 'f0'
-export const isAgentExtractModelValid = (x: string | undefined) => x?.toLowerCase() === agentExtractModelValue;
 
 export const agentOptionsExtract = z
   .object({
-    model: z.string().default(agentExtractModelValue),
+    model: z.string().default('f0'),
   })
   .strict(strictMessage);
 
@@ -121,7 +119,7 @@ export const extractOptionsWithAgent = z
     temperature: z.number().optional(),
     agent: z
       .object({
-        model: z.string().default(agentExtractModelValue),
+        model: z.string().default('f0'),
         prompt: z.string().optional(),
       })
       .optional(),
@@ -129,7 +127,7 @@ export const extractOptionsWithAgent = z
   .strict(strictMessage)
   .transform((data) => ({
     ...data,
-    systemPrompt: isAgentExtractModelValid(data.agent?.model)
+    systemPrompt: data.agent?.model?.toLowerCase() === 'f0'
       ? `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
 
 Key Instructions:
@@ -428,7 +426,7 @@ export const scrapeOptions = baseScrapeOptions
   .extend({
     agent: z
       .object({
-        model: z.string().default(agentExtractModelValue),
+        model: z.string().default('f0'),
         prompt: z.string().optional(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
@@ -554,7 +552,7 @@ export const scrapeRequestSchema = baseScrapeOptions
     url,
     agent: z
       .object({
-        model: z.string().default(agentExtractModelValue),
+        model: z.string().default('f0'),
         prompt: z.string().optional(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
