@@ -1644,7 +1644,7 @@ app.listen(workerPort, () => {
 
         const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
-        if (job.mode === "kickoff") {
+        if (job.data.mode === "kickoff") {
           await finishCrawlKickoff(job.data.crawl_id);
           if (sc) {
             await finishCrawlIfNeeded(job, sc);
