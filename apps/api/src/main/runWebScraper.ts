@@ -38,7 +38,11 @@ export async function startWebScraperPipeline({
           }
         : {}),
     },
-    internalOptions: job.data.internalOptions,
+    internalOptions: {
+      crawlId: job.data.crawl_id,
+      teamId: job.data.team_id,
+      ...job.data.internalOptions,
+    },
     // onSuccess: (result, mode) => {
     //   logger.debug(`🐂 Job completed ${job.id}`);
     //   saveJob(job, result, token, mode);
