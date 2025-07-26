@@ -503,6 +503,8 @@ export async function scrapeURL(
 ): Promise<ScrapeUrlResponse> {
   const meta = await buildMetaObject(id, url, options, internalOptions, costTracking);
 
+  meta.logger.info("scrapeURL entered");
+
   if (meta.rewrittenUrl) {
     meta.logger.info("Rewriting URL");
   }
@@ -532,6 +534,8 @@ export async function scrapeURL(
     }
   }
 
+  meta.logger.info("Pre-recording frequency");
+  
   const shouldRecordFrequency = useIndex
     && meta.options.storeInCache
     && !meta.internalOptions.zeroDataRetention
