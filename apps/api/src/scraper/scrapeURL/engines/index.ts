@@ -121,6 +121,7 @@ export type EngineScrapeResult = {
   contentType?: string;
 
   proxyUsed: "basic" | "stealth";
+  usedDDAntibot?: boolean;
 };
 
 const engineHandlers: {

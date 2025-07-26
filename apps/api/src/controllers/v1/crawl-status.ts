@@ -389,9 +389,15 @@ export async function crawlStatusController(
         const job = jobs[ii];
         const state = await job.getState();
 
-        if (state === "failed" || state === "active") {
+        if (state === "active") {
           // TODO: why is active here? race condition? shouldn't matter tho - MG
           continue;
+        }
+        
+        if (state === "failed") {
+          if (!(job.returnvalue && job.returnvalue.metadata)) {
+            continue;
+          }
         }
 
         if (job.returnvalue === undefined || job.returnvalue === null) {
@@ -413,9 +419,16 @@ export async function crawlStatusController(
   } else {
     doneJobs = (
       await Promise.all(
-        (await getJobs(doneJobsOrder)).map(async (x) =>
-          (await x.getState()) === "failed" ? null : x,
-        ),
+        (await getJobs(doneJobsOrder)).map(async (x) => {
+          const state = await x.getState();
+          if (state === "failed") {
+            if (x.returnvalue && x.returnvalue.metadata) {
+              return x;
+            }
+            return null;
+          }
+          return x;
+        }),
       )
     ).filter((x) => x !== null) as PseudoJob<any>[];
   }
