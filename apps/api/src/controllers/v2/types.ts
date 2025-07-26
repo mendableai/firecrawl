@@ -269,6 +269,7 @@ const baseScrapeOptions = z
     // @deprecated
     __searchPreviewToken: z.string().optional(),
     __experimental_omce: z.boolean().default(false).optional(),
+    __experimental_omceDomain: z.string().optional(),
   })
   .strict(strictMessage);
 
