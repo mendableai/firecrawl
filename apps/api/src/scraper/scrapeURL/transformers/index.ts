@@ -208,7 +208,7 @@ export function coerceFieldsToFormats(
   }
 
   if (document.changeTracking && 
-      (!meta.options.changeTrackingOptions?.modes?.includes("git-diff")) && 
+      (!meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking")?.modes?.includes("git-diff")) && 
       document.changeTracking.diff !== undefined) {
     meta.logger.warn(
       "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
@@ -217,7 +217,7 @@ export function coerceFieldsToFormats(
   }
   
   if (document.changeTracking && 
-      (!meta.options.changeTrackingOptions?.modes?.includes("json")) && 
+      (!meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking")?.modes?.includes("json")) && 
       document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",

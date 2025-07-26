@@ -180,7 +180,17 @@ export const jsonFormatWithOptions = z.object({
   prompt: z.string().max(10000).optional(),
 });
 
-export type JsonFormatWithOptions = z.output<typeof jsonFormatWithOptions>
+export type JsonFormatWithOptions = z.output<typeof jsonFormatWithOptions>;
+
+export const changeTrackingFormatWithOptions = z.object({
+  type: z.literal("changeTracking"),
+  prompt: z.string().optional(),
+  schema: z.any().optional(),
+  modes: z.enum(["json", "git-diff"]).array().optional().default([]),
+  tag: z.string().or(z.null()).default(null),
+});
+
+export type ChangeTrackingFormatWithOptions = z.output<typeof changeTrackingFormatWithOptions>;
 
 const baseScrapeOptions = z
   .object({
@@ -198,6 +208,7 @@ const baseScrapeOptions = z
           "changeTracking",
         ]),
         jsonFormatWithOptions,
+        changeTrackingFormatWithOptions,
       ])
       .array()
       .optional()
@@ -223,14 +234,6 @@ const baseScrapeOptions = z
       .safe()
       .max(60000)
       .default(0),
-    changeTrackingOptions: z
-      .object({
-        prompt: z.string().optional(),
-        schema: z.any().optional(),
-        modes: z.enum(["json", "git-diff"]).array().optional().default([]),
-        tag: z.string().or(z.null()).default(null),
-      })
-      .optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -282,28 +285,10 @@ const waitForRefineOpts = {
   message: "waitFor must not exceed half of timeout",
   path: ["waitFor"],
 };
-const extractRefine = (obj) => {
-  const hasExtractFormat = obj.formats?.includes("extract");
-  const hasExtractOptions = obj.extract !== undefined;
-  const hasJsonFormat = obj.formats?.includes("json");
-  const hasJsonOptions = obj.jsonOptions !== undefined;
-  return (
-    ((hasExtractFormat && hasExtractOptions) ||
-      (!hasExtractFormat && !hasExtractOptions)) &&
-    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
-  );
-};
-const extractRefineOpts = {
-  message:
-    "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
-};
 const extractTransform = (obj) => {
   // Handle timeout
   if (
-    (obj.formats?.includes("extract") ||
-      obj.extract ||
-      obj.formats?.includes("json") ||
-      obj.jsonOptions) &&
+    (obj.formats.find(x => typeof x === "object" && x.type === "json")) &&
     obj.timeout === 30000
   ) {
     obj = { ...obj, timeout: 60000 };
@@ -320,22 +305,6 @@ const extractTransform = (obj) => {
 
   if ((obj.proxy === "stealth" || obj.proxy === "auto") && obj.timeout === 30000) {
     obj = { ...obj, timeout: 120000 };
-  }
-
-  if (obj.formats?.includes("json")) {
-    obj.formats.push("extract");
-  }
-
-  // Convert JSON options to extract options if needed
-  if (obj.jsonOptions && !obj.extract) {
-    obj = {
-      ...obj,
-      extract: {
-        prompt: obj.jsonOptions.prompt,
-        schema: obj.jsonOptions.schema,
-        mode: "llm",
-      },
-    };
   }
 
   return obj;
@@ -355,7 +324,6 @@ export const scrapeOptions = baseScrapeOptions
       message: `Total wait time (waitFor + wait actions) cannot exceed ${ACTIONS_MAX_WAIT_TIME} seconds`,
     },
   )
-  .refine(extractRefine, extractRefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -424,10 +392,6 @@ export const extractV1Options = z
     allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
   }))
   .refine(
-    (x) => (x.scrapeOptions ? extractRefine(x.scrapeOptions) : true),
-    extractRefineOpts,
-  )
-  .refine(
     (x) => (x.scrapeOptions ? waitForRefine(x.scrapeOptions) : true),
     waitForRefineOpts,
   )
@@ -453,7 +417,6 @@ export const scrapeRequestSchema = baseScrapeOptions
     zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
-  .refine(extractRefine, extractRefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -492,7 +455,6 @@ export const batchScrapeRequestSchema = baseScrapeOptions
     zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
-  .refine(extractRefine, extractRefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -508,7 +470,6 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
     zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
-  .refine(extractRefine, extractRefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransform);
 
@@ -559,7 +520,6 @@ export const crawlRequestSchema = crawlerOptions
     zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
-  .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => {
     if (x.crawlEntireDomain !== undefined) {
@@ -1123,6 +1083,16 @@ export function fromV1ScrapeOptions(
           return fmt;
         } else if (x === "json") {
           return null;
+        } else if (x === "changeTracking") {
+          const opts = v1ScrapeOptions.changeTrackingOptions!;
+          const fmt: ChangeTrackingFormatWithOptions = {
+            type: "changeTracking",
+            modes: opts.modes,
+            tag: opts.tag,
+            schema: opts.schema,
+            prompt: opts.prompt,
+          };
+          return fmt;
         } else {
           return x;
         }
@@ -1230,7 +1200,6 @@ export const searchRequestSchema = z
   .strict(
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
-  .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => ({
     ...x,
