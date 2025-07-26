@@ -120,6 +120,8 @@ export function coerceFieldsToFormats(
   document: Document,
 ): Document {
   const formats = new Set(meta.options.formats);
+  const hasJson = meta.options.formats.find(x => typeof x === "object" && x.type === "json");
+  const hasChangeTracking = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
 
   if (!formats.has("markdown") && document.markdown !== undefined) {
     delete document.markdown;
@@ -174,14 +176,14 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("extract") && (document.extract !== undefined || document.json !== undefined)) {
+  if (!hasJson && (document.extract !== undefined || document.json !== undefined)) {
     meta.logger.warn(
-      "Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      "Removed json from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
     delete document.extract;
-  } else if (formats.has("extract") && document.extract === undefined && document.json === undefined) {
+  } else if (hasJson && document.extract === undefined && document.json === undefined) {
     meta.logger.warn(
-      "Request had format extract, but there was no extract field in the result.",
+      "Request had format json, but there was no json field in the result.",
     );
   }
 
@@ -196,7 +198,7 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("changeTracking") && document.changeTracking !== undefined) {
+  if (!hasChangeTracking && document.changeTracking !== undefined) {
     meta.logger.warn(
       "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
@@ -208,7 +210,7 @@ export function coerceFieldsToFormats(
   }
 
   if (document.changeTracking && 
-      (!meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking")?.modes?.includes("git-diff")) && 
+      (!hasChangeTracking?.modes?.includes("git-diff")) && 
       document.changeTracking.diff !== undefined) {
     meta.logger.warn(
       "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
@@ -217,7 +219,7 @@ export function coerceFieldsToFormats(
   }
   
   if (document.changeTracking && 
-      (!meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking")?.modes?.includes("json")) && 
+      (!hasChangeTracking?.modes?.includes("json")) && 
       document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",

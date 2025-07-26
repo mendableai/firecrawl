@@ -197,6 +197,7 @@ export function calculateCost(
       input_cost: 0.55,
       output_cost: 2.19,
     },
+    "google/gemini-2.5-flash-lite": { input_cost: 0.1, output_cost: 0.4 },
   };
   let modelCost = modelCosts[model] || { input_cost: 0, output_cost: 0 };
   //gemini-2.5-pro-exp-03-25 pricing
@@ -680,8 +681,10 @@ export async function performLLMExtract(
       // model: getModel("qwen-qwq-32b", "groq"),
       // model: getModel("gemini-2.0-flash", "google"),
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      model: getModel("gpt-4o-mini", "openai"),
-      retryModel: getModel("gpt-4o", "openai"),
+      // model: getModel("gpt-4o-mini", "openai"),
+      // retryModel: getModel("gpt-4o", "openai"),
+      model: getModel("gemini-2.5-flash-lite", "vertex"),
+      retryModel: getModel("gpt-4o-mini", "openai"),
       costTrackingOptions: {
         costTracking: meta.costTracking,
         metadata: {
