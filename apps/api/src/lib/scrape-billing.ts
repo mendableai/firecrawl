@@ -1,5 +1,5 @@
 import { InternalOptions } from "src/scraper/scrapeURL";
-import { Document, ScrapeOptions, TeamFlags } from "../controllers/v1/types";
+import { Document, ScrapeOptions, TeamFlags } from "../controllers/v2/types";
 import { CostTracking } from "./extract/extraction-service";
 
 const creditsPerPDFPage = 1;
@@ -12,7 +12,7 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
         // Failure -- check cost tracking if FIRE-1
         let creditsToBeBilled = 0;
 
-        if (options.agent?.model?.toLowerCase() === "fire-1" || options.extract?.agent?.model?.toLowerCase() === "fire-1" || options.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+        if (internalOptions.v1Agent?.model?.toLowerCase() === "fire-1" || internalOptions.v1JSONAgent?.model?.toLowerCase() === "fire-1") {
             creditsToBeBilled = Math.ceil((costTrackingJSON.totalCost ?? 1) * 1800);
         } 
     
@@ -20,11 +20,11 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
     }
 
     let creditsToBeBilled = 1; // Assuming 1 credit per document
-    if ((options.extract && options.formats?.includes("extract")) || (options.formats?.includes("changeTracking") && options.changeTrackingOptions?.modes?.includes("json"))) {
+    if (options.formats.find(x => typeof x === "object" && x.type === "json") || (options.formats.find(x => typeof x === "object" && x.type === "changeTracking")?.modes?.includes("json"))) {
         creditsToBeBilled = 5;
     }
 
-    if (options.agent?.model?.toLowerCase() === "fire-1" || options.extract?.agent?.model?.toLowerCase() === "fire-1" || options.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+    if (internalOptions.v1Agent?.model === "fire-1" || internalOptions.v1JSONAgent?.model?.toLowerCase() === "fire-1") {
         creditsToBeBilled = Math.ceil((costTrackingJSON.totalCost ?? 1) * 1800);
     } 
 
