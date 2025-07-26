@@ -92,6 +92,11 @@ function buildFeatureFlags(
     flags.add("screenshot@fullScreen");
   }
 
+  const screenshotFormat = options.formats.find(x => typeof x === "object" && x.type === "screenshot");
+  if (screenshotFormat) {
+    flags.add(screenshotFormat.fullPage ? "screenshot@fullScreen" : "screenshot");
+  }
+
   if (options.waitFor !== 0) {
     flags.add("waitFor");
   }

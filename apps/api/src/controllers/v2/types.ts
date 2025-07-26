@@ -192,6 +192,14 @@ export const changeTrackingFormatWithOptions = z.object({
 
 export type ChangeTrackingFormatWithOptions = z.output<typeof changeTrackingFormatWithOptions>;
 
+export const screenshotFormatWithOptions = z.object({
+  type: z.literal("screenshot"),
+  fullPage: z.boolean().default(false),
+  quality: z.number().min(1).max(100).optional(),
+});
+
+export type ScreenshotFormatWithOptions = z.output<typeof screenshotFormatWithOptions>;
+
 const baseScrapeOptions = z
   .object({
     formats: z
@@ -209,10 +217,19 @@ const baseScrapeOptions = z
         ]),
         jsonFormatWithOptions,
         changeTrackingFormatWithOptions,
+        screenshotFormatWithOptions,
       ])
       .array()
       .optional()
       .default(["markdown"])
+      .refine(
+        (x) => {
+          const hasStringScreenshot = x.includes("screenshot") || x.includes("screenshot@fullPage");
+          const hasObjectScreenshot = x.find(f => typeof f === "object" && f.type === "screenshot");
+          return !(hasStringScreenshot && hasObjectScreenshot);
+        },
+        "You may only specify either string screenshot formats or object screenshot format, not both",
+      )
       .refine(
         (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
         "You may only specify either screenshot or screenshot@fullPage",

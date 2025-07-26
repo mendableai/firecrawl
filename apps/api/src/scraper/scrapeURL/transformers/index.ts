@@ -122,6 +122,7 @@ export function coerceFieldsToFormats(
   const formats = new Set(meta.options.formats);
   const hasJson = meta.options.formats.find(x => typeof x === "object" && x.type === "json");
   const hasChangeTracking = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
+  const hasScreenshot = meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot");
 
   if (!formats.has("markdown") && document.markdown !== undefined) {
     delete document.markdown;
@@ -150,6 +151,7 @@ export function coerceFieldsToFormats(
   if (
     !formats.has("screenshot") &&
     !formats.has("screenshot@fullPage") &&
+    !hasScreenshot &&
     document.screenshot !== undefined
   ) {
     meta.logger.warn(
@@ -157,7 +159,7 @@ export function coerceFieldsToFormats(
     );
     delete document.screenshot;
   } else if (
-    (formats.has("screenshot") || formats.has("screenshot@fullPage")) &&
+    (formats.has("screenshot") || formats.has("screenshot@fullPage") || hasScreenshot) &&
     document.screenshot === undefined
   ) {
     meta.logger.warn(

@@ -60,4 +60,40 @@ describe("V2 Scrape skipTlsVerification Default", () => {
     expect(response.body.data).toBeDefined();
     expect(response.body.data.markdown).toContain("Example Domain");
   }, 60000);
+
+  test("should support object screenshot format", async () => {
+    const response = await request(TEST_URL)
+      .post("/v2/scrape")
+      .set("Authorization", `Bearer ${identity.apiKey}`)
+      .set("Content-Type", "application/json")
+      .send({
+        url: "https://example.com",
+        formats: [{ type: "screenshot", fullPage: false }],
+        timeout: 30000,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.screenshot).toBeDefined();
+    expect(typeof response.body.data.screenshot).toBe("string");
+  }, 60000);
+
+  test("should support object screenshot format with fullPage", async () => {
+    const response = await request(TEST_URL)
+      .post("/v2/scrape")
+      .set("Authorization", `Bearer ${identity.apiKey}`)
+      .set("Content-Type", "application/json")
+      .send({
+        url: "https://example.com",
+        formats: [{ type: "screenshot", fullPage: true }],
+        timeout: 30000,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.screenshot).toBeDefined();
+    expect(typeof response.body.data.screenshot).toBe("string");
+  }, 60000);
 });
