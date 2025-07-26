@@ -36,9 +36,9 @@ export type Format =
   | "screenshot"
   | "screenshot@fullPage"
   | "extract"
-  | "json"
   | "summary"
-  | "changeTracking";
+  | { type: "json"; schema?: any; prompt?: string; temperature?: number; }
+  | { type: "changeTracking"; modes?: ("json" | "git-diff")[]; schema?: any; prompt?: string; tag?: string | null; };
 
 export const url = z.preprocess(
   (x) => {
@@ -229,27 +229,40 @@ export const actionsSchema = z
 const baseScrapeOptions = z
   .object({
     formats: z
-      .enum([
-        "markdown",
-        "html",
-        "rawHtml",
-        "links",
-        "screenshot",
-        "screenshot@fullPage",
-        "extract",
-        "json",
-        "summary",
-        "changeTracking",
+      .union([
+        z.enum([
+          "markdown",
+          "html",
+          "rawHtml",
+          "links",
+          "screenshot",
+          "screenshot@fullPage",
+          "extract",
+          "summary",
+        ]),
+        z.object({
+          type: z.literal("json"),
+          schema: z.any().optional(),
+          prompt: z.string().max(10000).optional(),
+          temperature: z.number().optional(),
+        }),
+        z.object({
+          type: z.literal("changeTracking"),
+          modes: z.enum(["json", "git-diff"]).array().optional().default([]),
+          schema: z.any().optional(),
+          prompt: z.string().optional(),
+          tag: z.string().or(z.null()).default(null),
+        }),
       ])
       .array()
       .optional()
       .default(["markdown"])
       .refine(
-        (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
+        (x) => !x.some(f => typeof f === "string" && f === "screenshot") || !x.some(f => typeof f === "string" && f === "screenshot@fullPage"),
         "You may only specify either screenshot or screenshot@fullPage",
       )
       .refine(
-        (x) => !x.includes("changeTracking") || x.includes("markdown"),
+        (x) => !x.some(f => typeof f === "object" && f.type === "changeTracking") || x.some(f => typeof f === "string" && f === "markdown"),
         "The changeTracking format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
@@ -267,16 +280,6 @@ const baseScrapeOptions = z
       .default(0),
     // Deprecate this to jsonOptions
     extract: extractOptions.optional(),
-    // New
-    jsonOptions: extractOptions.optional(),
-    changeTrackingOptions: z
-      .object({
-        prompt: z.string().optional(),
-        schema: z.any().optional(),
-        modes: z.enum(["json", "git-diff"]).array().optional().default([]),
-        tag: z.string().or(z.null()).default(null),
-      })
-      .optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -347,14 +350,14 @@ const waitForRefineOpts = {
   path: ["waitFor"],
 };
 const extractRefine = (obj) => {
-  const hasExtractFormat = obj.formats?.includes("extract");
+  const hasExtractFormat = obj.formats?.some(f => typeof f === "string" && f === "extract");
   const hasExtractOptions = obj.extract !== undefined;
-  const hasJsonFormat = obj.formats?.includes("json");
-  const hasJsonOptions = obj.jsonOptions !== undefined;
+  const hasJsonFormat = obj.formats?.some(f => (typeof f === "object" && f.type === "json") || (typeof f === "string" && f === "json"));
+  const hasJsonOptions = obj.formats?.some(f => typeof f === "object" && f.type === "json" && (f.schema || f.prompt));
+  
   return (
-    ((hasExtractFormat && hasExtractOptions) ||
-      (!hasExtractFormat && !hasExtractOptions)) &&
-    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
+    ((hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions)) &&
+    ((hasJsonFormat && (hasJsonOptions || hasExtractOptions)) || (!hasJsonFormat && !hasJsonOptions))
   );
 };
 const extractRefineOpts = {
@@ -362,48 +365,99 @@ const extractRefineOpts = {
     "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
 };
 const extractTransform = (obj) => {
-  // Handle timeout
-  if (
-    (obj.formats?.includes("extract") ||
-      obj.extract ||
-      obj.formats?.includes("json") ||
-      obj.jsonOptions) &&
-    obj.timeout === 30000
-  ) {
+  // Handle timeout for extract/json formats
+  const hasExtractFormat = obj.formats?.some(f => typeof f === "string" && f === "extract");
+  const hasJsonFormat = obj.formats?.some(f => (typeof f === "object" && f.type === "json") || (typeof f === "string" && f === "json"));
+  const hasChangeTrackingFormat = obj.formats?.some(f => (typeof f === "object" && f.type === "changeTracking") || (typeof f === "string" && f === "changeTracking"));
+  
+  if ((hasExtractFormat || hasJsonFormat || obj.extract) && obj.timeout === 30000) {
     obj = { ...obj, timeout: 60000 };
   }
 
-  if (obj.formats?.includes("changeTracking") && (obj.waitFor === undefined || obj.waitFor < 5000)) {
+  if (hasChangeTrackingFormat && (obj.waitFor === undefined || obj.waitFor < 5000)) {
     obj = { ...obj, waitFor: 5000 };
   }
 
-  if (obj.formats?.includes("changeTracking") && obj.timeout === 30000) {
+  if (hasChangeTrackingFormat && obj.timeout === 30000) {
     obj = { ...obj, timeout: 60000 };
   }
-
 
   if ((obj.proxy === "stealth" || obj.proxy === "auto") && obj.timeout === 30000) {
     obj = { ...obj, timeout: 120000 };
   }
 
-  if (obj.formats?.includes("json")) {
-    obj.formats.push("extract");
+  const processedFormats: string[] = [];
+  let extractOptions = obj.extract;
+  let changeTrackingOptions = obj.changeTrackingOptions;
+
+  for (const format of obj.formats || []) {
+    if (typeof format === "object") {
+      if (format.type === "json") {
+        processedFormats.push("json", "extract");
+        if (!extractOptions) {
+          extractOptions = {
+            mode: "llm",
+            schema: format.schema,
+            prompt: format.prompt,
+            temperature: format.temperature,
+          };
+        }
+      } else if (format.type === "changeTracking") {
+        processedFormats.push("changeTracking");
+        changeTrackingOptions = {
+          modes: format.modes || [],
+          schema: format.schema,
+          prompt: format.prompt,
+          tag: format.tag,
+        };
+      }
+    } else {
+      if (format === "json") {
+        processedFormats.push("json", "extract");
+      } else {
+        processedFormats.push(format);
+      }
+    }
   }
 
-  // Convert JSON options to extract options if needed
-  if (obj.jsonOptions && !obj.extract) {
-    obj = {
-      ...obj,
-      extract: {
-        prompt: obj.jsonOptions.prompt,
-        schema: obj.jsonOptions.schema,
-        mode: "llm",
-      },
-    };
-  }
-
-  return obj;
+  return {
+    ...obj,
+    formats: processedFormats,
+    extract: extractOptions,
+    changeTrackingOptions,
+  };
 };
+
+export function transformV1ToV2Formats(
+  formats: string[],
+  jsonOptions?: any,
+  changeTrackingOptions?: any
+): Format[] {
+  const result: Format[] = [];
+  
+  for (const format of formats) {
+    if (format === "json" && jsonOptions) {
+      result.push({
+        type: "json",
+        schema: jsonOptions.schema,
+        prompt: jsonOptions.prompt,
+        temperature: jsonOptions.temperature,
+      });
+    } else if (format === "changeTracking" && changeTrackingOptions) {
+      result.push({
+        type: "changeTracking",
+        modes: changeTrackingOptions.modes || [],
+        schema: changeTrackingOptions.schema,
+        prompt: changeTrackingOptions.prompt,
+        tag: changeTrackingOptions.tag,
+      });
+    } else {
+      result.push(format as any);
+    }
+  }
+  
+  return result;
+}
 
 export const scrapeOptions = baseScrapeOptions
   .extend({
