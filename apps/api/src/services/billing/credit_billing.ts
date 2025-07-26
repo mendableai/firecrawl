@@ -153,6 +153,8 @@ export async function supaCheckTeamCredits(
   if (creditsWillBeUsed > totalPriceCredits) {
     // Only notify if their actual credits (not what they will use) used is greater than the total price credits
     if (chunk.adjusted_credits_used > totalPriceCredits) {
+      // TODO: send event to -> limitReached
+      // https://linear.app/firecrawl/issue/ENG-2603/notification-preferences-updates#comment-891ced55
       sendNotification(
         team_id,
         NotificationType.LIMIT_REACHED,
@@ -169,6 +171,9 @@ export async function supaCheckTeamCredits(
       chunk,
     };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
+    // TODO: send event to -> approachingLimit
+    // https://linear.app/firecrawl/issue/ENG-2603/notification-preferences-updates#comment-834be2f6
+
     // Send email notification for approaching credit limit
     sendNotification(
       team_id,
