@@ -7,6 +7,7 @@ import {
   searchRequestSchema,
   ScrapeOptions,
   TeamFlags,
+  extractTransform,
 } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
@@ -70,10 +71,10 @@ async function scrapeSearchResult(
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
-        scrapeOptions: {
+        scrapeOptions: extractTransform({
           ...options.scrapeOptions,
           maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
-        },
+        }),
         internalOptions: { teamId: options.teamId, bypassBilling: true, zeroDataRetention },
         origin: options.origin,
         is_scrape: true,

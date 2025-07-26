@@ -8,6 +8,7 @@ import {
   RequestWithAuth,
   ScrapeOptions,
   BatchScrapeResponse,
+  extractTransform,
 } from "./types";
 import {
   addCrawlJobs,
@@ -138,13 +139,15 @@ export async function batchScrapeController(
   delete (scrapeOptions as any).urls;
   delete (scrapeOptions as any).appendToId;
 
+  const transformedScrapeOptions = extractTransform(scrapeOptions);
+
   const jobs = urls.map(x => ({
       data: {
         url: x,
         mode: "single_urls" as const,
         team_id: req.auth.team_id,
         crawlerOptions: null,
-        scrapeOptions,
+        scrapeOptions: transformedScrapeOptions,
         origin: "api",
         integration: req.body.integration,
         crawl_id: id,

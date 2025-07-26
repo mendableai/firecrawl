@@ -364,7 +364,7 @@ const extractRefineOpts = {
   message:
     "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
 };
-const extractTransform = (obj) => {
+export const extractTransform = (obj) => {
   // Handle timeout for extract/json formats
   const hasExtractFormat = obj.formats?.some(f => typeof f === "string" && f === "extract");
   const hasJsonFormat = obj.formats?.some(f => (typeof f === "object" && f.type === "json") || (typeof f === "string" && f === "json"));
