@@ -1058,6 +1058,7 @@ export function fromV1ScrapeOptions(
   delete (spreadScrapeOptions as any).url;
   delete (spreadScrapeOptions as any).origin;
   delete (spreadScrapeOptions as any).integration;
+  delete (spreadScrapeOptions as any).webhook;
   
   delete spreadScrapeOptions.__experimental_cache;
   delete spreadScrapeOptions.jsonOptions;
