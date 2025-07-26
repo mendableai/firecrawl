@@ -63,7 +63,6 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
       method: "extractService/generateCompletions",
     }),
     options: {
-      mode: "llm",
       systemPrompt: buildBatchExtractSystemPrompt(
         systemPrompt,
         multiEntitySchema,

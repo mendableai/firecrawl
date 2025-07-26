@@ -32,6 +32,7 @@ import { ZodError } from "zod";
 import { Document as V0Document } from "./../../lib/entities";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { fromV0Combo } from "../v2/types";
 
 export async function scrapeHelper(
   jobId: string,
@@ -63,7 +64,7 @@ export async function scrapeHelper(
 
   const jobPriority = await getJobPriority({ team_id, basePriority: 10 });
 
-  const { scrapeOptions, internalOptions } = fromLegacyCombo(
+  const { scrapeOptions, internalOptions } = fromV0Combo(
     pageOptions,
     extractorOptions,
     timeout,

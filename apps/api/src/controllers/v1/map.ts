@@ -4,10 +4,10 @@ import {
   MapDocument,
   mapRequestSchema,
   RequestWithAuth,
-  scrapeOptions,
   TeamFlags,
   TimeoutSignal,
 } from "./types";
+import { scrapeOptions } from "../v2/types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
 import { configDotenv } from "dotenv";

@@ -2,10 +2,9 @@ import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
 import {
   Document,
-  ExtractOptions,
-  isAgentExtractModelValid,
+  JsonFormatWithOptions,
   TokenUsage,
-} from "../../../controllers/v1/types";
+} from "../../../controllers/v2/types";
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
@@ -24,6 +23,7 @@ import fs from "fs/promises";
 import Ajv from "ajv";
 import { extractData } from "../lib/extractSmartScrape";
 import { CostTracking } from "../../../lib/extract/extraction-service";
+import { isAgentExtractModelValid } from "../../../controllers/v1/types";
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
   anthropic?: {
@@ -197,6 +197,7 @@ export function calculateCost(
       input_cost: 0.55,
       output_cost: 2.19,
     },
+    "google/gemini-2.5-flash-lite": { input_cost: 0.1, output_cost: 0.4 },
   };
   let modelCost = modelCosts[model] || { input_cost: 0, output_cost: 0 };
   //gemini-2.5-pro-exp-03-25 pricing
@@ -225,7 +226,10 @@ export function calculateCost(
 export type GenerateCompletionsOptions = {
   model?: LanguageModel;
   logger: Logger;
-  options: ExtractOptions;
+  options: Omit<JsonFormatWithOptions, "type"> & {
+    systemPrompt?: string;
+    temperature?: number;
+  };
   markdown?: string;
   previousWarning?: string;
   isExtractEndpoint?: boolean;
@@ -653,7 +657,8 @@ export async function performLLMExtract(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
-  if (meta.options.formats.includes("extract")) {
+  const jsonFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "json") as JsonFormatWithOptions | undefined;
+  if (jsonFormat) {
     if (meta.internalOptions.zeroDataRetention) {
       document.warning = "JSON mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
       return document;
@@ -667,7 +672,7 @@ export async function performLLMExtract(
       logger: meta.logger.child({
         method: "performLLMExtract/generateCompletions",
       }),
-      options: meta.options.extract!,
+      options: jsonFormat,
       markdown: document.markdown,
       previousWarning: document.warning,
       // ... existing model and provider options ...
@@ -676,8 +681,10 @@ export async function performLLMExtract(
       // model: getModel("qwen-qwq-32b", "groq"),
       // model: getModel("gemini-2.0-flash", "google"),
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      model: getModel("gpt-4o-mini", "openai"),
-      retryModel: getModel("gpt-4o", "openai"),
+      // model: getModel("gpt-4o-mini", "openai"),
+      // retryModel: getModel("gpt-4o", "openai"),
+      model: getModel("gemini-2.5-flash-lite", "vertex"),
+      retryModel: getModel("gpt-4o-mini", "openai"),
       costTrackingOptions: {
         costTracking: meta.costTracking,
         metadata: {
@@ -691,7 +698,7 @@ export async function performLLMExtract(
       await extractData({
         extractOptions: generationOptions,
         urls: [meta.rewrittenUrl ?? meta.url],
-        useAgent: false,
+        useAgent: isAgentExtractModelValid(meta.internalOptions.v1JSONAgent?.model),
         scrapeId: meta.id,
       });
 
@@ -775,12 +782,63 @@ export async function performLLMExtract(
     // }
 
     // Assign the final extracted data
-    if (meta.options.formats.includes("json")) {
-      document.json = extractedData;
-    } else {
-      document.extract = extractedData;
-    }
+    document.json = extractedData;
     // document.warning = warning;
+  }
+
+  return document;
+}
+
+export async function performSummary(
+  meta: Meta,
+  document: Document,
+): Promise<Document> {
+  if (meta.options.formats.includes("summary")) {
+    if (meta.internalOptions.zeroDataRetention) {
+      document.warning = "Summary mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
+      return document;
+    }
+
+    const generationOptions: GenerateCompletionsOptions = {
+      logger: meta.logger.child({
+        method: "performSummary/generateCompletions",
+      }),
+      options: {
+        systemPrompt: "You are a content summarization expert. Analyze the provided content and create a concise, informative summary that captures the key points, main ideas, and essential information. Focus on clarity and brevity while maintaining accuracy.",
+        prompt: "Summarize the main content and key points from this page.",
+      },
+      markdown: document.markdown,
+      previousWarning: document.warning,
+      model: getModel("gpt-4o-mini", "openai"),
+      retryModel: getModel("gpt-4o", "openai"),
+      costTrackingOptions: {
+        costTracking: meta.costTracking,
+        metadata: {
+          module: "scrapeURL",
+          method: "performSummary",
+        },
+      },
+    };
+
+    const {
+      extract: summaryText,
+      warning,
+      totalUsage,
+      model,
+    } = await generateCompletions(generationOptions);
+
+    if (warning) {
+      document.warning = warning + (document.warning ? " " + document.warning : "");
+    }
+
+    meta.logger.info("LLM summary generation token usage", {
+      model: model,
+      promptTokens: totalUsage.promptTokens,
+      completionTokens: totalUsage.completionTokens,
+      totalTokens: totalUsage.totalTokens,
+    });
+
+    document.summary = typeof summaryText === 'string' ? summaryText : String(summaryText || '');
   }
 
   return document;
@@ -852,7 +910,6 @@ export async function generateSchemaFromPrompt(
         retryModel,
         markdown: "",
         options: {
-          mode: "llm",
           systemPrompt: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
 Consider:
 1. The type of data being requested

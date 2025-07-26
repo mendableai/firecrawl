@@ -424,7 +424,7 @@ export async function crawlStatusController(
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
   const nextURL = new URL(
-    `${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
+    `${protocol}://${req.get("host")}/v2/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
   );
 
   nextURL.searchParams.set("skip", (start + data.length).toString());

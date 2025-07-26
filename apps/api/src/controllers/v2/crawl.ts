@@ -5,13 +5,12 @@ import {
   crawlRequestSchema,
   CrawlResponse,
   RequestWithAuth,
-  toLegacyCrawlerOptions,
+  toV0CrawlerOptions,
 } from "./types";
 import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
-import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -32,7 +31,7 @@ export async function crawlController(
   const id = uuidv4();
   const logger = _logger.child({
     crawlId: id,
-    module: "api/v1",
+    module: "api/v2",
     method: "crawlController",
     teamId: req.auth.team_id,
     zeroDataRetention,
@@ -57,7 +56,7 @@ export async function crawlController(
     url: undefined,
     scrapeOptions: undefined,
   };
-  const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body.scrapeOptions, req.body.scrapeOptions.timeout, req.auth.team_id);
+  const scrapeOptions = req.body.scrapeOptions;
 
   // TODO: @rafa, is this right? copied from v0
   if (Array.isArray(crawlerOptions.includePaths)) {
@@ -90,10 +89,9 @@ export async function crawlController(
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
+    crawlerOptions: toV0CrawlerOptions(crawlerOptions),
     scrapeOptions,
     internalOptions: {
-      ...internalOptions,
       disableSmartWaitCache: true,
       teamId: req.auth.team_id,
       saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,

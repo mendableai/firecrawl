@@ -306,7 +306,6 @@ export async function rerankLinksWithLLM(
                 retry,
               }),
               options: {
-                mode: "llm",
                 systemPrompt: systemPrompt,
                 prompt: buildRerankerUserPrompt(searchQuery),
                 schema: schema,

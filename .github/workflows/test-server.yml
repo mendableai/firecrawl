@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - nsc/v2
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}

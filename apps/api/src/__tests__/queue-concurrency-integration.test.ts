@@ -50,12 +50,6 @@ describe("Queue Concurrency Integration", () => {
     mobile: false,
     parsePDF: false,
     timeout: 30000,
-    extract: {
-      mode: "llm" as const,
-      systemPrompt: "test",
-      schema: {},
-    },
-    extractOptions: { mode: "llm" as const, systemPrompt: "test" },
     javascript: true,
     headers: {},
     cookies: [],
@@ -81,7 +75,7 @@ describe("Queue Concurrency Integration", () => {
       scrapeOptions: defaultScrapeOptions,
       crawlerOptions: null,
       zeroDataRetention: false,
-    };
+    } as WebScraperOptions;
 
     it("should add job directly to BullMQ when under concurrency limit", async () => {
       // Mock current active jobs to be under limit
@@ -141,7 +135,7 @@ describe("Queue Concurrency Integration", () => {
             team_id: mockTeamId,
             scrapeOptions: defaultScrapeOptions,
             zeroDataRetention: false,
-          } as WebScraperOptions,
+          } as any,
           opts: {
             jobId: `job-${i}`,
             priority: 1,

@@ -45,7 +45,7 @@ import {
 } from "../../src/lib/job-priority";
 import { getJobs } from "..//controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
-import { scrapeOptions } from "../controllers/v1/types";
+import { scrapeOptions } from "../controllers/v2/types";
 import {
   concurrentJobDone,
   pushConcurrencyLimitActiveJob,
