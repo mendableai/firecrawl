@@ -683,8 +683,13 @@ export async function performLLMExtract(
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
       // model: getModel("gpt-4o-mini", "openai"),
       // retryModel: getModel("gpt-4o", "openai"),
-      model: getModel("gemini-2.5-flash-lite", "vertex"),
-      retryModel: getModel("gpt-4o-mini", "openai"),
+      ...(process.env.VERTEX_CREDENTIALS ? ({
+        model: getModel("gemini-2.5-flash-lite", "vertex"),
+        retryModel: getModel("gpt-4o-mini", "openai")
+      }) : ({
+        model: getModel("gpt-4o-mini", "openai"),
+        retryModel: getModel("gpt-4o", "openai"),
+      })),
       costTrackingOptions: {
         costTracking: meta.costTracking,
         metadata: {
