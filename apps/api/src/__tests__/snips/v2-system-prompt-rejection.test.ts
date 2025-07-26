@@ -14,12 +14,12 @@ describe("V2 System Prompt Rejection", () => {
   it("should reject systemPrompt in jsonOptions for v2 scrape", async () => {
     const response = await scrapeRaw({
       url: "https://example.com",
-      formats: ["json"],
-      jsonOptions: {
+      formats: [{
+        type: "json",
         schema: { title: { type: "string" } },
         systemPrompt: "Custom system prompt that should be rejected"
-      }
-    }, identity);
+      }],
+    } as any, identity);
 
     expect(response.statusCode).toBe(400);
     expect(response.body.success).toBe(false);
@@ -29,12 +29,12 @@ describe("V2 System Prompt Rejection", () => {
   it("should reject systemPrompt in extract options for v2 scrape", async () => {
     const response = await scrapeRaw({
       url: "https://example.com",
-      formats: ["extract"],
-      extract: {
+      formats: [{
+        type: "json",
         schema: { title: { type: "string" } },
         systemPrompt: "Custom system prompt that should be rejected"
-      }
-    }, identity);
+      }],
+    } as any, identity);
 
     expect(response.statusCode).toBe(400);
     expect(response.body.success).toBe(false);
@@ -44,12 +44,12 @@ describe("V2 System Prompt Rejection", () => {
   it("should accept valid jsonOptions without systemPrompt", async () => {
     const response = await scrapeRaw({
       url: "https://example.com",
-      formats: ["json"],
-      jsonOptions: {
+      formats: [{
+        type: "json",
         schema: { title: { type: "string" } },
         prompt: "Extract the title"
-      }
-    }, identity);
+      }],
+    } as any, identity);
 
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);
