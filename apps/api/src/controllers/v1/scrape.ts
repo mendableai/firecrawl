@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
+import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -56,19 +57,17 @@ export async function scrapeController(
   });
 
   const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+
+  const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body, req.body.timeout, req.auth.team_id);
   
   await addScrapeJob(
     {
       url: req.body.url,
       mode: "single_urls",
       team_id: req.auth.team_id,
-      scrapeOptions: {
-        ...req.body,
-        ...(req.body.__experimental_cache ? {
-          maxAge: req.body.maxAge ?? 4 * 60 * 60 * 1000, // 4 hours
-        } : {}),
-      },
+      scrapeOptions,
       internalOptions: {
+        ...internalOptions,
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
@@ -79,7 +78,7 @@ export async function scrapeController(
       origin,
       integration: req.body.integration,
       startTime,
-      zeroDataRetention,
+      zeroDataRetention: zeroDataRetention ?? false,
     },
     {},
     jobId,

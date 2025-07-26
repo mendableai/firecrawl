@@ -8,9 +8,8 @@ import {
   ScrapeActionContent,
   Document as V0Document,
 } from "../../lib/entities";
+import { ScrapeOptions as V1ScrapeOptions } from "../v1/types";
 import { InternalOptions } from "../../scraper/scrapeURL";
-import { getURLDepth } from "../../scraper/WebScraper/utils/maxDepthUtils";
-import { agentExtractModelValue, isAgentExtractModelValid } from "../v1/types";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -81,58 +80,7 @@ export const url = z.preprocess(
 );
 
 const strictMessage =
-  "Unrecognized key in body -- please review the v1 API documentation for request body changes";
-
-
-
-export const extractOptions = z
-  .object({
-    mode: z.enum(["llm"]).default("llm"),
-    schema: z.any().optional(),
-    prompt: z.string().max(10000).optional(),
-    temperature: z.number().optional(),
-  })
-  .strict(strictMessage)
-  .transform((data) => ({
-    ...data,
-    systemPrompt: "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
-  }));
-
-export const extractOptionsWithAgent = z
-  .object({
-    mode: z.enum(["llm"]).default("llm"),
-    schema: z.any().optional(),
-    prompt: z.string().max(10000).optional(),
-    temperature: z.number().optional(),
-    agent: z
-      .object({
-        model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
-      })
-      .optional(),
-  })
-  .strict(strictMessage)
-  .transform((data) => ({
-    ...data,
-    systemPrompt: isAgentExtractModelValid(data.agent?.model)
-      ? `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
-
-Key Instructions:
-1.  **Schema Adherence:** Populate the JSON object according to the structure defined in the schema.
-2.  **Content Grounding:** Extract information *only* if it is explicitly present in the provided markdown. Do NOT infer or fabricate information.
-3.  **Missing Information:** If a piece of information required by the schema cannot be found in the markdown, use \`null\` for that field's value.
-4.  **SmartScrape Recommendation:**
-    *   Assess if the *full* required data seems unavailable in the current markdown likely because:
-        - Content requires user interaction to reveal (e.g., clicking buttons, hovering, scrolling)
-        - Content uses pagination (e.g., "Load More" buttons, numbered pagination, infinite scroll)
-        - Content is dynamically loaded after user actions
-    *   If the content requires user interaction or pagination to be fully accessible, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
-    *   If the content is simply JavaScript rendered but doesn't require interaction, set \`shouldUseSmartscrape\` to \`false\`.
-5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`
-      : "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
-  }));
-
-export type ExtractOptions = z.infer<typeof extractOptions>;
+  "Unrecognized key in body -- please review the v2 API documentation for request body changes";
 
 const ACTIONS_MAX_WAIT_TIME = 60;
 const MAX_ACTIONS = 50;
@@ -226,20 +174,30 @@ export const actionsSchema = z
     },
   );
 
+export const jsonFormatWithOptions = z.object({
+  type: z.literal("json"),
+  schema: z.any().optional(),
+  prompt: z.string().max(10000).optional(),
+});
+
+export type JsonFormatWithOptions = z.output<typeof jsonFormatWithOptions>
+
 const baseScrapeOptions = z
   .object({
     formats: z
-      .enum([
-        "markdown",
-        "html",
-        "rawHtml",
-        "links",
-        "screenshot",
-        "screenshot@fullPage",
-        "extract",
-        "json",
-        "summary",
-        "changeTracking",
+      .union([
+        z.enum([
+          "markdown",
+          "html",
+          "rawHtml",
+          "links",
+          "screenshot",
+          "screenshot@fullPage",
+          "extract",
+          "summary",
+          "changeTracking",
+        ]),
+        jsonFormatWithOptions,
       ])
       .array()
       .optional()
@@ -265,10 +223,6 @@ const baseScrapeOptions = z
       .safe()
       .max(60000)
       .default(0),
-    // Deprecate this to jsonOptions
-    extract: extractOptions.optional(),
-    // New
-    jsonOptions: extractOptions.optional(),
     changeTrackingOptions: z
       .object({
         prompt: z.string().optional(),
@@ -280,7 +234,7 @@ const baseScrapeOptions = z
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
-    // New
+    
     location: z
       .object({
         country: z
@@ -301,23 +255,6 @@ const baseScrapeOptions = z
       })
       .optional(),
 
-    // Deprecated
-    geolocation: z
-      .object({
-        country: z
-          .string()
-          .optional()
-          .refine(
-            (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
-            {
-              message:
-                "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
-            },
-          )
-          .transform((val) => (val ? val.toUpperCase() : "US-generic")),
-        languages: z.string().array().optional(),
-      })
-      .optional(),
     skipTlsVerification: z.boolean().default(true),
     removeBase64Images: z.boolean().default(true),
     fastMode: z.boolean().default(false),
@@ -327,7 +264,6 @@ const baseScrapeOptions = z
     maxAge: z.number().int().gte(0).safe().default(0),
     storeInCache: z.boolean().default(true),
     // @deprecated
-    __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
     __experimental_omce: z.boolean().default(false).optional(),
   })
@@ -406,10 +342,6 @@ const extractTransform = (obj) => {
 };
 
 export const scrapeOptions = baseScrapeOptions
-  .extend({
-    extract: extractOptions.optional(),
-    jsonOptions: extractOptions.optional(),
-  })
   .strict(strictMessage)
   .refine(
     (obj) => {
@@ -429,10 +361,7 @@ export const scrapeOptions = baseScrapeOptions
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
-export type ScrapeOptions = BaseScrapeOptions & {
-  extract?: z.infer<typeof extractOptions>,
-  jsonOptions?: z.infer<typeof extractOptions>,
-};
+export type ScrapeOptions = BaseScrapeOptions;
 
 import Ajv from "ajv";
 import type { CostTracking } from "../../lib/extract/extraction-service";
@@ -518,8 +447,6 @@ export const scrapeRequestSchema = baseScrapeOptions
   .omit({ timeout: true })
   .extend({
     url,
-    extract: extractOptions.optional(),
-    jsonOptions: extractOptions.optional(),
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     timeout: z.number().int().positive().finite().safe().default(30000),
@@ -1027,7 +954,7 @@ export interface ResponseWithSentry<ResBody = undefined>
   sentry?: string;
 }
 
-export function toLegacyCrawlerOptions(x: CrawlerOptions) {
+export function toV0CrawlerOptions(x: CrawlerOptions) {
   return {
     includes: x.includePaths,
     excludes: x.excludePaths,
@@ -1049,7 +976,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
   };
 }
 
-export function toNewCrawlerOptions(x: any): CrawlerOptions {
+export function toV2CrawlerOptions(x: any): CrawlerOptions {
   return {
     includePaths: x.includes,
     excludePaths: x.excludes,
@@ -1068,7 +995,7 @@ export function toNewCrawlerOptions(x: any): CrawlerOptions {
   }
 }
 
-export function fromLegacyCrawlerOptions(x: any, teamId: string): {
+export function fromV0CrawlerOptions(x: any, teamId: string): {
   crawlOptions: CrawlerOptions;
   internalOptions: InternalOptions;
 } {
@@ -1101,7 +1028,7 @@ export interface MapDocument {
   title?: string;
   description?: string;
 }
-export function fromLegacyScrapeOptions(
+export function fromV0ScrapeOptions(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
@@ -1119,7 +1046,11 @@ export function fromLegacyScrapeOptions(
           : null,
         extractorOptions !== undefined &&
           extractorOptions.mode.includes("llm-extraction")
-          ? ("extract" as const)
+          ? ({
+            type: "json" as const,
+            prompt: extractorOptions.userPrompt,
+            schema: extractorOptions.extractionSchema,
+          })
           : null,
         "links",
       ].filter((x) => x !== null),
@@ -1140,15 +1071,6 @@ export function fromLegacyScrapeOptions(
       location: pageOptions.geolocation,
       skipTlsVerification: pageOptions.skipTlsVerification,
       removeBase64Images: pageOptions.removeBase64Images,
-      extract:
-        extractorOptions !== undefined &&
-          extractorOptions.mode.includes("llm-extraction")
-          ? {
-            systemPrompt: extractorOptions.extractionPrompt,
-            prompt: extractorOptions.userPrompt,
-            schema: extractorOptions.extractionSchema,
-          }
-          : undefined,
       mobile: pageOptions.mobile,
       fastMode: pageOptions.useFastMode,
     }),
@@ -1156,25 +1078,79 @@ export function fromLegacyScrapeOptions(
       atsv: pageOptions.atsv,
       v0DisableJsDom: pageOptions.disableJsDom,
       teamId,
+      ...(extractorOptions !== undefined && extractorOptions.mode.includes("llm-extraction") ? {
+        v1JSONSystemPrompt: extractorOptions.extractionPrompt
+      } : {})
     },
     // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   };
 }
 
-export function fromLegacyCombo(
+export function fromV1ScrapeOptions(
+  v1ScrapeOptions: V1ScrapeOptions,
+  timeout: number | undefined,
+  teamId: string,
+): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
+  const spreadScrapeOptions = { ...v1ScrapeOptions };
+  delete (spreadScrapeOptions as any).urls;
+  delete (spreadScrapeOptions as any).ignoreInvalidURLs;
+  delete (spreadScrapeOptions as any).url;
+  delete (spreadScrapeOptions as any).origin;
+  delete (spreadScrapeOptions as any).integration;
+  
+  delete spreadScrapeOptions.__experimental_cache;
+  delete spreadScrapeOptions.jsonOptions;
+  delete spreadScrapeOptions.extract;
+  delete spreadScrapeOptions.geolocation;
+  
+  return {
+    scrapeOptions: scrapeOptions.parse({
+      ...spreadScrapeOptions,
+
+      ...(v1ScrapeOptions.__experimental_cache ? {
+        maxAge: v1ScrapeOptions.maxAge ?? 4 * 60 * 60 * 1000, // 4 hours
+      } : {}),
+      location: v1ScrapeOptions.location ?? v1ScrapeOptions.geolocation,
+      formats: v1ScrapeOptions.formats.map(x => {
+        // json and extract is standardized down to extract fmt in v1 -- fine to take one and dismiss the other
+        if (x === "extract") {
+          const opts = v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract;
+          const fmt: JsonFormatWithOptions = {
+            type: "json",
+            schema: opts?.schema,
+            prompt: opts?.prompt,
+          };
+          return fmt;
+        } else if (x === "json") {
+          return null;
+        } else {
+          return x;
+        }
+      }).filter(x => x !== null),
+    }),
+    internalOptions: {
+      teamId,
+      v1Agent: v1ScrapeOptions.agent,
+      v1JSONSystemPrompt: (v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract)?.systemPrompt,
+      v1JSONAgent: (v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract)?.agent,
+    },
+  };
+}
+
+export function fromV0Combo(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
   crawlerOptions: any,
   teamId: string,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
-  const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(
+  const { scrapeOptions, internalOptions: i1 } = fromV0ScrapeOptions(
     pageOptions,
     extractorOptions,
     timeout,
     teamId,
   );
-  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions, teamId);
+  const { internalOptions: i2 } = fromV0CrawlerOptions(crawlerOptions, teamId);
   return { scrapeOptions, internalOptions: Object.assign(i1, i2) };
 }
 

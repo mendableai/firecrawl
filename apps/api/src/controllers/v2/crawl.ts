@@ -5,7 +5,7 @@ import {
   crawlRequestSchema,
   CrawlResponse,
   RequestWithAuth,
-  toLegacyCrawlerOptions,
+  toV0CrawlerOptions,
 } from "./types";
 import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
@@ -89,7 +89,7 @@ export async function crawlController(
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
+    crawlerOptions: toV0CrawlerOptions(crawlerOptions),
     scrapeOptions,
     internalOptions: {
       disableSmartWaitCache: true,

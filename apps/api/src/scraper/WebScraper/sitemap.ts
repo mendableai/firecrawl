@@ -1,7 +1,7 @@
 import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
-import { scrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
+import { scrapeOptions, TimeoutSignal } from "../../controllers/v2/types";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { parseSitemapXml, processSitemap } from "../../lib/crawler";

@@ -3,7 +3,7 @@ import "dotenv/config";
 process.env.ENV = "test";
 
 import { scrapeURL } from ".";
-import { scrapeOptions } from "../../controllers/v1/types";
+import { scrapeOptions } from "../../controllers/v2/types";
 import { Engine } from "./engines";
 import { CostTracking } from "../../lib/extract/extraction-service";
 

@@ -13,7 +13,6 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<{ ext
                 method: "extractDataWithSchema/generateCompletions",
             }),
             options: {
-                mode: "llm",
                 schema: meta.options.changeTrackingOptions?.schema,
                 systemPrompt: "Extract the requested information from the content based on the provided schema.",
                 temperature: 0
@@ -169,7 +168,6 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                             method: "deriveDiff/generateCompletions",
                         }),
                         options: {
-                            mode: "llm",
                             systemPrompt: "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
                             schema: meta.options.changeTrackingOptions.schema,
                             prompt: meta.options.changeTrackingOptions.prompt,

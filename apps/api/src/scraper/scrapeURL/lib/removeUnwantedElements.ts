@@ -1,7 +1,7 @@
 // TODO: refactor
 
 import { AnyNode, Cheerio, load } from "cheerio"; // rustified
-import { ScrapeOptions } from "../../../controllers/v1/types";
+import { ScrapeOptions } from "../../../controllers/v2/types";
 import { transformHtml } from "../../../lib/html-transformer";
 import { logger } from "../../../lib/logger";
 import { queryOMCESignatures } from "../../../services/index";

@@ -446,7 +446,7 @@ const extractRefineOpts = {
   message:
     "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
 };
-const extractTransform = (obj) => {
+const extractTransform = (obj: ScrapeOptions) => {
   // Handle timeout
   if (
     (obj.formats?.includes("extract") ||
@@ -466,7 +466,7 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 60000 };
   }
 
-  if (obj.agent) {
+  if ((obj as ScrapeOptions).agent) {
     obj = { ...obj, timeout: 300000 };
   }
 
@@ -482,13 +482,7 @@ const extractTransform = (obj) => {
   if (obj.jsonOptions && !obj.extract) {
     obj = {
       ...obj,
-      extract: {
-        prompt: obj.jsonOptions.prompt,
-        systemPrompt: obj.jsonOptions.systemPrompt,
-        schema: obj.jsonOptions.schema,
-        agent: obj.jsonOptions.agent,
-        mode: "llm",
-      },
+      extract: obj.jsonOptions,
     };
   }
 
@@ -500,7 +494,7 @@ export const scrapeOptions = baseScrapeOptions
     agent: z
       .object({
         model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
+        prompt: z.string(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
       })
@@ -524,7 +518,9 @@ export const scrapeOptions = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform(obj => {
+    return extractTransform(obj) as typeof obj;
+  });
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
@@ -631,7 +627,7 @@ export const scrapeRequestSchema = baseScrapeOptions
     agent: z
       .object({
         model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
+        prompt: z.string(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
       })
@@ -647,7 +643,9 @@ export const scrapeRequestSchema = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => {
+    return extractTransform(obj) as typeof obj;
+  });
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
@@ -687,7 +685,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => extractTransform(obj) as typeof obj);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .extend({
@@ -704,7 +702,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => extractTransform(obj) as typeof obj);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 export type BatchScrapeRequestInput = z.input<typeof batchScrapeRequestSchema>;
