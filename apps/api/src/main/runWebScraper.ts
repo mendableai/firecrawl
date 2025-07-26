@@ -81,6 +81,8 @@ export async function runWebScraper({
   });
   const tries = is_crawl ? 3 : 1;
 
+  logger.info("runWebScraper called");
+
   let response: ScrapeUrlResponse | undefined = undefined;
   let engines: EngineResultsTracker = {};
   let error: any = undefined;
@@ -100,6 +102,7 @@ export async function runWebScraper({
     error = undefined;
 
     try {
+      logger.info("running scrapeURL...");
       response = await scrapeURL(bull_job_id, url, scrapeOptions, {
         priority,
         ...internalOptions,

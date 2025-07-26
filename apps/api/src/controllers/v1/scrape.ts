@@ -100,6 +100,7 @@ export async function scrapeController(
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,
+      error: e,
     });
 
     if (zeroDataRetention) {
