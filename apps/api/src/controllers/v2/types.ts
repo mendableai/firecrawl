@@ -1103,13 +1103,13 @@ export function fromV1ScrapeOptions(
         } else if (x === "json") {
           return null;
         } else if (x === "changeTracking") {
-          const opts = v1ScrapeOptions.changeTrackingOptions!;
+          const opts = v1ScrapeOptions.changeTrackingOptions;
           const fmt: ChangeTrackingFormatWithOptions = {
             type: "changeTracking",
-            modes: opts.modes,
-            tag: opts.tag,
-            schema: opts.schema,
-            prompt: opts.prompt,
+            modes: opts?.modes ?? [],
+            tag: opts?.tag ?? null,
+            schema: opts?.schema,
+            prompt: opts?.prompt,
           };
           return fmt;
         } else {
