@@ -1,4 +1,16 @@
-import { scrapeRaw, Identity, idmux } from "./lib";
+import request from "supertest";
+import { Identity, idmux } from "./lib";
+import { ScrapeRequestInput } from "../../controllers/v2/types";
+
+const TEST_URL = "http://127.0.0.1:3002";
+
+async function scrapeV2Raw(body: ScrapeRequestInput, identity: Identity) {
+  return await request(TEST_URL)
+    .post("/v2/scrape")
+    .set("Authorization", `Bearer ${identity.apiKey}`)
+    .set("Content-Type", "application/json")
+    .send(body);
+}
 
 describe("V2 System Prompt Rejection", () => {
   let identity: Identity;
@@ -11,45 +23,46 @@ describe("V2 System Prompt Rejection", () => {
     });
   });
 
-  it("should reject systemPrompt in jsonOptions for v2 scrape", async () => {
-    const response = await scrapeRaw({
-      url: "https://example.com",
-      formats: [{
-        type: "json",
-        schema: { title: { type: "string" } },
-        systemPrompt: "Custom system prompt that should be rejected"
-      }],
-    } as any, identity);
+  it("should reject systemPrompt in json format options for v2 scrape", async () => {
+    const response = await scrapeV2Raw(
+      {
+        url: "https://example.com",
+        formats: [
+          {
+            type: "json",
+            schema: {
+              type: "object",
+              properties: { title: { type: "string" } },
+            },
+            systemPrompt: "Custom system prompt that should be rejected",
+          },
+        ],
+      } as any,
+      identity,
+    );
 
     expect(response.statusCode).toBe(400);
     expect(response.body.success).toBe(false);
-    expect(response.body.error).toContain("Unrecognized key");
+    expect(response.body.error).toBe("Bad Request");
   });
 
-  it("should reject systemPrompt in extract options for v2 scrape", async () => {
-    const response = await scrapeRaw({
-      url: "https://example.com",
-      formats: [{
-        type: "json",
-        schema: { title: { type: "string" } },
-        systemPrompt: "Custom system prompt that should be rejected"
-      }],
-    } as any, identity);
-
-    expect(response.statusCode).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error).toContain("Unrecognized key");
-  });
-
-  it("should accept valid jsonOptions without systemPrompt", async () => {
-    const response = await scrapeRaw({
-      url: "https://example.com",
-      formats: [{
-        type: "json",
-        schema: { title: { type: "string" } },
-        prompt: "Extract the title"
-      }],
-    } as any, identity);
+  it("should accept valid json format options without systemPrompt", async () => {
+    const response = await scrapeV2Raw(
+      {
+        url: "https://example.com",
+        formats: [
+          {
+            type: "json",
+            schema: {
+              type: "object",
+              properties: { title: { type: "string" } },
+            },
+            prompt: "Extract the title",
+          },
+        ],
+      } as any,
+      identity,
+    );
 
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);

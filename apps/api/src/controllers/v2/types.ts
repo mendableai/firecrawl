@@ -178,7 +178,7 @@ export const jsonFormatWithOptions = z.object({
   type: z.literal("json"),
   schema: z.any().optional(),
   prompt: z.string().max(10000).optional(),
-});
+}).strict();
 
 export type JsonFormatWithOptions = z.output<typeof jsonFormatWithOptions>;
 
@@ -188,7 +188,7 @@ export const changeTrackingFormatWithOptions = z.object({
   schema: z.any().optional(),
   modes: z.enum(["json", "git-diff"]).array().optional().default([]),
   tag: z.string().or(z.null()).default(null),
-});
+}).strict();
 
 export type ChangeTrackingFormatWithOptions = z.output<typeof changeTrackingFormatWithOptions>;
 
