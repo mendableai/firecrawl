@@ -13,7 +13,7 @@ import {
   getDoneJobsOrderedLength,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
@@ -41,11 +41,13 @@ export type PseudoJob<T> = {
 export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string }
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
+  const conn = createRedisConnection();
   const [bullJob, dbJob, gcsJob] = await Promise.all([
-    getScrapeQueue().getJob(id),
+    getScrapeQueue(conn).getJob(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
+  conn.disconnect();
 
   if (!bullJob && !dbJob) return null;
 
@@ -73,11 +75,14 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 }
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
+  const conn = createRedisConnection();
+  const queue = getScrapeQueue(conn);
   const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-    Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    Promise.all(ids.map((x) => queue.getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
+  conn.disconnect();
 
   const bullJobMap = new Map<string, PseudoJob<any>>();
   const dbJobMap = new Map<string, DBJob>();
@@ -156,11 +161,14 @@ export async function crawlStatusController(
     }
 
     let jobIDs = await getCrawlJobs(req.params.jobId);
+    const conn = createRedisConnection();
+    const queue = getScrapeQueue(conn);
     let jobStatuses = await Promise.all(
       jobIDs.map(
-        async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
+        async (x) => [x, await queue.getJobState(x)] as const,
       ),
     );
+    conn.disconnect();
 
     if (jobStatuses.filter((x) => x[1] === "unknown").length > 0 && process.env.USE_DB_AUTHENTICATION === "true") {
       for (let rangeStart = 0; ; rangeStart += 1000) {
