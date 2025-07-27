@@ -104,7 +104,7 @@ export function getBillingQueue() {
       connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
-          age: 3600, // 1 hour
+          age: 60, // 1 minute
         },
         removeOnFail: {
           age: 3600, // 1 hour
