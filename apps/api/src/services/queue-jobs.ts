@@ -11,13 +11,14 @@ import {
   pushConcurrencyLimitedJob,
   pushCrawlConcurrencyLimitActiveJob,
 } from "../lib/concurrency-limit";
-import { logger } from "../lib/logger";
+import { logger as _logger } from "../lib/logger";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
 import { getACUC, getACUCTeam } from "../controllers/auth";
 import { getJobFromGCS, removeJobFromGCS } from "../lib/gcs-jobs";
 import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
+import { Logger } from "winston";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -130,7 +131,7 @@ async function addScrapeJobRaw(
           const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
           if (shouldSendNotification) {
             sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false, true).catch((error) => {
-              logger.error("Error sending notification (concurrency limit reached)", { error });
+              _logger.error("Error sending notification (concurrency limit reached)", { error });
             });
           }
       }
@@ -312,7 +313,7 @@ export async function addScrapeJobs(
         const shouldSendNotification = await shouldSendConcurrencyLimitNotification(jobs[0].data.team_id);
         if (shouldSendNotification) {
           sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false, true).catch((error) => {
-            logger.error("Error sending notification (concurrency limit reached)", { error });
+            _logger.error("Error sending notification (concurrency limit reached)", { error });
           });
         }
       }
@@ -389,6 +390,7 @@ export async function addScrapeJobs(
 export function waitForJob(
   jobId: string,
   timeout: number,
+  logger: Logger = _logger,
 ): Promise<Document> {
   return new Promise(async (resolve, reject) => {
     const start = Date.now();
@@ -405,10 +407,12 @@ export function waitForJob(
         if (state === "completed") {
           let doc: Document;
           const job = (await queue.getJob(jobId))!;
+          logger.debug("Got job");
           doc = job.returnvalue;
 
           if (!doc) {
             const docs = await getJobFromGCS(jobId);
+            logger.debug("Got job from GCS");
             if (!docs || docs.length === 0) {
               throw new Error("Job not found in GCS");
             }
