@@ -276,8 +276,8 @@ export async function crawlStatusController(
       )
     }
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
-    // TODO: move to read replica
-    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_service
+    
+    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
       .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
 
     if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
