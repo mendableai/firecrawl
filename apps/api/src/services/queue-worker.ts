@@ -1667,8 +1667,14 @@ app.listen(workerPort, () => {
     }
   }
 
-  const scrapeQueueEvents = new QueueEvents(getScrapeQueue().name, { connection: redisConnection });
-  scrapeQueueEvents.on("failed", failedListener);
+  // const scrapeQueueEvents = new QueueEvents(getScrapeQueue().name, {
+  //   // Create new connection, as this connection requires blocking events
+  //   // Reusing the existing connection will horribly mess everything up.
+  //   connection: new IORedis(process.env.REDIS_URL!, {
+  //     maxRetriesPerRequest: null,
+  //   }),
+  // });
+  // scrapeQueueEvents.on("failed", failedListener);
 
   await Promise.all([
     workerFun(getScrapeQueue(), processJobInternal),
@@ -1683,7 +1689,7 @@ app.listen(workerPort, () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  await scrapeQueueEvents.close();
+  // await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
   process.exit(0);
 })();
