@@ -68,11 +68,13 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  await getScrapeQueue().add(jobId, webScraperOptions, {
+  const conn = createRedisConnection();
+  await getScrapeQueue(conn).add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
   });
+  conn.disconnect();
 }
 
 async function addScrapeJobRaw(
