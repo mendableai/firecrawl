@@ -21,7 +21,7 @@ import {
   defaultOrigin,
 } from "../../lib/default-values";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
-import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
@@ -139,9 +139,7 @@ export async function scrapeHelper(
     return err;
   }
 
-  const conn = createRedisConnection();
-  await getScrapeQueue(conn).remove(jobId);
-  conn.disconnect();
+  await getScrapeQueue().remove(jobId);
 
   if (!doc) {
     console.error("!!! PANIC DOC IS", doc);

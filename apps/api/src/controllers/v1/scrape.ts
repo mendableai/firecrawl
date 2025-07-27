@@ -105,9 +105,7 @@ export async function scrapeController(
     });
 
     if (zeroDataRetention) {
-      const conn = createRedisConnection();
-      await getScrapeQueue(conn).remove(jobId);
-      conn.disconnect();
+      await getScrapeQueue().remove(jobId);
     }
 
     if (

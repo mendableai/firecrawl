@@ -30,9 +30,9 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
-export function getScrapeQueue(redisConnection: IORedis) {
-  return new Queue(scrapeQueueName, {
-    connection: redisConnection,
+export function getScrapeQueue(_redisConnection?: IORedis) {
+  const _scrapeQueue = !scrapeQueue || _redisConnection !== undefined ? new Queue(scrapeQueueName, {
+    connection: _redisConnection ?? redisConnection,
     defaultJobOptions: {
       removeOnComplete: {
         age: 3600, // 1 hour
@@ -41,7 +41,16 @@ export function getScrapeQueue(redisConnection: IORedis) {
         age: 3600, // 1 hour
       },
     },
-  });
+  }) : undefined;
+
+  if (_redisConnection !== undefined) {
+    return _scrapeQueue!;
+  } else if (!scrapeQueue) {
+    scrapeQueue = _scrapeQueue!;
+    logger.info("Web scraper queue created");
+  }
+
+  return scrapeQueue;
 }
 
 export function getExtractQueue() {

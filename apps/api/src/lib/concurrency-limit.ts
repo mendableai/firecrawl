@@ -3,7 +3,7 @@ import { redisEvictConnection } from "../services/redis";
 import type { Job, JobsOptions } from "bullmq";
 import { getACUCTeam } from "../controllers/auth";
 import { getCrawl, StoredCrawl } from "./crawl-redis";
-import { createRedisConnection, getScrapeQueue } from "../services/queue-service";
+import { getScrapeQueue } from "../services/queue-service";
 import { logger } from "./logger";
 
 const constructKey = (team_id: string) => "concurrency-limiter:" + team_id;
@@ -258,8 +258,7 @@ export async function concurrentJobDone(job: Job) {
           }
         }
 
-        const conn = createRedisConnection();
-        getScrapeQueue(conn).add(
+        (await getScrapeQueue()).add(
           nextJob.job.id,
           {
             ...nextJob.job.data,
@@ -271,7 +270,6 @@ export async function concurrentJobDone(job: Job) {
             priority: nextJob.job.priority,
           }
         );
-        conn.disconnect();
       }
     }
   }

@@ -1,5 +1,5 @@
 import { logger } from "../../../src/lib/logger";
-import { createRedisConnection, getScrapeQueue } from "../queue-service";
+import { getScrapeQueue } from "../queue-service";
 import { sendSlackWebhook } from "./slack";
 
 export async function checkAlerts() {
@@ -13,11 +13,8 @@ export async function checkAlerts() {
       logger.info("Initializing alerts");
       const checkActiveJobs = async () => {
         try {
-          const conn = createRedisConnection();
-          const scrapeQueue = getScrapeQueue(conn);
+          const scrapeQueue = getScrapeQueue();
           const activeJobs = await scrapeQueue.getActiveCount();
-          conn.disconnect();
-
           if (activeJobs > Number(process.env.ALERT_NUM_ACTIVE_JOBS)) {
             logger.warn(
               `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}.`,
@@ -37,10 +34,8 @@ export async function checkAlerts() {
       };
 
       const checkWaitingQueue = async () => {
-        const conn = createRedisConnection();
-        const scrapeQueue = getScrapeQueue(conn);
+        const scrapeQueue = getScrapeQueue();
         const waitingJobs = await scrapeQueue.getWaitingCount();
-        conn.disconnect();
 
         if (waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
           logger.warn(
