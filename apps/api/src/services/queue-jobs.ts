@@ -388,20 +388,19 @@ export function waitForJob(
   jobId: string,
   timeout: number,
 ): Promise<Document> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const start = Date.now();
     const conn = createRedisConnection();
     const queue = getScrapeQueue(conn);
-    const int = setInterval(async () => {
+    while (true) {
       logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
       if (Date.now() >= start + timeout) {
-        clearInterval(int);
         reject(new Error("Job wait "));
+        break;
       } else {
         const state = await queue.getJobState(jobId);
         logger.debug("Job in state", { state, scrapeId: jobId, jobId });
         if (state === "completed") {
-          clearInterval(int);
           let doc: Document;
           const job = (await queue.getJob(jobId))!;
           doc = job.returnvalue;
@@ -419,14 +418,20 @@ export function waitForJob(
           }
 
           resolve(doc);
+          break;
         } else if (state === "failed") {
-          const job = await getScrapeQueue().getJob(jobId);
+          const job = await queue.getJob(jobId);
           if (job && job.failedReason !== "Concurrency limit hit") {
-            clearInterval(int);
             reject(job.failedReason);
+            break;
           }
         }
       }
-    }, 750);
+
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    }
+
+    conn.disconnect();
+    return;
   });
 }
