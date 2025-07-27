@@ -102,8 +102,8 @@ importers:
         specifier: ^2.19.5
         version: 2.19.5
       bullmq:
-        specifier: ^5.36.0
-        version: 5.36.0
+        specifier: ^5.56.7
+        version: 5.56.7
       cacheable-lookup:
         specifier: ^6.1.0
         version: 6.1.0
@@ -2016,8 +2016,8 @@ packages:
   buffer@6.0.3:
     resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
 
-  bullmq@5.36.0:
-    resolution: {integrity: sha512-+08ghSARvO2W0VxYh5HO4AnrF7FZ0MC3Shig76HO6shsytMCrgXAvYwbfBufP2bd0HR9eI1a5J7xKazjXX7ogA==}
+  bullmq@5.56.7:
+    resolution: {integrity: sha512-Aa4Y7rmkuZOuyHvitGd2rSETgQ0SMawPD0XVsU9gAUg9Q4bwNpSD9ZDVcWGhfAQAUZFJH82JUmLsm0B59Prmtg==}
 
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
@@ -6880,7 +6880,7 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
-  bullmq@5.36.0:
+  bullmq@5.56.7:
     dependencies:
       cron-parser: 4.9.0
       ioredis: 5.6.1
