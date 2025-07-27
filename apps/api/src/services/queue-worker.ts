@@ -1673,7 +1673,7 @@ app.listen(workerPort, () => {
     }
   }
 
-  const scrapeQueueEvents = new QueueEvents(getScrapeQueue().name, { connection: redisConnection });
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
   scrapeQueueEvents.on("failed", failedListener);
 
   const conn = createRedisConnection();
