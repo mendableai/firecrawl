@@ -427,6 +427,6 @@ export function waitForJob(
           }
         }
       }
-    }, 250);
+    }, 750);
   });
 }
