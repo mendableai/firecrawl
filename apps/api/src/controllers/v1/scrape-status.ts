@@ -2,6 +2,7 @@ import { Response } from "express";
 import { supabaseGetJobByIdOnlyData } from "../../lib/supabase-jobs";
 import { getJob } from "./crawl-status";
 import { logger as _logger } from "../../lib/logger";
+import { createRedisConnection } from "../../services/queue-service";
 
 export async function scrapeStatusController(req: any, res: any) {
   const logger = _logger.child({
@@ -35,7 +36,9 @@ export async function scrapeStatusController(req: any, res: any) {
     });
   }
 
-  const jobData = await getJob(req.params.jobId);
+  const conn = createRedisConnection();
+  const jobData = await getJob(req.params.jobId, conn);
+  conn.disconnect();
   const data = Array.isArray(jobData?.returnvalue)
     ? jobData?.returnvalue[0]
     : jobData?.returnvalue;

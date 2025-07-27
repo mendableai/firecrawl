@@ -12,17 +12,16 @@ import { Job } from "bullmq";
 import { toLegacyDocument } from "../v1/types";
 import type { DBJob, PseudoJob } from "../v1/crawl-status";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import IORedis from "ioredis";
 configDotenv();
 
-export async function getJobs(crawlId: string, ids: string[]): Promise<PseudoJob<any>[]> {
-  const conn = createRedisConnection();
+export async function getJobs(crawlId: string, ids: string[], conn: IORedis): Promise<PseudoJob<any>[]> {
   const queue = getScrapeQueue(conn);
    const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
       Promise.all(ids.map((x) => queue.getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
       process.env.USE_DB_AUTHENTICATION === "true" ? await supabaseGetJobsByCrawlId(crawlId) : [],
       process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
     ]);
-  conn.disconnect();
   
     const bullJobMap = new Map<string, PseudoJob<any>>();
     const dbJobMap = new Map<string, DBJob>();
@@ -100,8 +99,10 @@ export async function crawlStatusController(req: Request, res: Response) {
       return res.status(403).json({ error: "Forbidden" });
     }
     let jobIDs = await getCrawlJobs(req.params.jobId);
-    let jobs = await getJobs(req.params.jobId, jobIDs);
+    const conn = createRedisConnection();
+    let jobs = await getJobs(req.params.jobId, jobIDs, conn);
     let jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
+    conn.disconnect();
 
     // Combine jobs and jobStatuses into a single array of objects
     let jobsWithStatuses = jobs.map((job, index) => ({

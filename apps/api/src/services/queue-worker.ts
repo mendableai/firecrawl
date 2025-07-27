@@ -257,9 +257,11 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-      const jobs = (await getJobs(jobIDs)).sort(
+      const conn = createRedisConnection();
+      const jobs = (await getJobs(jobIDs, conn)).sort(
         (a, b) => a.timestamp - b.timestamp,
       );
+      conn.disconnect();
       // const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
       const jobStatus = sc.cancelled // || jobStatuses.some((x) => x === "failed")
         ? "failed"

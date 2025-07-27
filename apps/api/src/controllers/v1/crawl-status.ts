@@ -24,6 +24,7 @@ import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
 import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitActiveJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import IORedis from "ioredis";
 configDotenv();
 
 export type PseudoJob<T> = {
@@ -40,14 +41,12 @@ export type PseudoJob<T> = {
 
 export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string }
 
-export async function getJob(id: string): Promise<PseudoJob<any> | null> {
-  const conn = createRedisConnection();
+export async function getJob(id: string, conn: IORedis): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([
     getScrapeQueue(conn).getJob(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
-  conn.disconnect();
 
   if (!bullJob && !dbJob) return null;
 
@@ -74,15 +73,13 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   return job;
 }
 
-export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
-  const conn = createRedisConnection();
+export async function getJobs(ids: string[], conn: IORedis): Promise<PseudoJob<any>[]> {
   const queue = getScrapeQueue(conn);
   const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
     Promise.all(ids.map((x) => queue.getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
-  conn.disconnect();
 
   const bullJobMap = new Map<string, PseudoJob<any>>();
   const dbJobMap = new Map<string, DBJob>();
@@ -116,9 +113,10 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
       });
     }
 
+    const state = await bullJob?.getState();
     const job: PseudoJob<any> = {
       id,
-      getState: bullJob ? (() => bullJob.getState()) : (() => dbJob!.success ? "completed" : "failed"),
+      getState: bullJob ? (() => state!) : (() => dbJob!.success ? "completed" : "failed"),
       returnvalue: Array.isArray(data)
         ? data[0]
         : data,
@@ -388,8 +386,9 @@ export async function crawlStatusController(
       i += factor
     ) {
       // get current chunk and retrieve jobs
+      const conn = createRedisConnection();
       const currentIDs = doneJobsOrder.slice(i, i + factor);
-      const jobs = await getJobs(currentIDs);
+      const jobs = await getJobs(currentIDs, conn);
 
       // iterate through jobs and add them one them one to the byte counter
       // both loops will break once we cross the byte counter
@@ -412,6 +411,7 @@ export async function crawlStatusController(
         doneJobs.push(job);
         bytes += JSON.stringify(job.returnvalue ?? null).length;
       }
+      conn.disconnect();
     }
 
     // if we ran over the bytes limit, remove the last document, except if it's the only document
@@ -419,13 +419,15 @@ export async function crawlStatusController(
       doneJobs.splice(doneJobs.length - 1, 1);
     }
   } else {
+    const conn = createRedisConnection();
     doneJobs = (
       await Promise.all(
-        (await getJobs(doneJobsOrder)).map(async (x) =>
+        (await getJobs(doneJobsOrder, conn)).map(async (x) =>
           (await x.getState()) === "failed" ? null : x,
         ),
       )
     ).filter((x) => x !== null) as PseudoJob<any>[];
+    conn.disconnect();
   }
 
   const data = doneJobs.map((x) => x.returnvalue);
