@@ -1,4 +1,4 @@
-import { getScrapeQueue } from "./queue-service";
+import { createRedisConnection, getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
@@ -390,18 +390,20 @@ export function waitForJob(
 ): Promise<Document> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
+    const conn = createRedisConnection();
+    const queue = getScrapeQueue(conn);
     const int = setInterval(async () => {
       logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
       if (Date.now() >= start + timeout) {
         clearInterval(int);
         reject(new Error("Job wait "));
       } else {
-        const state = await getScrapeQueue().getJobState(jobId);
+        const state = await queue.getJobState(jobId);
         logger.debug("Job in state", { state, scrapeId: jobId, jobId });
         if (state === "completed") {
           clearInterval(int);
           let doc: Document;
-          const job = (await getScrapeQueue().getJob(jobId))!;
+          const job = (await queue.getJob(jobId))!;
           doc = job.returnvalue;
 
           if (!doc) {
