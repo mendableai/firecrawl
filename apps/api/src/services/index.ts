@@ -131,7 +131,7 @@ export async function saveIndexToGCS(id: string, doc: {
   }
 }
 
-export const useIndex = false &&
+export const useIndex =
     process.env.INDEX_SUPABASE_URL !== "" &&
     process.env.INDEX_SUPABASE_URL !== undefined;
 
