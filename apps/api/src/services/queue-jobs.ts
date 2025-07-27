@@ -396,6 +396,7 @@ export function waitForJob(
         reject(new Error("Job wait "));
       } else {
         const state = await getScrapeQueue().getJobState(jobId);
+        logger.debug("Job in state", { state, scrapeId: jobId, jobId });
         if (state === "completed") {
           clearInterval(int);
           let doc: Document;
