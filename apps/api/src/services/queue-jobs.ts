@@ -391,6 +391,7 @@ export function waitForJob(
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const int = setInterval(async () => {
+      logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
       if (Date.now() >= start + timeout) {
         clearInterval(int);
         reject(new Error("Job wait "));
