@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
+import { createRedisConnection } from "./services/queue-service";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -55,7 +56,7 @@ serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [
-    new BullMQAdapter(getScrapeQueue()),
+    new BullMQAdapter(getScrapeQueue(createRedisConnection())),
     new BullMQAdapter(getExtractQueue()),
     new BullMQAdapter(getGenerateLlmsTxtQueue()),
     new BullMQAdapter(getDeepResearchQueue()),
@@ -119,7 +120,8 @@ if (require.main === module) {
 
 app.get(`/serverHealthCheck`, async (req, res) => {
   try {
-    const scrapeQueue = getScrapeQueue();
+    const conn = createRedisConnection();
+    const scrapeQueue = getScrapeQueue(conn);
     const [waitingJobs] = await Promise.all([scrapeQueue.getWaitingCount()]);
     const noWaitingJobs = waitingJobs === 0;
     // 200 if no active jobs, 503 if there are active jobs
@@ -139,7 +141,8 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
     const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
 
     const getWaitingJobsCount = async () => {
-      const scrapeQueue = getScrapeQueue();
+      const conn = createRedisConnection();
+      const scrapeQueue = getScrapeQueue(conn);
       const [waitingJobsCount] = await Promise.all([
         scrapeQueue.getWaitingCount(),
       ]);

@@ -1,4 +1,4 @@
-import { createRedisConnection, getScrapeQueue } from "./queue-service";
+import { createRedisConnection, getScrapeQueue, scrapeQueueName } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
@@ -165,7 +165,7 @@ export async function addScrapeJob(
         op: "queue.publish",
         attributes: {
           "messaging.message.id": jobId,
-          "messaging.destination.name": getScrapeQueue().name,
+          "messaging.destination.name": scrapeQueueName,
           "messaging.message.body.size": size,
         },
       },
@@ -328,7 +328,7 @@ export async function addScrapeJobs(
             op: "queue.publish",
             attributes: {
               "messaging.message.id": job.opts.jobId,
-              "messaging.destination.name": getScrapeQueue().name,
+              "messaging.destination.name": scrapeQueueName,
               "messaging.message.body.size": size,
             },
           },
@@ -362,7 +362,7 @@ export async function addScrapeJobs(
             op: "queue.publish",
             attributes: {
               "messaging.message.id": job.opts.jobId,
-              "messaging.destination.name": getScrapeQueue().name,
+              "messaging.destination.name": scrapeQueueName,
               "messaging.message.body.size": size,
             },
           },

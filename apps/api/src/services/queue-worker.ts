@@ -9,6 +9,8 @@ import {
   redisConnection,
   getGenerateLlmsTxtQueue,
   getBillingQueue,
+  scrapeQueueName,
+  createRedisConnection,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -800,7 +802,7 @@ const workerFun = async (
                     op: "queue.process",
                     attributes: {
                       "messaging.message.id": job.id,
-                      "messaging.destination.name": getScrapeQueue().name,
+                      "messaging.destination.name": scrapeQueueName,
                       "messaging.message.body.size": job.data.sentry.size,
                       "messaging.message.receive.latency":
                         Date.now() - (job.processedOn ?? job.timestamp),
@@ -1107,7 +1109,6 @@ async function billScrapeJob(job: Job & { id: string }, document: Document | nul
             priority: 10,
           },
         );
-
         return creditsToBeBilled;
       } catch (error) {
         logger.error(
@@ -1636,7 +1637,10 @@ app.listen(workerPort, () => {
         return;
       }
 
-      const job = await getScrapeQueue().getJob(args.jobId);
+      const conn = createRedisConnection();
+      const job = await getScrapeQueue(conn).getJob(args.jobId);
+      conn.disconnect();
+
       let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
       if (job && job.data.crawl_id) {
         logger = logger.child({ crawlId: job.data.crawl_id });
@@ -1676,13 +1680,14 @@ app.listen(workerPort, () => {
   // });
   // scrapeQueueEvents.on("failed", failedListener);
 
+  const conn = createRedisConnection();
   await Promise.all([
-    workerFun(getScrapeQueue(), processJobInternal),
+    workerFun(getScrapeQueue(conn), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
     workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
   ]);
-
+  conn.disconnect();
   console.log("All workers exited. Waiting for all jobs to finish...");
 
   while (runningJobs.size > 0) {

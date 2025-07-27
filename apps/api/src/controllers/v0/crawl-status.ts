@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
-import { getScrapeQueue } from "../../../src/services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../../src/services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
@@ -15,11 +15,14 @@ import { getJobFromGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
 export async function getJobs(crawlId: string, ids: string[]): Promise<PseudoJob<any>[]> {
+  const conn = createRedisConnection();
+  const queue = getScrapeQueue(conn);
    const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-      Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+      Promise.all(ids.map((x) => queue.getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
       process.env.USE_DB_AUTHENTICATION === "true" ? await supabaseGetJobsByCrawlId(crawlId) : [],
       process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
     ]);
+  conn.disconnect();
   
     const bullJobMap = new Map<string, PseudoJob<any>>();
     const dbJobMap = new Map<string, DBJob>();

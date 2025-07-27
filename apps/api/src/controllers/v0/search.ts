@@ -11,7 +11,7 @@ import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
-import { getScrapeQueue } from "../../services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
@@ -137,8 +137,10 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  const sq = getScrapeQueue();
+  const conn = createRedisConnection()
+  const sq = getScrapeQueue(conn);
   await Promise.all(jobDatas.map((x) => sq.remove(x.opts.jobId)));
+  conn.disconnect();
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(

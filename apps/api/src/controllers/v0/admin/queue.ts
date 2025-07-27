@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 import { Job } from "bullmq";
 import { logger } from "../../../lib/logger";
-import { getScrapeQueue } from "../../../services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../../services/queue-service";
 import { checkAlerts } from "../../../services/alerts";
 import { sendSlackWebhook } from "../../../services/alerts/slack";
 
@@ -11,8 +11,9 @@ export async function cleanBefore24hCompleteJobsController(
   res: Response,
 ) {
   logger.info("🐂 Cleaning jobs older than 24h");
+  const conn = createRedisConnection();
   try {
-    const scrapeQueue = getScrapeQueue();
+    const scrapeQueue = getScrapeQueue(conn);
     const batchSize = 10;
     const numberOfBatches = 9; // Adjust based on your needs
     const completedJobsPromises: Promise<Job[]>[] = [];
@@ -54,6 +55,8 @@ export async function cleanBefore24hCompleteJobsController(
   } catch (error) {
     logger.error(`🐂 Failed to clean last 24h complete jobs: ${error}`);
     return res.status(500).send("Failed to clean jobs");
+  } finally {
+    conn.disconnect();
   }
 }
 
@@ -69,8 +72,9 @@ export async function checkQueuesController(req: Request, res: Response) {
 
 // Use this as a "health check" that way we dont destroy the server
 export async function queuesController(req: Request, res: Response) {
+  const conn = createRedisConnection();
   try {
-    const scrapeQueue = getScrapeQueue();
+    const scrapeQueue = getScrapeQueue(conn);
 
     const [webScraperActive] = await Promise.all([
       scrapeQueue.getActiveCount(),
@@ -85,15 +89,18 @@ export async function queuesController(req: Request, res: Response) {
   } catch (error) {
     logger.error(error);
     return res.status(500).json({ error: error.message });
+  } finally {
+    conn.disconnect();
   }
 }
 
 export async function autoscalerController(req: Request, res: Response) {
+  const conn = createRedisConnection();
   try {
     const maxNumberOfMachines = 80;
     const minNumberOfMachines = 20;
 
-    const scrapeQueue = getScrapeQueue();
+    const scrapeQueue = getScrapeQueue(conn);
 
     const [webScraperActive, webScraperWaiting, webScraperPriority] =
       await Promise.all([
@@ -197,5 +204,7 @@ export async function autoscalerController(req: Request, res: Response) {
   } catch (error) {
     logger.error(error);
     return res.status(500).send("Failed to initialize autoscaler");
+  } finally {
+    conn.disconnect();
   }
 }
