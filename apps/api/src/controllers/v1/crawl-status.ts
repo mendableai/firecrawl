@@ -307,8 +307,8 @@ export async function crawlStatusController(
       return res.status(404).json({ success: false, error: "Job expired" });
     }
 
-    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
-      .rpc("count_jobs_of_crawl_team_2", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
+    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_service
+      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
 
     if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
       logger.error("Error getting scrape job count", { error: scrapeJobError });
