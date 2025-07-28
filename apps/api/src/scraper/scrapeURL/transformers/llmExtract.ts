@@ -989,20 +989,20 @@ export async function generateCrawlerOptionsFromPrompt(
           systemPrompt: `You are a web crawler configuration expert. Generate crawler options based on natural language instructions.
 
 Available crawler options:
-- includePaths: string[] - URL patterns to include (regex patterns)
-- excludePaths: string[] - URL patterns to exclude (regex patterns)
-- maxDepth: number - Maximum crawl depth
-- crawlEntireDomain: boolean - Whether to crawl entire domain
-- allowExternalLinks: boolean - Whether to follow external links
-- allowSubdomains: boolean - Whether to crawl subdomains
-- ignoreRobotsTxt: boolean - Whether to ignore robots.txt
-- ignoreSitemap: boolean - Whether to ignore sitemap
+- includePaths: string[] - URL pathname regex patterns that include matching URLs in the crawl. Only the paths that match the specified patterns will be included in the response. For example, if you set "includePaths": ["blog/.*"] for the base URL firecrawl.dev, only results matching that pattern will be included, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap.
+- excludePaths: string[] - URL pathname regex patterns that exclude matching URLs from the crawl. For example, if you set "excludePaths": ["blog/.*"] for the base URL firecrawl.dev, any results matching that pattern will be excluded, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap.
+- maxDepth: number - Maximum absolute depth to crawl from the base of the entered URL. Basically, the max number of slashes the pathname of a scraped URL may contain. Default: 10
+- maxDiscoveryDepth: number - Maximum depth to crawl based on discovery order. The root site and sitemapped pages has a discovery depth of 0. For example, if you set it to 1, and you set ignoreSitemap, you will only crawl the entered URL and all URLs that are linked on that page.
+- crawlEntireDomain: boolean - Allows the crawler to follow internal links to sibling or parent URLs, not just child paths. false: Only crawls deeper (child) URLs. → e.g. /features/feature-1 → /features/feature-1/tips ✅ → Won't follow /pricing or / ❌. true: Crawls any internal links, including siblings and parents. → e.g. /features/feature-1 → /pricing, /, etc. ✅. Use true for broader internal coverage beyond nested paths. Default: false
+- allowExternalLinks: boolean - Allows the crawler to follow links to external websites. Default: false
+- allowSubdomains: boolean - Allows the crawler to follow links to subdomains of the main domain. Default: false
+- ignoreSitemap: boolean - Ignore the website sitemap when crawling. Default: false
+- ignoreQueryParameters: boolean - Do not re-scrape the same path with different (or none) query parameters. Default: false
 - deduplicateSimilarURLs: boolean - Whether to deduplicate similar URLs
-- ignoreQueryParameters: boolean - Whether to ignore query parameters
-- regexOnFullURL: boolean - Whether regex patterns apply to full URL
-- delay: number - Delay between requests in milliseconds
+- delay: number - Delay in seconds between scrapes. This helps respect website rate limits.
+- limit: number - Maximum number of pages to crawl. Default limit is 10000.
 
-Return a JSON object with only the relevant options for the user's request. Don't include options that aren't relevant to the instruction.`,
+Return a JSON object with only the relevant options for the user's request. Don't include options that aren't relevant to the instruction. Focus on the most important options that directly address the user's intent.`,
           prompt: `Generate crawler options for: ${prompt}`,
         },
         costTrackingOptions: {
