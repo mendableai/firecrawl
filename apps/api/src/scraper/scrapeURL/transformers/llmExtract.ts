@@ -965,3 +965,64 @@ Return a valid JSON schema object with properties that would capture the informa
     `Failed to generate schema after all attempts. Last error: ${lastError?.message}`,
   );
 }
+
+export async function generateCrawlerOptionsFromPrompt(
+  prompt: string,
+  logger: Logger,
+  costTracking: CostTracking,
+): Promise<{ extract: any }> {
+  const model = getModel("gpt-4o", "openai");
+  const retryModel = getModel("gpt-4o-mini", "openai");
+  const temperatures = [0, 0.1, 0.3];
+  let lastError: Error | null = null;
+
+  for (const temp of temperatures) {
+    try {
+      const { extract } = await generateCompletions({
+        logger: logger.child({
+          method: "generateCrawlerOptionsFromPrompt/generateCompletions",
+        }),
+        model,
+        retryModel,
+        markdown: "",
+        options: {
+          systemPrompt: `You are a web crawler configuration expert. Generate crawler options based on natural language instructions.
+
+Available crawler options:
+- includePaths: string[] - URL patterns to include (regex patterns)
+- excludePaths: string[] - URL patterns to exclude (regex patterns)
+- maxDepth: number - Maximum crawl depth
+- crawlEntireDomain: boolean - Whether to crawl entire domain
+- allowExternalLinks: boolean - Whether to follow external links
+- allowSubdomains: boolean - Whether to crawl subdomains
+- ignoreRobotsTxt: boolean - Whether to ignore robots.txt
+- ignoreSitemap: boolean - Whether to ignore sitemap
+- deduplicateSimilarURLs: boolean - Whether to deduplicate similar URLs
+- ignoreQueryParameters: boolean - Whether to ignore query parameters
+- regexOnFullURL: boolean - Whether regex patterns apply to full URL
+- delay: number - Delay between requests in milliseconds
+
+Return a JSON object with only the relevant options for the user's request. Don't include options that aren't relevant to the instruction.`,
+          prompt: `Generate crawler options for: ${prompt}`,
+        },
+        costTrackingOptions: {
+          costTracking,
+          metadata: {
+            module: "crawl",
+            method: "generateCrawlerOptionsFromPrompt",
+          },
+        },
+      });
+
+      return { extract };
+    } catch (error) {
+      lastError = error as Error;
+      logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);
+      continue;
+    }
+  }
+
+  throw new Error(
+    `Failed to generate crawler options after all attempts. Last error: ${lastError?.message}`,
+  );
+}
