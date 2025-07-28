@@ -308,7 +308,7 @@ export async function crawlStatusController(
     }
 
     const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
-      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
+      .rpc("count_jobs_of_crawl_team_2", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
 
     if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
       logger.error("Error getting scrape job count", { error: scrapeJobError });
