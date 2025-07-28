@@ -20,7 +20,7 @@ COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 # Install Go dependencies and build parser lib
 RUN cd /app/sharedLibs/go-html-to-md && \
     go mod tidy && \
-    go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
+    go build -race -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
     chmod +x html-to-markdown.so
 
 # Install Rust
