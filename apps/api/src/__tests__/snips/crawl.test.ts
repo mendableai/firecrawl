@@ -210,6 +210,29 @@ describe("Crawl tests", () => {
         }
     }, 5 * scrapeTimeout);
 
+    it.concurrent("allowSubdomains correctly allows same registrable domain using PSL", async () => {
+        const res = await crawl({
+            url: "https://firecrawl.dev",
+            allowSubdomains: true,
+            allowExternalLinks: false,
+            limit: 3,
+        }, identity);
+
+        expect(res.success).toBe(true);
+        if (res.success) {
+            expect(res.data.length).toBeGreaterThan(0);
+            for (const page of res.data) {
+                const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
+                const hostname = url.hostname;
+                
+                expect(
+                    hostname === "firecrawl.dev" || 
+                    hostname.endsWith(".firecrawl.dev")
+                ).toBe(true);
+            }
+        }
+    }, 5 * scrapeTimeout);
+
     it.concurrent("rejects crawl when URL depth exceeds maxDepth", async () => {
         const response = await crawlStart({
             url: "https://firecrawl.dev/blog/category/deep/nested/path",

@@ -944,6 +944,89 @@ describe("Scrape tests", () => {
         expect(typeof response.json.is_open_source).toBe("boolean");
       }, scrapeTimeout);
     });
+
+    describe("Summary format", () => {
+      it.concurrent("generates basic summary with no options required", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["summary"],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.summary!.length).toBeGreaterThan(10);
+      }, scrapeTimeout);
+
+      it.concurrent("works with markdown format", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["markdown", "summary"],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.markdown).toBeDefined();
+      }, scrapeTimeout);
+
+      it.concurrent("works alongside extract format", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["summary", "extract"],
+          extract: {
+            mode: "llm",
+            prompt: "Extract the company name",
+            schema: {
+              type: "object",
+              properties: {
+                company_name: { type: "string" }
+              }
+            }
+          },
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.extract).toBeDefined();
+      }, scrapeTimeout);
+
+      it.concurrent("works alongside json format", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["summary", "json"],
+          jsonOptions: {
+            mode: "llm",
+            prompt: "Extract company info as JSON",
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string" }
+              }
+            }
+          },
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.json).toBeDefined();
+      }, scrapeTimeout);
+
+      it.concurrent("works with multiple formats", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["markdown", "html", "summary"],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.markdown).toBeDefined();
+        expect(response.html).toBeDefined();
+      }, scrapeTimeout);
+    });
   }
 
   it.concurrent("sourceURL stays unnormalized", async () => {
@@ -964,4 +1047,29 @@ describe("Scrape tests", () => {
 
     expect(response.markdown).toContain("```json");
   }, scrapeTimeout);
+
+  describe("__experimental_omceDomain functionality", () => {
+    it.concurrent("should accept __experimental_omceDomain flag in scrape request", async () => {
+      const response = await scrape({
+        url: "https://httpbin.org/html",
+        __experimental_omceDomain: "fake-domain.com",
+        timeout: scrapeTimeout,
+      }, identity);
+
+      expect(response.markdown).toBeDefined();
+      expect(response.metadata).toBeDefined();
+    }, scrapeTimeout);
+
+    it.concurrent("should work with __experimental_omceDomain and other experimental flags", async () => {
+      const response = await scrape({
+        url: "https://httpbin.org/html",
+        __experimental_omceDomain: "test-domain.org",
+        __experimental_omce: true,
+        timeout: scrapeTimeout,
+      }, identity);
+
+      expect(response.markdown).toBeDefined();
+      expect(response.metadata).toBeDefined();
+    }, scrapeTimeout);
+  });
 });

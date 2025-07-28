@@ -336,32 +336,6 @@ export async function generateCompletions_F0({
   }
 }
 
-export async function performLLMExtract(
-  meta: Meta,
-  document: Document,
-): Promise<Document> {
-  if (meta.options.formats.includes("extract")) {
-    meta.internalOptions.abort?.throwIfAborted();
-    const { extract, warning } = await generateCompletions_F0({
-      logger: meta.logger.child({
-        method: "performLLMExtract/generateCompletions",
-      }),
-      options: meta.options.extract!,
-      markdown: document.markdown,
-      previousWarning: document.warning
-    });
-
-    if (meta.options.formats.includes("json")) {
-      document.json = extract;
-    } else {
-      document.extract = extract;
-    }
-    document.warning = warning;
-  }
-
-  return document;
-}
-
 export function removeDefaultProperty_F0(schema: any): any {
   if (typeof schema !== "object" || schema === null) return schema;
 

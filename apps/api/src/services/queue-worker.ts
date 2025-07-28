@@ -45,7 +45,7 @@ import {
 } from "../../src/lib/job-priority";
 import { getJobs } from "..//controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
-import { scrapeOptions } from "../controllers/v1/types";
+import { scrapeOptions } from "../controllers/v2/types";
 import {
   concurrentJobDone,
   pushConcurrencyLimitActiveJob,
@@ -1644,7 +1644,7 @@ app.listen(workerPort, () => {
 
         const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
-        if (job.mode === "kickoff") {
+        if (job.data.mode === "kickoff") {
           await finishCrawlKickoff(job.data.crawl_id);
           if (sc) {
             await finishCrawlIfNeeded(job, sc);

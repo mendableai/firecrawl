@@ -11,7 +11,7 @@ export async function performAgent(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
-  if (meta.options.agent?.prompt) {
+  if (meta.internalOptions.v1Agent?.prompt) {
     if (meta.internalOptions.zeroDataRetention) {
       document.warning = "Agent is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
       return document;
@@ -25,8 +25,8 @@ export async function performAgent(
       return document;
     }
 
-    const prompt = meta.options.agent?.prompt ?? undefined
-    const sessionId = meta.options.agent?.sessionId ?? undefined
+    const prompt = meta.internalOptions.v1Agent?.prompt ?? undefined
+    const sessionId = meta.internalOptions.v1Agent?.sessionId ?? undefined
 
     let smartscrapeResults: SmartScrapeResult;
     try {

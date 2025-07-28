@@ -36,6 +36,7 @@ export type Format =
   | "screenshot@fullPage"
   | "extract"
   | "json"
+  | "summary"
   | "changeTracking";
 
 export const url = z.preprocess(
@@ -273,6 +274,13 @@ export const actionsSchema = z
     },
   );
 
+function transformIframeSelector(selector: string): string {
+  return selector.replace(/(?:^|[\s,])iframe(?=\s|$|[.#\[:,])/g, (match) => {
+    const prefix = match.match(/^[\s,]/)?.[0] || '';
+    return prefix + 'div[data-original-tag="iframe"]';
+  });
+}
+
 const baseScrapeOptions = z
   .object({
     formats: z
@@ -285,6 +293,7 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
+        "summary",
         "changeTracking",
       ])
       .array()
@@ -299,8 +308,12 @@ const baseScrapeOptions = z
         "The changeTracking format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
-    includeTags: z.string().array().optional(),
-    excludeTags: z.string().array().optional(),
+    includeTags: z.string().array()
+      .transform(tags => tags.map(transformIframeSelector))
+      .optional(),
+    excludeTags: z.string().array()
+      .transform(tags => tags.map(transformIframeSelector))
+      .optional(),
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
     waitFor: z
@@ -392,6 +405,7 @@ const baseScrapeOptions = z
     __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
     __experimental_omce: z.boolean().default(false).optional(),
+    __experimental_omceDomain: z.string().optional(),
   })
   .strict(strictMessage);
 
@@ -432,7 +446,7 @@ const extractRefineOpts = {
   message:
     "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
 };
-const extractTransform = (obj) => {
+const extractTransform = (obj: ScrapeOptions) => {
   // Handle timeout
   if (
     (obj.formats?.includes("extract") ||
@@ -452,7 +466,7 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 60000 };
   }
 
-  if (obj.agent) {
+  if ((obj as ScrapeOptions).agent) {
     obj = { ...obj, timeout: 300000 };
   }
 
@@ -468,13 +482,7 @@ const extractTransform = (obj) => {
   if (obj.jsonOptions && !obj.extract) {
     obj = {
       ...obj,
-      extract: {
-        prompt: obj.jsonOptions.prompt,
-        systemPrompt: obj.jsonOptions.systemPrompt,
-        schema: obj.jsonOptions.schema,
-        agent: obj.jsonOptions.agent,
-        mode: "llm",
-      },
+      extract: obj.jsonOptions,
     };
   }
 
@@ -486,7 +494,7 @@ export const scrapeOptions = baseScrapeOptions
     agent: z
       .object({
         model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
+        prompt: z.string(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
       })
@@ -510,7 +518,9 @@ export const scrapeOptions = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform(obj => {
+    return extractTransform(obj) as typeof obj;
+  });
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
@@ -617,7 +627,7 @@ export const scrapeRequestSchema = baseScrapeOptions
     agent: z
       .object({
         model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
+        prompt: z.string(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
       })
@@ -633,7 +643,9 @@ export const scrapeRequestSchema = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => {
+    return extractTransform(obj) as typeof obj;
+  });
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
@@ -673,7 +685,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => extractTransform(obj) as typeof obj);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .extend({
@@ -690,7 +702,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => extractTransform(obj) as typeof obj);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 export type BatchScrapeRequestInput = z.input<typeof batchScrapeRequestSchema>;
@@ -818,6 +830,7 @@ export type Document = {
   screenshot?: string;
   extract?: any;
   json?: any;
+  summary?: string;
   warning?: string;
   actions?: {
     screenshots?: string[];
@@ -1097,6 +1110,7 @@ export type TeamFlags = {
   allowZDR?: boolean;
   zdrCost?: number;
   checkRobotsOnScrape?: boolean;
+  allowTeammateInvites?: boolean;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;

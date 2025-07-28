@@ -1,8 +1,9 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions, TimeoutSignal, TeamFlags } from "../../controllers/v1/types";
-import { logger as _logger, logger } from "../../lib/logger";
+import { Document, ScrapeOptions, TimeoutSignal, TeamFlags } from "../../controllers/v2/types";
+import { ScrapeOptions as ScrapeOptionsV1 } from "../../controllers/v1/types";
+import { logger as _logger } from "../../lib/logger";
 import {
   buildFallbackList,
   Engine,
@@ -91,6 +92,11 @@ function buildFeatureFlags(
     flags.add("screenshot@fullScreen");
   }
 
+  const screenshotFormat = options.formats.find(x => typeof x === "object" && x.type === "screenshot");
+  if (screenshotFormat) {
+    flags.add(screenshotFormat.fullPage ? "screenshot@fullScreen" : "screenshot");
+  }
+
   if (options.waitFor !== 0) {
     flags.add("waitFor");
   }
@@ -99,7 +105,7 @@ function buildFeatureFlags(
     flags.add("atsv");
   }
 
-  if (options.location || options.geolocation) {
+  if (options.location) {
     flags.add("location");
   }
 
@@ -222,6 +228,10 @@ export type InternalOptions = {
   bypassBilling?: boolean;
   zeroDataRetention?: boolean;
   teamFlags?: TeamFlags;
+
+  v1Agent?: ScrapeOptionsV1["agent"];
+  v1JSONAgent?: Exclude<ScrapeOptionsV1["jsonOptions"], undefined>["agent"];
+  v1JSONSystemPrompt?: string;
 };
 
 export type EngineResultsTracker = {
@@ -293,7 +303,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   const timeToRun =
     meta.options.timeout !== undefined
       ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
-      : (!meta.options.actions && !meta.options.jsonOptions && !meta.options.extract)
+      : (!meta.options.actions && !meta.options.formats.find(x => typeof x === "object" && x.type === "json"))
         ? Math.round(120000 / Math.min(fallbackList.length, 2))
         : undefined;
 
@@ -558,7 +568,8 @@ export async function scrapeURL(
           ? Date.now() - new Date(data[0].created_at).getTime()
           : -1;
         
-        const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname);
+        const fakeDomain = meta.options.__experimental_omceDomain;
+        const domainSplits = generateDomainSplits(new URL(normalizeURLForIndex(meta.url)).hostname, fakeDomain);
         const domainHash = hashURL(domainSplits.slice(-1)[0]);
 
         const out = {
