@@ -1,4 +1,4 @@
-import { getScrapeQueue } from "./queue-service";
+import { createRedisConnection, getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
@@ -11,13 +11,14 @@ import {
   pushConcurrencyLimitedJob,
   pushCrawlConcurrencyLimitActiveJob,
 } from "../lib/concurrency-limit";
-import { logger } from "../lib/logger";
+import { logger as _logger } from "../lib/logger";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
 import { getACUC, getACUCTeam } from "../controllers/auth";
 import { getJobFromGCS, removeJobFromGCS } from "../lib/gcs-jobs";
 import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
+import { Logger } from "winston";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -68,11 +69,13 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  await getScrapeQueue().add(jobId, webScraperOptions, {
+  const conn = createRedisConnection();
+  await getScrapeQueue(conn).add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
   });
+  conn.disconnect();
 }
 
 async function addScrapeJobRaw(
@@ -128,7 +131,7 @@ async function addScrapeJobRaw(
           const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
           if (shouldSendNotification) {
             sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false, true).catch((error) => {
-              logger.error("Error sending notification (concurrency limit reached)", { error });
+              _logger.error("Error sending notification (concurrency limit reached)", { error });
             });
           }
       }
@@ -310,7 +313,7 @@ export async function addScrapeJobs(
         const shouldSendNotification = await shouldSendConcurrencyLimitNotification(jobs[0].data.team_id);
         if (shouldSendNotification) {
           sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false, true).catch((error) => {
-            logger.error("Error sending notification (concurrency limit reached)", { error });
+            _logger.error("Error sending notification (concurrency limit reached)", { error });
           });
         }
       }
@@ -387,23 +390,29 @@ export async function addScrapeJobs(
 export function waitForJob(
   jobId: string,
   timeout: number,
+  logger: Logger = _logger,
 ): Promise<Document> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const start = Date.now();
-    const int = setInterval(async () => {
+    const conn = createRedisConnection();
+    const queue = getScrapeQueue(conn);
+    while (true) {
+      logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
       if (Date.now() >= start + timeout) {
-        clearInterval(int);
         reject(new Error("Job wait "));
+        break;
       } else {
-        const state = await getScrapeQueue().getJobState(jobId);
+        const state = await queue.getJobState(jobId);
+        logger.debug("Job in state", { state, scrapeId: jobId, jobId });
         if (state === "completed") {
-          clearInterval(int);
           let doc: Document;
-          const job = (await getScrapeQueue().getJob(jobId))!;
+          const job = (await queue.getJob(jobId))!;
+          logger.debug("Got job");
           doc = job.returnvalue;
 
           if (!doc) {
             const docs = await getJobFromGCS(jobId);
+            logger.debug("Got job from GCS");
             if (!docs || docs.length === 0) {
               throw new Error("Job not found in GCS");
             }
@@ -415,14 +424,20 @@ export function waitForJob(
           }
 
           resolve(doc);
+          break;
         } else if (state === "failed") {
-          const job = await getScrapeQueue().getJob(jobId);
+          const job = await queue.getJob(jobId);
           if (job && job.failedReason !== "Concurrency limit hit") {
-            clearInterval(int);
             reject(job.failedReason);
+            break;
           }
         }
       }
-    }, 250);
+
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    }
+
+    conn.disconnect();
+    return;
   });
 }
