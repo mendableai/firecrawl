@@ -10,7 +10,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { getScrapeQueue } from "../../services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -86,6 +86,7 @@ export async function scrapeController(
     jobPriority,
     isDirectToBullMQ,
   );
+  logger.info("Added scrape job now")
 
   const totalWait =
     (req.body.waitFor ?? 0) +
@@ -96,10 +97,11 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob(jobId, timeout + totalWait);
+    doc = await waitForJob(jobId, timeout + totalWait, logger);
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,
+      error: e,
     });
 
     if (zeroDataRetention) {
@@ -122,7 +124,13 @@ export async function scrapeController(
     }
   }
 
-  await getScrapeQueue().remove(jobId);
+  logger.info("Done with waitForJob");
+
+  const conn = createRedisConnection();
+  await getScrapeQueue(conn).remove(jobId);
+  conn.disconnect();
+
+  logger.info("Removed job from queue");
   
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {

@@ -9,6 +9,8 @@ import {
   redisConnection,
   getGenerateLlmsTxtQueue,
   getBillingQueue,
+  scrapeQueueName,
+  createRedisConnection,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -255,9 +257,11 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-      const jobs = (await getJobs(jobIDs)).sort(
+      const conn = createRedisConnection();
+      const jobs = (await getJobs(jobIDs, conn)).sort(
         (a, b) => a.timestamp - b.timestamp,
       );
+      conn.disconnect();
       // const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
       const jobStatus = sc.cancelled // || jobStatuses.some((x) => x === "failed")
         ? "failed"
@@ -800,7 +804,7 @@ const workerFun = async (
                     op: "queue.process",
                     attributes: {
                       "messaging.message.id": job.id,
-                      "messaging.destination.name": getScrapeQueue().name,
+                      "messaging.destination.name": scrapeQueueName,
                       "messaging.message.body.size": job.data.sentry.size,
                       "messaging.message.receive.latency":
                         Date.now() - (job.processedOn ?? job.timestamp),
@@ -1107,7 +1111,6 @@ async function billScrapeJob(job: Job & { id: string }, document: Document | nul
             priority: 10,
           },
         );
-
         return creditsToBeBilled;
       } catch (error) {
         logger.error(
@@ -1636,7 +1639,10 @@ app.listen(workerPort, () => {
         return;
       }
 
-      const job = await getScrapeQueue().getJob(args.jobId);
+      const conn = createRedisConnection();
+      const job = await getScrapeQueue(conn).getJob(args.jobId);
+      conn.disconnect();
+
       let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
       if (job && job.data.crawl_id) {
         logger = logger.child({ crawlId: job.data.crawl_id });
@@ -1644,7 +1650,7 @@ app.listen(workerPort, () => {
 
         const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
-        if (job.mode === "kickoff") {
+        if (job.data.mode === "kickoff") {
           await finishCrawlKickoff(job.data.crawl_id);
           if (sc) {
             await finishCrawlIfNeeded(job, sc);
@@ -1667,16 +1673,17 @@ app.listen(workerPort, () => {
     }
   }
 
-  const scrapeQueueEvents = new QueueEvents(getScrapeQueue().name, { connection: redisConnection });
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
   scrapeQueueEvents.on("failed", failedListener);
 
+  const conn = createRedisConnection();
   await Promise.all([
-    workerFun(getScrapeQueue(), processJobInternal),
+    workerFun(getScrapeQueue(conn), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
     workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
   ]);
-
+  conn.disconnect();
   console.log("All workers exited. Waiting for all jobs to finish...");
 
   while (runningJobs.size > 0) {
