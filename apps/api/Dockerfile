@@ -14,7 +14,7 @@ FROM base AS build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install && pnpm run build
 
 # Install Go
-FROM golang:1.24 AS go-base
+FROM golang:1.24.0 AS go-base
 COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 
 # Install Go dependencies and build parser lib
