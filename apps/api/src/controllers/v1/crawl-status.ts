@@ -276,17 +276,6 @@ export async function crawlStatusController(
       )
     }
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
-    
-    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
-      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
-
-    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
-      logger.error("Error getting scrape job count", { error: scrapeJobError });
-      throw scrapeJobError;
-    }
-
-    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
-
     const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
       .from("firecrawl_jobs")
       .select("*")
@@ -297,16 +286,6 @@ export async function crawlStatusController(
     if (crawlJobError) {
       logger.error("Error getting crawl job", { error: crawlJobError });
       throw crawlJobError;
-    }
-
-    if (!crawlJobs || crawlJobs.length === 0) {
-      if (scrapeJobCount === 0) {
-        return res.status(404).json({ success: false, error: "Job not found" });
-      } else {
-        status = "completed"; // fake completed to cut the losses
-      }
-    } else {
-      status = crawlJobs[0].success ? "completed" : "failed";
     }
 
     const crawlJob = crawlJobs[0];
@@ -328,6 +307,26 @@ export async function crawlStatusController(
       return res.status(404).json({ success: false, error: "Job expired" });
     }
 
+    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
+      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
+
+    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
+      logger.error("Error getting scrape job count", { error: scrapeJobError });
+      throw scrapeJobError;
+    }
+
+    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
+
+    if (!crawlJobs || crawlJobs.length === 0) {
+      if (scrapeJobCount === 0) {
+        return res.status(404).json({ success: false, error: "Job not found" });
+      } else {
+        status = "completed"; // fake completed to cut the losses
+      }
+    } else {
+      status = crawlJobs[0].success ? "completed" : "failed";
+    }
+    
     doneJobsLength = scrapeJobCount!;
     doneJobsOrder = [];
 
