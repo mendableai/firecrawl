@@ -312,7 +312,7 @@ export async function crawlStatusController(
 
     if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
       logger.error("Error getting scrape job count", { error: scrapeJobError });
-      throw scrapeJobError;
+      throw (scrapeJobError ?? new Error("Unknown error getting scrape job count"));
     }
 
     const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
