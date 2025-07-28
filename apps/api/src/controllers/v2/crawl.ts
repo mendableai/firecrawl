@@ -75,6 +75,7 @@ export async function crawlController(
         prompt: req.body.prompt,
         generatedOptions: promptGeneratedOptions,
       });
+      logger.debug(JSON.stringify(promptGeneratedOptions, null, 2));
     } catch (error) {
       logger.error("Failed to generate crawler options from prompt", {
         error: error.message,

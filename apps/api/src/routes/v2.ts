@@ -49,6 +49,12 @@ v2Router.post(
 );
 
 v2Router.get(
+  "/crawl/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlStatusController),
+);
+
+v2Router.get(
   "/batch/scrape/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap((req: any, res: any) => crawlStatusController(req, res, true)),
