@@ -536,6 +536,7 @@ export const crawlRequestSchema = crawlerOptions
     limit: z.number().default(10000),
     maxConcurrency: z.number().positive().int().optional(),
     zeroDataRetention: z.boolean().optional(),
+    prompt: z.string().max(10000).optional(),
   })
   .strict(strictMessage)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)

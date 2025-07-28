@@ -11,6 +11,8 @@ import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
+import { generateCrawlerOptionsFromPrompt } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { CostTracking } from "../../lib/extract/extraction-service";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -55,12 +57,44 @@ export async function crawlController(
     ...req.body,
     url: undefined,
     scrapeOptions: undefined,
+    prompt: undefined,
   };
   const scrapeOptions = req.body.scrapeOptions;
+  
+  let promptGeneratedOptions = {};
+  if (req.body.prompt) {
+    try {
+      const costTracking = new CostTracking();
+      const { extract } = await generateCrawlerOptionsFromPrompt(
+        req.body.prompt,
+        logger,
+        costTracking
+      );
+      promptGeneratedOptions = extract || {};
+      logger.debug("Generated crawler options from prompt", {
+        prompt: req.body.prompt,
+        generatedOptions: promptGeneratedOptions,
+      });
+      logger.debug(JSON.stringify(promptGeneratedOptions, null, 2));
+    } catch (error) {
+      logger.error("Failed to generate crawler options from prompt", {
+        error: error.message,
+        prompt: req.body.prompt,
+      });
+      return res.status(400).json({
+        success: false,
+        error: "Failed to process natural language prompt. Please try rephrasing or use explicit crawler options.",
+      });
+    }
+  }
 
-  // TODO: @rafa, is this right? copied from v0
-  if (Array.isArray(crawlerOptions.includePaths)) {
-    for (const x of crawlerOptions.includePaths) {
+  const finalCrawlerOptions = {
+    ...promptGeneratedOptions,
+    ...crawlerOptions,
+  };
+
+  if (Array.isArray(finalCrawlerOptions.includePaths)) {
+    for (const x of finalCrawlerOptions.includePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -69,8 +103,8 @@ export async function crawlController(
     }
   }
 
-  if (Array.isArray(crawlerOptions.excludePaths)) {
-    for (const x of crawlerOptions.excludePaths) {
+  if (Array.isArray(finalCrawlerOptions.excludePaths)) {
+    for (const x of finalCrawlerOptions.excludePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -79,9 +113,9 @@ export async function crawlController(
     }
   }
 
-  const originalLimit = crawlerOptions.limit;
-  crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
-  logger.debug("Determined limit: " + crawlerOptions.limit, {
+  const originalLimit = finalCrawlerOptions.limit;
+  finalCrawlerOptions.limit = Math.min(remainingCredits, finalCrawlerOptions.limit);
+  logger.debug("Determined limit: " + finalCrawlerOptions.limit, {
     remainingCredits,
     bodyLimit: originalLimit,
     originalBodyLimit: preNormalizedBody.limit,
@@ -89,14 +123,14 @@ export async function crawlController(
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions: toV0CrawlerOptions(crawlerOptions),
+    crawlerOptions: toV0CrawlerOptions(finalCrawlerOptions),
     scrapeOptions,
     internalOptions: {
       disableSmartWaitCache: true,
       teamId: req.auth.team_id,
       saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
       zeroDataRetention,
-    }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
+    },
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     maxConcurrency: req.body.maxConcurrency !== undefined ? Math.min(req.body.maxConcurrency, req.acuc.concurrency) : undefined,
@@ -124,7 +158,7 @@ export async function crawlController(
       url: req.body.url,
       mode: "kickoff" as const,
       team_id: req.auth.team_id,
-      crawlerOptions,
+      crawlerOptions: finalCrawlerOptions,
       scrapeOptions: sc.scrapeOptions,
       internalOptions: sc.internalOptions,
       origin: req.body.origin,
@@ -144,6 +178,10 @@ export async function crawlController(
   return res.status(200).json({
     success: true,
     id,
-    url: `${protocol}://${req.get("host")}/v1/crawl/${id}`,
+    url: `${protocol}://${req.get("host")}/v2/crawl/${id}`,
+    ...(req.body.prompt && { 
+      promptGeneratedOptions: promptGeneratedOptions,
+      finalCrawlerOptions: finalCrawlerOptions 
+    }),
   });
 }

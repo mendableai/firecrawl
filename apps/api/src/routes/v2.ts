@@ -4,10 +4,13 @@ import expressWs from "express-ws";
 import { searchController } from "../controllers/v2/search";
 import { scrapeController } from "../controllers/v2/scrape";
 import { batchScrapeController } from "../controllers/v2/batch-scrape";
+import { crawlController } from "../controllers/v2/crawl";
 import { crawlStatusController } from "../controllers/v2/crawl-status";
 import {
   authMiddleware,
   checkCreditsMiddleware,
+  blocklistMiddleware,
+  idempotencyMiddleware,
   wrap,
 } from "./shared";
 
@@ -34,6 +37,21 @@ v2Router.post(
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
   wrap(batchScrapeController),
+);
+
+v2Router.post(
+  "/crawl",
+  authMiddleware(RateLimiterMode.Crawl),
+  checkCreditsMiddleware(),
+  blocklistMiddleware,
+  idempotencyMiddleware,
+  wrap(crawlController),
+);
+
+v2Router.get(
+  "/crawl/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlStatusController),
 );
 
 v2Router.get(
