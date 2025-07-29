@@ -9,7 +9,6 @@ import { crawlToCrawler } from "../../lib/crawl-redis";
 import { supabase_service } from "../supabase";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJobs } from "../queue-jobs";
-import { createRedisConnection } from "../queue-service";
 import { getJobs } from "../../controllers/v1/crawl-status";
 import { logJob } from "../logging/log_job";
 import { callWebhook } from "../webhook";
@@ -159,11 +158,9 @@ export async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredC
         if (!job.data.v1) {
             const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-            const conn = createRedisConnection();
-            const jobs = (await getJobs(jobIDs, conn)).sort(
+            const jobs = (await getJobs(jobIDs)).sort(
                 (a, b) => a.timestamp - b.timestamp,
             );
-            conn.disconnect();
             // const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
             const jobStatus = sc.cancelled // || jobStatuses.some((x) => x === "failed")
                 ? "failed"
