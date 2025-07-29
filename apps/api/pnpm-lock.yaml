@@ -174,8 +174,8 @@ importers:
         specifier: ^0.0.28
         version: 0.0.28
       koffi:
-        specifier: ^2.12.3
-        version: 2.12.3
+        specifier: ^2.9.0
+        version: 2.9.0
       languagedetect:
         specifier: ^2.0.0
         version: 2.0.0
@@ -3159,8 +3159,8 @@ packages:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
 
-  koffi@2.12.3:
-    resolution: {integrity: sha512-VdUbreihzsJ6SAV9lm74/UkdvsPqOnkVAzdgtI7+kQlc0UZPtOdo28+dcquIhgSHQx3AO02gEz+3qtiEIhfM3w==}
+  koffi@2.9.0:
+    resolution: {integrity: sha512-KCsuJ2gM58n6bNdR2Z7gqsh/3TchxxQFbVgax2/UvAjRTgwNSYAJDx9E3jrkBP4jEDHWRCfE47Y2OG+/fiSvEw==}
 
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
@@ -8299,7 +8299,7 @@ snapshots:
 
   kleur@3.0.3: {}
 
-  koffi@2.12.3: {}
+  koffi@2.9.0: {}
 
   kuler@2.0.0: {}
 

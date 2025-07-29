@@ -106,7 +106,7 @@
     "jsdom": "^26.0.0",
     "json-schema-to-zod": "^2.3.0",
     "keyword-extractor": "^0.0.28",
-    "koffi": "^2.12.3",
+    "koffi": "^2.9.0",
     "languagedetect": "^2.0.0",
     "lodash": "^4.17.21",
     "logsnag": "^1.0.0",
@@ -151,8 +151,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@sentry-internal/node-cpu-profiler",
-      "koffi"
+      "@sentry-internal/node-cpu-profiler"
     ],
     "overrides": {
       "brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2"
