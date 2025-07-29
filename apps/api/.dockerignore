@@ -2,3 +2,4 @@
 /dist/
 .env
 *.csv
+sharedLibs/**/*.so
