@@ -12,6 +12,8 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
+import { logger } from "../../lib/logger";
+import { supabase_rr_service } from "../../services/supabase";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -33,17 +35,79 @@ export async function crawlErrorsController(
   req: RequestWithAuth<CrawlStatusParams, undefined, CrawlErrorsResponse>,
   res: Response<CrawlErrorsResponse>,
 ) {
-  const sc = await getCrawl(req.params.jobId);
-  if (!sc) {
-    return res.status(404).json({ success: false, error: "Job not found" });
-  }
+  const crawlLogger = logger.child({
+    module: "crawl-errors",
+    method: "crawlErrorsController",
+    jobId: req.params.jobId,
+    team_id: req.auth.team_id,
+  });
 
-  if (sc.team_id !== req.auth.team_id) {
-    return res.status(403).json({ success: false, error: "Forbidden" });
+  let sc = await getCrawl(req.params.jobId);
+  let jobIds: string[] = [];
+
+  if (!sc) {
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
+        .from("firecrawl_jobs")
+        .select("*")
+        .eq("job_id", req.params.jobId)
+        .limit(1)
+        .throwOnError();
+
+      if (crawlJobError) {
+        crawlLogger.error("Error getting crawl job", { error: crawlJobError });
+        throw crawlJobError;
+      }
+
+      const crawlJob = crawlJobs[0];
+
+      if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
+        return res.status(403).json({ success: false, error: "Forbidden" });
+      }
+
+      const teamIdsExcludedFromExpiry = [
+        "8f819703-1b85-4f7f-a6eb-e03841ec6617",
+        "f96ad1a4-8102-4b35-9904-36fd517d3616",
+      ];
+
+      if (
+        crawlJob
+        && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
+        && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
+      ) {
+        return res.status(404).json({ success: false, error: "Job expired" });
+      }
+
+      if (!crawlJobs || crawlJobs.length === 0) {
+        return res.status(404).json({ success: false, error: "Job not found" });
+      }
+
+      const { data: scrapeJobs, error: scrapeJobError } = await supabase_rr_service
+        .from("firecrawl_jobs")
+        .select("job_id")
+        .eq("crawl_id", req.params.jobId)
+        .eq("team_id", req.auth.team_id)
+        .throwOnError();
+
+      if (scrapeJobError) {
+        crawlLogger.error("Error getting scrape jobs", { error: scrapeJobError });
+        throw scrapeJobError;
+      }
+
+      jobIds = scrapeJobs?.map(job => job.job_id) || [];
+    } else {
+      return res.status(404).json({ success: false, error: "Job not found" });
+    }
+  } else {
+    if (sc.team_id !== req.auth.team_id) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    jobIds = await getCrawlJobs(req.params.jobId);
   }
 
   let jobStatuses = await Promise.all(
-    (await getCrawlJobs(req.params.jobId)).map(
+    jobIds.map(
       async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
     ),
   );

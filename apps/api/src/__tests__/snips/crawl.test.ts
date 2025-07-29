@@ -1,5 +1,6 @@
-import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, crawlStart, Identity, idmux, scrapeTimeout } from "./lib";
+import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlErrors, crawlOngoing, crawlStart, Identity, idmux, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
+import request from "supertest";
 
 let identity: Identity;
 
@@ -271,4 +272,57 @@ describe("Crawl tests", () => {
         expect(response.body.success).toBe(true);
         expect(typeof response.body.id).toBe("string");
     });
+
+    it.concurrent("crawl errors endpoint works with Redis cache", async () => {
+        const crawlResult = await asyncCrawl({
+            url: "https://firecrawl.dev",
+            limit: 3,
+        }, identity);
+
+        await asyncCrawlWaitForFinish(crawlResult.id, identity);
+
+        const errors = await crawlErrors(crawlResult.id, identity);
+        
+        expect(errors.errors).toBeDefined();
+        expect(Array.isArray(errors.errors)).toBe(true);
+        expect(errors.robotsBlocked).toBeDefined();
+        expect(Array.isArray(errors.robotsBlocked)).toBe(true);
+    }, 3 * scrapeTimeout);
+
+    it.concurrent("crawl errors endpoint returns 404 for nonexistent crawl", async () => {
+        const nonexistentId = "nonexistent-crawl-id-12345";
+        
+        const response = await request("http://127.0.0.1:3002")
+            .get(`/v1/crawl/${nonexistentId}/errors`)
+            .set("Authorization", `Bearer ${identity.apiKey}`)
+            .send();
+
+        expect(response.statusCode).toBe(404);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toBe("Job not found");
+    });
+
+    it.concurrent("crawl errors endpoint returns 403 for wrong team", async () => {
+        const crawlResult = await asyncCrawl({
+            url: "https://firecrawl.dev",
+            limit: 2,
+        }, identity);
+
+        await asyncCrawlWaitForFinish(crawlResult.id, identity);
+
+        const wrongIdentity = await idmux({
+            name: "crawl-errors-wrong-team",
+            concurrency: 100,
+            credits: 1000000,
+        });
+
+        const response = await request("http://127.0.0.1:3002")
+            .get(`/v1/crawl/${crawlResult.id}/errors`)
+            .set("Authorization", `Bearer ${wrongIdentity.apiKey}`)
+            .send();
+
+        expect(response.statusCode).toBe(403);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error).toBe("Forbidden");
+    }, 3 * scrapeTimeout);
 });
