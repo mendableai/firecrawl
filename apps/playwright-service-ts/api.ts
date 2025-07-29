@@ -199,11 +199,47 @@ app.post('/scrape', async (req: Request, res: Response) => {
     await initializeBrowser();
   }
 
-  const page = await context.newPage();
+  // Create page with custom User-Agent if provided
+  let page: Page;
+  if (headers && headers['User-Agent']) {
+    // Create a temporary context with custom User-Agent for this request
+    const customContext = await browser.newContext({
+      userAgent: headers['User-Agent'],
+      viewport: { width: 1280, height: 800 },
+      ...(PROXY_SERVER && PROXY_USERNAME && PROXY_PASSWORD ? {
+        proxy: { server: PROXY_SERVER, username: PROXY_USERNAME, password: PROXY_PASSWORD }
+      } : PROXY_SERVER ? { proxy: { server: PROXY_SERVER } } : {})
+    });
 
-  // Set headers if provided
-  if (headers) {
-    await page.setExtraHTTPHeaders(headers);
+    // Apply the same route blocking
+    if (BLOCK_MEDIA) {
+      await customContext.route('**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}', async (route: Route) => {
+        await route.abort();
+      });
+    }
+
+    await customContext.route('**/*', (route: Route, request: PlaywrightRequest) => {
+      const requestUrl = new URL(request.url());
+      const hostname = requestUrl.hostname;
+      if (AD_SERVING_DOMAINS.some(domain => hostname.includes(domain))) {
+        return route.abort();
+      }
+      return route.continue();
+    });
+
+    page = await customContext.newPage();
+    
+    // Set other headers (excluding User-Agent)
+    const otherHeaders = { ...headers };
+    delete otherHeaders['User-Agent'];
+    if (Object.keys(otherHeaders).length > 0) {
+      await page.setExtraHTTPHeaders(otherHeaders);
+    }
+  } else {
+    page = await context.newPage();
+    if (headers) {
+      await page.setExtraHTTPHeaders(headers);
+    }
   }
 
   let result: Awaited<ReturnType<typeof scrapePage>>;
