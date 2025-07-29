@@ -51,17 +51,20 @@ export async function crawlErrorsController(
         .from("firecrawl_jobs")
         .select("*")
         .eq("job_id", req.params.jobId)
-        .limit(1)
-        .throwOnError();
+        .limit(1);
 
       if (crawlJobError) {
         crawlLogger.error("Error getting crawl job", { error: crawlJobError });
-        throw crawlJobError;
+        return res.status(500).json({ success: false, error: "Internal server error" });
+      }
+
+      if (!crawlJobs || crawlJobs.length === 0) {
+        return res.status(404).json({ success: false, error: "Job not found" });
       }
 
       const crawlJob = crawlJobs[0];
 
-      if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
+      if (crawlJob.team_id !== req.auth.team_id) {
         return res.status(403).json({ success: false, error: "Forbidden" });
       }
 
@@ -71,27 +74,21 @@ export async function crawlErrorsController(
       ];
 
       if (
-        crawlJob
-        && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
+        !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
         && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
       ) {
         return res.status(404).json({ success: false, error: "Job expired" });
-      }
-
-      if (!crawlJobs || crawlJobs.length === 0) {
-        return res.status(404).json({ success: false, error: "Job not found" });
       }
 
       const { data: scrapeJobs, error: scrapeJobError } = await supabase_rr_service
         .from("firecrawl_jobs")
         .select("job_id")
         .eq("crawl_id", req.params.jobId)
-        .eq("team_id", req.auth.team_id)
-        .throwOnError();
+        .eq("team_id", req.auth.team_id);
 
       if (scrapeJobError) {
         crawlLogger.error("Error getting scrape jobs", { error: scrapeJobError });
-        throw scrapeJobError;
+        return res.status(500).json({ success: false, error: "Internal server error" });
       }
 
       jobIds = scrapeJobs?.map(job => job.job_id) || [];
