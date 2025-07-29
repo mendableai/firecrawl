@@ -1133,7 +1133,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     teamId: job.data?.team_id ?? undefined,
     zeroDataRetention: job.data?.zeroDataRetention ?? false,
   });
-  logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
+  logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url, sitemapped: job.data.sitemapped });
   const start = job.data.startTime ?? Date.now();
   const remainingTime = job.data.scrapeOptions.timeout ? (job.data.scrapeOptions.timeout - (Date.now() - start)) : undefined;
 
@@ -1296,6 +1296,7 @@ async function processJob(job: Job & { id: string }, token: string) {
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10,
           );
+
           logger.debug("Discovered " + links.links.length + " links...", {
             linksLength: links.links.length,
           });
