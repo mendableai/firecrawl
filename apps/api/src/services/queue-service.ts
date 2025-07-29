@@ -72,7 +72,6 @@ export function getExtractQueue() {
         },
       },
     });
-    logger.info("Extraction queue created");
   }
   return extractQueue;
 }
@@ -90,7 +89,6 @@ export function getGenerateLlmsTxtQueue() {
         },
       },
     });
-    logger.info("LLMs TXT generation queue created");
   }
   return generateLlmsTxtQueue;
 }
@@ -108,7 +106,6 @@ export function getDeepResearchQueue() {
         },
       },
     });
-    logger.info("Deep research queue created");
   }
   return deepResearchQueue;
 }
@@ -126,7 +123,6 @@ export function getBillingQueue() {
         },
       },
     });
-    logger.info("Billing queue created");
   }
   return billingQueue;
 }
@@ -144,7 +140,6 @@ export function getPrecrawlQueue() {
         },
       },
     });
-    logger.info("Precrawl queue created");
   }
   return precrawlQueue;
 }
