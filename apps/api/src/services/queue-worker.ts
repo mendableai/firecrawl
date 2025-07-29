@@ -567,7 +567,7 @@ app.listen(workerPort, () => {
   scrapeQueueEvents.on("failed", failedListener);
 
   const results = await Promise.all([
-    separateWorkerFun(getScrapeQueue(), path.join(__dirname, "worker", "scrape-worker.js")),
+    separateWorkerFun(getScrapeQueue(conn), path.join(__dirname, "worker", "scrape-worker.js")),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
     workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),

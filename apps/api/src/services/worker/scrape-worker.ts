@@ -309,10 +309,6 @@ async function processJob(job: Job & { id: string }) {
                                 { jobPriority, url: link },
                             );
 
-                            // console.log("team_id: ", sc.team_id)
-                            // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
-                            // console.log("job priority: " , jobPriority, "\n\n\n")
-
                             await addScrapeJob(
                                 {
                                     url: link,
