@@ -30,14 +30,12 @@
       "conditions": [
         ["OS=='linux'", {
           "libraries": [
-            "-L<(module_root_dir)/lib",
-            "-lhtml_converter"
+            "<(module_root_dir)/lib/libhtml_converter.a"
           ]
         }],
         ["OS=='mac'", {
           "libraries": [
-            "-L<(module_root_dir)/lib",
-            "-lhtml_converter"
+            "<(module_root_dir)/lib/libhtml_converter.a"
           ]
         }]
       ]
