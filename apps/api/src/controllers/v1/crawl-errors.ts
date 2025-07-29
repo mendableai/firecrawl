@@ -44,43 +44,13 @@ export async function crawlErrorsController(
   });
 
   let sc = await getCrawl(req.params.jobId);
-  let jobIds: string[] = [];
 
   if (!sc) {
     if (process.env.USE_DB_AUTHENTICATION === "true") {
-      const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
-        .from("firecrawl_jobs")
-        .select("*")
-        .eq("job_id", req.params.jobId)
-        .limit(1);
-
-      if (crawlJobError) {
-        crawlLogger.error("Error getting crawl job", { error: crawlJobError });
-        return res.status(500).json({ success: false, error: "Internal server error" });
-      }
-
-      if (!crawlJobs || crawlJobs.length === 0) {
-        return res.status(404).json({ success: false, error: "Job not found" });
-      }
-
-      const crawlJob = crawlJobs[0];
-
-      if (crawlJob.team_id !== req.auth.team_id) {
-        return res.status(403).json({ success: false, error: "Forbidden" });
-      }
-
-      if (
-        !TEAM_IDS_EXCLUDED_FROM_EXPIRY.includes(crawlJob.team_id)
-        && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
-      ) {
-        return res.status(404).json({ success: false, error: "Job expired" });
-      }
-
       const { data: failedJobs, error: failedJobError } = await supabase_rr_service
         .from("firecrawl_jobs")
-        .select("job_id, url, error")
+        .select("job_id, url, message, team_id, date_added")
         .eq("crawl_id", req.params.jobId)
-        .eq("team_id", req.auth.team_id)
         .eq("success", false);
 
       if (failedJobError) {
@@ -88,11 +58,28 @@ export async function crawlErrorsController(
         return res.status(500).json({ success: false, error: "Internal server error" });
       }
 
-      const errors = failedJobs?.map(job => ({
+      if (!failedJobs || failedJobs.length === 0) {
+        return res.status(404).json({ success: false, error: "Job not found" });
+      }
+
+      const firstJob = failedJobs[0];
+
+      if (firstJob.team_id !== req.auth.team_id) {
+        return res.status(403).json({ success: false, error: "Forbidden" });
+      }
+
+      if (
+        !TEAM_IDS_EXCLUDED_FROM_EXPIRY.includes(firstJob.team_id)
+        && new Date().valueOf() - new Date(firstJob.date_added).valueOf() > 24 * 60 * 60 * 1000
+      ) {
+        return res.status(404).json({ success: false, error: "Job expired" });
+      }
+
+      const errors = failedJobs.map(job => ({
         id: job.job_id,
         url: job.url || "",
-        error: job.error || ""
-      })) || [];
+        error: job.message || ""
+      }));
 
       return res.status(200).json({
         errors: errors,
@@ -106,35 +93,35 @@ export async function crawlErrorsController(
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
-    jobIds = await getCrawlJobs(req.params.jobId);
-  }
+    const crawlJobIds = await getCrawlJobs(req.params.jobId);
+    
+    let jobStatuses = await Promise.all(
+      crawlJobIds.map(
+        async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
+      ),
+    );
 
-  let jobStatuses = await Promise.all(
-    jobIds.map(
-      async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
-    ),
-  );
+    const failedJobIDs: string[] = [];
 
-  const failedJobIDs: string[] = [];
-
-  for (const [id, status] of jobStatuses) {
-    if (status === "failed") {
-      failedJobIDs.push(id);
+    for (const [id, status] of jobStatuses) {
+      if (status === "failed") {
+        failedJobIDs.push(id);
+      }
     }
-  }
 
-  res.status(200).json({
-    errors: (await getJobs(failedJobIDs)).map((x) => ({
-      id: x.id,
-      timestamp:
-        x.finishedOn !== undefined
-          ? new Date(x.finishedOn).toISOString()
-          : undefined,
-      url: x.data.url,
-      error: x.failedReason,
-    })),
-    robotsBlocked: await redisEvictConnection.smembers(
-      "crawl:" + req.params.jobId + ":robots_blocked",
-    ),
-  });
+    res.status(200).json({
+      errors: (await getJobs(failedJobIDs)).map((x) => ({
+        id: x.id,
+        timestamp:
+          x.finishedOn !== undefined
+            ? new Date(x.finishedOn).toISOString()
+            : undefined,
+        url: x.data.url,
+        error: x.failedReason,
+      })),
+      robotsBlocked: await redisEvictConnection.smembers(
+        "crawl:" + req.params.jobId + ":robots_blocked",
+      ),
+    });
+  }
 }
