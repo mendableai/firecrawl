@@ -6,6 +6,7 @@
   "scripts": {
     "start": "tsc-watch --onSuccess \"node dist/src/index.js\"",
     "start:production": "tsc && node dist/src/index.js",
+    "start:production:nobuild": "node dist/src/index.js",
     "format": "prettier --write \"src/**/*.(js|ts)\"",
     "flyio": "node dist/src/index.js",
     "start:dev": "tsc-watch --onSuccess \"node dist/src/index.js\"",
