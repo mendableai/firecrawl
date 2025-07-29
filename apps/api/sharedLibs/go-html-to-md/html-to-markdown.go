@@ -5,6 +5,7 @@ package main
 */
 import "C"
 import (
+	"sync"
 	"unsafe"
 	// "log"
 
@@ -12,8 +13,13 @@ import (
 	"github.com/tomkosm/html-to-markdown/plugin"
 )
 
+var mutex sync.Mutex
+
 //export ConvertHTMLToMarkdown
 func ConvertHTMLToMarkdown(html *C.char) *C.char {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	converter := md.NewConverter("", true, nil)
 	converter.Use(plugin.GitHubFlavored())
 
