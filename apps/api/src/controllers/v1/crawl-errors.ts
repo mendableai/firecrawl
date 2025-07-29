@@ -14,6 +14,7 @@ import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_rr_service } from "../../services/supabase";
+import { TEAM_IDS_EXCLUDED_FROM_EXPIRY } from "../../lib/constants";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -68,30 +69,35 @@ export async function crawlErrorsController(
         return res.status(403).json({ success: false, error: "Forbidden" });
       }
 
-      const teamIdsExcludedFromExpiry = [
-        "8f819703-1b85-4f7f-a6eb-e03841ec6617",
-        "f96ad1a4-8102-4b35-9904-36fd517d3616",
-      ];
-
       if (
-        !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
+        !TEAM_IDS_EXCLUDED_FROM_EXPIRY.includes(crawlJob.team_id)
         && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
       ) {
         return res.status(404).json({ success: false, error: "Job expired" });
       }
 
-      const { data: scrapeJobs, error: scrapeJobError } = await supabase_rr_service
+      const { data: failedJobs, error: failedJobError } = await supabase_rr_service
         .from("firecrawl_jobs")
-        .select("job_id")
+        .select("job_id, url, error")
         .eq("crawl_id", req.params.jobId)
-        .eq("team_id", req.auth.team_id);
+        .eq("team_id", req.auth.team_id)
+        .eq("success", false);
 
-      if (scrapeJobError) {
-        crawlLogger.error("Error getting scrape jobs", { error: scrapeJobError });
+      if (failedJobError) {
+        crawlLogger.error("Error getting failed jobs", { error: failedJobError });
         return res.status(500).json({ success: false, error: "Internal server error" });
       }
 
-      jobIds = scrapeJobs?.map(job => job.job_id) || [];
+      const errors = failedJobs?.map(job => ({
+        id: job.job_id,
+        url: job.url || "",
+        error: job.error || ""
+      })) || [];
+
+      return res.status(200).json({
+        errors: errors,
+        robotsBlocked: []
+      });
     } else {
       return res.status(404).json({ success: false, error: "Job not found" });
     }

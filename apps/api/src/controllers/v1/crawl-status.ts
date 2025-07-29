@@ -24,6 +24,7 @@ import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
 import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitActiveJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { TEAM_IDS_EXCLUDED_FROM_EXPIRY } from "../../lib/constants";
 import IORedis from "ioredis";
 configDotenv();
 
@@ -294,14 +295,9 @@ export async function crawlStatusController(
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
-    const teamIdsExcludedFromExpiry = [
-      "8f819703-1b85-4f7f-a6eb-e03841ec6617",
-      "f96ad1a4-8102-4b35-9904-36fd517d3616",
-    ];
-
     if (
       crawlJob
-      && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
+      && !TEAM_IDS_EXCLUDED_FROM_EXPIRY.includes(crawlJob.team_id)
       && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
     ) {
       return res.status(404).json({ success: false, error: "Job expired" });
