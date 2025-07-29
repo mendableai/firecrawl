@@ -108,7 +108,7 @@ jobs:
           HOST: 0.0.0.0
         working-directory: ./apps/api
       - name: Start worker
-        run: npm run workers > worker.log 2>&1 &
+        run: npm run worker:production > worker.log 2>&1 &
         env:
           PORT: 3005
           HOST: 0.0.0.0
