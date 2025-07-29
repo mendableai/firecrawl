@@ -261,7 +261,7 @@ export async function crawlStatusController(
       const creditsRpc = await supabase_rr_service
         .rpc("credits_billed_by_crawl_id_1", {
           i_crawl_id: req.params.jobId,
-        });
+        }, { get: true });
 
       creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? (totalCount * (
         sc.scrapeOptions?.extract
