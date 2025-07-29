@@ -10,7 +10,6 @@ import {
   getGenerateLlmsTxtQueue,
   getBillingQueue,
   scrapeQueueName,
-  createRedisConnection,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -257,11 +256,9 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-      const conn = createRedisConnection();
-      const jobs = (await getJobs(jobIDs, conn)).sort(
+      const jobs = (await getJobs(jobIDs)).sort(
         (a, b) => a.timestamp - b.timestamp,
       );
-      conn.disconnect();
       // const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
       const jobStatus = sc.cancelled // || jobStatuses.some((x) => x === "failed")
         ? "failed"
@@ -1639,9 +1636,7 @@ app.listen(workerPort, () => {
         return;
       }
 
-      const conn = createRedisConnection();
-      const job = await getScrapeQueue(conn).getJob(args.jobId);
-      conn.disconnect();
+      const job = await getScrapeQueue().getJob(args.jobId);
 
       let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
       if (job && job.data.crawl_id) {
@@ -1676,14 +1671,12 @@ app.listen(workerPort, () => {
   const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
   scrapeQueueEvents.on("failed", failedListener);
 
-  const conn = createRedisConnection();
   await Promise.all([
-    workerFun(getScrapeQueue(conn), processJobInternal),
+    workerFun(getScrapeQueue(), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
     workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
   ]);
-  conn.disconnect();
   console.log("All workers exited. Waiting for all jobs to finish...");
 
   while (runningJobs.size > 0) {
