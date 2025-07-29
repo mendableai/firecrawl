@@ -20,11 +20,9 @@ configDotenv();
 
 export async function startWebScraperPipeline({
   job,
-  token,
   costTracking,
 }: {
   job: Job<WebScraperOptions> & { id: string };
-  token: string;
   costTracking: CostTracking;
 }) {
   return await runWebScraper({
@@ -43,14 +41,6 @@ export async function startWebScraperPipeline({
       teamId: job.data.team_id,
       ...job.data.internalOptions,
     },
-    // onSuccess: (result, mode) => {
-    //   logger.debug(`🐂 Job completed ${job.id}`);
-    //   saveJob(job, result, token, mode);
-    // },
-    // onError: (error) => {
-    //   logger.error(`🐂 Job failed ${job.id}`);
-    //   ScrapeEvents.logJobEvent(job, "failed");
-    // },
     team_id: job.data.team_id,
     bull_job_id: job.id.toString(),
     priority: job.opts.priority,
@@ -66,8 +56,6 @@ export async function runWebScraper({
   mode,
   scrapeOptions,
   internalOptions,
-  // onSuccess,
-  // onError,
   team_id,
   bull_job_id,
   priority,
@@ -127,9 +115,6 @@ export async function runWebScraper({
           );
         }
       }
-
-      // This is where the returnvalue from the job is set
-      // onSuccess(response.document, mode);
 
       engines = response.engines;
 
@@ -205,7 +190,6 @@ export async function runWebScraper({
 const saveJob = async (
   job: Job,
   result: any,
-  token: string,
   mode: string,
   engines?: EngineResultsTracker,
 ) => {
