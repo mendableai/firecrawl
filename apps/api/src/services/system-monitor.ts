@@ -214,7 +214,7 @@ class SystemMonitor {
     const cpuUsage = await this.checkCpuUsage();
     const memoryUsage = await this.checkMemoryUsage();
 
-    logger.debug("acceptConnection metrics", { cpuUsage, memoryUsage });
+    logger.debug("acceptConnection metrics", { cpuUsage, memoryUsage, proc: process.memoryUsage() });
 
     return cpuUsage < MAX_CPU && memoryUsage < MAX_RAM;
   }
@@ -228,3 +228,31 @@ class SystemMonitor {
 }
 
 export default SystemMonitor.getInstance();
+
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+const testInterval = setInterval(async () => {
+  try {
+    // Get top 10 processes by memory usage
+    const { stdout } = await execAsync('ps -eo pid,pmem,comm --sort=-pmem | head -n 11 | tail -n 10');
+    
+    // Parse the output into an array of objects
+    const processes = stdout.trim().split('\n').map(line => {
+      const [pid, pmem, ...commParts] = line.trim().split(/\s+/);
+      return {
+        pid: parseInt(pid),
+        memoryPercent: parseFloat(pmem),
+        command: commParts.join(' ')
+      };
+    });
+
+    logger.debug('Top 10 processes by memory usage', processes);
+  } catch (error) {
+    logger.error('Error getting process memory usage', error);
+  }
+}, 1000); // Run every 1 second
+
+testInterval.unref();
