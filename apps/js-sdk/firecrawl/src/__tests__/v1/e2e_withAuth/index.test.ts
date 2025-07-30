@@ -297,4 +297,5 @@ describe('FirecrawlApp E2E Tests', () => {
     const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: "invalid_api_key" });
     await expect(app.search("test query")).rejects.toThrow("Request failed with status code 401");
   });
+
 });
