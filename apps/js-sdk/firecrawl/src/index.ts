@@ -1511,8 +1511,6 @@ export default class FirecrawlApp {
           networkRetries++;
           const backoffDelay = Math.min(1000 * Math.pow(2, networkRetries - 1), 10000);
           
-          console.warn(`Network error during job status check (attempt ${networkRetries}/${maxNetworkRetries}): ${error.message}. Retrying in ${backoffDelay}ms...`);
-          
           await new Promise((resolve) => setTimeout(resolve, backoffDelay));
           continue;
         }
