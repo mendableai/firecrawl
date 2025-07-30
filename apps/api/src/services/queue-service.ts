@@ -14,9 +14,14 @@ let billingQueue: Queue;
 let precrawlQueue: Queue;
 
 export function createRedisConnection(): IORedis {
-  return new IORedis(process.env.REDIS_URL!, {
+  const redis = new IORedis(process.env.REDIS_URL!, {
     maxRetriesPerRequest: null,
   });
+
+  redis.on("reconnecting", () => logger.warn("Redis reconnecting"));
+  redis.on("error", (err) => logger.warn("Redis error", { err }));
+
+  return redis;
 }
 
 export const redisConnection = createRedisConnection();
