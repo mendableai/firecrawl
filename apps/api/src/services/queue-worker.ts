@@ -1684,6 +1684,14 @@ app.listen(workerPort, () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
+  setInterval(async () => {
+    _logger.debug("Currently running jobs", {
+      jobs: (await Promise.all([...runningJobs].map(async (jobId) => {
+        return await getScrapeQueue().getJob(jobId);
+      }))).filter(x => x && !x.data?.zeroDataRetention),
+    });
+  }, 1000);
+
   await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
   process.exit(0);
