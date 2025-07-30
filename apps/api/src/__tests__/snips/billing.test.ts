@@ -240,6 +240,31 @@ describe("Billing tests", () => {
             expect(rc1 - rc2).toBe(shouldUse);
         }, 600000);
 
+        it.concurrent("bills search with parsePDF=false correctly", async () => {
+            const identity = await idmux({
+                name: "billing/bills search with parsePDF=false correctly",
+                credits: 100,
+            });
+
+            const rc1 = (await creditUsage(identity)).remaining_credits;
+
+            const results = await search({
+                query: "firecrawl filetype:pdf",
+                scrapeOptions: {
+                    formats: ["markdown"],
+                    parsePDF: false,
+                },
+            }, identity);
+
+            await sleepForBatchBilling();
+
+            const rc2 = (await creditUsage(identity)).remaining_credits;
+
+            const expectedCredits = results.length;
+
+            expect(rc1 - rc2).toBe(expectedCredits);
+        }, 600000);
+
         it.concurrent("bills extract correctly", async () => {
             const identity = await idmux({
                 name: "billing/bills extract correctly",

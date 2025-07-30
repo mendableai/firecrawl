@@ -95,7 +95,23 @@ export type AgentOptions = z.infer<typeof agentOptionsExtract>;
 export const extractOptions = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
-    schema: z.any().optional(),
+    schema: z
+      .any()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true; // Allow undefined schema
+          try {
+            const validate = ajv.compile(val);
+            return typeof validate === "function";
+          } catch (e) {
+            return false;
+          }
+        },
+        {
+          message: "Invalid JSON schema.",
+        },
+      ),
     systemPrompt: z
       .string()
       .max(10000)
@@ -112,7 +128,23 @@ export const extractOptions = z
 export const extractOptionsWithAgent = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
-    schema: z.any().optional(),
+    schema: z
+      .any()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true; // Allow undefined schema
+          try {
+            const validate = ajv.compile(val);
+            return typeof validate === "function";
+          } catch (e) {
+            return false;
+          }
+        },
+        {
+          message: "Invalid JSON schema.",
+        },
+      ),
     systemPrompt: z
       .string()
       .max(10000)
@@ -286,7 +318,23 @@ const baseScrapeOptions = z
     changeTrackingOptions: z
       .object({
         prompt: z.string().optional(),
-        schema: z.any().optional(),
+        schema: z
+          .any()
+          .optional()
+          .refine(
+            (val) => {
+              if (!val) return true; // Allow undefined schema
+              try {
+                const validate = ajv.compile(val);
+                return typeof validate === "function";
+              } catch (e) {
+                return false;
+              }
+            },
+            {
+              message: "Invalid JSON schema.",
+            },
+          ),
         modes: z.enum(["json", "git-diff"]).array().optional().default([]),
         tag: z.string().or(z.null()).default(null),
       })
@@ -697,8 +745,12 @@ export const crawlRequestSchema = crawlerOptions
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .refine(
     (data) => {
-      const urlDepth = getURLDepth(data.url);
-      return urlDepth <= data.maxDepth;
+      try {
+        const urlDepth = getURLDepth(data.url);
+        return urlDepth <= data.maxDepth;
+      } catch (e) {
+        return false;
+      }
     },
     {
       message: "URL depth exceeds the specified maxDepth",
@@ -1044,6 +1096,7 @@ export type TeamFlags = {
   forceZDR?: boolean;
   allowZDR?: boolean;
   zdrCost?: number;
+  checkRobotsOnScrape?: boolean;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;

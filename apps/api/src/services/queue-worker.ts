@@ -174,7 +174,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         job.data.crawlerOptions,
       );
 
-      const univistedUrls = crawler.filterLinks(
+      const univistedUrls = await crawler.filterLinks(
         Array.from(lastUrlsSet).filter((x) => !visitedUrls.has(x)),
         Infinity,
         sc.crawlerOptions.maxDepth ?? 10,
@@ -861,7 +861,7 @@ async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: s
     sc.crawlerOptions.limit ?? 10000,
   );
 
-  const validIndexLinksResult = crawler.filterLinks(
+  const validIndexLinksResult = await crawler.filterLinks(
     index.filter(x => crawler.filterURL(x, trimmedURL.href).allowed),
     sc.crawlerOptions.limit ?? 10000,
     sc.crawlerOptions.maxDepth ?? 10,
@@ -1159,6 +1159,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
     }
 
+
     const pipeline = await Promise.race([
       startWebScraperPipeline({
         job,
@@ -1287,7 +1288,7 @@ async function processJob(job: Job & { id: string }, token: string) {
             job.data.crawlerOptions,
           );
 
-          const links = crawler.filterLinks(
+          const links = await crawler.filterLinks(
             await crawler.extractLinksFromHTML(
               rawHtml ?? "",
               doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!,
@@ -1360,7 +1361,7 @@ async function processJob(job: Job & { id: string }, token: string) {
 
           // Only run check after adding new jobs for discovery - mogery
           if (job.data.isCrawlSourceScrape) {
-            const filterResult = crawler.filterLinks(
+            const filterResult = await crawler.filterLinks(
               [doc.metadata.url ?? doc.metadata.sourceURL!],
               1,
               sc.crawlerOptions?.maxDepth ?? 10,

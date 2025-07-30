@@ -59,7 +59,7 @@ describe("WebCrawler", () => {
         initialUrl + "/page3",
       ]);
 
-    const filteredLinks = crawler["filterLinks"](
+    const filteredLinks = await crawler["filterLinks"](
       [
         initialUrl,
         initialUrl + "/page1",

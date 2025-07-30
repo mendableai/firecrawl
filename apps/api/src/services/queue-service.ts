@@ -11,6 +11,7 @@ let indexQueue: Queue;
 let deepResearchQueue: Queue;
 let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
+let precrawlQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
@@ -23,6 +24,7 @@ export const indexQueueName = "{indexQueue}";
 export const generateLlmsTxtQueueName = "{generateLlmsTxtQueue}";
 export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
+export const precrawlQueueName = "{precrawlQueue}";
 
 export function getScrapeQueue() {
   if (!scrapeQueue) {
@@ -112,4 +114,22 @@ export function getBillingQueue() {
     logger.info("Billing queue created");
   }
   return billingQueue;
+}
+
+export function getPrecrawlQueue() {
+  if (!precrawlQueue) {
+    precrawlQueue = new Queue(precrawlQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 24 * 60 * 60, // 1 day
+        },
+        removeOnFail: {
+          age: 24 * 60 * 60, // 1 day
+        },
+      },
+    });
+    logger.info("Precrawl queue created");
+  }
+  return precrawlQueue;
 }

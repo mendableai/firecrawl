@@ -163,7 +163,7 @@ export async function crawlStatusController(
     );
 
     if (jobStatuses.filter((x) => x[1] === "unknown").length > 0 && process.env.USE_DB_AUTHENTICATION === "true") {
-      for (let rangeStart = 0;; rangeStart += 1000) {
+      for (let rangeStart = 0; ; rangeStart += 1000) {
         const rangeEnd = rangeStart + 1000;
 
         const currentJobs = await supabase_service
@@ -311,6 +311,7 @@ export async function crawlStatusController(
 
     const teamIdsExcludedFromExpiry = [
       "8f819703-1b85-4f7f-a6eb-e03841ec6617",
+      "f96ad1a4-8102-4b35-9904-36fd517d3616",
     ];
 
     if (

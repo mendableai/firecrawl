@@ -1,8 +1,8 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
-import { logger as _logger } from "../../lib/logger";
+import { Document, ScrapeOptions, TimeoutSignal, TeamFlags } from "../../controllers/v1/types";
+import { logger as _logger, logger } from "../../lib/logger";
 import {
   buildFallbackList,
   Engine,
@@ -35,6 +35,7 @@ import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
+import { checkRobotsTxt } from "../../lib/robots-txt";
 
 export type ScrapeUrlResponse = (
   | {
@@ -220,6 +221,7 @@ export type InternalOptions = {
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
   bypassBilling?: boolean;
   zeroDataRetention?: boolean;
+  teamFlags?: TeamFlags;
 };
 
 export type EngineResultsTracker = {
@@ -505,7 +507,35 @@ export async function scrapeURL(
     meta.logger.info("Rewriting URL");
   }
 
-  const shouldRecordFrequency = useIndex && meta.options.storeInCache && !meta.internalOptions.zeroDataRetention;
+  if (internalOptions.teamFlags?.checkRobotsOnScrape) {
+    meta.logger.info("Checking robots.txt", {
+      checkRobotsOnScrape: internalOptions.teamFlags?.checkRobotsOnScrape,
+      url: meta.rewrittenUrl || meta.url,
+    });
+    const urlToCheck = meta.rewrittenUrl || meta.url;
+    const isAllowed = await checkRobotsTxt(
+      urlToCheck, 
+      options.skipTlsVerification, 
+      meta.logger,
+      internalOptions.abort
+    );
+
+    
+    if (!isAllowed) {
+      meta.logger.info("URL blocked by robots.txt", { url: urlToCheck });
+      return {
+        success: false,
+        error: new Error("URL blocked by robots.txt"),
+        logs: meta.logs,
+        engines: meta.results,
+      };
+    }
+  }
+
+  const shouldRecordFrequency = useIndex
+    && meta.options.storeInCache
+    && !meta.internalOptions.zeroDataRetention
+    && internalOptions.teamId !== process.env.PRECRAWL_TEAM_ID;
   if (shouldRecordFrequency) {
     (async () => {
       try {
