@@ -392,15 +392,18 @@ export function waitForJob(
 ): Promise<Document> {
   return new Promise(async (resolve, reject) => {
     const start = Date.now();
+    const queue = getScrapeQueue();
     while (true) {
+      logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
       if (Date.now() >= start + timeout) {
         reject(new Error("Job wait "));
         break;
       } else {
-        const state = await getScrapeQueue().getJobState(jobId);
+        const state = await queue.getJobState(jobId);
+        logger.debug("Job in state", { state, scrapeId: jobId, jobId });
         if (state === "completed") {
           let doc: Document;
-          const job = (await getScrapeQueue().getJob(jobId))!;
+          const job = (await queue.getJob(jobId))!;
           logger.debug("Got job");
           doc = job.returnvalue;
 
@@ -420,7 +423,7 @@ export function waitForJob(
           resolve(doc);
           break;
         } else if (state === "failed") {
-          const job = await getScrapeQueue().getJob(jobId);
+          const job = await queue.getJob(jobId);
           if (job && job.failedReason !== "Concurrency limit hit") {
             reject(job.failedReason);
             break;
@@ -428,7 +431,7 @@ export function waitForJob(
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, 750));
     }
 
     return;
