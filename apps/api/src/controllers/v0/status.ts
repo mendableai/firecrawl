@@ -3,6 +3,7 @@ import { logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
+import { createRedisConnection } from "../../services/queue-service";
 
 export async function crawlJobStatusPreviewController(
   req: Request,
@@ -25,10 +26,12 @@ export async function crawlJobStatusPreviewController(
     //   }
     // }
 
-    const jobs = (await getJobs(req.params.jobId, jobIDs)).sort(
+    const conn = createRedisConnection();
+    const jobs = (await getJobs(req.params.jobId, jobIDs, conn)).sort(
       (a, b) => a.timestamp - b.timestamp,
     );
     const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
+    conn.disconnect();
     const jobStatus = sc.cancelled
       ? "failed"
       : jobStatuses.every((x) => x === "completed")

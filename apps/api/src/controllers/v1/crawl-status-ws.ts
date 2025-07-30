@@ -20,7 +20,7 @@ import {
   isCrawlFinished,
   isCrawlFinishedLocked,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
 import { Job, JobState } from "bullmq";
@@ -89,7 +89,8 @@ async function crawlStatusWS(
 
     const notDoneJobIDs = jobIDs.filter((x) => !doneJobIDs.includes(x));
 
-    const queue = getScrapeQueue();
+    const conn = createRedisConnection();
+    const queue = getScrapeQueue(conn);
 
     const jobStatuses = await Promise.all(
       notDoneJobIDs.map(async (x) => [
@@ -102,7 +103,7 @@ async function crawlStatusWS(
       .map((x) => x[0]);
 
     const newlyDoneJobs: Job[] = (
-      await Promise.all(newlyDoneJobIDs.map((x) => getJob(x)))
+      await Promise.all(newlyDoneJobIDs.map((x) => getJob(x, conn)))
     ).filter((x) => x !== undefined) as Job[];
 
     for (const job of newlyDoneJobs) {
@@ -117,6 +118,7 @@ async function crawlStatusWS(
     }
 
     doneJobIDs.push(...newlyDoneJobIDs);
+    conn.disconnect();
     setTimeout(loop, 1000);
   };
 
@@ -126,7 +128,8 @@ async function crawlStatusWS(
 
   let jobIDs = await getCrawlJobs(req.params.jobId);
 
-  const queue = getScrapeQueue();
+  const conn = createRedisConnection();
+  const queue = getScrapeQueue(conn);
 
   let jobStatuses = await Promise.all(
     jobIDs.map(
@@ -161,7 +164,8 @@ async function crawlStatusWS(
 
   jobIDs = validJobIDs; // Use validJobIDs instead of jobIDs for further processing
 
-  const doneJobs = await getJobs(doneJobIDs);
+  const doneJobs = await getJobs(doneJobIDs, conn);
+  conn.disconnect();
   const data = doneJobs.map((x) => x.returnvalue);
 
   await send(ws, {

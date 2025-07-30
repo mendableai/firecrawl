@@ -1,4 +1,4 @@
-import { getScrapeQueue } from "./queue-service";
+import { createRedisConnection, getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
@@ -69,11 +69,13 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  await getScrapeQueue().add(jobId, webScraperOptions, {
+  const conn = createRedisConnection();
+  await getScrapeQueue(conn).add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
   });
+  conn.disconnect();
 }
 
 async function addScrapeJobRaw(
@@ -392,7 +394,8 @@ export function waitForJob(
 ): Promise<Document> {
   return new Promise(async (resolve, reject) => {
     const start = Date.now();
-    const queue = getScrapeQueue();
+    const conn = createRedisConnection();
+    const queue = getScrapeQueue(conn);
     while (true) {
       logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
       if (Date.now() >= start + timeout) {
@@ -434,6 +437,7 @@ export function waitForJob(
       await new Promise((resolve) => setTimeout(resolve, 750));
     }
 
+    conn.disconnect();
     return;
   });
 }

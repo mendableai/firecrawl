@@ -10,7 +10,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { getScrapeQueue } from "../../services/queue-service";
+import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -126,7 +126,9 @@ export async function scrapeController(
 
   logger.info("Done with waitForJob");
 
-  await getScrapeQueue().remove(jobId);
+  const conn = createRedisConnection();
+  await getScrapeQueue(conn).remove(jobId);
+  conn.disconnect();
 
   logger.info("Removed job from queue");
   
