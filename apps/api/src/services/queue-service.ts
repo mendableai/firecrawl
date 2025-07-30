@@ -13,13 +13,9 @@ let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
 let precrawlQueue: Queue;
 
-export function createRedisConnection(): IORedis {
-  return new IORedis(process.env.REDIS_URL!, {
-    maxRetriesPerRequest: null,
-  });
-}
-
-export const redisConnection = createRedisConnection();
+export const redisConnection = new IORedis(process.env.REDIS_URL!, {
+  maxRetriesPerRequest: null,
+});
 
 export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
@@ -30,26 +26,20 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
-export function getScrapeQueue(_redisConnection?: IORedis) {
-  const _scrapeQueue = !scrapeQueue || _redisConnection !== undefined ? new Queue(scrapeQueueName, {
-    connection: _redisConnection ?? redisConnection,
-    defaultJobOptions: {
-      removeOnComplete: {
-        age: 3600, // 1 hour
+export function getScrapeQueue() {
+  if (!scrapeQueue) {
+    scrapeQueue = new Queue(scrapeQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 3600, // 1 hour
+        },
+        removeOnFail: {
+          age: 3600, // 1 hour
+        },
       },
-      removeOnFail: {
-        age: 3600, // 1 hour
-      },
-    },
-  }) : undefined;
-
-  if (_redisConnection !== undefined) {
-    return _scrapeQueue!;
-  } else if (!scrapeQueue) {
-    scrapeQueue = _scrapeQueue!;
-    logger.info("Web scraper queue created");
+    });
   }
-
   return scrapeQueue;
 }
 
