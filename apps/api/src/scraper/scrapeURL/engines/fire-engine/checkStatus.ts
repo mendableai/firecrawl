@@ -143,9 +143,7 @@ export async function fireEngineCheckStatus(
       },
     },
     async (span) => {
-      const x = Date.now();
-      meta.logger.debug("Checking status (" + x + ")");
-      const res = await robustFetch({
+      return await robustFetch({
         url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape/${jobId}`,
         method: "GET",
         logger: logger.child({ method: "fireEngineCheckStatus/robustFetch" }),
@@ -160,8 +158,6 @@ export async function fireEngineCheckStatus(
         mock,
         abort,
       });
-      meta.logger.debug("Status came back (" + x + ")");
-      return res;
     },
   );
 

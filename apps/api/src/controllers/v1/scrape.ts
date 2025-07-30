@@ -86,7 +86,6 @@ export async function scrapeController(
     jobPriority,
     isDirectToBullMQ,
   );
-  logger.info("Added scrape job now")
 
   const totalWait =
     (req.body.waitFor ?? 0) +
