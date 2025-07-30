@@ -53,7 +53,7 @@ COPY --from=rust-base /app/sharedLibs/pdf-parser/target/release/libpdf_parser.so
 COPY --from=rust-base /app/sharedLibs/crawler/target/release/libcrawler.so /app/sharedLibs/crawler/target/release/libcrawler.so
 
 # Install git
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git procps && rm -rf /var/lib/apt/lists/*
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080

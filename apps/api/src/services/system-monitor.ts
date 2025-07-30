@@ -237,19 +237,23 @@ const execAsync = promisify(exec);
 const testInterval = setInterval(async () => {
   try {
     // Get top 10 processes by memory usage
-    const { stdout } = await execAsync('ps -eo pid,pmem,comm --sort=-pmem | head -n 11 | tail -n 10');
+    const { stdout } = await execAsync('ps -eo pid,pmem,comm --no-headers --sort=-pmem | head -n 10');
     
     // Parse the output into an array of objects
     const processes = stdout.trim().split('\n').map(line => {
-      const [pid, pmem, ...commParts] = line.trim().split(/\s+/);
+      // Remove leading/trailing whitespace and collapse multiple spaces
+      const parts = line.trim().replace(/\s+/g, ' ').split(' ');
+      
+      // First two parts are pid and pmem, rest is command
+      const [pid, pmem, ...commParts] = parts;
       return {
-        pid: parseInt(pid),
+        pid: parseInt(pid, 10),
         memoryPercent: parseFloat(pmem),
-        command: commParts.join(' ')
+        command: commParts.join(' ') || '(unknown)'
       };
     });
 
-    logger.debug('Top 10 processes by memory usage', processes);
+    logger.debug('Top 10 processes by memory usage', { processes });
   } catch (error) {
     logger.error('Error getting process memory usage', error);
   }
