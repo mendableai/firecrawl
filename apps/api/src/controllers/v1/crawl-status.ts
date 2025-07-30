@@ -289,15 +289,12 @@ export async function crawlStatusController(
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
-    const teamIdsExcludedFromExpiry = [
-      "8f819703-1b85-4f7f-a6eb-e03841ec6617",
-      "f96ad1a4-8102-4b35-9904-36fd517d3616",
-    ];
+    const crawlTtlHours = req.acuc?.flags?.crawlTtlHours ?? 24;
+    const crawlTtlMs = crawlTtlHours * 60 * 60 * 1000;
 
     if (
       crawlJob
-      && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
-      && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
+      && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > crawlTtlMs
     ) {
       return res.status(404).json({ success: false, error: "Job expired" });
     }
