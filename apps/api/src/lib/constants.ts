@@ -1,0 +1,4 @@
+export const TEAM_IDS_EXCLUDED_FROM_EXPIRY = [
+  "8f819703-1b85-4f7f-a6eb-e03841ec6617",
+  "f96ad1a4-8102-4b35-9904-36fd517d3616",
+];
