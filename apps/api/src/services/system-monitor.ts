@@ -237,19 +237,24 @@ const execAsync = promisify(exec);
 const testInterval = setInterval(async () => {
   try {
     // Get top 10 processes by memory usage
-    const { stdout } = await execAsync('ps -eo pid,pmem,comm --no-headers --sort=-pmem | head -n 10');
+    const { stdout } = await execAsync('ps aux --no-headers --sort=-rss | head -n 10');
     
     // Parse the output into an array of objects
     const processes = stdout.trim().split('\n').map(line => {
       // Remove leading/trailing whitespace and collapse multiple spaces
       const parts = line.trim().replace(/\s+/g, ' ').split(' ');
       
-      // First two parts are pid and pmem, rest is command
-      const [pid, pmem, ...commParts] = parts;
+      // ps aux format: USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND
+      const [user, pid, cpu, mem, vsz, rss, tty, stat, start, time, ...cmdParts] = parts;
+      
+      // Convert RSS from KB to GB
+      const memoryGb = parseFloat(rss) / 1024 / 1024;
+      
       return {
         pid: parseInt(pid, 10),
-        memoryPercent: parseFloat(pmem),
-        command: commParts.join(' ') || '(unknown)'
+        user,
+        memoryGb: memoryGb.toFixed(2),
+        command: cmdParts.join(' ') || '(unknown)'
       };
     });
 
