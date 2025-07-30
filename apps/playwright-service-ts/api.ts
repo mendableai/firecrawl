@@ -201,9 +201,11 @@ app.post('/scrape', async (req: Request, res: Response) => {
 
   // Create page with custom User-Agent if provided
   let page: Page;
+  let customContext: BrowserContext | null = null;
+  
   if (headers && headers['User-Agent']) {
     // Create a temporary context with custom User-Agent for this request
-    const customContext = await browser.newContext({
+    customContext = await browser.newContext({
       userAgent: headers['User-Agent'],
       viewport: { width: 1280, height: 800 },
       ...(PROXY_SERVER && PROXY_USERNAME && PROXY_PASSWORD ? {
@@ -254,6 +256,9 @@ app.post('/scrape', async (req: Request, res: Response) => {
       result = await scrapePage(page, url, 'networkidle', wait_after_load, timeout, check_selector);
     } catch (finalError) {
       await page.close();
+      if (customContext) {
+        await customContext.close();
+      }
       return res.status(500).json({ error: 'An error occurred while fetching the page.' });
     }
   }
@@ -267,6 +272,9 @@ app.post('/scrape', async (req: Request, res: Response) => {
   }
 
   await page.close();
+  if (customContext) {
+    await customContext.close();
+  }
 
   res.json({
     content: result.content,
