@@ -22,6 +22,7 @@ import pydantic
 import websockets
 import aiohttp
 import asyncio
+import ssl
 from pydantic import Field
 
 # Suppress Pydantic warnings about attribute shadowing
@@ -2754,7 +2755,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             headers: Dict[str, str],
             data: Optional[Dict[str, Any]] = None,
             retries: int = 3,
-            backoff_factor: float = 0.5) -> Dict[str, Any]:
+            backoff_factor: float = 0.5,
+            skip_tls_verification: Optional[bool] = None) -> Dict[str, Any]:
         """
         Generic async request method with exponential backoff retry logic.
 
@@ -2766,6 +2768,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             retries (int): Maximum number of retry attempts (default: 3).
             backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
                 Delay will be backoff_factor * (2 ** retry_count).
+            skip_tls_verification (Optional[bool]): Skip TLS certificate verification if True.
 
         Returns:
             Dict[str, Any]: The parsed JSON response from the server.
@@ -2774,7 +2777,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
             aiohttp.ClientError: If the request fails after all retries.
             Exception: If max retries are exceeded or other errors occur.
         """
-        async with aiohttp.ClientSession() as session:
+        ssl_context = None
+        if skip_tls_verification:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+        
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
             for attempt in range(retries):
                 try:
                     async with session.request(
@@ -2794,7 +2804,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
     async def _async_post_request(
             self, url: str, data: Dict[str, Any], headers: Dict[str, str],
-            retries: int = 3, backoff_factor: float = 0.5) -> Dict[str, Any]:
+            retries: int = 3, backoff_factor: float = 0.5, 
+            skip_tls_verification: Optional[bool] = None) -> Dict[str, Any]:
         """
         Make an async POST request with exponential backoff retry logic.
 
@@ -2805,6 +2816,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             retries (int): Maximum number of retry attempts (default: 3).
             backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
                 Delay will be backoff_factor * (2 ** retry_count).
+            skip_tls_verification (Optional[bool]): Skip TLS certificate verification if True.
 
         Returns:
             Dict[str, Any]: The parsed JSON response from the server.
@@ -2813,11 +2825,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
             aiohttp.ClientError: If the request fails after all retries.
             Exception: If max retries are exceeded or other errors occur.
         """
-        return await self._async_request("POST", url, headers, data, retries, backoff_factor)
+        return await self._async_request("POST", url, headers, data, retries, backoff_factor, skip_tls_verification)
 
     async def _async_get_request(
             self, url: str, headers: Dict[str, str],
-            retries: int = 3, backoff_factor: float = 0.5) -> Dict[str, Any]:
+            retries: int = 3, backoff_factor: float = 0.5,
+            skip_tls_verification: Optional[bool] = None) -> Dict[str, Any]:
         """
         Make an async GET request with exponential backoff retry logic.
 
@@ -2827,6 +2840,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             retries (int): Maximum number of retry attempts (default: 3).
             backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
                 Delay will be backoff_factor * (2 ** retry_count).
+            skip_tls_verification (Optional[bool]): Skip TLS certificate verification if True.
 
         Returns:
             Dict[str, Any]: The parsed JSON response from the server.
@@ -2835,7 +2849,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             aiohttp.ClientError: If the request fails after all retries.
             Exception: If max retries are exceeded or other errors occur.
         """
-        return await self._async_request("GET", url, headers, None, retries, backoff_factor)
+        return await self._async_request("GET", url, headers, None, retries, backoff_factor, skip_tls_verification)
 
     async def _handle_error(self, response: aiohttp.ClientResponse, action: str) -> None:
         """
@@ -3087,7 +3101,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
             f'{self.api_url}{endpoint}',
             scrape_params,
-            _headers
+            _headers,
+            skip_tls_verification=skip_tls_verification
         )
 
         if response.get('success') and 'data' in response:
@@ -3224,7 +3239,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
             f'{self.api_url}/v1/batch/scrape',
             params_dict,
-            headers
+            headers,
+            skip_tls_verification=skip_tls_verification
         )
 
         if response.get('success'):
@@ -3366,7 +3382,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
             f'{self.api_url}/v1/batch/scrape',
             params_dict,
-            headers
+            headers,
+            skip_tls_verification=skip_tls_verification
         )
 
         if response.get('status_code') == 200:
@@ -3485,7 +3502,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         # Make request
         headers = self._prepare_headers(idempotency_key)
         response = await self._async_post_request(
-          f'{self.api_url}/v1/crawl', params_dict, headers)
+          f'{self.api_url}/v1/crawl', params_dict, headers, skip_tls_verification=None)
 
         if response.get('success'):
             try:
@@ -3603,7 +3620,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
           f'{self.api_url}/v1/crawl',
           params_dict,
-          headers
+          headers,
+          skip_tls_verification=None
         )
 
         if response.get('success'):
@@ -3644,7 +3662,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         
         status_data = await self._async_get_request(
             f'{self.api_url}{endpoint}',
-            headers
+            headers,
+            skip_tls_verification=None
         )
 
         if status_data.get('status') == 'completed':
@@ -3657,7 +3676,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     if not next_url:
                         logger.warning("Expected 'next' URL is missing.")
                         break
-                    next_data = await self._async_get_request(next_url, headers)
+                    next_data = await self._async_get_request(next_url, headers, skip_tls_verification=None)
                     data.extend(next_data.get('data', []))
                     status_data = next_data
                 status_data['data'] = data
@@ -3698,7 +3717,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         while True:
             status_data = await self._async_get_request(
                 f'{self.api_url}/v1/crawl/{id}',
-                headers
+                headers,
+                skip_tls_verification=None
             )
 
             if status_data.get('status') == 'completed':
@@ -3711,7 +3731,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                         if not next_url:
                             logger.warning("Expected 'next' URL is missing.")
                             break
-                        next_data = await self._async_get_request(next_url, headers)
+                        next_data = await self._async_get_request(next_url, headers, skip_tls_verification=None)
                         data.extend(next_data.get('data', []))
                         status_data = next_data
                     status_data['data'] = data
@@ -3787,7 +3807,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
             f'{self.api_url}{endpoint}',
             params_dict,
-            headers={"Authorization": f"Bearer {self.api_key}"}
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            skip_tls_verification=None
         )
 
         if response.get('success') and 'links' in response:
@@ -3863,7 +3884,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
             f'{self.api_url}/v1/extract',
             request_data,
-            headers
+            headers,
+            skip_tls_verification=None
         )
 
         if response.get('success'):
@@ -3874,7 +3896,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             while True:
                 status_data = await self._async_get_request(
                     f'{self.api_url}/v1/extract/{job_id}',
-                    headers
+                    headers,
+                    skip_tls_verification=None
                 )
 
                 if status_data['status'] == 'completed':
@@ -3916,7 +3939,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         status_data = await self._async_get_request(
             f'{self.api_url}{endpoint}',
-            headers
+            headers,
+            skip_tls_verification=None
         )
 
         if status_data['status'] == 'completed':
@@ -3929,7 +3953,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     if not next_url:
                         logger.warning("Expected 'next' URL is missing.")
                         break
-                    next_data = await self._async_get_request(next_url, headers)
+                    next_data = await self._async_get_request(next_url, headers, skip_tls_verification=None)
                     data.extend(next_data.get('data', []))
                     status_data = next_data
                 status_data['data'] = data
@@ -3976,7 +4000,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         headers = self._prepare_headers()
         return await self._async_get_request(
             f'{self.api_url}/v1/batch/scrape/{id}/errors',
-            headers
+            headers,
+            skip_tls_verification=None
         )
 
     async def check_crawl_errors(self, id: str) -> CrawlErrorsResponse:
@@ -4001,7 +4026,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         headers = self._prepare_headers()
         return await self._async_get_request(
             f'{self.api_url}/v1/crawl/{id}/errors',
-            headers
+            headers,
+            skip_tls_verification=None
         )
 
     async def cancel_crawl(self, id: str) -> Dict[str, Any]:
@@ -4046,7 +4072,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         try:
             return await self._async_get_request(
                 f'{self.api_url}/v1/extract/{job_id}',
-                headers
+                headers,
+                skip_tls_verification=None
             )
         except Exception as e:
             raise ValueError(str(e))
@@ -4116,7 +4143,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             return await self._async_post_request(
                 f'{self.api_url}/v1/extract',
                 request_data,
-                headers
+                headers,
+                skip_tls_verification=None
             )
         except Exception as e:
             raise ValueError(str(e))
@@ -4233,7 +4261,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             return await self._async_post_request(
                 f'{self.api_url}/v1/llmstxt',
                 json_data,
-                headers
+                headers,
+                skip_tls_verification=None
             )
         except Exception as e:
             raise ValueError(str(e))
@@ -4262,7 +4291,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         try:
             return await self._async_get_request(
                 f'{self.api_url}/v1/llmstxt/{id}',
-                headers
+                headers,
+                skip_tls_verification=None
             )
         except Exception as e:
             raise ValueError(str(e))
@@ -4418,7 +4448,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             return await self._async_post_request(
                 f'{self.api_url}/v1/deep-research',
                 json_data,
-                headers
+                headers,
+                skip_tls_verification=None
             )
         except Exception as e:
             raise ValueError(str(e))
@@ -4452,7 +4483,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         try:
             return await self._async_get_request(
                 f'{self.api_url}/v1/deep-research/{id}',
-                headers
+                headers,
+                skip_tls_verification=None
             )
         except Exception as e:
             raise ValueError(str(e))
@@ -4534,7 +4566,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         return await self._async_post_request(
             f"{self.api_url}/v1/search",
             params_dict,
-            {"Authorization": f"Bearer {self.api_key}"}
+            {"Authorization": f"Bearer {self.api_key}"},
+            skip_tls_verification=None
         )
 
 class AsyncCrawlWatcher(CrawlWatcher):
