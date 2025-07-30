@@ -1,5 +1,6 @@
 import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, crawlStart, Identity, idmux, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
+import { filterLinks } from "../../lib/crawler";
 
 let identity: Identity;
 
@@ -275,7 +276,6 @@ describe("Crawl tests", () => {
 
 describe("Robots.txt FFI Integration tests", () => {
     it.concurrent("handles normal robots.txt parsing via FFI", async () => {
-        const { filterLinks } = await import("../../lib/crawler.js");
         
         const result = await filterLinks({
             links: ['https://example.com/allowed', 'https://example.com/disallowed'],
@@ -298,7 +298,6 @@ describe("Robots.txt FFI Integration tests", () => {
     }, 10000);
 
     it.concurrent("handles malformed robots.txt without crashing via FFI", async () => {
-        const { filterLinks } = await import("../../lib/crawler.js");
         
         const result = await filterLinks({
             links: ['https://example.com/test'],
@@ -319,7 +318,6 @@ describe("Robots.txt FFI Integration tests", () => {
     }, 10000);
 
     it.concurrent("handles non-UTF8 robots.txt content without crashing via FFI", async () => {
-        const { filterLinks } = await import("../../lib/crawler.js");
         
         const nonUtf8Content = String.fromCharCode(0xFF, 0xFE) + 'User-agent: *\nDisallow: /blocked';
         const result = await filterLinks({
@@ -341,7 +339,6 @@ describe("Robots.txt FFI Integration tests", () => {
     }, 10000);
 
     it.concurrent("handles char boundary issues without crashing via FFI", async () => {
-        const { filterLinks } = await import("../../lib/crawler.js");
         
         const problematicContent = 'User-agent: *\nDisallow: /\u{a0}test';
         const result = await filterLinks({
