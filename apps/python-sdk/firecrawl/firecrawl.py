@@ -2330,10 +2330,22 @@ class FirecrawlApp:
             Exception: An exception with a message containing the status code and error details from the response.
         """
         try:
-            error_message = response.json().get('error', 'No error message provided.')
-            error_details = response.json().get('details', 'No additional error details provided.')
+            response_json = response.json()
+            error_message = response_json.get('error', 'No error message provided.')
+            error_details = response_json.get('details', 'No additional error details provided.')
         except:
-            raise requests.exceptions.HTTPError(f'Failed to parse Firecrawl error response as JSON. Status code: {response.status_code}', response=response)
+            # If we can't parse JSON, provide a helpful error message with response content
+            try:
+                response_text = response.text[:500]  # Limit to first 500 chars
+                if response_text.strip():
+                    error_message = f"Server returned non-JSON response: {response_text}"
+                    error_details = f"Full response status: {response.status_code}"
+                else:
+                    error_message = f"Server returned empty response with status {response.status_code}"
+                    error_details = "No additional details available"
++        except ValueError:
+                error_message = f"Server returned unreadable response with status {response.status_code}"
+                error_details = "No additional details available"
         
         message = self._get_error_message(response.status_code, action, error_message, error_details)
 
@@ -2356,7 +2368,7 @@ class FirecrawlApp:
         if status_code == 402:
             return f"Payment Required: Failed to {action}. {error_message} - {error_details}"
         elif status_code == 403:
-            message = f"Website Not Supported: Failed to {action}. {error_message} - {error_details}"
+            return f"Website Not Supported: Failed to {action}. {error_message} - {error_details}"
         elif status_code == 408:
             return f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
         elif status_code == 409:
