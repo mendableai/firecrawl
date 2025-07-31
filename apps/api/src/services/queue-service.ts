@@ -1,10 +1,11 @@
-import { Queue } from "bullmq";
+import { Queue, QueueEvents } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
 let scrapeQueue: Queue;
+let scrapeQueueEvents: QueueEvents;
 let extractQueue: Queue;
 let loggingQueue: Queue;
 let indexQueue: Queue;
@@ -44,6 +45,16 @@ export function getScrapeQueue() {
     });
   }
   return scrapeQueue;
+}
+
+export function getScrapeQueueEvents() {
+  if (!scrapeQueueEvents) {
+    scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
+      connection: redisConnection,
+    });
+  }
+  
+  return scrapeQueueEvents;
 }
 
 export function getExtractQueue() {

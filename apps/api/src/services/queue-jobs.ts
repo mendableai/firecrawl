@@ -1,4 +1,4 @@
-import { getScrapeQueue } from "./queue-service";
+import { getScrapeQueue, getScrapeQueueEvents } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
@@ -19,6 +19,7 @@ import { getJobFromGCS, removeJobFromGCS } from "../lib/gcs-jobs";
 import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
 import { Logger } from "winston";
+import { Job } from "bullmq";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -385,53 +386,28 @@ export async function addScrapeJobs(
   }
 }
 
-export function waitForJob(
+export async function waitForJob(
   jobId: string,
   timeout: number,
   logger: Logger = _logger,
 ): Promise<Document> {
-  return new Promise(async (resolve, reject) => {
-    const start = Date.now();
+    const queue = getScrapeQueue();
+    const job: Job = await queue.getJob(jobId)!;
+    let doc: Document = await job.waitUntilFinished(getScrapeQueueEvents(), timeout);
+    logger.debug("Got job");
     
-    const interval = setInterval(async () => {
-      logger.debug("WaitforJob ran", { scrapeId: jobId, jobId });
-      const queue = getScrapeQueue();
-      if (Date.now() >= start + timeout) {
-        reject(new Error("Job wait "));
-        clearInterval(interval);
-      } else {
-        const state = await queue.getJobState(jobId);
-        logger.debug("Job in state", { state, scrapeId: jobId, jobId });
-        if (state === "completed") {
-          let doc: Document;
-          const job = (await queue.getJob(jobId))!;
-          logger.debug("Got job");
-          doc = job.returnvalue;
-
-          if (!doc) {
-            const docs = await getJobFromGCS(jobId);
-            logger.debug("Got job from GCS");
-            if (!docs || docs.length === 0) {
-              throw new Error("Job not found in GCS");
-            }
-            doc = docs[0];
-
-            if (job.data?.internalOptions?.zeroDataRetention) {
-              await removeJobFromGCS(jobId);
-            }
-          }
-
-          resolve(doc);
-          clearInterval(interval);
-        } else if (state === "failed") {
-          const job = await queue.getJob(jobId);
-          if (job && job.failedReason !== "Concurrency limit hit") {
-            reject(job.failedReason);
-            clearInterval(interval);
-          }
-        }
+    if (!doc) {
+      const docs = await getJobFromGCS(jobId);
+      logger.debug("Got job from GCS");
+      if (!docs || docs.length === 0) {
+        throw new Error("Job not found in GCS");
       }
-    }, 250);
-    return;
-  });
+      doc = docs[0];
+
+      if (job.data?.internalOptions?.zeroDataRetention) {
+        await removeJobFromGCS(jobId);
+      }
+    }
+
+    return doc;
 }
