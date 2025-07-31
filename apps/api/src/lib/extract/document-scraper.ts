@@ -1,6 +1,6 @@
 import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions } from "../../controllers/v1/types";
 import { logger } from "../logger";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue, uuidToQueueNo } from "../../services/queue-service";
 import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../job-priority";
@@ -68,7 +68,7 @@ export async function scrapeDocument(
 
     const doc = await waitForJob(jobId, timeout);
 
-    await getScrapeQueue().remove(jobId);
+    await getScrapeQueue(uuidToQueueNo(jobId)).remove(jobId);
 
     if (trace) {
       trace.timing.completedAt = new Date().toISOString();

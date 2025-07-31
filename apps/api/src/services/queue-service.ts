@@ -1,6 +1,7 @@
 import { Queue, QueueEvents } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
+import crypto from "crypto";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
@@ -21,7 +22,6 @@ export const redisConnection = new IORedis(process.env.REDIS_URL!, {
 redisConnection.on("reconnecting", () => logger.warn("Redis reconnecting"));
 redisConnection.on("error", (err) => logger.warn("Redis error", { err }));
 
-export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
@@ -30,9 +30,22 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
-export function getScrapeQueue() {
+export const scrapeQueueNames = [
+  "{scrapeQueue0}",
+  "{scrapeQueue1}",
+  "{scrapeQueue2}",
+  "{scrapeQueue3}",
+];
+
+export function uuidToQueueNo(id: string) {
+  const hash = crypto.createHash("sha256").update(id).digest("hex");
+  const queueNo = parseInt(hash.slice(0, 4), 16) % scrapeQueueNames.length;
+  return queueNo;
+}
+
+export function getScrapeQueue(i: number) {
   if (!scrapeQueue) {
-    scrapeQueue = new Queue(scrapeQueueName, {
+    scrapeQueue = new Queue(scrapeQueueNames[i], {
       connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
@@ -47,9 +60,9 @@ export function getScrapeQueue() {
   return scrapeQueue;
 }
 
-export function getScrapeQueueEvents() {
+export function getScrapeQueueEvents(i: number) {
   if (!scrapeQueueEvents) {
-    scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
+    scrapeQueueEvents = new QueueEvents(scrapeQueueNames[i], {
       connection: new IORedis(process.env.REDIS_URL!, {
         maxRetriesPerRequest: null,
       }),
