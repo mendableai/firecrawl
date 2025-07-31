@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::ffi::{CStr, CString};
 use url::Url;
 use regex::Regex;
-use robotstxt::DefaultMatcher;
+use texting_robots::Robot;
 
 #[derive(Deserialize)]
 struct FilterLinksCall {
@@ -165,15 +165,27 @@ fn _filter_links(data: FilterLinksCall) -> Result<FilterLinksResult, Box<dyn std
             }
 
             if !data.ignore_robots_txt {
-                let mut matcher = DefaultMatcher::default();
-                let allowed = matcher.allowed_by_robots(&data.robots_txt, vec![
-                    "FireCrawlAgent",
-                    "FirecrawlAgent",
-                ], url.as_str());
-
-                if !allowed {
-                    denial_reasons.insert(link.clone(), "ROBOTS_TXT".to_string());
-                    return false;
+                match Robot::new("FireCrawlAgent", data.robots_txt.as_bytes()) {
+                    Ok(robot) => {
+                        let allowed = robot.allowed(url.as_str());
+                        if !allowed {
+                            match Robot::new("FirecrawlAgent", data.robots_txt.as_bytes()) {
+                                Ok(robot_alt) => {
+                                    let allowed_alt = robot_alt.allowed(url.as_str());
+                                    if !allowed_alt {
+                                        denial_reasons.insert(link.clone(), "ROBOTS_TXT".to_string());
+                                        return false;
+                                    }
+                                }
+                                Err(_) => {
+                                    denial_reasons.insert(link.clone(), "ROBOTS_TXT".to_string());
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                    }
                 }
             }
 
@@ -511,6 +523,104 @@ mod tests {
         assert_eq!(result.instructions[0].urls.len(), 2);
         assert_eq!(result.instructions[0].urls[0], "https://example.com/sitemap1.xml");
         assert_eq!(result.instructions[0].urls[1], "https://example.com/sitemap2.xml");
+    }
+
+    #[test]
+    fn test_filter_links_normal_robots_txt() {
+        let data = FilterLinksCall {
+            links: vec!["https://example.com/allowed".to_string(), "https://example.com/disallowed".to_string()],
+            limit: Some(10),
+            includes: vec![],
+            excludes: vec![],
+            ignore_robots_txt: false,
+            robots_txt: "User-agent: *\nDisallow: /disallowed".to_string(),
+            max_depth: 10,
+            base_url: "https://example.com".to_string(),
+            initial_url: "https://example.com".to_string(),
+            regex_on_full_url: false,
+            allow_backward_crawling: true,
+        };
+
+        let result = _filter_links(data).unwrap();
+        assert_eq!(result.links.len(), 1);
+        assert_eq!(result.links[0], "https://example.com/allowed");
+        assert!(result.denial_reasons.contains_key("https://example.com/disallowed"));
+        assert_eq!(result.denial_reasons.get("https://example.com/disallowed").unwrap(), "ROBOTS_TXT");
+    }
+
+    #[test]
+    fn test_filter_links_malformed_robots_txt() {
+        let data = FilterLinksCall {
+            links: vec!["https://example.com/test".to_string()],
+            limit: Some(10),
+            includes: vec![],
+            excludes: vec![],
+            ignore_robots_txt: false,
+            robots_txt: "Invalid robots.txt content with \x00 null bytes and malformed syntax".to_string(),
+            max_depth: 10,
+            base_url: "https://example.com".to_string(),
+            initial_url: "https://example.com".to_string(),
+            regex_on_full_url: false,
+            allow_backward_crawling: true,
+        };
+
+        let result = _filter_links(data);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.links.len(), 1);
+        assert_eq!(result.links[0], "https://example.com/test");
+    }
+
+    #[test]
+    fn test_filter_links_non_utf8_robots_txt() {
+        let mut non_utf8_bytes = vec![0xFF, 0xFE];
+        non_utf8_bytes.extend_from_slice(b"User-agent: *\nDisallow: /blocked");
+        let non_utf8_string = String::from_utf8_lossy(&non_utf8_bytes).to_string();
+        
+        let data = FilterLinksCall {
+            links: vec!["https://example.com/allowed".to_string()],
+            limit: Some(10),
+            includes: vec![],
+            excludes: vec![],
+            ignore_robots_txt: false,
+            robots_txt: non_utf8_string,
+            max_depth: 10,
+            base_url: "https://example.com".to_string(),
+            initial_url: "https://example.com".to_string(),
+            regex_on_full_url: false,
+            allow_backward_crawling: true,
+        };
+
+        let result = _filter_links(data);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.links.len(), 1);
+        assert_eq!(result.links[0], "https://example.com/allowed");
+    }
+
+    #[test]
+    fn test_filter_links_char_boundary_issue() {
+        let problematic_content = "User-agent: *\nDisallow: /\u{a0}test";
+        
+        let data = FilterLinksCall {
+            links: vec!["https://example.com/test".to_string()],
+            limit: Some(10),
+            includes: vec![],
+            excludes: vec![],
+            ignore_robots_txt: false,
+            robots_txt: problematic_content.to_string(),
+            max_depth: 10,
+            base_url: "https://example.com".to_string(),
+            initial_url: "https://example.com".to_string(),
+            regex_on_full_url: false,
+            allow_backward_crawling: true,
+        };
+
+        let result = _filter_links(data);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.links.len(), 1);
+        assert_eq!(result.links[0], "https://example.com/test");
     }
 
 }
