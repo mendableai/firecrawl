@@ -214,8 +214,6 @@ class SystemMonitor {
     const cpuUsage = await this.checkCpuUsage();
     const memoryUsage = await this.checkMemoryUsage();
 
-    logger.debug("acceptConnection metrics", { cpuUsage, memoryUsage, proc: process.memoryUsage() });
-
     return cpuUsage < MAX_CPU && memoryUsage < MAX_RAM;
   }
 
