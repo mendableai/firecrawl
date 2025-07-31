@@ -11,6 +11,7 @@ import {
   getDeepResearchQueue,
   getBillingQueue,
   getPrecrawlQueue,
+  scrapeQueueNames,
 } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
@@ -55,7 +56,7 @@ serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [
-    new BullMQAdapter(getScrapeQueue()),
+    ...scrapeQueueNames.map((_, i) => new BullMQAdapter(getScrapeQueue(i))),
     new BullMQAdapter(getExtractQueue()),
     new BullMQAdapter(getGenerateLlmsTxtQueue()),
     new BullMQAdapter(getDeepResearchQueue()),
@@ -119,8 +120,7 @@ if (require.main === module) {
 
 app.get(`/serverHealthCheck`, async (req, res) => {
   try {
-    const scrapeQueue = getScrapeQueue();
-    const [waitingJobs] = await Promise.all([scrapeQueue.getWaitingCount()]);
+    const waitingJobs = (await Promise.all(scrapeQueueNames.map((_, i) => getScrapeQueue(i).getWaitingCount()))).reduce((acc, curr) => acc + curr, 0);
     const noWaitingJobs = waitingJobs === 0;
     // 200 if no active jobs, 503 if there are active jobs
     return res.status(noWaitingJobs ? 200 : 500).json({
@@ -139,10 +139,7 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
     const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
 
     const getWaitingJobsCount = async () => {
-      const scrapeQueue = getScrapeQueue();
-      const [waitingJobsCount] = await Promise.all([
-        scrapeQueue.getWaitingCount(),
-      ]);
+      const waitingJobsCount = (await Promise.all(scrapeQueueNames.map((_, i) => getScrapeQueue(i).getWaitingCount()))).reduce((acc, curr) => acc + curr, 0);
 
       return waitingJobsCount;
     };
