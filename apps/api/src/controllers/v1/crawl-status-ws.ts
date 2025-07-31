@@ -20,7 +20,7 @@ import {
   isCrawlFinished,
   isCrawlFinishedLocked,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue, uuidToQueueNo } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
 import { Job, JobState } from "bullmq";
@@ -89,12 +89,10 @@ async function crawlStatusWS(
 
     const notDoneJobIDs = jobIDs.filter((x) => !doneJobIDs.includes(x));
 
-    const queue = getScrapeQueue();
-
     const jobStatuses = await Promise.all(
       notDoneJobIDs.map(async (x) => [
         x,
-        await queue.getJobState(x),
+        await getScrapeQueue(uuidToQueueNo(x)).getJobState(x),
       ]),
     );
     const newlyDoneJobIDs: string[] = jobStatuses
@@ -126,11 +124,9 @@ async function crawlStatusWS(
 
   let jobIDs = await getCrawlJobs(req.params.jobId);
 
-  const queue = getScrapeQueue();
-
   let jobStatuses = await Promise.all(
     jobIDs.map(
-      async (x) => [x, await queue.getJobState(x)] as const,
+      async (x) => [x, await getScrapeQueue(uuidToQueueNo(x)).getJobState(x)] as const,
     ),
   );
 
