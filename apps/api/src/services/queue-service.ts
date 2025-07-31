@@ -1,15 +1,12 @@
 import { Queue, QueueEvents } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
-import crypto from "crypto";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
 let scrapeQueue: Queue;
 let scrapeQueueEvents: QueueEvents;
 let extractQueue: Queue;
-let loggingQueue: Queue;
-let indexQueue: Queue;
 let deepResearchQueue: Queue;
 let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
@@ -30,6 +27,7 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
+// Length of this array must evenly divide 16.
 export const scrapeQueueNames = [
   "{scrapeQueue0}",
   "{scrapeQueue1}",
@@ -38,9 +36,7 @@ export const scrapeQueueNames = [
 ];
 
 export function uuidToQueueNo(id: string) {
-  const hash = crypto.createHash("sha256").update(id).digest("hex");
-  const queueNo = parseInt(hash.slice(0, 4), 16) % scrapeQueueNames.length;
-  return queueNo;
+  return parseInt(id[0], 16) % scrapeQueueNames.length;
 }
 
 export function getScrapeQueue(i: number) {
