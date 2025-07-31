@@ -408,68 +408,7 @@ const workerFun = async (
         }
       }
 
-      if (job.data && job.data.sentry && Sentry.isInitialized()) {
-        Sentry.continueTrace(
-          {
-            sentryTrace: job.data.sentry.trace,
-            baggage: job.data.sentry.baggage,
-          },
-          () => {
-            Sentry.startSpan(
-              {
-                name: "Scrape job",
-                attributes: {
-                  job: job.id,
-                  worker: process.env.FLY_MACHINE_ID ?? worker.id,
-                },
-              },
-              async (span) => {
-                await Sentry.startSpan(
-                  {
-                    name: "Process scrape job",
-                    op: "queue.process",
-                    attributes: {
-                      "messaging.message.id": job.id,
-                      "messaging.destination.name": scrapeQueueName,
-                      "messaging.message.body.size": job.data.sentry.size,
-                      "messaging.message.receive.latency":
-                        Date.now() - (job.processedOn ?? job.timestamp),
-                      "messaging.message.retry.count": job.attemptsMade,
-                    },
-                  },
-                  async () => {
-                    let res;
-                    try {
-                      res = await processJobInternal(token, job);
-                    } finally {
-                      await afterJobDone(job);
-                    }
-
-                    if (res !== null) {
-                      span.setStatus({ code: 2 }); // ERROR
-                    } else {
-                      span.setStatus({ code: 1 }); // OK
-                    }
-                  },
-                );
-              },
-            );
-          },
-        );
-      } else {
-        Sentry.startSpan(
-          {
-            name: "Scrape job",
-            attributes: {
-              job: job.id,
-              worker: process.env.FLY_MACHINE_ID ?? worker.id,
-            },
-          },
-          () => {
-            processJobInternal(token, job).finally(() => afterJobDone(job));
-          },
-        );
-      }
+      processJobInternal(token, job).finally(() => afterJobDone(job));
 
       await sleep(gotJobInterval);
     } else {

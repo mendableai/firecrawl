@@ -157,38 +157,7 @@ export async function addScrapeJob(
   jobPriority: number = 10,
   directToBullMQ: boolean = false,
 ): Promise<Job | null> {
-  if (Sentry.isInitialized()) {
-    const size = JSON.stringify(webScraperOptions).length;
-    return await Sentry.startSpan(
-      {
-        name: "Add scrape job",
-        op: "queue.publish",
-        attributes: {
-          "messaging.message.id": jobId,
-          "messaging.destination.name": getScrapeQueue().name,
-          "messaging.message.body.size": size,
-        },
-      },
-      async (span) => {
-        return await addScrapeJobRaw(
-          {
-            ...webScraperOptions,
-            sentry: {
-              trace: Sentry.spanToTraceHeader(span),
-              baggage: Sentry.spanToBaggageHeader(span),
-              size,
-            },
-          },
-          options,
-          jobId,
-          jobPriority,
-          directToBullMQ,
-        );
-      },
-    );
-  } else {
-    return await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
-  }
+  return await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
 }
 
 export async function addScrapeJobs(
@@ -322,33 +291,11 @@ export async function addScrapeJobs(
     await Promise.all(
       addToCQ.map(async (job) => {
         const size = JSON.stringify(job.data).length;
-        return await Sentry.startSpan(
-          {
-            name: "Add scrape job",
-            op: "queue.publish",
-            attributes: {
-              "messaging.message.id": job.opts.jobId,
-              "messaging.destination.name": getScrapeQueue().name,
-              "messaging.message.body.size": size,
-            },
-          },
-          async (span) => {
-            const jobData = {
-              ...job.data,
-              sentry: {
-                trace: Sentry.spanToTraceHeader(span),
-                baggage: Sentry.spanToBaggageHeader(span),
-                size,
-              },
-            };
-  
-            await _addScrapeJobToConcurrencyQueue(
-              jobData,
-              job.opts,
-              job.opts.jobId,
-              job.opts.priority,
-            );
-          },
+        await _addScrapeJobToConcurrencyQueue(
+          job.data,
+          job.opts,
+          job.opts.jobId,
+          job.opts.priority,
         );
       }),
     );
@@ -356,31 +303,11 @@ export async function addScrapeJobs(
     await Promise.all(
       addToBull.map(async (job) => {
         const size = JSON.stringify(job.data).length;
-        return await Sentry.startSpan(
-          {
-            name: "Add scrape job",
-            op: "queue.publish",
-            attributes: {
-              "messaging.message.id": job.opts.jobId,
-              "messaging.destination.name": getScrapeQueue().name,
-              "messaging.message.body.size": size,
-            },
-          },
-          async (span) => {
-            await _addScrapeJobToBullMQ(
-              {
-                ...job.data,
-                sentry: {
-                  trace: Sentry.spanToTraceHeader(span),
-                  baggage: Sentry.spanToBaggageHeader(span),
-                  size,
-                },
-              },
-              job.opts,
-              job.opts.jobId,
-              job.opts.priority,
-            );
-          },
+        await _addScrapeJobToBullMQ(
+          job.data,
+          job.opts,
+          job.opts.jobId,
+          job.opts.priority,
         );
       }),
     );
