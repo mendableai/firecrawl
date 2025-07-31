@@ -200,6 +200,10 @@ export async function finishCrawl(id: string, __logger: Logger = _logger) {
     await redisEvictConnection.srem("crawls_by_team_id:" + crawl.team_id, id);
     await redisEvictConnection.expire("crawls_by_team_id:" + crawl.team_id, 24 * 60 * 60);
   }
+
+  // Clear visited sets to save memory
+  await redisEvictConnection.del("crawl:" + id + ":visited");
+  await redisEvictConnection.del("crawl:" + id + ":visited_unique");
 }
 
 export async function getCrawlJobs(id: string): Promise<string[]> {
