@@ -338,7 +338,7 @@ const separateWorkerFun = (
     lockDuration: 30 * 1000, // 30 seconds
     stalledInterval: 30 * 1000, // 30 seconds
     maxStalledCount: 10, // 10 times
-    concurrency: Math.ceil(6 / scrapeQueueNames.length), // from k8s setup
+    concurrency: 6, // from k8s setup
     useWorkerThreads: true,
   });
 
