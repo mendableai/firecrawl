@@ -101,14 +101,17 @@ jobs:
           docker run -d -p 3434:8080 -v "${PWD}/searxng:/etc/searxng" --name searxng searxng/searxng
           pnpx wait-on tcp:3434 -t 30s
         working-directory: ./
+      - name: Build the application
+        run: npm run build
+        working-directory: ./apps/api
       - name: Start server
-        run: npm run start:production > api.log 2>&1 &
+        run: npm run start:production:nobuild > api.log 2>&1 &
         env:
           PORT: 3002
           HOST: 0.0.0.0
         working-directory: ./apps/api
       - name: Start worker
-        run: npm run workers > worker.log 2>&1 &
+        run: npm run worker:production > worker.log 2>&1 &
         env:
           PORT: 3005
           HOST: 0.0.0.0
