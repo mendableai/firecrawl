@@ -55,7 +55,7 @@ export async function _addScrapeJobToBullMQ(
   options: any,
   jobId: string,
   jobPriority: number,
-) {
+): Promise<Job> {
   if (
     webScraperOptions &&
     webScraperOptions.team_id
@@ -70,7 +70,7 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  await getScrapeQueue().add(jobId, webScraperOptions, {
+  return await getScrapeQueue().add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
@@ -83,7 +83,7 @@ async function addScrapeJobRaw(
   jobId: string,
   jobPriority: number,
   directToBullMQ: boolean = false,
-) {
+): Promise<Job | null> {
   let concurrencyLimited: "yes" | "yes-crawl" | "no" | null = null;
   let currentActiveConcurrency = 0;
   let maxConcurrency = 0;
@@ -144,8 +144,9 @@ async function addScrapeJobRaw(
       jobId,
       jobPriority,
     );
+    return null;
   } else {
-    await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
+    return await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
   }
 }
 
@@ -155,7 +156,7 @@ export async function addScrapeJob(
   jobId: string = uuidv4(),
   jobPriority: number = 10,
   directToBullMQ: boolean = false,
-) {
+): Promise<Job | null> {
   if (Sentry.isInitialized()) {
     const size = JSON.stringify(webScraperOptions).length;
     return await Sentry.startSpan(
@@ -169,7 +170,7 @@ export async function addScrapeJob(
         },
       },
       async (span) => {
-        await addScrapeJobRaw(
+        return await addScrapeJobRaw(
           {
             ...webScraperOptions,
             sentry: {
@@ -186,7 +187,7 @@ export async function addScrapeJob(
       },
     );
   } else {
-    await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
+    return await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
   }
 }
 
@@ -387,23 +388,23 @@ export async function addScrapeJobs(
 }
 
 export async function waitForJob(
-  jobId: string,
+  _job: Job | string,
   timeout: number,
   logger: Logger = _logger,
 ): Promise<Document> {
     const start = Date.now();
     const queue = getScrapeQueue();
-    let job: Job | undefined = await queue.getJob(jobId);
+    let job: Job | undefined = typeof _job == "string" ? await queue.getJob(_job) : _job;
     while (job === undefined) {
       logger.debug("Waiting for job to be created");
       await new Promise(resolve => setTimeout(resolve, 500));
-      job = await queue.getJob(jobId);
+      job = await queue.getJob(_job as string);
     }
     let doc: Document = await job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start));
     logger.debug("Got job");
     
     if (!doc) {
-      const docs = await getJobFromGCS(jobId);
+      const docs = await getJobFromGCS(job.id!);
       logger.debug("Got job from GCS");
       if (!docs || docs.length === 0) {
         throw new Error("Job not found in GCS");
@@ -411,7 +412,7 @@ export async function waitForJob(
       doc = docs[0];
 
       if (job.data?.internalOptions?.zeroDataRetention) {
-        await removeJobFromGCS(jobId);
+        await removeJobFromGCS(job.id!);
       }
     }
 
