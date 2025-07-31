@@ -822,7 +822,7 @@ export const processJobInternal = async (job: Job & { id: string }) => {
                                 );
                                 return null;
                             } else {
-                                logger.debug("Job succeeded -- putting result in Redis", { document });
+                                logger.debug("Job succeeded -- putting result in Redis", { document: result.document });
                                 return result.document;
                             }
                         } catch (e) { }
