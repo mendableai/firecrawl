@@ -50,10 +50,12 @@ export function getScrapeQueue() {
 export function getScrapeQueueEvents() {
   if (!scrapeQueueEvents) {
     scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
-      connection: redisConnection,
+      connection: new IORedis(process.env.REDIS_URL!, {
+        maxRetriesPerRequest: null,
+      }),
     });
   }
-  
+
   return scrapeQueueEvents;
 }
 
