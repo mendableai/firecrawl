@@ -391,9 +391,15 @@ export async function waitForJob(
   timeout: number,
   logger: Logger = _logger,
 ): Promise<Document> {
+    const start = Date.now();
     const queue = getScrapeQueue();
-    const job: Job = await queue.getJob(jobId)!;
-    let doc: Document = await job.waitUntilFinished(getScrapeQueueEvents(), timeout);
+    let job: Job | undefined = await queue.getJob(jobId);
+    while (job === undefined) {
+      logger.debug("Waiting for job to be created");
+      await new Promise(resolve => setTimeout(resolve, 500));
+      job = await queue.getJob(jobId);
+    }
+    let doc: Document = await job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start));
     logger.debug("Got job");
     
     if (!doc) {
