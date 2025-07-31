@@ -151,7 +151,7 @@ class ScrapeOptions(pydantic.BaseModel):
     excludeTags: Optional[List[str]] = None
     onlyMainContent: Optional[bool] = None
     waitFor: Optional[int] = None
-    timeout: Optional[int] = None
+    timeout: Optional[int] = 30000
     location: Optional[LocationConfig] = None
     mobile: Optional[bool] = None
     skipTlsVerification: Optional[bool] = None
@@ -305,7 +305,7 @@ class MapParams(pydantic.BaseModel):
     includeSubdomains: Optional[bool] = None
     sitemapOnly: Optional[bool] = None
     limit: Optional[int] = None
-    timeout: Optional[int] = None
+    timeout: Optional[int] = 30000
     useIndex: Optional[bool] = None
 
 class MapResponse(pydantic.BaseModel):
@@ -469,7 +469,7 @@ class FirecrawlApp:
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
             wait_for: Optional[int] = None,
-            timeout: Optional[int] = None,
+            timeout: Optional[int] = 30000,
             location: Optional[LocationConfig] = None,
             mobile: Optional[bool] = None,
             skip_tls_verification: Optional[bool] = None,
@@ -593,7 +593,7 @@ class FirecrawlApp:
             f'{self.api_url}/v1/scrape',
             headers=_headers,
             json=scrape_params,
-            timeout=(timeout + 5000 if timeout else None)
+            timeout=(timeout / 1000.0 + 5 if timeout is not None else None)
         )
 
         if response.status_code == 200:
@@ -620,7 +620,7 @@ class FirecrawlApp:
             lang: Optional[str] = None,
             country: Optional[str] = None,
             location: Optional[str] = None,
-            timeout: Optional[int] = None,
+            timeout: Optional[int] = 30000,
             scrape_options: Optional[ScrapeOptions] = None,
             **kwargs) -> SearchResponse:
         """
@@ -1189,7 +1189,7 @@ class FirecrawlApp:
             include_subdomains: Optional[bool] = None,
             sitemap_only: Optional[bool] = None,
             limit: Optional[int] = None,
-            timeout: Optional[int] = None,
+            timeout: Optional[int] = 30000,
             use_index: Optional[bool] = None,
             **kwargs) -> MapResponse:
         """
@@ -1280,7 +1280,7 @@ class FirecrawlApp:
         exclude_tags: Optional[List[str]] = None,
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 30000,
         location: Optional[LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
@@ -1421,7 +1421,7 @@ class FirecrawlApp:
         exclude_tags: Optional[List[str]] = None,
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 30000,
         location: Optional[LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
@@ -1561,7 +1561,7 @@ class FirecrawlApp:
         exclude_tags: Optional[List[str]] = None,
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 30000,
         location: Optional[LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
@@ -2204,7 +2204,7 @@ class FirecrawlApp:
             requests.RequestException: If the request fails after the specified retries.
         """
         for attempt in range(retries):
-            response = requests.post(url, headers=headers, json=data, timeout=((data["timeout"] + 5000) if "timeout" in data else None))
+            response = requests.post(url, headers=headers, json=data, timeout=((data["timeout"] / 1000.0 + 5) if "timeout" in data and data["timeout"] is not None else None))
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
@@ -2975,7 +2975,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
             wait_for: Optional[int] = None,
-            timeout: Optional[int] = None,
+            timeout: Optional[int] = 30000,
             location: Optional[LocationConfig] = None,
             mobile: Optional[bool] = None,
             skip_tls_verification: Optional[bool] = None,
@@ -3109,7 +3109,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         exclude_tags: Optional[List[str]] = None,
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 30000,
         location: Optional[LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
@@ -3247,7 +3247,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         exclude_tags: Optional[List[str]] = None,
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 30000,
         location: Optional[LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
@@ -3732,7 +3732,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         include_subdomains: Optional[bool] = None,
         sitemap_only: Optional[bool] = None,
         limit: Optional[int] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 30000,
         params: Optional[MapParams] = None) -> MapResponse:
         """
         Asynchronously map and discover links from a URL.
@@ -4467,7 +4467,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             lang: Optional[str] = None,
             country: Optional[str] = None,
             location: Optional[str] = None,
-            timeout: Optional[int] = None,
+            timeout: Optional[int] = 30000,
             scrape_options: Optional[ScrapeOptions] = None,
             params: Optional[Union[Dict[str, Any], SearchParams]] = None,
             **kwargs) -> SearchResponse:
