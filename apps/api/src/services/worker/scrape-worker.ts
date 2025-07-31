@@ -782,65 +782,67 @@ async function processKickoffJob(job: Job & { id: string }) {
 }
 
 export const processJobInternal = async (job: Job & { id: string }) => {
+    const logger = _logger.child({
+        module: "queue-worker",
+        method: "processJobInternal",
+        jobId: job.id,
+        scrapeId: job.id,
+        crawlId: job.data?.crawl_id ?? undefined,
+        zeroDataRetention: job.data?.zeroDataRetention ?? false,
+    });
+    
     try {
-        const logger = _logger.child({
-            module: "queue-worker",
-            method: "processJobInternal",
-            jobId: job.id,
-            scrapeId: job.id,
-            crawlId: job.data?.crawl_id ?? undefined,
-            zeroDataRetention: job.data?.zeroDataRetention ?? false,
-        });
-
-        let extendLockInterval: NodeJS.Timeout | null = null;
-        if (job.data?.mode !== "kickoff" && job.data?.team_id) {
-            extendLockInterval = setInterval(async () => {
-                await pushConcurrencyLimitActiveJob(job.data.team_id, job.id, 60 * 1000); // 60s lock renew, just like in the queue
-            }, jobLockExtendInterval);
-        }
-
-        await addJobPriority(job.data.team_id, job.id);
         try {
-            if (job.data?.mode === "kickoff") {
-                const result = await processKickoffJob(job);
-                if (result.success) {
-                    return null;
+            let extendLockInterval: NodeJS.Timeout | null = null;
+            if (job.data?.mode !== "kickoff" && job.data?.team_id) {
+                extendLockInterval = setInterval(async () => {
+                    await pushConcurrencyLimitActiveJob(job.data.team_id, job.id, 60 * 1000); // 60s lock renew, just like in the queue
+                }, jobLockExtendInterval);
+            }
+
+            await addJobPriority(job.data.team_id, job.id);
+            try {
+                if (job.data?.mode === "kickoff") {
+                    const result = await processKickoffJob(job);
+                    if (result.success) {
+                        return null;
+                    } else {
+                        throw (result as any).error;
+                    }
                 } else {
-                    throw (result as any).error;
+                    const result = await processJob(job);
+                    if (result.success) {
+                        try {
+                            if (
+                                process.env.USE_DB_AUTHENTICATION === "true" &&
+                                (job.data.crawl_id || process.env.GCS_BUCKET_NAME)
+                            ) {
+                                logger.debug(
+                                    "Job succeeded -- putting null in Redis",
+                                );
+                                return null;
+                            } else {
+                                logger.debug("Job succeeded -- putting result in Redis");
+                                return result.document;
+                            }
+                        } catch (e) { }
+                    } else {
+                        throw (result as any).error;
+                    }
                 }
-            } else {
-                const result = await processJob(job);
-                if (result.success) {
-                    try {
-                        if (
-                            process.env.USE_DB_AUTHENTICATION === "true" &&
-                            (job.data.crawl_id || process.env.GCS_BUCKET_NAME)
-                        ) {
-                            logger.debug(
-                                "Job succeeded -- putting null in Redis",
-                            );
-                            return null;
-                        } else {
-                            logger.debug("Job succeeded -- putting result in Redis");
-                            return result.document;
-                        }
-                    } catch (e) { }
-                } else {
-                    throw (result as any).error;
+            } finally {
+                await deleteJobPriority(job.data.team_id, job.id);
+                if (extendLockInterval) {
+                    clearInterval(extendLockInterval);
                 }
             }
-        } catch (error) {
-            logger.debug("Job failed", { error });
-            Sentry.captureException(error);
-            throw error;
         } finally {
-            await deleteJobPriority(job.data.team_id, job.id);
-            if (extendLockInterval) {
-                clearInterval(extendLockInterval);
-            }
+            await concurrentJobDone(job);
         }
-    } finally {
-        await concurrentJobDone(job);
+    } catch (error) {
+        logger.debug("Job failed", { error });
+        Sentry.captureException(error);
+        throw error;
     }
 };
 
