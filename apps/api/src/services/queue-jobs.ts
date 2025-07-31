@@ -1,4 +1,4 @@
-import { getScrapeQueue, getScrapeQueueEvents, uuidToQueueNo } from "./queue-service";
+import { getScrapeQueue, getScrapeQueueEvents } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
@@ -70,7 +70,7 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  return await getScrapeQueue(uuidToQueueNo(jobId)).add(jobId, webScraperOptions, {
+  return await getScrapeQueue().add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
@@ -320,7 +320,7 @@ export async function waitForJob(
   logger: Logger = _logger,
 ): Promise<Document> {
     const start = Date.now();
-    const queue = getScrapeQueue(uuidToQueueNo(typeof _job == "string" ? _job : _job.id!));
+    const queue = getScrapeQueue();
     let job: Job | undefined = typeof _job == "string" ? await queue.getJob(_job) : _job;
     while (job === undefined) {
       logger.debug("Waiting for job to be created");
@@ -331,7 +331,7 @@ export async function waitForJob(
       }
     }
     let doc: Document = await Promise.race([
-      job.waitUntilFinished(getScrapeQueueEvents(uuidToQueueNo(job.id!)), timeout - (Date.now() - start)),
+      job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
       new Promise((resolve, reject) => {
         setTimeout(() => {
           reject(new Error("Job wait "));

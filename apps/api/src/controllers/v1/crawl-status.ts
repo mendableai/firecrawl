@@ -13,7 +13,7 @@ import {
   getDoneJobsOrderedLength,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue, uuidToQueueNo } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
@@ -42,7 +42,7 @@ export type DBJob = { docs: any, success: boolean, page_options: any, date_added
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([
-    getScrapeQueue(uuidToQueueNo(id)).getJob(id),
+    getScrapeQueue().getJob(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
@@ -74,7 +74,7 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
   const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-    Promise.all(ids.map((x) => getScrapeQueue(uuidToQueueNo(x)).getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
@@ -159,7 +159,7 @@ export async function crawlStatusController(
     let jobIDs = await getCrawlJobs(req.params.jobId);
     let jobStatuses = await Promise.all(
       jobIDs.map(
-        async (x) => [x, await getScrapeQueue(uuidToQueueNo(x)).getJobState(x)] as const,
+        async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
       ),
     );
 
