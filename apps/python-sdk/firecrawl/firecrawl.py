@@ -264,6 +264,7 @@ class CrawlParams(pydantic.BaseModel):
     maxDiscoveryDepth: Optional[int] = None
     limit: Optional[int] = None
     allowBackwardLinks: Optional[bool] = None
+    crawlEntireDomain: Optional[bool] = None
     allowExternalLinks: Optional[bool] = None
     ignoreSitemap: Optional[bool] = None
     scrapeOptions: Optional[ScrapeOptions] = None
@@ -1161,6 +1162,7 @@ class FirecrawlApp:
             max_discovery_depth=max_discovery_depth,
             limit=limit,
             allow_backward_links=allow_backward_links,
+            crawl_entire_domain=crawl_entire_domain,
             allow_external_links=allow_external_links,
             ignore_sitemap=ignore_sitemap,
             scrape_options=scrape_options,
