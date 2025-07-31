@@ -4,8 +4,8 @@ import IORedis from "ioredis";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
-let scrapeQueue: Queue;
-let scrapeQueueEvents: QueueEvents;
+let scrapeQueues: Queue[] = [];
+let scrapeQueueEvents: QueueEvents[] = [];
 let extractQueue: Queue;
 let deepResearchQueue: Queue;
 let generateLlmsTxtQueue: Queue;
@@ -40,8 +40,8 @@ export function uuidToQueueNo(id: string) {
 }
 
 export function getScrapeQueue(i: number) {
-  if (!scrapeQueue) {
-    scrapeQueue = new Queue(scrapeQueueNames[i], {
+  if (!scrapeQueues[i]) {
+    scrapeQueues[i] = new Queue(scrapeQueueNames[i], {
       connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
@@ -53,19 +53,19 @@ export function getScrapeQueue(i: number) {
       },
     });
   }
-  return scrapeQueue;
+  return scrapeQueues[i];
 }
 
 export function getScrapeQueueEvents(i: number) {
-  if (!scrapeQueueEvents) {
-    scrapeQueueEvents = new QueueEvents(scrapeQueueNames[i], {
+  if (!scrapeQueueEvents[i]) {
+    scrapeQueueEvents[i] = new QueueEvents(scrapeQueueNames[i], {
       connection: new IORedis(process.env.REDIS_URL!, {
         maxRetriesPerRequest: null,
       }),
     });
   }
 
-  return scrapeQueueEvents;
+  return scrapeQueueEvents[i];
 }
 
 export function getExtractQueue() {
