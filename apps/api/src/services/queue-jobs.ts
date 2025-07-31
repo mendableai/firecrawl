@@ -399,8 +399,18 @@ export async function waitForJob(
       logger.debug("Waiting for job to be created");
       await new Promise(resolve => setTimeout(resolve, 500));
       job = await queue.getJob(_job as string);
+      if (Date.now() - start > timeout) {
+        throw new Error("Job wait ");
+      }
     }
-    let doc: Document = await job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start));
+    let doc: Document = await Promise.race([
+      job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
+      new Promise((resolve, reject) => {
+        setTimeout(() => {
+          reject(new Error("Job wait "));
+        }, Math.max(0, timeout - (Date.now() - start)));
+      }),
+    ]);
     logger.debug("Got job");
     
     if (!doc) {
