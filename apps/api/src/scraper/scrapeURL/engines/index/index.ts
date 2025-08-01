@@ -6,14 +6,7 @@ import { EngineError, IndexMissError, TimeoutError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
-    // Track domain frequency regardless of caching
-    try {
-        // Use the resolved URL if available, otherwise use the original URL
-        const urlToTrack = document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url;
-        await addDomainFrequencyJob(urlToTrack);
-    } catch (error) {
-        meta.logger.warn("Failed to track domain frequency", { error });
-    }
+   
 
     const shouldCache = meta.options.storeInCache
         && !meta.internalOptions.zeroDataRetention
