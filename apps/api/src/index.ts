@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
+import domainFrequencyRouter from "./routes/domain-frequency";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -83,6 +84,7 @@ app.get("/test", async (req, res) => {
 app.use(v0Router);
 app.use("/v1", v1Router);
 app.use(adminRouter);
+app.use(domainFrequencyRouter);
 
 const DEFAULT_PORT = process.env.PORT ?? 3002;
 const HOST = process.env.HOST ?? "localhost";
