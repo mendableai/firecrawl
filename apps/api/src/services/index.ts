@@ -374,6 +374,10 @@ export async function getDomainFrequencyJobs(): Promise<Map<string, number>> {
 }
 
 export async function processDomainFrequencyJobs() {
+  if (!useIndex) {
+    return;
+  }
+  
   const domainCounts = await getDomainFrequencyJobs();
   if (domainCounts.size === 0) {
     return;
