@@ -44,3 +44,15 @@ content-type: application/json
     "modes": ["git-diff"]
   }]
 }
+
+### Parsers
+POST {{baseUrl}}/v2/scrape HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "url": "https://www.orimi.com/pdf-test.pdf",
+  "parsers": {
+    "pdf": false
+  }
+}
