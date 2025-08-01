@@ -12,7 +12,7 @@ export async function cleanBefore24hCompleteJobsController(
 ) {
   logger.info("🐂 Cleaning jobs older than 24h");
   try {
-    const scrapeQueue = getScrapeQueue();
+    const scrapeQueue = getScrapeQueue(0);
     const batchSize = 10;
     const numberOfBatches = 9; // Adjust based on your needs
     const completedJobsPromises: Promise<Job[]>[] = [];
@@ -70,7 +70,7 @@ export async function checkQueuesController(req: Request, res: Response) {
 // Use this as a "health check" that way we dont destroy the server
 export async function queuesController(req: Request, res: Response) {
   try {
-    const scrapeQueue = getScrapeQueue();
+    const scrapeQueue = getScrapeQueue(0);
 
     const [webScraperActive] = await Promise.all([
       scrapeQueue.getActiveCount(),
@@ -93,7 +93,7 @@ export async function autoscalerController(req: Request, res: Response) {
     const maxNumberOfMachines = 80;
     const minNumberOfMachines = 20;
 
-    const scrapeQueue = getScrapeQueue();
+    const scrapeQueue = getScrapeQueue(0);
 
     const [webScraperActive, webScraperWaiting, webScraperPriority] =
       await Promise.all([
