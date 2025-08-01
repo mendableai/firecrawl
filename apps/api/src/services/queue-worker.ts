@@ -335,10 +335,10 @@ const separateWorkerFun = (
 ): Worker => {
   const worker = new Worker(queue.name, path, {
     connection: redisConnection,
-    lockDuration: 30 * 1000, // 30 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
+    lockDuration: 60 * 1000, // 60 seconds (increased from 30)
+    stalledInterval: 45 * 1000, // 45 seconds (increased from 30)
     maxStalledCount: 10, // 10 times
-    concurrency: Math.ceil(6 / scrapeQueueNames.length), // from k8s setup
+    concurrency: Math.ceil(12 / scrapeQueueNames.length), // increased base from 6 to 12 for better throughput with 16 queues
     useWorkerThreads: true,
   });
 
@@ -353,8 +353,8 @@ const workerFun = async (
 
   const worker = new Worker(queue.name, null, {
     connection: redisConnection,
-    lockDuration: 30 * 1000, // 30 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
+    lockDuration: 60 * 1000, // 60 seconds (increased from 30)
+    stalledInterval: 45 * 1000, // 45 seconds (increased from 30)
     maxStalledCount: 10, // 10 times
   });
 
