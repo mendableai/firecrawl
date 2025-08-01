@@ -6,6 +6,7 @@ import { scrapeController } from "../controllers/v2/scrape";
 import { batchScrapeController } from "../controllers/v2/batch-scrape";
 import { crawlController } from "../controllers/v2/crawl";
 import { crawlStatusController } from "../controllers/v2/crawl-status";
+import { mapV2Controller } from "../controllers/v2/map";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -37,6 +38,13 @@ v2Router.post(
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
   wrap(batchScrapeController),
+);
+
+v2Router.post(
+  "/map",
+  authMiddleware(RateLimiterMode.Map),
+  checkCreditsMiddleware(),
+  wrap(mapV2Controller),
 );
 
 v2Router.post(

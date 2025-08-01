@@ -456,3 +456,70 @@ export async function queryOMCESignatures(hostname: string, maxAge = 2 * 24 * 60
 
   return data?.[0]?.signatures ?? [];
 }
+
+export async function queryIndexDocument(url: string): Promise<{
+  title?: string;
+  description?: string;
+  language?: string;
+  keywords?: string;
+  robots?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogUrl?: string;
+  ogImage?: string;
+  ogLocale?: string;
+  ogSiteName?: string;
+  createdAt?: string;
+  lastScrapedAt?: string;
+} | null> {
+  if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
+    return null;
+  }
+
+  try {
+    const normalizedUrl = normalizeURLForIndex(url);
+    const urlHash = hashURL(normalizedUrl);
+
+    const { data, error } = await index_supabase_service
+      .from("index")
+      .select("id, title, description, created_at")
+      .eq("url_hash", urlHash)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    // Try to get more metadata from GCS if available
+    let gcsData: any = null;
+    try {
+      gcsData = await getIndexFromGCS(data.id + ".json");
+    } catch (e) {
+      // Ignore GCS errors, we'll use what we have from the database
+    }
+
+    return {
+      title: data.title,
+      description: data.description,
+      createdAt: data.created_at,
+      lastScrapedAt: data.created_at,
+      // Add more fields from GCS data if available
+      ...(gcsData && {
+        language: gcsData.language,
+        keywords: gcsData.keywords,
+        robots: gcsData.robots,
+        ogTitle: gcsData.ogTitle,
+        ogDescription: gcsData.ogDescription,
+        ogUrl: gcsData.ogUrl,
+        ogImage: gcsData.ogImage,
+        ogLocale: gcsData.ogLocale,
+        ogSiteName: gcsData.ogSiteName,
+      })
+    };
+  } catch (error) {
+    _logger.warn("Error querying index document", { error, url });
+    return null;
+  }
+}

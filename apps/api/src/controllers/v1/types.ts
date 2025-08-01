@@ -794,6 +794,7 @@ export const crawlRequestSchema = crawlerOptions
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
+// Note: Map types have been transitioned to v2/types.ts while maintaining backwards compatibility
 export const mapRequestSchema = crawlerOptions
   .extend({
     url,
@@ -996,6 +997,7 @@ export type BatchScrapeResponse =
     invalidURLs?: string[];
   };
 
+// Note: This type has been transitioned to v2/types.ts (see MapV2Response) while maintaining backwards compatibility
 export type MapResponse =
   | ErrorResponse
   | {
@@ -1234,6 +1236,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
   };
 }
 
+// Note: This interface has been transitioned to v2/types.ts while maintaining backwards compatibility
 export interface MapDocument {
   url: string;
   title?: string;

@@ -1627,9 +1627,11 @@ app.get("/liveness", (req, res) => {
 });
 
 const workerPort = process.env.PORT || 3005;
-app.listen(workerPort, () => {
-  _logger.info(`Liveness endpoint is running on port ${workerPort}`);
-});
+setTimeout(() => {
+  app.listen(workerPort, () => {
+    _logger.info(`Liveness endpoint is running on port ${workerPort}`);
+  });
+}, 5000);
 
 (async () => {
   async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {

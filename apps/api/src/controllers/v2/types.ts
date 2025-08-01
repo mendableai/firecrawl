@@ -7,6 +7,7 @@ import {
   PageOptions,
   ScrapeActionContent,
   Document as V0Document,
+  WebSearchResult,
 } from "../../lib/entities";
 import { ScrapeOptions as V1ScrapeOptions } from "../v1/types";
 import { InternalOptions } from "../../scraper/scrapeURL";
@@ -773,6 +774,27 @@ export type MapResponse =
     success: true;
     links: string[];
     scrape_id?: string;
+  };
+
+// Map document interface (transitioned from v1)
+export interface MapDocument {
+  url: string;
+  title?: string;
+  description?: string;
+}
+
+// V2 Map Response with dictionary format
+export type MapV2Response =
+  | ErrorResponse
+  | {
+    success: true;
+    links?: string[]; // For backwards compatibility
+    web?: WebSearchResult[]; // New structured format
+    metadata?: {
+      totalCount: number;
+      hasMore: boolean;
+      searchQuery?: string;
+    };
   };
 
 export type CrawlStatusParams = {
