@@ -14,12 +14,18 @@ let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
 let precrawlQueue: Queue;
 
-export const redisConnection = new IORedis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null,
-});
+export function createRedisConnection() {
+  const connection = new IORedis(process.env.REDIS_URL!, {
+    maxRetriesPerRequest: null,
+  });
 
-redisConnection.on("reconnecting", () => logger.warn("Redis reconnecting"));
-redisConnection.on("error", (err) => logger.warn("Redis error", { err }));
+  connection.on("reconnecting", () => logger.warn("Redis reconnecting"));
+  connection.on("error", (err) => logger.warn("Redis error", { err }));
+
+  return connection;
+}
+
+export const redisConnection = createRedisConnection();
 
 export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
@@ -33,7 +39,7 @@ export const precrawlQueueName = "{precrawlQueue}";
 export function getScrapeQueue() {
   if (!scrapeQueue) {
     scrapeQueue = new Queue(scrapeQueueName, {
-      connection: redisConnection,
+      connection: createRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 3600, // 1 hour
@@ -50,9 +56,7 @@ export function getScrapeQueue() {
 export function getScrapeQueueEvents() {
   if (!scrapeQueueEvents) {
     scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
-      connection: new IORedis(process.env.REDIS_URL!, {
-        maxRetriesPerRequest: null,
-      }),
+      connection: createRedisConnection(),
     });
   }
 

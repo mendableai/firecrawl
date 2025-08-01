@@ -8,6 +8,7 @@ import {
   redisConnection,
   getGenerateLlmsTxtQueue,
   scrapeQueueName,
+  createRedisConnection,
 } from "./queue-service";
 import { Job, Queue, QueueEvents } from "bullmq";
 import { logger as _logger } from "../lib/logger";
@@ -332,7 +333,7 @@ const separateWorkerFun = (
   path: string,
 ): Worker => {
   const worker = new Worker(queue.name, path, {
-    connection: redisConnection,
+    connection: createRedisConnection(),
     lockDuration: 30 * 1000, // 30 seconds
     stalledInterval: 30 * 1000, // 30 seconds
     maxStalledCount: 10, // 10 times
