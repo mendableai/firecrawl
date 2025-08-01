@@ -1110,6 +1110,7 @@ export function fromV1ScrapeOptions(
   delete spreadScrapeOptions.jsonOptions;
   delete spreadScrapeOptions.extract;
   delete spreadScrapeOptions.geolocation;
+  delete (spreadScrapeOptions as any).parsePDF;
   
   return {
     scrapeOptions: scrapeOptions.parse({
