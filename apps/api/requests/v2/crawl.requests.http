@@ -31,8 +31,8 @@ content-type: application/json
 #   "success": true,
 #   "data": {
 #     "url": "https://firecrawl.dev",
-#     "includes": ["blog", "news"],
-#     "excludes": [],
+#     "includePaths": ["blog", "news"],
+#     "excludePaths": [],
 #     "limit": 50,
 #     "maxDepth": 2
 #   }
@@ -46,5 +46,5 @@ content-type: application/json
 
 {
     "url": "https://firecrawl.dev",
-    "includes": ["blog", "news"]
+    "includePaths": ["blog", "news"]
 }

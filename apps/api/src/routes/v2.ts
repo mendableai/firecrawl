@@ -5,6 +5,7 @@ import { searchController } from "../controllers/v2/search";
 import { scrapeController } from "../controllers/v2/scrape";
 import { batchScrapeController } from "../controllers/v2/batch-scrape";
 import { crawlController } from "../controllers/v2/crawl";
+import { crawlParamsPreviewController } from "../controllers/v2/crawl-params-preview";
 import { crawlStatusController } from "../controllers/v2/crawl-status";
 import { mapV2Controller } from "../controllers/v2/map";
 import {
@@ -54,6 +55,13 @@ v2Router.post(
   blocklistMiddleware,
   idempotencyMiddleware,
   wrap(crawlController),
+);
+
+v2Router.post(
+  "/crawl/params-preview",
+  authMiddleware(RateLimiterMode.Crawl),
+  checkCreditsMiddleware(),
+  wrap(crawlParamsPreviewController),
 );
 
 v2Router.get(
