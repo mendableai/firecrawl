@@ -28,7 +28,7 @@ import {
 } from "../../lib/crawl-redis";
 import { addScrapeJob, addScrapeJobs } from "../queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { Document, scrapeOptions, TeamFlags } from "../../controllers/v1/types";
+import { Document, scrapeOptions, TeamFlags } from "../../controllers/v2/types";
 import { getACUCTeam } from "../../controllers/auth";
 import { callWebhook } from "../webhook";
 import { CustomError } from "../../lib/custom-error";

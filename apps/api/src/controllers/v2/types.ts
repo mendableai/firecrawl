@@ -200,6 +200,12 @@ export const screenshotFormatWithOptions = z.object({
 
 export type ScreenshotFormatWithOptions = z.output<typeof screenshotFormatWithOptions>;
 
+export const parsersSchema = z.object({
+  pdf: z.boolean().default(true),
+}).default({ pdf: true });
+
+export type Parsers = z.infer<typeof parsersSchema>;
+
 const baseScrapeOptions = z
   .object({
     formats: z
@@ -252,7 +258,7 @@ const baseScrapeOptions = z
       .max(60000)
       .default(0),
     mobile: z.boolean().default(false),
-    parsePDF: z.boolean().default(true),
+    parsers: parsersSchema.optional(),
     actions: actionsSchema.optional(),
     
     location: z
@@ -1117,6 +1123,7 @@ export function fromV1ScrapeOptions(
           return x;
         }
       }).filter(x => x !== null),
+      parsers: v1ScrapeOptions.parsePDF !== undefined ? { pdf: v1ScrapeOptions.parsePDF } : undefined,
     }),
     internalOptions: {
       teamId,
