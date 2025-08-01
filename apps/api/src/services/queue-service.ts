@@ -13,7 +13,7 @@ let billingQueue: Queue;
 let precrawlQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null,
+  maxRetriesPerRequest: null
 });
 
 redisConnection.on("reconnecting", () => logger.warn("Redis reconnecting"));
@@ -33,6 +33,18 @@ export const scrapeQueueNames = [
   "{scrapeQueue1}",
   "{scrapeQueue2}",
   "{scrapeQueue3}",
+  "{scrapeQueue4}",
+  "{scrapeQueue5}",
+  "{scrapeQueue6}",
+  "{scrapeQueue7}",
+  "{scrapeQueue8}",
+  "{scrapeQueue9}",
+  "{scrapeQueue10}",
+  "{scrapeQueue11}",
+  "{scrapeQueue12}",
+  "{scrapeQueue13}",
+  "{scrapeQueue14}",
+  "{scrapeQueue15}",
 ];
 
 export function uuidToQueueNo(id: string) {
