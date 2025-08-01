@@ -259,13 +259,13 @@ export async function crawlStatusController(
         }, { get: true });
 
       creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? (totalCount * (
-        sc.scrapeOptions?.extract
+        sc.scrapeOptions.formats.find(x => typeof x === "object" && x.type === "json")
           ? 5
           : 1
       ));
     } else {
       creditsUsed = totalCount * (
-        sc.scrapeOptions?.extract
+        sc.scrapeOptions.formats.find(x => typeof x === "object" && x.type === "json")
           ? 5
           : 1
       )

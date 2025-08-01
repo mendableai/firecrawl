@@ -5,6 +5,7 @@ import os
 from uuid import uuid4
 from dotenv import load_dotenv
 from datetime import datetime
+from firecrawl.firecrawl import SearchParams
 
 load_dotenv()
 
@@ -248,6 +249,21 @@ def test_crawl_url_with_idempotency_key_e2e():
     with pytest.raises(Exception) as excinfo:
         app.crawl_url('https://firecrawl.dev', {'excludePaths': ['blog/*']}, True, 2, uniqueIdempotencyKey)
     assert "Idempotency key already used" in str(excinfo.value)
+
+def test_crawl_url_with_crawl_entire_domain():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    response = app.crawl_url(
+        'https://roastmywebsite.ai',
+        crawl_entire_domain=True,
+        limit=3,
+        poll_interval=2
+    )
+    assert response is not None
+    assert 'total' in response
+    assert response['total'] > 0
+    assert 'status' in response
+    assert response['status'] == 'completed'
+    assert len(response['data']) > 0
 
 def test_check_crawl_status_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)

@@ -24,6 +24,7 @@ import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";  
+import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
@@ -100,12 +101,15 @@ export async function batchScrapeController(
     await logCrawl(id, req.auth.team_id);
   }
 
+  const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body, req.body.timeout, req.auth.team_id);
+
   const sc: StoredCrawl = req.body.appendToId
     ? ((await getCrawl(req.body.appendToId)) as StoredCrawl)
     : {
         crawlerOptions: null,
-        scrapeOptions: req.body,
+        scrapeOptions,
         internalOptions: {
+          ...internalOptions,
           disableSmartWaitCache: true,
           teamId: req.auth.team_id,
           saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
@@ -134,10 +138,6 @@ export async function batchScrapeController(
   }
   logger.debug("Using job priority " + jobPriority, { jobPriority });
 
-  const scrapeOptions: ScrapeOptions = { ...req.body };
-  delete (scrapeOptions as any).urls;
-  delete (scrapeOptions as any).appendToId;
-
   const jobs = urls.map(x => ({
       data: {
         url: x,
@@ -152,7 +152,7 @@ export async function batchScrapeController(
         v1: true,
         webhook: req.body.webhook,
         internalOptions: sc.internalOptions,
-        zeroDataRetention,
+        zeroDataRetention: zeroDataRetention ?? false,
       },
       opts: {
         jobId: uuidv4(),

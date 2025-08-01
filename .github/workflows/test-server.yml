@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - nsc/v2
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
@@ -42,6 +43,7 @@ env:
   USE_GO_MARKDOWN_PARSER: true
   SENTRY_ENVIRONMENT: dev
   IDMUX_URL: ${{ secrets.IDMUX_URL }}
+  LOG_ENCRYPTION_KEY: ${{ secrets.LOG_ENCRYPTION_KEY }}
 
 jobs:
   test:
@@ -132,11 +134,25 @@ jobs:
       - name: Kill instances
         if: always()
         run: pkill -9 node
-      # - uses: actions/upload-artifact@v4
-      #   if: always()
-      #   with:
-      #     name: Logs
-      #     path: |
-      #       ./apps/api/api.log
-      #       ./apps/api/worker.log
-      #       ./apps/api/index-worker.log
+      - name: Create logs directory
+        if: always()
+        run: mkdir -p logs
+      - name: Copy log files
+        if: always()
+        run: |
+          cp ./apps/api/api.log logs/ || true
+          cp ./apps/api/worker.log logs/ || true
+          cp ./apps/api/index-worker.log logs/ || true
+      - name: Zip and encrypt logs
+        if: always()
+        run: |
+          cd logs
+          zip -r logs.zip ./*
+          echo "${{ secrets.LOG_ENCRYPTION_KEY }}" | gpg --batch --yes --passphrase-fd 0 -c logs.zip
+          rm logs.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Encrypted Logs
+          path: logs/logs.zip.gpg
+          retention-days: 5
