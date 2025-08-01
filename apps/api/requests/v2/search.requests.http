@@ -1,0 +1,15 @@
+# Pick your baseUrl here:
+# @baseUrl = http://localhost:3002
+@baseUrl = https://api.firecrawl.dev
+
+
+### Search
+# @name search
+POST {{baseUrl}}/v1/search HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "query": "firecrawl",
+  "limit": 50
+}
