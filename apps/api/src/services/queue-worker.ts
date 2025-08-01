@@ -458,7 +458,7 @@ app.get("/liveness", (req, res) => {
   }
 });
 
-const workerPort = process.env.PORT || 3005;
+const workerPort = process.env.WORKER_PORT || process.env.PORT || 3005;
 setTimeout(() => {
   app.listen(workerPort, () => {
     _logger.info(`Liveness endpoint is running on port ${workerPort}`);
