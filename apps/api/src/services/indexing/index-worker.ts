@@ -286,7 +286,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
 const INDEX_INSERT_INTERVAL = 3000;
 const WEBHOOK_INSERT_INTERVAL = 15000;
 const OMCE_INSERT_INTERVAL = 5000;
-const DOMAIN_FREQUENCY_INTERVAL = 3000; // Process at same rate as index inserts
+const DOMAIN_FREQUENCY_INTERVAL = 10000;
 
 // Start the workers
 (async () => {
