@@ -111,7 +111,7 @@ export function authMiddleware(
       }
     } catch (error) {
       // Log error without meta.logger since it's not available in this context
-      console.warn("Failed to track domain frequency", { error });
+      logger.warn("Failed to track domain frequency", { error });
     }
 
       // if (currentRateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
