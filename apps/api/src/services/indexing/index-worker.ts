@@ -261,30 +261,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
         runningJobs.add(job.id);
       }
 
-      if (job.data && job.data.sentry && Sentry.isInitialized()) {
-        Sentry.continueTrace(
-          {
-            sentryTrace: job.data.sentry.trace,
-            baggage: job.data.sentry.baggage,
-          },
-          () => {
-            Sentry.startSpan(
-              {
-                name: "Index job",
-                attributes: {
-                  job: job.id,
-                  worker: process.env.FLY_MACHINE_ID ?? worker.id,
-                },
-              },
-              async () => {
-                await jobProcessor(token, job);
-              },
-            );
-          },
-        );
-      } else {
-        await jobProcessor(token, job);
-      }
+      await jobProcessor(token, job);
 
       if (job.id) {
         runningJobs.delete(job.id);

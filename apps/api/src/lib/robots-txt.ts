@@ -35,7 +35,7 @@ export async function fetchRobotsTxt(
     (x) => x[0].toLowerCase() === "content-type",
   ) ?? [])[1] ?? "";
 
-  if (contentType.includes("text/html") || 
+  if ((contentType.includes("text/html") && response.data.trim().startsWith("<")) || 
       contentType.includes("application/json") ||
       contentType.includes("application/xml")) {
     return "";

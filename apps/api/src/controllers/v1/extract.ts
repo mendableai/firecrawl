@@ -119,34 +119,9 @@ export async function extractController(
     zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
 
-  if (Sentry.isInitialized()) {
-    const size = JSON.stringify(jobData).length;
-    await Sentry.startSpan(
-      {
-        name: "Add extract job",
-        op: "queue.publish",
-        attributes: {
-          "messaging.message.id": extractId,
-          "messaging.destination.name": getExtractQueue().name,
-          "messaging.message.body.size": size,
-        },
-      },
-      async (span) => {
-        await getExtractQueue().add(extractId, {
-          ...jobData,
-          sentry: {
-            trace: Sentry.spanToTraceHeader(span),
-            baggage: Sentry.spanToBaggageHeader(span),
-            size,
-          },
-        }, { jobId: extractId });
-      },
-    );
-  } else {
-    await getExtractQueue().add(extractId, jobData, {
-      jobId: extractId,
-    });
-  }
+  await getExtractQueue().add(extractId, jobData, {
+    jobId: extractId,
+  });
 
   return res.status(200).json({
     success: true,

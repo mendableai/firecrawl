@@ -17,6 +17,7 @@ const goExecutablePath = join(
 );
 
 class GoMarkdownConverter {
+  private static instance: GoMarkdownConverter;
   private convert: any;
   private free: any;
   
@@ -29,12 +30,15 @@ class GoMarkdownConverter {
   }
 
   public static async getInstance(): Promise<GoMarkdownConverter> {
-    try {
-      await stat(goExecutablePath);
-    } catch (_) {
-      throw Error("Go shared library not found");
+    if (!GoMarkdownConverter.instance) {
+      try {
+        await stat(goExecutablePath);
+      } catch (_) {
+        throw Error("Go shared library not found");
+      }
+      GoMarkdownConverter.instance = new GoMarkdownConverter();
     }
-    return new GoMarkdownConverter();
+    return GoMarkdownConverter.instance;
   }
 
   public async convertHTMLToMarkdown(html: string): Promise<string> {

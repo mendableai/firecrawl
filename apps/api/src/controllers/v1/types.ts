@@ -1113,6 +1113,7 @@ export type TeamFlags = {
   zdrCost?: number;
   checkRobotsOnScrape?: boolean;
   allowTeammateInvites?: boolean;
+  crawlTtlHours?: number;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;

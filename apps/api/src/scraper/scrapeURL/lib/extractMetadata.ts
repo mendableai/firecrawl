@@ -12,7 +12,7 @@ export async function extractMetadataRust(
   return {
     ...fromRust,
     ...(fromRust.favicon ? {
-      favicon: new URL(fromRust.favicon, meta.rewrittenUrl ?? meta.url)
+      favicon: new URL(fromRust.favicon, meta.rewrittenUrl ?? meta.url).href
     } : {}),
     scrapeId: meta.id,
   };

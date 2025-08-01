@@ -353,6 +353,7 @@ export class WebCrawler {
     };
 
     const _urlsHandler = async (urls: string[]) => {
+      this.logger.debug("urlsHandler invoked");
       if (fromMap && onlySitemap) {
         return await urlsHandler(urls);
       } else {
