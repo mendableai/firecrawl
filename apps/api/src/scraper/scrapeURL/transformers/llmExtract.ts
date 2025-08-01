@@ -811,6 +811,15 @@ export async function performSummary(
       options: {
         systemPrompt: "You are a content summarization expert. Analyze the provided content and create a concise, informative summary that captures the key points, main ideas, and essential information. Focus on clarity and brevity while maintaining accuracy.",
         prompt: "Summarize the main content and key points from this page.",
+        schema: {
+          type: "object",
+          properties: {
+            summary: {
+              type: "string",
+            },
+          },
+          required: ["summary"],
+        }
       },
       markdown: document.markdown,
       previousWarning: document.warning,
@@ -826,7 +835,7 @@ export async function performSummary(
     };
 
     const {
-      extract: summaryText,
+      extract,
       warning,
       totalUsage,
       model,
@@ -843,7 +852,7 @@ export async function performSummary(
       totalTokens: totalUsage.totalTokens,
     });
 
-    document.summary = typeof summaryText === 'string' ? summaryText : String(summaryText || '');
+    document.summary = extract.summary;
   }
 
   return document;
