@@ -15,7 +15,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { Mode } from "../../types";
-import { getScrapeQueue, uuidToQueueNo } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import * as Sentry from "@sentry/node";
@@ -133,7 +133,7 @@ async function scrapeSearchResult(
       teamId: options.teamId,
       origin: options.origin,
     });
-    await getScrapeQueue(uuidToQueueNo(jobId)).remove(jobId);
+    await getScrapeQueue().remove(jobId);
 
     const document = {
       title: searchResult.title,
