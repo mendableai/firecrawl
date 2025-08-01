@@ -338,7 +338,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
     expect(response.success).toBe(true);
     if (response.success) {
-      expect(response.data).toBeDefined();
+      expect(response.id).toBeDefined();
     }
   }, 30000);
 
