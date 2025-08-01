@@ -85,7 +85,7 @@ app.get("/test", async (req, res) => {
 app.use(v0Router);
 app.use("/v1", v1Router);
 app.use(adminRouter);
-app.use("/domain-frequency", domainFrequencyRouter);
+app.use(domainFrequencyRouter);
 
 const DEFAULT_PORT = process.env.PORT ?? 3002;
 const HOST = process.env.HOST ?? "localhost";
