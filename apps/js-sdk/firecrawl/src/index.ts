@@ -1500,9 +1500,6 @@ export default class FirecrawlApp {
           ) {
             delete jsonSchema.$schema;
           }
-          console.log(
-            "✅ Applied manual Zod-to-JSON conversion and removed $schema for workaround test."
-          );
         } catch (_) {
           // If conversion fails, assume it's already a JSON schema object
           jsonSchema = params.schema;
