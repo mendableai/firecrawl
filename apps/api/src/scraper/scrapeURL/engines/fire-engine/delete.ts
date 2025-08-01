@@ -12,33 +12,16 @@ export async function fireEngineDelete(
   abort?: AbortSignal,
   production = true,
 ) {
-  await Sentry.startSpan(
-    {
-      name: "fire-engine: Delete scrape",
-      attributes: {
-        jobId,
-      },
-    },
-    async (span) => {
-      await robustFetch({
-        url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape/${jobId}`,
-        method: "DELETE",
-        headers: {
-          ...(Sentry.isInitialized()
-            ? {
-                "sentry-trace": Sentry.spanToTraceHeader(span),
-                baggage: Sentry.spanToBaggageHeader(span),
-              }
-            : {}),
-        },
-        ignoreResponse: true,
-        ignoreFailure: true,
-        logger: logger.child({ method: "fireEngineDelete/robustFetch", jobId }),
-        mock,
-        abort,
-      });
-    },
-  );
+  await robustFetch({
+    url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape/${jobId}`,
+    method: "DELETE",
+    headers: {},
+    ignoreResponse: true,
+    ignoreFailure: true,
+    logger: logger.child({ method: "fireEngineDelete/robustFetch", jobId }),
+    mock,
+    abort,
+  });
 
   // We do not care whether this fails or not.
 }

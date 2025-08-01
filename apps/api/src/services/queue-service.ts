@@ -1,10 +1,11 @@
-import { Queue } from "bullmq";
+import { Queue, QueueEvents } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
 let scrapeQueue: Queue;
+let scrapeQueueEvents: QueueEvents;
 let extractQueue: Queue;
 let loggingQueue: Queue;
 let indexQueue: Queue;
@@ -13,10 +14,15 @@ let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
 let precrawlQueue: Queue;
 
-export function createRedisConnection(): IORedis {
-  return new IORedis(process.env.REDIS_URL!, {
+export function createRedisConnection() {
+  const connection = new IORedis(process.env.REDIS_URL!, {
     maxRetriesPerRequest: null,
   });
+
+  connection.on("reconnecting", () => logger.warn("Redis reconnecting"));
+  connection.on("error", (err) => logger.warn("Redis error", { err }));
+
+  return connection;
 }
 
 export const redisConnection = createRedisConnection();
@@ -30,27 +36,31 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
-export function getScrapeQueue(_redisConnection?: IORedis) {
-  const _scrapeQueue = !scrapeQueue || _redisConnection !== undefined ? new Queue(scrapeQueueName, {
-    connection: _redisConnection ?? redisConnection,
-    defaultJobOptions: {
-      removeOnComplete: {
-        age: 3600, // 1 hour
+export function getScrapeQueue() {
+  if (!scrapeQueue) {
+    scrapeQueue = new Queue(scrapeQueueName, {
+      connection: createRedisConnection(),
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 3600, // 1 hour
+        },
+        removeOnFail: {
+          age: 3600, // 1 hour
+        },
       },
-      removeOnFail: {
-        age: 3600, // 1 hour
-      },
-    },
-  }) : undefined;
+    });
+  }
+  return scrapeQueue;
+}
 
-  if (_redisConnection !== undefined) {
-    return _scrapeQueue!;
-  } else if (!scrapeQueue) {
-    scrapeQueue = _scrapeQueue!;
-    logger.info("Web scraper queue created");
+export function getScrapeQueueEvents() {
+  if (!scrapeQueueEvents) {
+    scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
+      connection: createRedisConnection(),
+    });
   }
 
-  return scrapeQueue;
+  return scrapeQueueEvents;
 }
 
 export function getExtractQueue() {
@@ -66,7 +76,6 @@ export function getExtractQueue() {
         },
       },
     });
-    logger.info("Extraction queue created");
   }
   return extractQueue;
 }
@@ -84,7 +93,6 @@ export function getGenerateLlmsTxtQueue() {
         },
       },
     });
-    logger.info("LLMs TXT generation queue created");
   }
   return generateLlmsTxtQueue;
 }
@@ -102,7 +110,6 @@ export function getDeepResearchQueue() {
         },
       },
     });
-    logger.info("Deep research queue created");
   }
   return deepResearchQueue;
 }
@@ -120,7 +127,6 @@ export function getBillingQueue() {
         },
       },
     });
-    logger.info("Billing queue created");
   }
   return billingQueue;
 }
@@ -138,7 +144,6 @@ export function getPrecrawlQueue() {
         },
       },
     });
-    logger.info("Precrawl queue created");
   }
   return precrawlQueue;
 }

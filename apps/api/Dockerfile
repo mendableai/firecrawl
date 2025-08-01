@@ -19,7 +19,7 @@ COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 
 # Install Go dependencies and build parser lib
 RUN cd /app/sharedLibs/go-html-to-md && \
-    go mod tidy && \
+    go mod download && \
     go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
     chmod +x html-to-markdown.so
 
@@ -31,17 +31,17 @@ COPY sharedLibs/crawler /app/sharedLibs/crawler
 
 # Install Rust dependencies and build transformer lib
 RUN cd /app/sharedLibs/html-transformer && \
-    cargo build --release && \
+    cargo build --release --locked && \
     chmod +x target/release/libhtml_transformer.so
 
 # Install Rust dependencies and build PDF parser lib
 RUN cd /app/sharedLibs/pdf-parser && \
-    cargo build --release && \
+    cargo build --release --locked && \
     chmod +x target/release/libpdf_parser.so
 
 # Install Rust dependencies and build crawler lib
 RUN cd /app/sharedLibs/crawler && \
-    cargo build --release && \
+    cargo build --release --locked && \
     chmod +x target/release/libcrawler.so
 
 FROM base
@@ -53,7 +53,7 @@ COPY --from=rust-base /app/sharedLibs/pdf-parser/target/release/libpdf_parser.so
 COPY --from=rust-base /app/sharedLibs/crawler/target/release/libcrawler.so /app/sharedLibs/crawler/target/release/libcrawler.so
 
 # Install git
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git procps && rm -rf /var/lib/apt/lists/*
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080
