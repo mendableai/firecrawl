@@ -84,7 +84,7 @@ export async function scrapeRaw(body: ScrapeRequestInput, identity: Identity) {
 
 function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) {
     if (response.statusCode !== 200) {
-        console.warn("Scrape did not succeed", response.body);
+        console.warn("Scrape did not succeed", JSON.stringify(response.body, null, 2));
     }
 
     expect(response.statusCode).toBe(200);
@@ -170,7 +170,7 @@ export async function crawlOngoing(identity: Identity): Promise<Exclude<OngoingC
 
 function expectCrawlStartToSucceed(response: Awaited<ReturnType<typeof crawlStart>>) {
     if (response.statusCode !== 200) {
-        console.warn("Crawl start did not succeed", response.body);
+        console.warn("Crawl start did not succeed", JSON.stringify(response.body, null, 2));
     }
 
     expect(response.statusCode).toBe(200);
@@ -180,7 +180,7 @@ function expectCrawlStartToSucceed(response: Awaited<ReturnType<typeof crawlStar
 
 function expectCrawlToSucceed(response: Awaited<ReturnType<typeof crawlStatus>>) {
     if (response.statusCode !== 200 || response.body.success !== true || response.body.status !== "completed") {
-        console.warn("Crawl did not succeed", response.body);
+        console.warn("Crawl did not succeed", JSON.stringify(response.body, null, 2));
     }
 
     expect(response.statusCode).toBe(200);
@@ -268,7 +268,7 @@ async function batchScrapeStatus(id: string, identity: Identity) {
 
 function expectBatchScrapeStartToSucceed(response: Awaited<ReturnType<typeof batchScrapeStart>>) {
     if (response.statusCode !== 200) {
-        console.warn("Batch scrape start did not succeed", response.body);
+        console.warn("Batch scrape start did not succeed", JSON.stringify(response.body, null, 2));
     }
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);
@@ -277,7 +277,7 @@ function expectBatchScrapeStartToSucceed(response: Awaited<ReturnType<typeof bat
 
 function expectBatchScrapeToSucceed(response: Awaited<ReturnType<typeof batchScrapeStatus>>) {
     if (response.statusCode !== 200 || response.body.success !== true || response.body.status !== "completed") {
-        console.warn("Batch scrape did not succeed", response.body);
+        console.warn("Batch scrape did not succeed", JSON.stringify(response.body, null, 2));
     }
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);
@@ -321,7 +321,7 @@ export async function map(body: MapRequestInput, identity: Identity) {
 
 export function expectMapToSucceed(response: Awaited<ReturnType<typeof map>>) {
     if (response.statusCode !== 200) {
-        console.warn("Map did not succeed", response.body);
+        console.warn("Map did not succeed", JSON.stringify(response.body, null, 2));
     }
 
     expect(response.statusCode).toBe(200);
