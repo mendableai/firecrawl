@@ -49,7 +49,6 @@ export function makeSecureDispatcher(
   const agentOpts: undici.Agent.Options = {
     connect: {
       rejectUnauthorized: false, // bypass SSL failures -- this is fine
-      lookup: cacheableLookup.lookup,
     },
     maxRedirections: 5000,
     ...options,
