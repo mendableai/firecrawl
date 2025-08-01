@@ -4,9 +4,11 @@ import IORedis from "ioredis";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
-let scrapeQueues: Queue[] = [];
-let scrapeQueueEvents: QueueEvents[] = [];
+let scrapeQueue: Queue;
+let scrapeQueueEvents: QueueEvents;
 let extractQueue: Queue;
+let loggingQueue: Queue;
+let indexQueue: Queue;
 let deepResearchQueue: Queue;
 let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
@@ -19,6 +21,7 @@ export const redisConnection = new IORedis(process.env.REDIS_URL!, {
 redisConnection.on("reconnecting", () => logger.warn("Redis reconnecting"));
 redisConnection.on("error", (err) => logger.warn("Redis error", { err }));
 
+export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
@@ -27,21 +30,9 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
-// Length of this array must evenly divide 16.
-export const scrapeQueueNames = [
-  "{scrapeQueue0}",
-  "{scrapeQueue1}",
-  "{scrapeQueue2}",
-  "{scrapeQueue3}",
-];
-
-export function uuidToQueueNo(id: string) {
-  return parseInt(id[0], 16) % scrapeQueueNames.length;
-}
-
-export function getScrapeQueue(i: number) {
-  if (!scrapeQueues[i]) {
-    scrapeQueues[i] = new Queue(scrapeQueueNames[i], {
+export function getScrapeQueue() {
+  if (!scrapeQueue) {
+    scrapeQueue = new Queue(scrapeQueueName, {
       connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
@@ -53,19 +44,19 @@ export function getScrapeQueue(i: number) {
       },
     });
   }
-  return scrapeQueues[i];
+  return scrapeQueue;
 }
 
-export function getScrapeQueueEvents(i: number) {
-  if (!scrapeQueueEvents[i]) {
-    scrapeQueueEvents[i] = new QueueEvents(scrapeQueueNames[i], {
+export function getScrapeQueueEvents() {
+  if (!scrapeQueueEvents) {
+    scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
       connection: new IORedis(process.env.REDIS_URL!, {
         maxRetriesPerRequest: null,
       }),
     });
   }
 
-  return scrapeQueueEvents[i];
+  return scrapeQueueEvents;
 }
 
 export function getExtractQueue() {

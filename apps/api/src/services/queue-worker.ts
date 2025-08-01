@@ -7,9 +7,7 @@ import {
   getDeepResearchQueue,
   redisConnection,
   getGenerateLlmsTxtQueue,
-  uuidToQueueNo,
-  scrapeQueueNames,
-  getScrapeQueueEvents,
+  scrapeQueueName,
 } from "./queue-service";
 import { Job, Queue, QueueEvents } from "bullmq";
 import { logger as _logger } from "../lib/logger";
@@ -338,7 +336,7 @@ const separateWorkerFun = (
     lockDuration: 30 * 1000, // 30 seconds
     stalledInterval: 30 * 1000, // 30 seconds
     maxStalledCount: 10, // 10 times
-    concurrency: Math.ceil(6 / scrapeQueueNames.length), // from k8s setup
+    concurrency: 6, // from k8s setup
     useWorkerThreads: true,
   });
 
@@ -472,7 +470,7 @@ app.listen(workerPort, () => {
         return;
       }
 
-      const job = await getScrapeQueue(uuidToQueueNo(args.jobId)).getJob(args.jobId);
+      const job = await getScrapeQueue().getJob(args.jobId);
 
       let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
       if (job && job.data.crawl_id) {
@@ -504,12 +502,11 @@ app.listen(workerPort, () => {
     }
   }
 
-  scrapeQueueNames.forEach((_, i) => {
-    getScrapeQueueEvents(i).on("failed", failedListener);
-  });
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
+  scrapeQueueEvents.on("failed", failedListener);
 
   const results = await Promise.all([
-    ...scrapeQueueNames.map((_, i) => separateWorkerFun(getScrapeQueue(i), path.join(__dirname, "worker", "scrape-worker.js"))),
+    separateWorkerFun(getScrapeQueue(), path.join(__dirname, "worker", "scrape-worker.js")),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
     workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
@@ -527,12 +524,12 @@ app.listen(workerPort, () => {
   setInterval(async () => {
     _logger.debug("Currently running jobs", {
       jobs: (await Promise.all([...runningJobs].map(async (jobId) => {
-        return await getScrapeQueue(uuidToQueueNo(jobId)).getJob(jobId);
+        return await getScrapeQueue().getJob(jobId);
       }))).filter(x => x && !x.data?.zeroDataRetention),
     });
   }, 1000);
 
-  await Promise.all(scrapeQueueNames.map((_, i) => getScrapeQueueEvents(i).close()));
+  await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
   process.exit(0);
 })();
