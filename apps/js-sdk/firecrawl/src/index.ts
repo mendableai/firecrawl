@@ -1316,7 +1316,7 @@ export default class FirecrawlApp {
     urls: string[],
     params?: ExtractParams,
     idempotencyKey?: string
-  ): Promise<ExtractResponse | ErrorResponse> {
+  ): Promise<BatchScrapeResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: any = { urls, ...params };
     let jsonSchema: any;
