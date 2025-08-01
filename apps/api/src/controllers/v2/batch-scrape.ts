@@ -24,7 +24,6 @@ import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";  
-import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
@@ -51,7 +50,7 @@ export async function batchScrapeController(
   const logger = _logger.child({
     crawlId: id,
     batchScrapeId: id,
-    module: "api/v1",
+    module: "api/v2",
     method: "batchScrapeController",
     teamId: req.auth.team_id,
     zeroDataRetention,
@@ -101,15 +100,12 @@ export async function batchScrapeController(
     await logCrawl(id, req.auth.team_id);
   }
 
-  const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body, req.body.timeout, req.auth.team_id);
-
   const sc: StoredCrawl = req.body.appendToId
     ? ((await getCrawl(req.body.appendToId)) as StoredCrawl)
     : {
         crawlerOptions: null,
-        scrapeOptions,
+        scrapeOptions: req.body,
         internalOptions: {
-          ...internalOptions,
           disableSmartWaitCache: true,
           teamId: req.auth.team_id,
           saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
@@ -138,6 +134,10 @@ export async function batchScrapeController(
   }
   logger.debug("Using job priority " + jobPriority, { jobPriority });
 
+  const scrapeOptions: ScrapeOptions = { ...req.body };
+  delete (scrapeOptions as any).urls;
+  delete (scrapeOptions as any).appendToId;
+
   const jobs = urls.map(x => ({
       data: {
         url: x,
@@ -149,10 +149,10 @@ export async function batchScrapeController(
         integration: req.body.integration,
         crawl_id: id,
         sitemapped: true,
-        v1: true,
+        v1: false,
         webhook: req.body.webhook,
         internalOptions: sc.internalOptions,
-        zeroDataRetention: zeroDataRetention ?? false,
+        zeroDataRetention,
       },
       opts: {
         jobId: uuidv4(),
@@ -187,7 +187,7 @@ export async function batchScrapeController(
       crawlId: id,
       data: null,
       webhook: req.body.webhook,
-      v1: true,
+      v1: false,
       eventType: "batch_scrape.started",
     });
   }
@@ -197,7 +197,7 @@ export async function batchScrapeController(
   return res.status(200).json({
     success: true,
     id,
-    url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`,
+    url: `${protocol}://${req.get("host")}/v2/batch/scrape/${id}`,
     invalidURLs,
   });
 }

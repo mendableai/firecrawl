@@ -10,14 +10,13 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
-import { fromV1ScrapeOptions } from "../v2/types";
+import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
   res: Response<ScrapeResponse>,
 ) {
-  const jobId: string = uuidv4();
+  const jobId = uuidv4();
   const preNormalizedBody = { ...req.body };
 
   if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
@@ -57,17 +56,19 @@ export async function scrapeController(
   });
 
   const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
-
-  const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body, req.body.timeout, req.auth.team_id);
   
-  const bullJob = await addScrapeJob(
+  await addScrapeJob(
     {
       url: req.body.url,
       mode: "single_urls",
       team_id: req.auth.team_id,
-      scrapeOptions,
+      scrapeOptions: {
+        ...req.body,
+        ...(req.body.__experimental_cache ? {
+          maxAge: req.body.maxAge ?? 4 * 60 * 60 * 1000, // 4 hours
+        } : {}),
+      },
       internalOptions: {
-        ...internalOptions,
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
@@ -78,14 +79,13 @@ export async function scrapeController(
       origin,
       integration: req.body.integration,
       startTime,
-      zeroDataRetention: zeroDataRetention ?? false,
+      zeroDataRetention,
     },
     {},
     jobId,
     jobPriority,
     isDirectToBullMQ,
   );
-  logger.info("Added scrape job now" + (bullJob ? "" : " (to concurrency queue)"));
 
   const totalWait =
     (req.body.waitFor ?? 0) +
@@ -96,11 +96,10 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob(bullJob ? bullJob : jobId, timeout + totalWait, logger);
+    doc = await waitForJob(jobId, timeout + totalWait);
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,
-      error: e,
     });
 
     if (zeroDataRetention) {
@@ -123,11 +122,7 @@ export async function scrapeController(
     }
   }
 
-  logger.info("Done with waitForJob");
-
   await getScrapeQueue().remove(jobId);
-
-  logger.info("Removed job from queue");
   
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {

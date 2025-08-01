@@ -151,6 +151,53 @@ export class SearchResult {
   }
 }
 
+export interface ImageSearchResult {
+  title?: string;
+  imageUrl?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  url?: string;
+  position?: number;
+}
+
+export interface NewsSearchResult {
+  title?: string;
+  url?: string;
+  snippet?: string;
+  date?: string;
+  imageUrl?: string;
+  position?: number;
+  // Scraped content fields
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  links?: string[];
+  screenshot?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface WebSearchResult {
+  url: string;
+  title: string;
+  description: string;
+  position?: number;
+  // Scraped content fields
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  links?: string[];
+  screenshot?: string;
+  metadata?: Record<string, any>;
+}
+
+export type SearchResultType = 'web' | 'images' | 'news';
+
+export interface SearchV2Response {
+  web?: WebSearchResult[];
+  images?: ImageSearchResult[];
+  news?: NewsSearchResult[];
+}
+
 export interface ScrapeActionContent {
   url: string;
   html: string;

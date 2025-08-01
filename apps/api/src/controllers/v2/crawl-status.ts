@@ -111,10 +111,9 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
       });
     }
 
-    const state = await bullJob?.getState();
     const job: PseudoJob<any> = {
       id,
-      getState: bullJob ? (() => state!) : (() => dbJob!.success ? "completed" : "failed"),
+      getState: bullJob ? (() => bullJob.getState()) : (() => dbJob!.success ? "completed" : "failed"),
       returnvalue: Array.isArray(data)
         ? data[0]
         : data,
@@ -256,7 +255,7 @@ export async function crawlStatusController(
       const creditsRpc = await supabase_rr_service
         .rpc("credits_billed_by_crawl_id_1", {
           i_crawl_id: req.params.jobId,
-        }, { get: true });
+        });
 
       creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? (totalCount * (
         sc.scrapeOptions.formats.find(x => typeof x === "object" && x.type === "json")
@@ -271,6 +270,17 @@ export async function crawlStatusController(
       )
     }
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
+    // TODO: move to read replica
+    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_service
+      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
+
+    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
+      logger.error("Error getting scrape job count", { error: scrapeJobError });
+      throw scrapeJobError;
+    }
+
+    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
+
     const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
       .from("firecrawl_jobs")
       .select("*")
@@ -283,32 +293,6 @@ export async function crawlStatusController(
       throw crawlJobError;
     }
 
-    const crawlJob = crawlJobs[0];
-
-    if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
-    }
-
-    const crawlTtlHours = req.acuc?.flags?.crawlTtlHours ?? 24;
-    const crawlTtlMs = crawlTtlHours * 60 * 60 * 1000;
-
-    if (
-      crawlJob
-      && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > crawlTtlMs
-    ) {
-      return res.status(404).json({ success: false, error: "Job expired" });
-    }
-
-    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
-      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id }, { get: true });
-
-    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
-      logger.error("Error getting scrape job count", { error: scrapeJobError });
-      throw (scrapeJobError ?? new Error("Unknown error getting scrape job count"));
-    }
-
-    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
-
     if (!crawlJobs || crawlJobs.length === 0) {
       if (scrapeJobCount === 0) {
         return res.status(404).json({ success: false, error: "Job not found" });
@@ -318,7 +302,26 @@ export async function crawlStatusController(
     } else {
       status = crawlJobs[0].success ? "completed" : "failed";
     }
-    
+
+    const crawlJob = crawlJobs[0];
+
+    if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const teamIdsExcludedFromExpiry = [
+      "8f819703-1b85-4f7f-a6eb-e03841ec6617",
+      "f96ad1a4-8102-4b35-9904-36fd517d3616",
+    ];
+
+    if (
+      crawlJob
+      && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
+      && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
+    ) {
+      return res.status(404).json({ success: false, error: "Job expired" });
+    }
+
     doneJobsLength = scrapeJobCount!;
     doneJobsOrder = [];
 
@@ -421,7 +424,7 @@ export async function crawlStatusController(
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
   const nextURL = new URL(
-    `${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
+    `${protocol}://${req.get("host")}/v2/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
   );
 
   nextURL.searchParams.set("skip", (start + data.length).toString());

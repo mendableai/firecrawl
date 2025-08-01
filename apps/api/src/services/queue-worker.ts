@@ -23,6 +23,7 @@ import {
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { configDotenv } from "dotenv";
+import { scrapeOptions } from "../controllers/v2/types";
 import {
   concurrentJobDone,
 } from "../lib/concurrency-limit";

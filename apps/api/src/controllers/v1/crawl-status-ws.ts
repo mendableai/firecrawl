@@ -1,4 +1,3 @@
-import { authMiddleware } from "../../routes/v1";
 import { RateLimiterMode } from "../../types";
 import { authenticateUser } from "../auth";
 import {
