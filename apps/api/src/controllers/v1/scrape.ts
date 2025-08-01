@@ -10,7 +10,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function scrapeController(
