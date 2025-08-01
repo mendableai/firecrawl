@@ -23,9 +23,7 @@ import {
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { configDotenv } from "dotenv";
-import {
-  concurrentJobDone,
-} from "../lib/concurrency-limit";
+import { concurrentJobDone } from "../lib/concurrency-limit";
 import {
   ExtractResult,
   performExtraction,
@@ -86,8 +84,12 @@ const processExtractJobInternal = async (
   try {
     let result: ExtractResult | null = null;
 
-    const model = job.data.request.agent?.model
-    if (job.data.request.agent && model && model.toLowerCase().includes("fire-1")) {
+    const model = job.data.request.agent?.model;
+    if (
+      job.data.request.agent &&
+      model &&
+      model.toLowerCase().includes("fire-1")
+    ) {
       result = await performExtraction(job.data.extractId, {
         request: job.data.request,
         teamId: job.data.teamId,
@@ -328,10 +330,7 @@ process.on("SIGTERM", () => {
 
 let cantAcceptConnectionCount = 0;
 
-const separateWorkerFun = (
-  queue: Queue,
-  path: string,
-): Worker => {
+const separateWorkerFun = (queue: Queue, path: string): Worker => {
   const worker = new Worker(queue.name, path, {
     connection: createRedisConnection(),
     lockDuration: 30 * 1000, // 30 seconds
@@ -342,7 +341,7 @@ const separateWorkerFun = (
   });
 
   return worker;
-}
+};
 
 const workerFun = async (
   queue: Queue,
@@ -434,7 +433,7 @@ app.get("/liveness", (req, res) => {
       const host = process.env.FIRECRAWL_APP_HOST || "firecrawl-app-service";
       const port = process.env.FIRECRAWL_APP_PORT || "3002";
       const scheme = process.env.FIRECRAWL_APP_SCHEME || "http";
-      
+
       robustFetch({
         url: `${scheme}://${host}:${port}`,
         method: "GET",
@@ -446,7 +445,8 @@ app.get("/liveness", (req, res) => {
         .then(() => {
           currentLiveness = true;
           res.status(200).json({ ok: true });
-        }).catch(e => {
+        })
+        .catch((e) => {
           _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
           currentLiveness = false;
           res.status(500).json({ ok: false });
@@ -459,23 +459,37 @@ app.get("/liveness", (req, res) => {
 });
 
 const workerPort = process.env.WORKER_PORT || process.env.PORT || 3005;
-setTimeout(() => {
-  app.listen(workerPort, () => {
-    _logger.info(`Liveness endpoint is running on port ${workerPort}`);
-  });
-}, 5000);
+app.listen(workerPort, () => {
+  _logger.info(`Liveness endpoint is running on port ${workerPort}`);
+});
 
 (async () => {
-  async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
+  async function failedListener(args: {
+    jobId: string;
+    failedReason: string;
+    prev?: string | undefined;
+  }) {
     if (args.failedReason === "job stalled more than allowable limit") {
-      const set = await redisEvictConnection.set("stalled-job-cleaner:" + args.jobId, "1", "EX", 60 * 60 * 24, "NX");
+      const set = await redisEvictConnection.set(
+        "stalled-job-cleaner:" + args.jobId,
+        "1",
+        "EX",
+        60 * 60 * 24,
+        "NX",
+      );
       if (!set) {
         return;
       }
 
       const job = await getScrapeQueue().getJob(args.jobId);
 
-      let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
+      let logger = _logger.child({
+        jobId: args.jobId,
+        scrapeId: args.jobId,
+        module: "queue-worker",
+        method: "failedListener",
+        zeroDataRetention: job?.data.zeroDataRetention,
+      });
       if (job && job.data.crawl_id) {
         logger = logger.child({ crawlId: job.data.crawl_id });
         logger.warn("Job stalled more than allowable limit");
@@ -489,14 +503,14 @@ setTimeout(() => {
           }
         } else {
           const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
-  
+
           logger.debug("Declaring job as done...");
           await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
           await redisEvictConnection.srem(
             "crawl:" + job.data.crawl_id + ":visited_unique",
             normalizeURL(job.data.url, sc),
           );
-    
+
           await finishCrawlIfNeeded(job, sc);
         }
       } else {
@@ -505,11 +519,16 @@ setTimeout(() => {
     }
   }
 
-  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
+    connection: redisConnection,
+  });
   scrapeQueueEvents.on("failed", failedListener);
 
   const results = await Promise.all([
-    separateWorkerFun(getScrapeQueue(), path.join(__dirname, "worker", "scrape-worker.js")),
+    separateWorkerFun(
+      getScrapeQueue(),
+      path.join(__dirname, "worker", "scrape-worker.js"),
+    ),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
     workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
@@ -517,8 +536,8 @@ setTimeout(() => {
 
   console.log("All workers exited. Waiting for all jobs to finish...");
 
-  const workerResults = results.filter(x => x instanceof Worker);
-  await Promise.all(workerResults.map(x => x.close()));
+  const workerResults = results.filter((x) => x instanceof Worker);
+  await Promise.all(workerResults.map((x) => x.close()));
 
   while (runningJobs.size > 0) {
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -526,9 +545,13 @@ setTimeout(() => {
 
   setInterval(async () => {
     _logger.debug("Currently running jobs", {
-      jobs: (await Promise.all([...runningJobs].map(async (jobId) => {
-        return await getScrapeQueue().getJob(jobId);
-      }))).filter(x => x && !x.data?.zeroDataRetention),
+      jobs: (
+        await Promise.all(
+          [...runningJobs].map(async (jobId) => {
+            return await getScrapeQueue().getJob(jobId);
+          }),
+        )
+      ).filter((x) => x && !x.data?.zeroDataRetention),
     });
   }, 1000);
 
