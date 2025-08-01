@@ -181,6 +181,9 @@ async function buildMetaObject(
     scrapeId: id,
     scrapeURL: url,
     zeroDataRetention: internalOptions.zeroDataRetention,
+    teamId: internalOptions.teamId,
+    team_id: internalOptions.teamId,
+    crawlId: internalOptions.crawlId,
   });
   const logs: any[] = [];
 
@@ -205,6 +208,7 @@ async function buildMetaObject(
 
 export type InternalOptions = {
   teamId: string;
+  crawlId?: string;
 
   priority?: number; // Passed along to fire-engine
   forceEngine?: Engine | Engine[];

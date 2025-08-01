@@ -1645,16 +1645,22 @@ export default class FirecrawlApp {
     headers: AxiosRequestHeaders,
     checkInterval: number
   ): Promise<CrawlStatusResponse | ErrorResponse> {
-    try {
-      let failedTries = 0;
-      while (true) {
+    let failedTries = 0;
+    let networkRetries = 0;
+    const maxNetworkRetries = 3;
+
+    while (true) {
+      try {
         let statusResponse: AxiosResponse = await this.getRequest(
           `${this.apiUrl}/v1/crawl/${id}`,
           headers
         );
+
         if (statusResponse.status === 200) {
           failedTries = 0;
+          networkRetries = 0;
           let statusData = statusResponse.data;
+
           if (statusData.status === "completed") {
             if ("data" in statusData) {
               let data = statusData.data;
@@ -1703,10 +1709,75 @@ export default class FirecrawlApp {
             this.handleError(statusResponse, "check crawl status");
           }
         }
+      } catch (error: any) {
+        if (
+          this.isRetryableError(error) &&
+          networkRetries < maxNetworkRetries
+        ) {
+          networkRetries++;
+          const backoffDelay = Math.min(
+            1000 * Math.pow(2, networkRetries - 1),
+            10000
+          );
+
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+          continue;
+        }
+
+        throw new FirecrawlError(error, 500);
       }
-    } catch (error: any) {
-      throw new FirecrawlError(error, 500);
     }
+  }
+
+  /**
+   * Determines if an error is retryable (transient network error)
+   * @param error - The error to check
+   * @returns True if the error should be retried
+   */
+  private isRetryableError(error: any): boolean {
+    if (error instanceof AxiosError) {
+      if (!error.response) {
+        const code = error.code;
+        const message = error.message?.toLowerCase() || "";
+
+        return (
+          code === "ECONNRESET" ||
+          code === "ETIMEDOUT" ||
+          code === "ENOTFOUND" ||
+          code === "ECONNREFUSED" ||
+          message.includes("socket hang up") ||
+          message.includes("network error") ||
+          message.includes("timeout")
+        );
+      }
+
+      if (error.response?.status === 408 || error.response?.status === 504) {
+        return true;
+      }
+    }
+
+    if (error && typeof error === "object") {
+      const code = error.code;
+      const message = error.message?.toLowerCase() || "";
+
+      if (
+        code === "ECONNRESET" ||
+        code === "ETIMEDOUT" ||
+        code === "ENOTFOUND" ||
+        code === "ECONNREFUSED" ||
+        message.includes("socket hang up") ||
+        message.includes("network error") ||
+        message.includes("timeout")
+      ) {
+        return true;
+      }
+
+      if (error.response?.status === 408 || error.response?.status === 504) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

@@ -5,7 +5,6 @@ import { getJob } from "../../../controllers/v1/crawl-status";
 import gitDiff from 'git-diff';
 import parseDiff from 'parse-diff';
 import { generateCompletions } from "./llmExtract";
-import { createRedisConnection } from "../../../services/queue-service";
 
 async function extractDataWithSchema(content: string, meta: Meta): Promise<{ extract: any } | null> {
     try {
@@ -66,7 +65,6 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
     }
     
     const start = Date.now();
-    const conn = createRedisConnection();
     const res = await supabase_service
         .rpc("diff_get_last_scrape_4", {
             i_team_id: meta.internalOptions.teamId,
@@ -85,8 +83,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
 
     const job: {
         returnvalue: Document,
-    } | null = data?.o_job_id ? await getJob(data.o_job_id, conn) : null;
-    conn.disconnect();
+    } | null = data?.o_job_id ? await getJob(data.o_job_id) : null;
     if (data && job && job?.returnvalue) {
         const previousMarkdown = job.returnvalue.markdown!;
         const currentMarkdown = document.markdown!;
