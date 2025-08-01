@@ -1252,6 +1252,9 @@ export default class FirecrawlApp {
       } else {
         try {
           jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+          if (jsonSchema && typeof jsonSchema === 'object' && '$schema' in jsonSchema) {
+            delete jsonSchema.$schema;
+          }
         } catch (_) {
           jsonSchema = params.schema;
         }
@@ -1324,6 +1327,9 @@ export default class FirecrawlApp {
       } else {
         try {
           jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
+          if (jsonSchema && typeof jsonSchema === 'object' && '$schema' in jsonSchema) {
+            delete jsonSchema.$schema;
+          }
         } catch (_) {
           jsonSchema = params.schema;
         }

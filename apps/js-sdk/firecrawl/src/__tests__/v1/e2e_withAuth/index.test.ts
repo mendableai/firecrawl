@@ -298,4 +298,48 @@ describe('FirecrawlApp E2E Tests', () => {
     await expect(app.search("test query")).rejects.toThrow("Request failed with status code 401");
   });
 
+  test.concurrent('should handle Zod schema in extract method', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    
+    const zt = await import('zod');
+    const z = zt.z;
+    
+    const schema = z.object({
+      commonName: z.string(),
+      scientificName: z.string(),
+    });
+
+    const response = await app.extract(["https://en.m.wikipedia.org/wiki/Zebra_acara"], {
+      schema: schema
+    });
+
+    expect(response.success).toBe(true);
+    if (response.success) {
+      expect(response.data).toBeDefined();
+      expect(typeof response.data).toBe('object');
+      expect(Object.keys(response.data).length).toBeGreaterThan(0);
+    }
+  }, 30000);
+
+  test.concurrent('should handle Zod schema in asyncExtract method', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    
+    const zt = await import('zod');
+    const z = zt.z;
+    
+    const schema = z.object({
+      commonName: z.string(),
+      scientificName: z.string(),
+    });
+
+    const response = await app.asyncExtract(["https://en.m.wikipedia.org/wiki/Zebra_acara"], {
+      schema: schema
+    });
+
+    expect(response.success).toBe(true);
+    if (response.success) {
+      expect(response.data).toBeDefined();
+    }
+  }, 30000);
+
 });
