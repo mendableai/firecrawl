@@ -1202,6 +1202,31 @@ export function toLegacyDocument(
   };
 }
 
+// Search source type definitions
+// These allow fine-grained control over each search source type
+// Similar to how scrape formats work with jsonFormatWithOptions, etc.
+
+export const webSearchSourceOptions = z.object({
+  type: z.literal("web"),
+  tbs: z.string().optional(), // Time-based search (e.g., "qdr:d" for past day)
+  filter: z.string().optional(), // Search filter
+  lang: z.string().optional(), // Language override for this source
+  country: z.string().optional(), // Country override for this source
+  location: z.string().optional(), // Location override for this source
+}).strict();
+
+export const imagesSearchSourceOptions = z.object({
+  type: z.literal("images"),
+}).strict();
+
+export const newsSearchSourceOptions = z.object({
+  type: z.literal("news"),
+}).strict();
+
+export type WebSearchSourceOptions = z.infer<typeof webSearchSourceOptions>;
+export type ImagesSearchSourceOptions = z.infer<typeof imagesSearchSourceOptions>;
+export type NewsSearchSourceOptions = z.infer<typeof newsSearchSourceOptions>;
+
 export const searchRequestSchema = z
   .object({
     query: z.string(),
@@ -1216,10 +1241,21 @@ export const searchRequestSchema = z
       .default(5),
     tbs: z.string().optional(),
     filter: z.string().optional(),
-    type: z.union([
-      z.enum(["web", "images", "news"]),
-      z.array(z.enum(["web", "images", "news"]))
-    ]).optional().default("web"),
+    sources: z
+      .union([
+        // Array of strings (simple format)
+        z.array(z.enum(["web", "images", "news"])),
+        // Array of objects (advanced format)
+        z.array(
+          z.union([
+            webSearchSourceOptions,
+            imagesSearchSourceOptions,
+            newsSearchSourceOptions,
+          ])
+        ),
+      ])
+      .optional()
+      .default(["web"]),
     lang: z.string().optional().default("en"),
     country: z.string().optional().default("us"),
     location: z.string().optional(),
@@ -1251,10 +1287,51 @@ export const searchRequestSchema = z
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
-  .transform((x) => ({
-    ...x,
-    scrapeOptions: extractTransform(x.scrapeOptions),
-  }));
+  .transform((x) => {
+    // Transform string array sources to object format
+    let sources = x.sources;
+    if (sources && Array.isArray(sources) && sources.length > 0) {
+      // Check if it's a string array by checking the first element
+      if (typeof sources[0] === 'string') {
+        // It's a string array, transform to object array
+        sources = (sources as string[]).map((s) => {
+          switch (s) {
+            case 'web':
+              return {
+                type: 'web' as const,
+                tbs: x.tbs,
+                filter: x.filter,
+                lang: x.lang,
+                country: x.country,
+                location: x.location,
+              };
+            case 'images':
+              return {
+                type: 'images' as const,
+                // Images don't inherit global params in the simple format
+              };
+            case 'news':
+              return {
+                type: 'news' as const,
+                tbs: x.tbs,
+                lang: x.lang,
+                country: x.country,
+                location: x.location,
+              };
+            default:
+              return { type: s as any };
+          }
+        });
+      }
+      // Otherwise it's already an object array, keep as is
+    }
+    
+    return {
+      ...x,
+      sources,
+      scrapeOptions: extractTransform(x.scrapeOptions),
+    };
+  });
 
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
 export type SearchRequestInput = z.input<typeof searchRequestSchema>;

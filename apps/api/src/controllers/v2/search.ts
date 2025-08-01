@@ -191,6 +191,10 @@ export async function searchController(
 
     logger.info("Searching for results");
 
+    // Extract unique types from sources for the search function
+    // After transformation, sources is always an array of objects
+    const searchTypes = [...new Set(req.body.sources.map((s: any) => s.type))];
+
     const searchResponse = await search({
       query: req.body.query,
       advanced: false,
@@ -200,7 +204,7 @@ export async function searchController(
       lang: req.body.lang,
       country: req.body.country,
       location: req.body.location,
-      type: req.body.type,
+      type: searchTypes,
     }) as SearchV2Response;
 
     // Apply URL filtering if needed
