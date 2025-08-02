@@ -1,5 +1,5 @@
 import request from "supertest";
-import { Identity, idmux } from "./lib";
+import { Identity, idmux, scrapeTimeout } from "./lib";
 
 const TEST_URL = process.env.TEST_URL || "http://127.0.0.1:3002";
 
@@ -21,7 +21,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       .set("Content-Type", "application/json")
       .send({
         url: "https://expired.badssl.com/",
-        timeout: 30000,
+        timeout: scrapeTimeout,
       });
     
     if (response.status !== 200) {
@@ -32,7 +32,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data).toBeDefined();
     expect(response.body.data.markdown).toContain("badssl.com");
-  }, 60000);
+  }, scrapeTimeout);
 
   test("should allow explicit skipTlsVerification: false override", async () => {
     const response = await request(TEST_URL)
@@ -42,7 +42,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       .send({
         url: "https://expired.badssl.com/",
         skipTlsVerification: false,
-        timeout: 30000,
+        timeout: scrapeTimeout,
       });
 
     if (response.status !== 500) {
@@ -51,7 +51,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
 
     expect(response.status).toBe(500);
     expect(response.body.success).toBe(false);
-  }, 60000);
+  }, scrapeTimeout);
 
   test("should work with valid HTTPS sites regardless of skipTlsVerification setting", async () => {
     const response = await request(TEST_URL)
@@ -60,7 +60,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       .set("Content-Type", "application/json")
       .send({
         url: "https://example.com",
-        timeout: 30000,
+        timeout: scrapeTimeout,
       });
 
     if (response.status !== 200) {
@@ -71,7 +71,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data).toBeDefined();
     expect(response.body.data.markdown).toContain("Example Domain");
-  }, 60000);
+  }, scrapeTimeout);
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
     test("should support object screenshot format", async () => {
@@ -82,7 +82,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         .send({
           url: "https://example.com",
           formats: [{ type: "screenshot", fullPage: false }],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       if (response.status !== 200) {
@@ -94,7 +94,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.screenshot).toBeDefined();
       expect(typeof response.body.data.screenshot).toBe("string");
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should support object screenshot format with fullPage", async () => {
       const response = await request(TEST_URL)
@@ -104,7 +104,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         .send({
           url: "https://example.com",
           formats: [{ type: "screenshot", fullPage: true }],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       if (response.status !== 200) {
@@ -116,6 +116,6 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.screenshot).toBeDefined();
       expect(typeof response.body.data.screenshot).toBe("string");
-    }, 60000);
+    }, scrapeTimeout);
   }
 });
