@@ -159,9 +159,10 @@ async function performFireEngineScrape<
     status,
   );
 
-  const contentType = (Object.entries(status.responseHeaders ?? {}).find(
-    (x) => x[0].toLowerCase() === "content-type",
-  ) ?? [])[1] ?? "";
+  const contentType =
+    (Object.entries(status.responseHeaders ?? {}).find(
+      (x) => x[0].toLowerCase() === "content-type",
+    ) ?? [])[1] ?? "";
 
   if (contentType.includes("application/json")) {
     status.content = await getInnerJSON(status.content);
@@ -194,9 +195,10 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // Transform waitFor option into an action (unsupported by chrome-cdp)
     ...(meta.options.waitFor !== 0
       ? [
-          { 
+          {
             type: "wait" as const,
-            milliseconds: meta.options.waitFor > 30000 ? 30000 : meta.options.waitFor,
+            milliseconds:
+              meta.options.waitFor > 30000 ? 30000 : meta.options.waitFor,
           },
         ]
       : []),
@@ -224,7 +226,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
   const timeout = (timeToRun ?? 300000) + totalWait;
 
   // const shouldABTest = false;
-  const shouldABTest = !meta.internalOptions.zeroDataRetention && Math.random() <= (1/30);
+  const shouldABTest =
+    !meta.internalOptions.zeroDataRetention && Math.random() <= 1 / 30;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
@@ -244,7 +247,12 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
-    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    ddAntibot:
+      meta.featureFlags.has("stealthProxy") ||
+      (meta.options.proxy === "auto" && !meta.internalOptions.bypassBilling),
+    saveScrapeResultToGCS:
+      !meta.internalOptions.zeroDataRetention &&
+      meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
@@ -318,9 +326,10 @@ export async function scrapeURLWithFireEngineChromeCDP(
     error: response.pageError,
     statusCode: response.pageStatusCode,
 
-    contentType: (Object.entries(response.responseHeaders ?? {}).find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    contentType:
+      (Object.entries(response.responseHeaders ?? {}).find(
+        (x) => x[0].toLowerCase() === "content-type",
+      ) ?? [])[1] ?? undefined,
 
     screenshot: response.screenshot,
     ...(actions.length > 0
@@ -328,13 +337,20 @@ export async function scrapeURLWithFireEngineChromeCDP(
           actions: {
             screenshots: response.screenshots ?? [],
             scrapes: response.actionContent ?? [],
-            javascriptReturns: (response.actionResults ?? []).filter(x => x.type === "executeJavascript").map(x => JSON.parse((x.result as any as { return: string }).return)),
-            pdfs: (response.actionResults ?? []).filter(x => x.type === "pdf").map(x => x.result.link),
+            javascriptReturns: (response.actionResults ?? [])
+              .filter((x) => x.type === "executeJavascript")
+              .map((x) =>
+                JSON.parse((x.result as any as { return: string }).return),
+              ),
+            pdfs: (response.actionResults ?? [])
+              .filter((x) => x.type === "pdf")
+              .map((x) => x.result.link),
           },
         }
       : {}),
 
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+    usedDDAntibot: response.usedDDAntibot ?? undefined,
   };
 }
 
@@ -361,7 +377,9 @@ export async function scrapeURLWithFireEnginePlaywright(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
-    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    saveScrapeResultToGCS:
+      !meta.internalOptions.zeroDataRetention &&
+      meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
@@ -391,9 +409,10 @@ export async function scrapeURLWithFireEnginePlaywright(
     error: response.pageError,
     statusCode: response.pageStatusCode,
 
-    contentType: (Object.entries(response.responseHeaders ?? {}).find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    contentType:
+      (Object.entries(response.responseHeaders ?? {}).find(
+        (x) => x[0].toLowerCase() === "content-type",
+      ) ?? [])[1] ?? undefined,
 
     ...(response.screenshots !== undefined && response.screenshots.length > 0
       ? {
@@ -402,6 +421,7 @@ export async function scrapeURLWithFireEnginePlaywright(
       : {}),
 
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+    usedDDAntibot: response.usedDDAntibot ?? undefined,
   };
 }
 
@@ -426,7 +446,9 @@ export async function scrapeURLWithFireEngineTLSClient(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
-    saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
+    saveScrapeResultToGCS:
+      !meta.internalOptions.zeroDataRetention &&
+      meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
 
@@ -456,10 +478,12 @@ export async function scrapeURLWithFireEngineTLSClient(
     error: response.pageError,
     statusCode: response.pageStatusCode,
 
-    contentType: (Object.entries(response.responseHeaders ?? {}).find(
-      (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    contentType:
+      (Object.entries(response.responseHeaders ?? {}).find(
+        (x) => x[0].toLowerCase() === "content-type",
+      ) ?? [])[1] ?? undefined,
 
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+    usedDDAntibot: response.usedDDAntibot ?? undefined,
   };
 }
