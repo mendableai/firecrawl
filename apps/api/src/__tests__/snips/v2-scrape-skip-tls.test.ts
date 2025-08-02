@@ -23,6 +23,10 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         url: "https://expired.badssl.com/",
         timeout: 30000,
       });
+    
+    if (response.status !== 200) {
+      console.warn('Non-200 response:', JSON.stringify(response.body));
+    }
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -41,6 +45,10 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         timeout: 30000,
       });
 
+    if (response.status !== 200) {
+      console.warn('Non-200 response:', JSON.stringify(response.body));
+    }
+
     expect(response.status).toBe(500);
     expect(response.body.success).toBe(false);
   }, 60000);
@@ -54,6 +62,10 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         url: "https://example.com",
         timeout: 30000,
       });
+
+    if (response.status !== 200) {
+      console.warn('Non-200 response:', JSON.stringify(response.body));
+    }
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -72,6 +84,10 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         timeout: 30000,
       });
 
+    if (response.status !== 200) {
+      console.warn('Non-200 response:', JSON.stringify(response.body));
+    }
+
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toBeDefined();
@@ -89,6 +105,10 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         formats: [{ type: "screenshot", fullPage: true }],
         timeout: 30000,
       });
+
+    if (response.status !== 200) {
+      console.warn('Non-200 response:', JSON.stringify(response.body));
+    }
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
