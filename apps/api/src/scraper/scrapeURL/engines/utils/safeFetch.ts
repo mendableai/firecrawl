@@ -44,11 +44,12 @@ function isIPv6Private(ipv6) {
 
 export function makeSecureDispatcher(
   url: string,
+  skipTlsVerification: boolean = false,
   options?: undici.Agent.Options,
 ) {
   const agentOpts: undici.Agent.Options = {
     connect: {
-      rejectUnauthorized: false, // bypass SSL failures -- this is fine
+      rejectUnauthorized: !skipTlsVerification, // Only bypass SSL verification if explicitly requested
     },
     maxRedirections: 5000,
     ...options,
