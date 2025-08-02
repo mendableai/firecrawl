@@ -127,3 +127,9 @@ export class FEPageLoadFailed extends Error {
     super("The page failed to load with the specified timeout. Please increase the timeout parameter in your request.");
   }
 }
+
+export class DatadomeError extends Error {
+  constructor() {
+    super("Scrape was blocked by Datadome anti-bot protection");
+  }
+}
