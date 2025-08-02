@@ -213,6 +213,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
             type: "screenshot" as const,
             fullPage: meta.options.formats.includes("screenshot@fullPage") || 
                      meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.fullPage || false,
+            ...(meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.viewport ? 
+              { viewport: meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.viewport } : {}),
           },
         ]
       : []),
