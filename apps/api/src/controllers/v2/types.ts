@@ -198,8 +198,8 @@ export const screenshotFormatWithOptions = z.object({
   fullPage: z.boolean().default(false),
   quality: z.number().min(1).max(100).optional(),
   viewport: z.object({
-    width: z.number().int().positive().finite(),
-    height: z.number().int().positive().finite(),
+    width: z.number().int().positive().finite().max(7680), // 8K resolution width
+    height: z.number().int().positive().finite().max(4320), // 8K resolution height
   }).optional(),
 });
 

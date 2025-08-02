@@ -151,4 +151,27 @@ describe("V2 Scrape Screenshot Viewport", () => {
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
   }, 60000);
+
+  test("should reject viewport dimensions exceeding maximum limits", async () => {
+    const response = await request(TEST_URL)
+      .post("/v2/scrape")
+      .set("Authorization", `Bearer ${identity.apiKey}`)
+      .set("Content-Type", "application/json")
+      .send({
+        url: "https://example.com",
+        formats: [
+          {
+            type: "screenshot",
+            viewport: {
+              width: 8000, // exceeds max of 7680
+              height: 5000 // exceeds max of 4320
+            }
+          }
+        ],
+        timeout: 30000,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.success).toBe(false);
+  }, 60000);
 });
