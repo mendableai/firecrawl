@@ -1108,6 +1108,7 @@ export function fromV1ScrapeOptions(
   
   delete spreadScrapeOptions.__experimental_cache;
   delete spreadScrapeOptions.jsonOptions;
+  delete spreadScrapeOptions.changeTrackingOptions;
   delete spreadScrapeOptions.extract;
   delete spreadScrapeOptions.geolocation;
   delete (spreadScrapeOptions as any).parsePDF;
