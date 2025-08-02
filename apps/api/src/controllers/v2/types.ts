@@ -131,6 +131,10 @@ export const actionSchema = z
       type: z.literal("screenshot"),
       fullPage: z.boolean().default(false),
       quality: z.number().min(1).max(100).optional(),
+      viewport: z.object({
+        width: z.number().int().positive().finite().max(7680), // 8K resolution width
+        height: z.number().int().positive().finite().max(4320), // 8K resolution height
+      }).optional(),
     }),
     z.object({
       type: z.literal("write"),

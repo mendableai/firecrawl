@@ -190,10 +190,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
   meta: Meta,
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  // Extract viewport from screenshot format options
-  const screenshotFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot");
-  const viewport = screenshotFormat?.viewport;
-
   const actions: Action[] = [
     // Transform waitFor option into an action (unsupported by chrome-cdp)
     ...(meta.options.waitFor !== 0
@@ -217,6 +213,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
             type: "screenshot" as const,
             fullPage: meta.options.formats.includes("screenshot@fullPage") || 
                      meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.fullPage || false,
+            ...(meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.viewport ? 
+              { viewport: meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.viewport } : {}),
           },
         ]
       : []),
@@ -252,10 +250,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
-    ...(viewport ? {
-      screenshotWidth: viewport.width,
-      screenshotHeight: viewport.height,
-    } : {}),
   };
 
   if (shouldABTest) {
@@ -353,10 +347,6 @@ export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  // Extract viewport from screenshot format options
-  const screenshotFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot");
-  const viewport = screenshotFormat?.viewport;
-
   const totalWait = meta.options.waitFor;
   const timeout = (timeToRun ?? 300000) + totalWait;
 
@@ -380,10 +370,6 @@ export async function scrapeURLWithFireEnginePlaywright(
     timeout,
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
-    ...(viewport ? {
-      screenshotWidth: viewport.width,
-      screenshotHeight: viewport.height,
-    } : {}),
   };
 
   let response = await performFireEngineScrape(

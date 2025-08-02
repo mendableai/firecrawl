@@ -40,8 +40,6 @@ export type FireEngineScrapeRequestChromeCDP = {
   blockMedia?: true; // cannot be false
   mobile?: boolean;
   disableSmartWaitCache?: boolean;
-  screenshotWidth?: number;
-  screenshotHeight?: number;
 };
 
 export type FireEngineScrapeRequestPlaywright = {
@@ -53,8 +51,6 @@ export type FireEngineScrapeRequestPlaywright = {
   fullPageScreenshot?: boolean;
 
   wait?: number; // default: 0
-  screenshotWidth?: number;
-  screenshotHeight?: number;
 };
 
 export type FireEngineScrapeRequestTLSClient = {
