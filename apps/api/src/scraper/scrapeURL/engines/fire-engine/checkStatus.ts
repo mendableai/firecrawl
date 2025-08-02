@@ -135,8 +135,6 @@ export async function fireEngineCheckStatus(
   abort?: AbortSignal,
   production = true,
 ): Promise<FireEngineCheckStatusSuccess> {
-  const x = Date.now();
-  meta.logger.debug("Checking status (" + x + ")");
   let status = await robustFetch({
     url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape/${jobId}`,
     method: "GET",
@@ -145,7 +143,6 @@ export async function fireEngineCheckStatus(
     mock,
     abort,
   });
-  meta.logger.debug("Status came back (" + x + ")");
 
   // Fire-engine now saves the content to GCS
   if (!status.content && status.docUrl) {
