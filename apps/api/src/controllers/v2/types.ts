@@ -197,6 +197,10 @@ export const screenshotFormatWithOptions = z.object({
   type: z.literal("screenshot"),
   fullPage: z.boolean().default(false),
   quality: z.number().min(1).max(100).optional(),
+  viewport: z.object({
+    width: z.number().int().positive().finite(),
+    height: z.number().int().positive().finite(),
+  }).optional(),
 });
 
 export type ScreenshotFormatWithOptions = z.output<typeof screenshotFormatWithOptions>;
