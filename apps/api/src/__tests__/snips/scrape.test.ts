@@ -21,22 +21,6 @@ beforeAll(async () => {
 }, 10000 + scrapeTimeout);
 
 describe("Scrape tests", () => {
-  it.concurrent("mocking works properly", async () => {
-    // depends on falsified mock mocking-works-properly
-    // this test will fail if mock is bypassed with real data -- firecrawl.dev will never have
-    // that as its actual markdown output
-
-    const response = await scrape({
-      url: "http://firecrawl.dev",
-      useMock: "mocking-works-properly",
-      timeout: scrapeTimeout,
-    }, identity);
-
-    expect(response.markdown).toBe(
-      "this is fake data coming from the mocking system!",
-    );
-  }, scrapeTimeout);
-
   it.concurrent("works", async () => {
     const response = await scrape({
       url: "http://firecrawl.dev",

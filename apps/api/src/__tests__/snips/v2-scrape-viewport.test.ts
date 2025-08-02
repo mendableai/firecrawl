@@ -1,5 +1,5 @@
 import request from "supertest";
-import { Identity, idmux } from "./lib";
+import { Identity, idmux, scrapeTimeout } from "./lib";
 
 const TEST_URL = process.env.TEST_URL || "http://127.0.0.1:3002";
 
@@ -32,7 +32,7 @@ describe("V2 Scrape Screenshot Viewport", () => {
               }
             }
           ],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(200);
@@ -40,7 +40,7 @@ describe("V2 Scrape Screenshot Viewport", () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.screenshot).toBeDefined();
       expect(response.body.data.markdown).toBeDefined();
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should take full page screenshot with custom viewport width", async () => {
       const response = await request(TEST_URL)
@@ -59,14 +59,14 @@ describe("V2 Scrape Screenshot Viewport", () => {
               }
             }
           ],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
       expect(response.body.data.screenshot).toBeDefined();
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should work with screenshot format without viewport (backwards compatibility)", async () => {
       const response = await request(TEST_URL)
@@ -76,14 +76,14 @@ describe("V2 Scrape Screenshot Viewport", () => {
         .send({
           url: "https://example.com",
           formats: ["screenshot"],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
       expect(response.body.data.screenshot).toBeDefined();
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should work with object screenshot format without viewport", async () => {
       const response = await request(TEST_URL)
@@ -98,14 +98,14 @@ describe("V2 Scrape Screenshot Viewport", () => {
               fullPage: false
             }
           ],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
       expect(response.body.data.screenshot).toBeDefined();
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should reject invalid viewport dimensions", async () => {
       const response = await request(TEST_URL)
@@ -123,12 +123,12 @@ describe("V2 Scrape Screenshot Viewport", () => {
               }
             }
           ],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should reject non-integer viewport dimensions", async () => {
       const response = await request(TEST_URL)
@@ -146,12 +146,12 @@ describe("V2 Scrape Screenshot Viewport", () => {
               }
             }
           ],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-    }, 60000);
+    }, scrapeTimeout);
 
     test("should reject viewport dimensions exceeding maximum limits", async () => {
       const response = await request(TEST_URL)
@@ -169,12 +169,12 @@ describe("V2 Scrape Screenshot Viewport", () => {
               }
             }
           ],
-          timeout: 30000,
+          timeout: scrapeTimeout,
         });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-    }, 60000);
+    }, scrapeTimeout);
   } else {
     it("mocked", () => {
       expect(true).toBe(true);

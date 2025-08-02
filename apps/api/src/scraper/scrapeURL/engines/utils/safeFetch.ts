@@ -44,12 +44,10 @@ function isIPv6Private(ipv6) {
 
 export function makeSecureDispatcher(
   url: string,
+  skipTlsVerification: boolean = false,
   options?: undici.Agent.Options,
 ) {
   const agentOpts: undici.Agent.Options = {
-    connect: {
-      rejectUnauthorized: false, // bypass SSL failures -- this is fine
-    },
     maxRedirections: 5000,
     ...options,
   };
@@ -60,9 +58,17 @@ export function makeSecureDispatcher(
       token: process.env.PROXY_USERNAME
         ? `Basic ${Buffer.from(process.env.PROXY_USERNAME + ":" + (process.env.PROXY_PASSWORD ?? "")).toString("base64")}`
         : undefined,
+      requestTls: {
+        rejectUnauthorized: !skipTlsVerification, // Only bypass SSL verification if explicitly requested
+      },
       ...agentOpts,
     })
-    : new undici.Agent(agentOpts);
+    : new undici.Agent({
+      connect: {
+        rejectUnauthorized: !skipTlsVerification, // Only bypass SSL verification if explicitly requested
+      },
+      ...agentOpts,
+    });
 
   const cookieJar = new CookieJar();
 

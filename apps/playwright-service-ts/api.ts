@@ -40,10 +40,10 @@ interface UrlModel {
   timeout?: number;
   headers?: { [key: string]: string };
   check_selector?: string;
+  skip_tls_verification?: boolean;
 }
 
 let browser: Browser;
-let context: BrowserContext;
 
 const initializeBrowser = async () => {
   browser = await chromium.launch({
@@ -59,13 +59,16 @@ const initializeBrowser = async () => {
       '--disable-gpu'
     ]
   });
+};
 
+const createContext = async (skipTlsVerification: boolean = false) => {
   const userAgent = new UserAgent().toString();
   const viewport = { width: 1280, height: 800 };
 
   const contextOptions: any = {
     userAgent,
     viewport,
+    ignoreHTTPSErrors: skipTlsVerification,
   };
 
   if (PROXY_SERVER && PROXY_USERNAME && PROXY_PASSWORD) {
@@ -80,16 +83,16 @@ const initializeBrowser = async () => {
     };
   }
 
-  context = await browser.newContext(contextOptions);
+  const newContext = await browser.newContext(contextOptions);
 
   if (BLOCK_MEDIA) {
-    await context.route('**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}', async (route: Route, request: PlaywrightRequest) => {
+    await newContext.route('**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}', async (route: Route, request: PlaywrightRequest) => {
       await route.abort();
     });
   }
 
   // Intercept all requests to avoid loading ads
-  await context.route('**/*', (route: Route, request: PlaywrightRequest) => {
+  await newContext.route('**/*', (route: Route, request: PlaywrightRequest) => {
     const requestUrl = new URL(request.url());
     const hostname = requestUrl.hostname;
 
@@ -99,12 +102,11 @@ const initializeBrowser = async () => {
     }
     return route.continue();
   });
+  
+  return newContext;
 };
 
 const shutdownBrowser = async () => {
-  if (context) {
-    await context.close();
-  }
   if (browser) {
     await browser.close();
   }
@@ -155,12 +157,14 @@ const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networki
 
 app.get('/health', async (req: Request, res: Response) => {
   try {
-    if (!browser || !context) {
+    if (!browser) {
       await initializeBrowser();
     }
     
-    const testPage = await context.newPage();
+    const testContext = await createContext();
+    const testPage = await testContext.newPage();
     await testPage.close();
+    await testContext.close();
     
     res.status(200).json({ status: 'healthy' });
   } catch (error) {
@@ -173,7 +177,7 @@ app.get('/health', async (req: Request, res: Response) => {
 });
 
 app.post('/scrape', async (req: Request, res: Response) => {
-  const { url, wait_after_load = 0, timeout = 15000, headers, check_selector }: UrlModel = req.body;
+  const { url, wait_after_load = 0, timeout = 15000, headers, check_selector, skip_tls_verification = false }: UrlModel = req.body;
 
   console.log(`================= Scrape Request =================`);
   console.log(`URL: ${url}`);
@@ -181,6 +185,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
   console.log(`Timeout: ${timeout}`);
   console.log(`Headers: ${headers ? JSON.stringify(headers) : 'None'}`);
   console.log(`Check Selector: ${check_selector ? check_selector : 'None'}`);
+  console.log(`Skip TLS Verification: ${skip_tls_verification}`);
   console.log(`==================================================`);
 
   if (!url) {
@@ -195,11 +200,12 @@ app.post('/scrape', async (req: Request, res: Response) => {
     console.warn('⚠️ WARNING: No proxy server provided. Your IP address may be blocked.');
   }
 
-  if (!browser || !context) {
+  if (!browser) {
     await initializeBrowser();
   }
 
-  const page = await context.newPage();
+  const requestContext = await createContext(skip_tls_verification);
+  const page = await requestContext.newPage();
 
   // Set headers if provided
   if (headers) {
@@ -218,6 +224,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
       result = await scrapePage(page, url, 'networkidle', wait_after_load, timeout, check_selector);
     } catch (finalError) {
       await page.close();
+      await requestContext.close();
       return res.status(500).json({ error: 'An error occurred while fetching the page.' });
     }
   }
@@ -231,6 +238,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
   }
 
   await page.close();
+  await requestContext.close();
 
   res.json({
     content: result.content,

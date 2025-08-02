@@ -1,5 +1,5 @@
 import request from "supertest";
-import { Identity, idmux } from "./lib";
+import { Identity, idmux, scrapeTimeout } from "./lib";
 import { ScrapeRequestInput } from "../../controllers/v2/types";
 
 const TEST_URL = "http://127.0.0.1:3002";
@@ -38,6 +38,7 @@ describe("V2 System Prompt Rejection", () => {
               systemPrompt: "Custom system prompt that should be rejected",
             },
           ],
+          timeout: scrapeTimeout + 30000,
         } as any,
         identity,
       );
@@ -45,7 +46,7 @@ describe("V2 System Prompt Rejection", () => {
       expect(response.statusCode).toBe(400);
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe("Bad Request");
-    });
+    }, scrapeTimeout);
 
     it("should accept valid json format options without systemPrompt", async () => {
       const response = await scrapeV2Raw(
@@ -61,13 +62,14 @@ describe("V2 System Prompt Rejection", () => {
               prompt: "Extract the title",
             },
           ],
-        } as any,
+          timeout: scrapeTimeout + 30000,
+        },
         identity,
       );
 
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
-    });
+    }, scrapeTimeout + 30000);
   } else {
     it("mocked", () => {
       expect(true).toBe(true);
