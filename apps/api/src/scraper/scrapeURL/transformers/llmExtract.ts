@@ -658,6 +658,16 @@ export async function performLLMExtract(
   document: Document,
 ): Promise<Document> {
   const jsonFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "json") as JsonFormatWithOptions | undefined;
+  
+  // Debug logging for v1 format investigation
+  if (meta.internalOptions.v1OriginalFormat) {
+    meta.logger.debug("performLLMExtract v1 format debug", {
+      v1OriginalFormat: meta.internalOptions.v1OriginalFormat,
+      hasJsonFormat: !!jsonFormat,
+      formats: meta.options.formats.map(f => typeof f === "object" ? f.type : f)
+    });
+  }
+  
   if (jsonFormat) {
     if (meta.internalOptions.zeroDataRetention) {
       document.warning = "JSON mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
@@ -788,6 +798,13 @@ export async function performLLMExtract(
 
     // Assign the final extracted data
     // For v1 API backward compatibility, check the original format
+    meta.logger.debug("Assigning extracted data", {
+      v1OriginalFormat: meta.internalOptions.v1OriginalFormat,
+      hasExtractedData: !!extractedData,
+      assigningTo: meta.internalOptions.v1OriginalFormat === "extract" ? "extract" : 
+                   meta.internalOptions.v1OriginalFormat === "json" ? "json" : "json (default)"
+    });
+    
     if (meta.internalOptions.v1OriginalFormat === "extract") {
       document.extract = extractedData;
     } else if (meta.internalOptions.v1OriginalFormat === "json") {

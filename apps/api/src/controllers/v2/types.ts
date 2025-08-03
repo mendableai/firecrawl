@@ -1122,11 +1122,13 @@ export function fromV1ScrapeOptions(
   delete (spreadScrapeOptions as any).parsePDF;
   
   // Track the original format for v1 backward compatibility
+  // Check json first since when user specifies "json", both "json" and "extract" are present
+  // When user specifies "extract", only "extract" is present
   let v1OriginalFormat: "extract" | "json" | undefined;
-  if (v1ScrapeOptions.formats.includes("extract")) {
-    v1OriginalFormat = "extract";
-  } else if (v1ScrapeOptions.formats.includes("json")) {
+  if (v1ScrapeOptions.formats.includes("json")) {
     v1OriginalFormat = "json";
+  } else if (v1ScrapeOptions.formats.includes("extract")) {
+    v1OriginalFormat = "extract";
   }
   
   return {
@@ -1148,6 +1150,16 @@ export function fromV1ScrapeOptions(
           };
           return fmt;
         } else if (x === "json") {
+          // If jsonOptions are provided with json format, create JsonFormatWithOptions
+          const opts = v1ScrapeOptions.jsonOptions;
+          if (opts) {
+            const fmt: JsonFormatWithOptions = {
+              type: "json",
+              schema: opts.schema,
+              prompt: opts.prompt,
+            };
+            return fmt;
+          }
           return null;
         } else if (x === "changeTracking") {
           const opts = v1ScrapeOptions.changeTrackingOptions;

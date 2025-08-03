@@ -182,6 +182,18 @@ export function coerceFieldsToFormats(
   const shouldKeepExtract = meta.internalOptions.v1OriginalFormat === "extract";
   const shouldKeepJson = meta.internalOptions.v1OriginalFormat === "json";
   
+  // Debug logging for v1 format investigation
+  if (meta.internalOptions.v1OriginalFormat) {
+    meta.logger.debug("coerceFieldsToFormats v1 format debug", {
+      v1OriginalFormat: meta.internalOptions.v1OriginalFormat,
+      hasJson: !!hasJson,
+      shouldKeepExtract,
+      shouldKeepJson,
+      hasExtractField: document.extract !== undefined,
+      hasJsonField: document.json !== undefined
+    });
+  }
+  
   if (!hasJson && (document.extract !== undefined || document.json !== undefined)) {
     // For v1 API, keep the field specified by v1OriginalFormat
     if (!shouldKeepExtract && document.extract !== undefined) {
