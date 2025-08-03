@@ -1114,6 +1114,7 @@ export function fromV1ScrapeOptions(
   delete (spreadScrapeOptions as any).integration;
   delete (spreadScrapeOptions as any).webhook;
   delete (spreadScrapeOptions as any).zeroDataRetention;
+  delete (spreadScrapeOptions as any).maxConcurrency;
   
   delete spreadScrapeOptions.__experimental_cache;
   delete spreadScrapeOptions.jsonOptions;
