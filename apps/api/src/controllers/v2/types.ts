@@ -1158,7 +1158,7 @@ export function fromV1ScrapeOptions(
               schema: opts.schema,
               prompt: opts.prompt,
             };
-            return fmt;
+            return v1ScrapeOptions.formats.includes("extract") ? null : fmt;
           }
           return null;
         } else if (x === "changeTracking") {
