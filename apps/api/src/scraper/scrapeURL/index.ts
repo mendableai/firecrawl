@@ -236,6 +236,7 @@ export type InternalOptions = {
   v1Agent?: ScrapeOptionsV1["agent"];
   v1JSONAgent?: Exclude<ScrapeOptionsV1["jsonOptions"], undefined>["agent"];
   v1JSONSystemPrompt?: string;
+  v1OriginalFormat?: "extract" | "json"; // Track original v1 format for backward compatibility
 };
 
 export type EngineResultsTracker = {

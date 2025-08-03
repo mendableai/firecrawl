@@ -787,7 +787,12 @@ export async function performLLMExtract(
     // }
 
     // Assign the final extracted data
-    document.json = extractedData;
+    // For v1 API backward compatibility, check the original format
+    if (meta.internalOptions.v1OriginalFormat === "extract") {
+      document.extract = extractedData;
+    } else {
+      document.json = extractedData;
+    }
     // document.warning = warning;
   }
 

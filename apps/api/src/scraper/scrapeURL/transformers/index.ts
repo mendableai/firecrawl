@@ -183,6 +183,7 @@ export function coerceFieldsToFormats(
       "Removed json from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
     delete document.extract;
+    delete document.json;
   } else if (hasJson && document.extract === undefined && document.json === undefined) {
     meta.logger.warn(
       "Request had format json, but there was no json field in the result.",

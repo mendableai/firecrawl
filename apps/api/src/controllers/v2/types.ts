@@ -1121,6 +1121,14 @@ export function fromV1ScrapeOptions(
   delete spreadScrapeOptions.geolocation;
   delete (spreadScrapeOptions as any).parsePDF;
   
+  // Track the original format for v1 backward compatibility
+  let v1OriginalFormat: "extract" | "json" | undefined;
+  if (v1ScrapeOptions.formats.includes("extract")) {
+    v1OriginalFormat = "extract";
+  } else if (v1ScrapeOptions.formats.includes("json")) {
+    v1OriginalFormat = "json";
+  }
+  
   return {
     scrapeOptions: scrapeOptions.parse({
       ...spreadScrapeOptions,
@@ -1162,6 +1170,7 @@ export function fromV1ScrapeOptions(
       v1Agent: v1ScrapeOptions.agent,
       v1JSONSystemPrompt: (v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract)?.systemPrompt,
       v1JSONAgent: (v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract)?.agent,
+      v1OriginalFormat,
     },
   };
 }
