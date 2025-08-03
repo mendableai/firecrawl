@@ -187,7 +187,7 @@ describe("Billing tests", () => {
 
             const rc2 = (await creditUsage(identity)).remaining_credits;
 
-            expect(rc1 - rc2).toBe(results.length);
+            expect(rc1 - rc2).toBe(results.web?.length ?? 0);
         }, 60000);
 
         it.concurrent("bills search with scrape correctly", async () => {
@@ -209,7 +209,7 @@ describe("Billing tests", () => {
 
             const rc2 = (await creditUsage(identity)).remaining_credits;
 
-            expect(rc1 - rc2).toBe(results.length);
+            expect(rc1 - rc2).toBe(results.web?.length ?? 0);
         }, 600000);
 
         it.concurrent("bills search with PDF scrape correctly", async () => {
@@ -232,7 +232,7 @@ describe("Billing tests", () => {
 
             const rc2 = (await creditUsage(identity)).remaining_credits;
 
-            const shouldUse = results.reduce((sum, doc) => sum + (doc.metadata?.numPages || 1), 0);
+            const shouldUse = results.web?.reduce((sum, doc) => sum + (doc.metadata?.numPages || 1), 0) ?? 0;
 
             expect(rc1 - rc2).toBe(shouldUse);
         }, 600000);
@@ -257,7 +257,7 @@ describe("Billing tests", () => {
 
             const rc2 = (await creditUsage(identity)).remaining_credits;
 
-            const expectedCredits = results.length;
+            const expectedCredits = results.web?.length ?? 0;
 
             expect(rc1 - rc2).toBe(expectedCredits);
         }, 600000);
