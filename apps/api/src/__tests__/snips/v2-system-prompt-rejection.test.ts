@@ -27,7 +27,7 @@ describe("V2 System Prompt Rejection", () => {
     it("should reject systemPrompt in json format options for v2 scrape", async () => {
       const response = await scrapeV2Raw(
         {
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [
             {
               type: "json",
@@ -51,7 +51,7 @@ describe("V2 System Prompt Rejection", () => {
     it("should accept valid json format options without systemPrompt", async () => {
       const response = await scrapeV2Raw(
         {
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [
             {
               type: "json",

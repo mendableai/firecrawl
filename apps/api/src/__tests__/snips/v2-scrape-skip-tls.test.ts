@@ -59,7 +59,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       .set("Authorization", `Bearer ${identity.apiKey}`)
       .set("Content-Type", "application/json")
       .send({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         timeout: scrapeTimeout,
       });
 
@@ -70,7 +70,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toBeDefined();
-    expect(response.body.data.markdown).toContain("Example Domain");
+    expect(response.body.data.markdown).toContain("Firecrawl");
   }, scrapeTimeout);
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
@@ -80,7 +80,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send({
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [{ type: "screenshot", fullPage: false }],
           timeout: scrapeTimeout,
         });
@@ -102,7 +102,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json")
         .send({
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [{ type: "screenshot", fullPage: true }],
           timeout: scrapeTimeout,
         });
