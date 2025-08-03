@@ -14,6 +14,7 @@ import { checkTeamCredits } from "../services/billing/credit_billing";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { logger } from "../lib/logger";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
+import { addDomainFrequencyJob } from "../services";
 
 export function checkCreditsMiddleware(
   _minimum?: number,
@@ -96,6 +97,18 @@ export function authMiddleware(
         isAgentExtractModelValid((req.body as any)?.agent?.model)
       ) {
         currentRateLimiterMode = RateLimiterMode.ExtractAgentPreview;
+      }
+
+      // Track domain frequency regardless of caching
+      try {
+        // Use the URL from the request body if available
+        const urlToTrack = (req.body as any)?.url;
+        if (urlToTrack) {
+          await addDomainFrequencyJob(urlToTrack);
+        }
+      } catch (error) {
+        // Log error without meta.logger since it's not available in this context
+        logger.warn("Failed to track domain frequency", { error });
       }
 
       // if (currentRateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
