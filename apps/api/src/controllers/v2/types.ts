@@ -215,6 +215,13 @@ export const parsersSchema = z.object({
 
 export type Parsers = z.infer<typeof parsersSchema>;
 
+function transformIframeSelector(selector: string): string {
+  return selector.replace(/(?:^|[\s,])iframe(?=\s|$|[.#\[:,])/g, (match) => {
+    const prefix = match.match(/^[\s,]/)?.[0] || '';
+    return prefix + 'div[data-original-tag="iframe"]';
+  });
+}
+
 const baseScrapeOptions = z
   .object({
     formats: z
@@ -254,8 +261,12 @@ const baseScrapeOptions = z
         "The changeTracking format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
-    includeTags: z.string().array().optional(),
-    excludeTags: z.string().array().optional(),
+    includeTags: z.string().array()
+      .transform(tags => tags.map(transformIframeSelector))
+      .optional(),
+    excludeTags: z.string().array()
+      .transform(tags => tags.map(transformIframeSelector))
+      .optional(),
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
     waitFor: z
