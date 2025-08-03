@@ -10,6 +10,7 @@ import { crawlStatusController } from "../controllers/v2/crawl-status";
 import { mapV2Controller } from "../controllers/v2/map";
 import { crawlErrorsController } from "../controllers/v2/crawl-errors";
 import { ongoingCrawlsController } from "../controllers/v2/crawl-ongoing";
+import { scrapeStatusController } from "../controllers/v2/scrape-status";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -34,6 +35,12 @@ v2Router.post(
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
   wrap(scrapeController),
+);
+
+v2Router.get(
+  "/scrape/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(scrapeStatusController),
 );
 
 v2Router.post(
