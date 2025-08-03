@@ -149,7 +149,7 @@ export async function batchScrapeController(
         integration: req.body.integration,
         crawl_id: id,
         sitemapped: true,
-        v1: false,
+        v1: true,
         webhook: req.body.webhook,
         internalOptions: sc.internalOptions,
         zeroDataRetention,

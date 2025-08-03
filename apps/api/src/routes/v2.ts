@@ -67,6 +67,12 @@ v2Router.post(
 );
 
 v2Router.get(
+  "/crawl/ongoing",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(ongoingCrawlsController),
+);
+
+v2Router.get(
   "/crawl/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(crawlStatusController),
@@ -82,10 +88,4 @@ v2Router.get(
   "/crawl/:jobId/errors",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(crawlErrorsController),
-);
-
-v2Router.get(
-  "/crawl/ongoing",
-  authMiddleware(RateLimiterMode.CrawlStatus),
-  wrap(ongoingCrawlsController),
 );
