@@ -1113,6 +1113,8 @@ export function fromV1ScrapeOptions(
   delete (spreadScrapeOptions as any).origin;
   delete (spreadScrapeOptions as any).integration;
   delete (spreadScrapeOptions as any).webhook;
+  delete (spreadScrapeOptions as any).zeroDataRetention;
+  delete (spreadScrapeOptions as any).maxConcurrency;
   
   delete spreadScrapeOptions.__experimental_cache;
   delete spreadScrapeOptions.jsonOptions;
@@ -1120,6 +1122,16 @@ export function fromV1ScrapeOptions(
   delete spreadScrapeOptions.extract;
   delete spreadScrapeOptions.geolocation;
   delete (spreadScrapeOptions as any).parsePDF;
+  
+  // Track the original format for v1 backward compatibility
+  // Check json first since when user specifies "json", both "json" and "extract" are present
+  // When user specifies "extract", only "extract" is present
+  let v1OriginalFormat: "extract" | "json" | undefined;
+  if (v1ScrapeOptions.formats.includes("json")) {
+    v1OriginalFormat = "json";
+  } else if (v1ScrapeOptions.formats.includes("extract")) {
+    v1OriginalFormat = "extract";
+  }
   
   return {
     scrapeOptions: scrapeOptions.parse({
@@ -1140,6 +1152,16 @@ export function fromV1ScrapeOptions(
           };
           return fmt;
         } else if (x === "json") {
+          // If jsonOptions are provided with json format, create JsonFormatWithOptions
+          const opts = v1ScrapeOptions.jsonOptions;
+          if (opts) {
+            const fmt: JsonFormatWithOptions = {
+              type: "json",
+              schema: opts.schema,
+              prompt: opts.prompt,
+            };
+            return v1ScrapeOptions.formats.includes("extract") ? null : fmt;
+          }
           return null;
         } else if (x === "changeTracking") {
           const opts = v1ScrapeOptions.changeTrackingOptions;
@@ -1162,6 +1184,7 @@ export function fromV1ScrapeOptions(
       v1Agent: v1ScrapeOptions.agent,
       v1JSONSystemPrompt: (v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract)?.systemPrompt,
       v1JSONAgent: (v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract)?.agent,
+      v1OriginalFormat,
     },
   };
 }
