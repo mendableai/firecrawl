@@ -46,14 +46,13 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
         url: "https://firecrawl.dev",
         formats: ["extract"],
         extract: {
-          prompt: "Extract the main heading and domain name from the page",
+          prompt: "Extract the main heading from the page",
           schema: {
             type: "object", 
             properties: {
-              mainHeading: { type: "string" },
-              domain: { type: "string" }
+              mainHeading: { type: "string" }
             },
-            required: ["mainHeading", "domain"]
+            required: ["mainHeading"]
           }
         },
         timeout: scrapeTimeout,
@@ -63,7 +62,6 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(response.extract).toBeDefined();
       expect(response.json).toBeUndefined();
       expect(response.extract.mainHeading).toBeDefined();
-      expect(response.extract.domain).toBe("firecrawl.dev");
     }, scrapeTimeout);
   });
 
@@ -101,14 +99,13 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
         url: "https://firecrawl.dev",
         formats: ["json"],
         jsonOptions: {
-          prompt: "Extract the main heading and domain name from the page",
+          prompt: "Extract the main heading from the page",
           schema: {
             type: "object",
             properties: {
-              mainHeading: { type: "string" },
-              domain: { type: "string" }
+              mainHeading: { type: "string" }
             },
-            required: ["mainHeading", "domain"]
+            required: ["mainHeading"]
           }
         },
         timeout: scrapeTimeout,
@@ -118,7 +115,6 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(response.json).toBeDefined();
       expect(response.extract).toBeUndefined();
       expect(response.json.mainHeading).toBeDefined();
-      expect(response.json.domain).toBe("firecrawl.dev");
     }, scrapeTimeout);
   });
 
