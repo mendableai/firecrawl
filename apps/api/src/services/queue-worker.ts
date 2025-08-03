@@ -42,6 +42,7 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { redisEvictConnection } from "./redis";
 import path from "path";
 import { finishCrawlIfNeeded } from "./worker/crawl-logic";
+import { storeErrorMetadata } from "../lib/error-serialization";
 
 configDotenv();
 
@@ -136,6 +137,8 @@ const processExtractJobInternal = async (
     });
 
     try {
+      // Store error metadata before failing the job
+      await storeErrorMetadata(job, error);
       // Move job to failed state in Redis
       await job.moveToFailed(error, token, false);
     } catch (e) {
@@ -211,6 +214,7 @@ const processDeepResearchJobInternal = async (
         status: "failed",
         error: error.message,
       });
+      await storeErrorMetadata(job, error);
       await job.moveToFailed(error, token, false);
 
       return { success: false, error: error.message };
@@ -225,6 +229,8 @@ const processDeepResearchJobInternal = async (
     });
 
     try {
+      // Store error metadata before failing the job
+      await storeErrorMetadata(job, error);
       // Move job to failed state in Redis
       await job.moveToFailed(error, token, false);
     } catch (e) {
@@ -282,6 +288,7 @@ const processGenerateLlmsTxtJobInternal = async (
       const error = new Error(
         "LLMs text generation failed without specific error",
       );
+      await storeErrorMetadata(job, error);
       await job.moveToFailed(error, token, false);
       await updateGeneratedLlmsTxt(job.data.generateId, {
         status: "failed",
@@ -299,6 +306,7 @@ const processGenerateLlmsTxtJobInternal = async (
     });
 
     try {
+      await storeErrorMetadata(job, error);
       await job.moveToFailed(error, token, false);
     } catch (e) {
       logger.error("Failed to move job to failed state in Redis", { error });

@@ -24,6 +24,9 @@ import { performCosineSimilarity } from "../../lib/map-cosine";
 import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { generateURLSplits, queryIndexAtDomainSplitLevel, queryIndexAtSplitLevel } from "../../services/index";
+import { sendErrorResponse } from "../error-handler";
+import { ValidationError } from "../../lib/common-errors";
+import { CustomError } from "../../lib/custom-error";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -322,7 +325,7 @@ export async function mapController(
   req.body = mapRequestSchema.parse(req.body);
   
   if (req.acuc?.flags?.forceZDR) {
-    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature." });
+    return sendErrorResponse(res, new ValidationError("Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature."), 400);
   }
 
   logger.info("Map request", {
@@ -360,10 +363,7 @@ export async function mapController(
     ]) as any;
   } catch (error) {
     if (error instanceof TimeoutSignal || error === "timeout") {
-      return res.status(408).json({
-        success: false,
-        error: "Request timed out",
-      });
+      return sendErrorResponse(res, new CustomError(408, "timeout", "Request timed out"), 408);
     } else {
       throw error;
     }

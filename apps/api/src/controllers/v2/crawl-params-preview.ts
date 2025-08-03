@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   RequestWithAuth,
   crawlRequestSchema,
+  ErrorResponse,
 } from "./types";
 import { logger as _logger } from "../../lib/logger";
 import { generateCrawlerOptionsFromPrompt } from "../../scraper/scrapeURL/transformers/llmExtract";
@@ -17,9 +18,9 @@ const crawlParamsPreviewRequestSchema = z.object({
 
 type CrawlParamsPreviewRequest = z.infer<typeof crawlParamsPreviewRequestSchema>;
 
-type CrawlParamsPreviewResponse = {
-  success: boolean;
-  data?: {
+type CrawlParamsPreviewResponse = ErrorResponse | {
+  success: true;
+  data: {
     url: string;
     includePaths?: string[];
     excludePaths?: string[];
@@ -34,7 +35,6 @@ type CrawlParamsPreviewResponse = {
     delay?: number;
     limit?: number;
   };
-  error?: string;
 };
 
 export async function crawlParamsPreviewController(
@@ -94,6 +94,7 @@ export async function crawlParamsPreviewController(
       return res.status(400).json({
         success: false,
         error: "Invalid request parameters: " + error.errors.map(e => e.message).join(", "),
+        code: "VALIDATION_ERROR",
       });
     }
 
@@ -105,6 +106,7 @@ export async function crawlParamsPreviewController(
     return res.status(400).json({
       success: false,
       error: "Failed to process natural language prompt. Please try rephrasing.",
+      code: "INTERNAL_SERVER_ERROR",
     });
   }
 }

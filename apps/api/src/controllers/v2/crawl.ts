@@ -25,6 +25,7 @@ export async function crawlController(
     return res.status(400).json({
       success: false,
       error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+      code: "FORBIDDEN_ERROR",
     });
   }
 
@@ -84,6 +85,7 @@ export async function crawlController(
       return res.status(400).json({
         success: false,
         error: "Failed to process natural language prompt. Please try rephrasing or use explicit crawler options.",
+        code: "INTERNAL_SERVER_ERROR",
       });
     }
   }
@@ -98,7 +100,7 @@ export async function crawlController(
       try {
         new RegExp(x);
       } catch (e) {
-        return res.status(400).json({ success: false, error: e.message });
+        return res.status(400).json({ success: false, error: e.message, code: "VALIDATION_ERROR" });
       }
     }
   }
@@ -108,7 +110,7 @@ export async function crawlController(
       try {
         new RegExp(x);
       } catch (e) {
-        return res.status(400).json({ success: false, error: e.message });
+        return res.status(400).json({ success: false, error: e.message, code: "VALIDATION_ERROR" });
       }
     }
   }

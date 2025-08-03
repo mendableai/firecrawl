@@ -45,8 +45,10 @@ import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { getBillingQueue } from "../queue-service";
 import type { Logger } from "winston";
 import { finishCrawlIfNeeded } from "./crawl-logic";
+import { BaseError } from "../../lib/base-error";
+import { getErrorCode } from "../../lib/base-error";
 
-class RacedRedirectError extends Error {
+class RacedRedirectError extends BaseError {
     constructor() {
         super("Raced redirect error");
     }
@@ -498,16 +500,18 @@ async function processJob(job: Job & { id: string }) {
             }
         }
 
+        const errorObj = error instanceof Error
+            ? error
+            : typeof error === "string"
+                ? new Error(error)
+                : new Error(JSON.stringify(error));
+
         const data = {
             success: false,
             document: null,
             project_id: job.data.project_id,
-            error:
-                error instanceof Error
-                    ? error
-                    : typeof error === "string"
-                        ? new Error(error)
-                        : new Error(JSON.stringify(error)),
+            error: errorObj,
+            errorCode: getErrorCode(errorObj),
         };
 
         if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {

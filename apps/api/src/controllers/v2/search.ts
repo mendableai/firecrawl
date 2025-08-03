@@ -167,7 +167,7 @@ export async function searchController(
   });
 
   if (req.acuc?.flags?.forceZDR) {
-    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature." });
+    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature.", code: "FORBIDDEN_ERROR" });
   }
 
   const startTime = new Date().getTime();
@@ -432,6 +432,7 @@ export async function searchController(
       return res.status(408).json({
         success: false,
         error: "Request timed out",
+        code: "TIMEOUT_ERROR",
       });
     }
 
@@ -440,6 +441,7 @@ export async function searchController(
     return res.status(500).json({
       success: false,
       error: error.message,
+      code: "INTERNAL_SERVER_ERROR",
     });
   }
 }

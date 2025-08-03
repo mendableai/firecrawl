@@ -1,4 +1,6 @@
-export class CustomError extends Error {
+import { BaseError } from "./base-error";
+
+export class CustomError extends BaseError {
   statusCode: number;
   status: string;
   message: string;

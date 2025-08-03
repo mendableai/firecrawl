@@ -35,6 +35,7 @@ export async function batchScrapeController(
     return res.status(400).json({
       success: false,
       error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+      code: "FORBIDDEN_ERROR",
     });
   }
   
@@ -85,6 +86,7 @@ export async function batchScrapeController(
         return res.status(403).json({
           success: false,
           error: BLOCKLISTED_URL_MESSAGE,
+          code: "FORBIDDEN_ERROR",
         });
       }
     }

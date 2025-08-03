@@ -24,6 +24,8 @@ import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
 import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitActiveJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { sendErrorResponse } from "../error-handler";
+import { ForbiddenError, JobExpiredError, NotFoundError } from "../../lib/common-errors";
 configDotenv();
 
 export type PseudoJob<T> = {
@@ -153,7 +155,7 @@ export async function crawlStatusController(
 
   if (sc) {
     if (sc.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
+      return sendErrorResponse(res, new ForbiddenError(), 403);
     }
 
     let jobIDs = await getCrawlJobs(req.params.jobId);
@@ -286,7 +288,7 @@ export async function crawlStatusController(
     const crawlJob = crawlJobs[0];
 
     if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
+      return sendErrorResponse(res, new ForbiddenError(), 403);
     }
 
     const crawlTtlHours = req.acuc?.flags?.crawlTtlHours ?? 24;
@@ -296,7 +298,7 @@ export async function crawlStatusController(
       crawlJob
       && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > crawlTtlMs
     ) {
-      return res.status(404).json({ success: false, error: "Job expired" });
+      return sendErrorResponse(res, new JobExpiredError(), 404);
     }
 
     const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
@@ -311,7 +313,7 @@ export async function crawlStatusController(
 
     if (!crawlJobs || crawlJobs.length === 0) {
       if (scrapeJobCount === 0) {
-        return res.status(404).json({ success: false, error: "Job not found" });
+        return sendErrorResponse(res, new NotFoundError("Job"), 404);
       } else {
         status = "completed"; // fake completed to cut the losses
       }
@@ -360,7 +362,7 @@ export async function crawlStatusController(
     totalCount = scrapeJobCount ?? 0;
     creditsUsed = crawlJob?.credits_billed ?? totalCount;
   } else {
-    return res.status(404).json({ success: false, error: "Job not found" });
+    return sendErrorResponse(res, new NotFoundError("Job"), 404);
   }
 
   let doneJobs: PseudoJob<any>[] = [];

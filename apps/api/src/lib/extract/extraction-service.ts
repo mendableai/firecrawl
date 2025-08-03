@@ -68,10 +68,11 @@ type completions = {
   sources?: string[];
 };
 
-export class CostLimitExceededError extends Error {
+import { BaseError } from "../base-error";
+
+export class CostLimitExceededError extends BaseError {
   constructor() {
     super("Cost limit exceeded");
-    this.message = "Cost limit exceeded";
     this.name = "CostLimitExceededError";
   }
 }

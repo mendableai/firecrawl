@@ -152,7 +152,7 @@ export async function crawlStatusController(
 
   if (sc) {
     if (sc.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
+      return res.status(403).json({ success: false, error: "Forbidden", code: "FORBIDDEN_ERROR" });
     }
 
     let jobIDs = await getCrawlJobs(req.params.jobId);
@@ -295,7 +295,7 @@ export async function crawlStatusController(
 
     if (!crawlJobs || crawlJobs.length === 0) {
       if (scrapeJobCount === 0) {
-        return res.status(404).json({ success: false, error: "Job not found" });
+        return res.status(404).json({ success: false, error: "Job not found", code: "NOT_FOUND_ERROR" });
       } else {
         status = "completed"; // fake completed to cut the losses
       }
@@ -306,7 +306,7 @@ export async function crawlStatusController(
     const crawlJob = crawlJobs[0];
 
     if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
+      return res.status(403).json({ success: false, error: "Forbidden", code: "FORBIDDEN_ERROR" });
     }
 
     const teamIdsExcludedFromExpiry = [
@@ -319,7 +319,7 @@ export async function crawlStatusController(
       && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
       && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
     ) {
-      return res.status(404).json({ success: false, error: "Job expired" });
+      return res.status(404).json({ success: false, error: "Job expired", code: "JOB_EXPIRED_ERROR" });
     }
 
     doneJobsLength = scrapeJobCount!;
@@ -363,7 +363,7 @@ export async function crawlStatusController(
     totalCount = scrapeJobCount ?? 0;
     creditsUsed = crawlJob?.credits_billed ?? totalCount;
   } else {
-    return res.status(404).json({ success: false, error: "Job not found" });
+    return res.status(404).json({ success: false, error: "Job not found", code: "NOT_FOUND_ERROR" });
   }
 
   let doneJobs: PseudoJob<any>[] = [];

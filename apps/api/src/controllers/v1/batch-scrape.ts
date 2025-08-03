@@ -18,6 +18,8 @@ import {
   StoredCrawl,
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
+import { sendErrorResponse } from "../error-handler";
+import { ForbiddenError, InvalidUrlError } from "../../lib/common-errors";
 import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
@@ -33,10 +35,8 @@ export async function batchScrapeController(
   const preNormalizedBody = { ...req.body };
 
   if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
-    return res.status(400).json({
-      success: false,
-      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
-    });
+    const error = new ForbiddenError("Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com");
+    return sendErrorResponse(res, error, 400);
   }
   
   const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
@@ -83,10 +83,8 @@ export async function batchScrapeController(
   } else {
     if (req.body.urls?.some((url: string) => isUrlBlocked(url, req.acuc?.flags ?? null))) {
       if (!res.headersSent) {
-        return res.status(403).json({
-          success: false,
-          error: BLOCKLISTED_URL_MESSAGE,
-        });
+        const error = new ForbiddenError(BLOCKLISTED_URL_MESSAGE);
+        return sendErrorResponse(res, error, 403);
       }
     }
   }

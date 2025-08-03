@@ -400,7 +400,8 @@ export async function mapV2Controller(
   if (req.acuc?.flags?.forceZDR) {
     return res.status(400).json({ 
       success: false, 
-      error: "Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature." 
+      error: "Your team has zero data retention enabled. This is not supported on map. Please contact support@firecrawl.com to unblock this feature.",
+      code: "FORBIDDEN_ERROR" 
     });
   }
 
@@ -442,6 +443,7 @@ export async function mapV2Controller(
       return res.status(408).json({
         success: false,
         error: "Request timed out",
+        code: "TIMEOUT_ERROR",
       });
     } else {
       throw error;

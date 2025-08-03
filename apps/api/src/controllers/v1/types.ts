@@ -922,6 +922,7 @@ export type Document = {
 export type ErrorResponse = {
   success: false;
   error: string;
+  code: string;
   details?: any;
 };
 
@@ -1056,6 +1057,7 @@ export type CrawlErrorsResponse =
       timestamp?: string;
       url: string;
       error: string;
+      code: string;
     }[];
     robotsBlocked: string[];
   };

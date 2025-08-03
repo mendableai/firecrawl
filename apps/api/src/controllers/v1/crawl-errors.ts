@@ -14,6 +14,9 @@ import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
 import { supabase_rr_service } from "../../services/supabase";
 import { logger } from "../../lib/logger";
+import { sendErrorResponse } from "../error-handler";
+import { ForbiddenError, JobExpiredError, JobNotFoundError } from "../../lib/common-errors";
+import { getJobErrorCode } from "../../lib/error-serialization";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -39,7 +42,7 @@ export async function crawlErrorsController(
   
   if (sc) {
     if (sc.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
+      return sendErrorResponse(res, new ForbiddenError(), 403);
     }
 
     let jobStatuses = await Promise.all(
@@ -65,6 +68,7 @@ export async function crawlErrorsController(
             : undefined,
         url: x.data.url,
         error: x.failedReason,
+        code: getJobErrorCode(x),
       })),
       robotsBlocked: await redisEvictConnection.smembers(
         "crawl:" + req.params.jobId + ":robots_blocked",
@@ -86,7 +90,7 @@ export async function crawlErrorsController(
     const crawlJob = crawlJobs[0];
 
     if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
+      return sendErrorResponse(res, new ForbiddenError(), 403);
     }
 
     const crawlTtlHours = req.acuc?.flags?.crawlTtlHours ?? 24;
@@ -96,11 +100,11 @@ export async function crawlErrorsController(
       crawlJob
       && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > crawlTtlMs
     ) {
-      return res.status(404).json({ success: false, error: "Job expired" });
+      return sendErrorResponse(res, new JobExpiredError(), 404);
     }
 
     if (!crawlJobs || crawlJobs.length === 0) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return sendErrorResponse(res, new JobNotFoundError(), 404);
     }
 
     const { data: failedJobs, error: failedJobsError } = await supabase_rr_service
@@ -116,18 +120,27 @@ export async function crawlErrorsController(
       throw failedJobsError;
     }
 
+    const queue = getScrapeQueue();
+    const jobStatuses = await Promise.all(
+      (failedJobs || []).map(async (job) => {
+        const bullJob = await queue.getJob(job.job_id);
+        return {
+          id: job.job_id,
+          timestamp: new Date(job.date_added).toISOString(),
+          url: job.page_options?.url || job.page_options?.urls?.[0] || "Unknown URL",
+          error: job.message || "Unknown error",
+          code: bullJob ? getJobErrorCode(bullJob) : "UNKNOWN_ERROR",
+        };
+      })
+    );
+
     res.status(200).json({
-      errors: (failedJobs || []).map((job) => ({
-        id: job.job_id,
-        timestamp: new Date(job.date_added).toISOString(),
-        url: job.page_options?.url || job.page_options?.urls?.[0] || "Unknown URL",
-        error: job.message || "Unknown error",
-      })),
+      errors: jobStatuses,
       robotsBlocked: await redisEvictConnection.smembers(
         "crawl:" + req.params.jobId + ":robots_blocked",
       ),
     });
   } else {
-    return res.status(404).json({ success: false, error: "Job not found" });
+    return sendErrorResponse(res, new JobNotFoundError(), 404);
   }
 }

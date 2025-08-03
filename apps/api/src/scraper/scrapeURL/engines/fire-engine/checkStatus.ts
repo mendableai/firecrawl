@@ -16,6 +16,7 @@ import { MockState } from "../../lib/mock";
 import { fireEngineStagingURL, fireEngineURL } from "./scrape";
 import { getDocFromGCS } from "../../../../lib/gcs-jobs";
 import { Meta } from "../..";
+import { BaseError } from "../../../../lib/base-error";
 
 const successSchema = z.object({
   jobId: z.string(),
@@ -121,7 +122,7 @@ const failedSchema = z.object({
   error: z.string(),
 });
 
-export class StillProcessingError extends Error {
+export class StillProcessingError extends BaseError {
   constructor(jobId: string) {
     super("Job is still under processing", { cause: { jobId } });
   }

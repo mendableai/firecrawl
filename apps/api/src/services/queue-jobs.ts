@@ -20,6 +20,8 @@ import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
 import { Logger } from "winston";
 import { Job } from "bullmq";
+import { getJobErrorCode } from "../lib/error-serialization";
+import { BaseError } from "../lib/base-error";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -330,28 +332,44 @@ export async function waitForJob(
         throw new Error("Job wait ");
       }
     }
-    let doc: Document = await Promise.race([
-      job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
-      new Promise((resolve, reject) => {
-        setTimeout(() => {
-          reject(new Error("Job wait "));
-        }, Math.max(0, timeout - (Date.now() - start)));
-      }),
-    ]);
-    logger.debug("Got job");
-    
-    if (!doc) {
-      const docs = await getJobFromGCS(job.id!);
-      logger.debug("Got job from GCS");
-      if (!docs || docs.length === 0) {
-        throw new Error("Job not found in GCS");
-      }
-      doc = docs[0];
+    try {
+      let doc: Document = await Promise.race([
+        job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            reject(new Error("Job wait "));
+          }, Math.max(0, timeout - (Date.now() - start)));
+        }),
+      ]);
+      logger.debug("Got job");
+      
+      if (!doc) {
+        const docs = await getJobFromGCS(job.id!);
+        logger.debug("Got job from GCS");
+        if (!docs || docs.length === 0) {
+          throw new Error("Job not found in GCS");
+        }
+        doc = docs[0];
 
-      if (job.data?.internalOptions?.zeroDataRetention) {
-        await removeJobFromGCS(job.id!);
+        if (job.data?.internalOptions?.zeroDataRetention) {
+          await removeJobFromGCS(job.id!);
+        }
       }
+
+      return doc;
+    } catch (error) {
+      // Check if job failed and has error metadata
+      const failedJob = await queue.getJob(job.id!);
+      if (failedJob && await failedJob.isFailed()) {
+        const errorCode = getJobErrorCode(failedJob);
+        
+        // Create a proper error with code
+        const errorWithCode = error instanceof Error ? error : new Error(String(error));
+        (errorWithCode as any).code = errorCode;
+        
+        throw errorWithCode;
+      }
+      
+      throw error;
     }
-
-    return doc;
 }

@@ -28,6 +28,8 @@ import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
 import { v2Router } from "./routes/v2";
 import domainFrequencyRouter from "./routes/domain-frequency";
+import { sendErrorResponse } from "./controllers/error-handler";
+import { BaseError } from "./lib/base-error";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -211,9 +213,8 @@ app.use(
         logger.warn("Unsupported protocol error: " + JSON.stringify(req.body));
       }
 
-      res
-        .status(400)
-        .json({ success: false, error: "Bad Request", details: err.errors });
+      const error = new BaseError("Bad Request", { cause: err });
+      sendErrorResponse(res, error, 400, { details: err.errors });
     } else {
       next(err);
     }
@@ -235,9 +236,8 @@ app.use(
       err.status === 400 &&
       "body" in err
     ) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Bad request, malformed JSON" });
+      const error = new BaseError("Bad request, malformed JSON");
+      return sendErrorResponse(res, error, 400);
     }
 
     const id = res.sentry ?? uuidv4();
@@ -249,12 +249,11 @@ app.use(
         id +
         " -- ",
     { error: err, errorId: id, path: req.path, teamId: req.acuc?.team_id, team_id: req.acuc?.team_id });
-    res.status(500).json({
-      success: false,
-      error:
-        "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
-        id,
-    });
+    const error = new Error(
+      "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
+      id
+    );
+    sendErrorResponse(res, error, 500);
   },
 );
 

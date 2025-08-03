@@ -23,6 +23,7 @@ export async function scrapeController(
     return res.status(400).json({
       success: false,
       error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
+      code: "FORBIDDEN_ERROR",
     });
   }
 
@@ -113,11 +114,13 @@ export async function scrapeController(
       return res.status(408).json({
         success: false,
         error: "Request timed out",
+        code: "TIMEOUT_ERROR",
       });
     } else {
       return res.status(500).json({
         success: false,
         error: `(Internal server error) - ${e && e.message ? e.message : e}`,
+        code: "INTERNAL_SERVER_ERROR",
       });
     }
   }

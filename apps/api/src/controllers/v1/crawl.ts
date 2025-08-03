@@ -12,6 +12,8 @@ import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
 import { fromV1ScrapeOptions } from "../v2/types";
+import { sendErrorResponse } from "../error-handler";
+import { ValidationError } from "../../lib/common-errors";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -21,10 +23,7 @@ export async function crawlController(
   req.body = crawlRequestSchema.parse(req.body);
 
   if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
-    return res.status(400).json({
-      success: false,
-      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
-    });
+    return sendErrorResponse(res, new ValidationError("Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com"), 400);
   }
 
   const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
@@ -65,7 +64,7 @@ export async function crawlController(
       try {
         new RegExp(x);
       } catch (e) {
-        return res.status(400).json({ success: false, error: e.message });
+        return sendErrorResponse(res, new ValidationError(e.message), 400);
       }
     }
   }
@@ -75,7 +74,7 @@ export async function crawlController(
       try {
         new RegExp(x);
       } catch (e) {
-        return res.status(400).json({ success: false, error: e.message });
+        return sendErrorResponse(res, new ValidationError(e.message), 400);
       }
     }
   }

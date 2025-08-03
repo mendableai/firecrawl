@@ -26,6 +26,9 @@ import { CostTracking } from "../../lib/extract/extraction-service";
 import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
 import { fromV1ScrapeOptions } from "../v2/types";
+import { sendErrorResponse } from "../error-handler";
+import { ValidationError } from "../../lib/common-errors";
+import { CustomError } from "../../lib/custom-error";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -210,7 +213,7 @@ export async function searchController(
   });
 
   if (req.acuc?.flags?.forceZDR) {
-    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature." });
+    return sendErrorResponse(res, new ValidationError("Your team has zero data retention enabled. This is not supported on search. Please contact support@firecrawl.com to unblock this feature."), 400);
   }
 
   let responseData: SearchResponse = {
@@ -401,17 +404,11 @@ export async function searchController(
       error instanceof Error &&
       (error.message.startsWith("Job wait") || error.message === "timeout")
     ) {
-      return res.status(408).json({
-        success: false,
-        error: "Request timed out",
-      });
+      return sendErrorResponse(res, new CustomError(408, "timeout", "Request timed out"), 408);
     }
 
     Sentry.captureException(error);
     logger.error("Unhandled error occurred in search", { error });
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    return sendErrorResponse(res, error, 500);
   }
 }

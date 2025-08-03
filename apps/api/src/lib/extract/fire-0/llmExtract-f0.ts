@@ -13,6 +13,7 @@ import { jsonSchema } from 'ai';
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
 import { EngineResultsTracker, Meta } from "../../../scraper/scrapeURL";
+import { BaseError } from "../../base-error";
 
 // Get max tokens from model prices
 const getModelLimits_F0 = (model: string) => {
@@ -32,7 +33,7 @@ const getModelLimits_F0 = (model: string) => {
   };
 };
 
-export class LLMRefusalError extends Error {
+export class LLMRefusalError extends BaseError {
   public refusal: string;
   public results: EngineResultsTracker | undefined;
 

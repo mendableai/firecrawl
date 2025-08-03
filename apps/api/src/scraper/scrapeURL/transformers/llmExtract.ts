@@ -24,6 +24,7 @@ import Ajv from "ajv";
 import { extractData } from "../lib/extractSmartScrape";
 import { CostTracking } from "../../../lib/extract/extraction-service";
 import { isAgentExtractModelValid } from "../../../controllers/v1/types";
+import { BaseError } from "../../../lib/base-error";
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
   anthropic?: {
@@ -53,7 +54,7 @@ const getModelLimits = (model: string) => {
   };
 };
 
-export class LLMRefusalError extends Error {
+export class LLMRefusalError extends BaseError {
   public refusal: string;
   public results: EngineResultsTracker | undefined;
 

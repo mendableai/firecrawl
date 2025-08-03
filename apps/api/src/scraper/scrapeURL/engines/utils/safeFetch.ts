@@ -5,8 +5,9 @@ import { Address6 } from "ip-address";
 import { cacheableLookup } from "../../lib/cacheableLookup";
 import { CookieJar } from "tough-cookie";
 import { cookie } from "http-cookie-agent/undici";
+import { BaseError } from "../../../../lib/base-error";
 
-export class InsecureConnectionError extends Error {
+export class InsecureConnectionError extends BaseError {
   constructor() {
     super("Connection violated security rules.");
   }

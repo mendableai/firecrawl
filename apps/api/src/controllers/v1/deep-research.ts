@@ -4,6 +4,8 @@ import { getDeepResearchQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveDeepResearch } from "../../lib/deep-research/deep-research-redis";
 import { z } from "zod";
+import { sendErrorResponse } from "../error-handler";
+import { ValidationError } from "../../lib/common-errors";
 
 export const deepResearchRequestSchema = z.object({
   query: z.string().describe('The query or topic to search for').optional(),
@@ -47,7 +49,7 @@ export async function deepResearchController(
   res: Response<DeepResearchResponse>,
 ) {
   if (req.acuc?.flags?.forceZDR) {
-    return res.status(400).json({ success: false, error: "Your team has zero data retention enabled. This is not supported on deep research. Please contact support@firecrawl.com to unblock this feature." });
+    return sendErrorResponse(res, new ValidationError("Your team has zero data retention enabled. This is not supported on deep research. Please contact support@firecrawl.com to unblock this feature."), 400);
   }
 
   req.body = deepResearchRequestSchema.parse(req.body);

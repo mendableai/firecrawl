@@ -12,6 +12,9 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
 import { fromV1ScrapeOptions } from "../v2/types";
+import { sendErrorResponse } from "../error-handler";
+import { ZDRViolationError } from "../../scraper/scrapeURL/error";
+import { TimeoutError } from "../../scraper/scrapeURL/error";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -21,10 +24,11 @@ export async function scrapeController(
   const preNormalizedBody = { ...req.body };
 
   if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
-    return res.status(400).json({
-      success: false,
-      error: "Zero data retention is enabled for this team. If you're interested in ZDR, please contact support@firecrawl.com",
-    });
+    return sendErrorResponse(
+      res,
+      new ZDRViolationError("zeroDataRetention"),
+      400
+    );
   }
 
   const zeroDataRetention = req.acuc?.flags?.forceZDR || req.body.zeroDataRetention;
@@ -45,7 +49,11 @@ export async function scrapeController(
     account: req.account,
   });
 
-  req.body = scrapeRequestSchema.parse(req.body);
+  try {
+    req.body = scrapeRequestSchema.parse(req.body);
+  } catch (error) {
+    return sendErrorResponse(res, error, 400);
+  }
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
@@ -111,15 +119,9 @@ export async function scrapeController(
       e instanceof Error &&
       (e.message.startsWith("Job wait") || e.message === "timeout")
     ) {
-      return res.status(408).json({
-        success: false,
-        error: "Request timed out",
-      });
+      return sendErrorResponse(res, new TimeoutError("Request timed out"), 408);
     } else {
-      return res.status(500).json({
-        success: false,
-        error: `(Internal server error) - ${e && e.message ? e.message : e}`,
-      });
+      return sendErrorResponse(res, e, 500);
     }
   }
 
