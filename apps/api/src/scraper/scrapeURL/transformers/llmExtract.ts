@@ -790,7 +790,10 @@ export async function performLLMExtract(
     // For v1 API backward compatibility, check the original format
     if (meta.internalOptions.v1OriginalFormat === "extract") {
       document.extract = extractedData;
+    } else if (meta.internalOptions.v1OriginalFormat === "json") {
+      document.json = extractedData;
     } else {
+      // v2 API or no v1OriginalFormat - use json field
       document.json = extractedData;
     }
     // document.warning = warning;

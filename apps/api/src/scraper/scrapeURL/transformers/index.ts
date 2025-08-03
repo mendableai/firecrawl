@@ -178,12 +178,24 @@ export function coerceFieldsToFormats(
     );
   }
 
+  // Handle v1 backward compatibility - don't delete fields based on v1OriginalFormat
+  const shouldKeepExtract = meta.internalOptions.v1OriginalFormat === "extract";
+  const shouldKeepJson = meta.internalOptions.v1OriginalFormat === "json";
+  
   if (!hasJson && (document.extract !== undefined || document.json !== undefined)) {
-    meta.logger.warn(
-      "Removed json from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
-    );
-    delete document.extract;
-    delete document.json;
+    // For v1 API, keep the field specified by v1OriginalFormat
+    if (!shouldKeepExtract && document.extract !== undefined) {
+      meta.logger.warn(
+        "Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      );
+      delete document.extract;
+    }
+    if (!shouldKeepJson && document.json !== undefined) {
+      meta.logger.warn(
+        "Removed json from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      );
+      delete document.json;
+    }
   } else if (hasJson && document.extract === undefined && document.json === undefined) {
     meta.logger.warn(
       "Request had format json, but there was no json field in the result.",

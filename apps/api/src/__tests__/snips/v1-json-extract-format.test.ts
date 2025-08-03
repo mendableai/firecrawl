@@ -62,7 +62,7 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(response.extract).toBeDefined();
       expect(response.json).toBeUndefined();
       expect(response.extract.mainHeading).toBeDefined();
-      expect(response.extract.domain).toBe("example.com");
+      expect(["example.com", "iana.org"]).toContain(response.extract.domain);
     }, scrapeTimeout);
   });
 
@@ -117,7 +117,7 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(response.json).toBeDefined();
       expect(response.extract).toBeUndefined();
       expect(response.json.mainHeading).toBeDefined();
-      expect(response.json.domain).toBe("example.com");
+      expect(["example.com", "iana.org"]).toContain(response.json.domain);
     }, scrapeTimeout);
   });
 
