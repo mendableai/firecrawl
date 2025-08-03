@@ -60,8 +60,9 @@ function compareExtractedData(previousData: any, currentData: any): any {
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   const changeTrackingFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
+  const changeTrackingSimple = meta.options.formats.includes("changeTracking");
 
-  if (changeTrackingFormat) {
+  if (changeTrackingFormat || changeTrackingSimple) {
     if (meta.internalOptions.zeroDataRetention) {
         document.warning = "Change tracking is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
         return document;
@@ -72,7 +73,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
         .rpc("diff_get_last_scrape_4", {
             i_team_id: meta.internalOptions.teamId,
             i_url: document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
-            i_tag: changeTrackingFormat.tag ?? null,
+            i_tag: changeTrackingFormat?.tag ?? null,
         });
     const end = Date.now();
     if (end - start > 100) {
@@ -101,7 +102,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
             visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
         }
         
-        if (changeTrackingFormat.modes?.includes("git-diff") && changeStatus === "changed") {
+        if (changeTrackingFormat?.modes?.includes("git-diff") && changeStatus === "changed") {
             const diffText = gitDiff(previousMarkdown, currentMarkdown, {
                 color: false,
                 wordDiff: false
@@ -154,7 +155,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
             }
         }
         
-        if (changeTrackingFormat.modes?.includes("json") && changeStatus === "changed") {
+        if (changeTrackingFormat?.modes?.includes("json") && changeStatus === "changed") {
             try {
                 const previousData = changeTrackingFormat.schema ? 
                     await extractDataWithSchema(previousMarkdown, meta) : null;
