@@ -8,6 +8,7 @@ import { crawlController } from "../controllers/v2/crawl";
 import { crawlParamsPreviewController } from "../controllers/v2/crawl-params-preview";
 import { crawlStatusController } from "../controllers/v2/crawl-status";
 import { mapV2Controller } from "../controllers/v2/map";
+import { crawlErrorsController } from "../controllers/v2/crawl-errors";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -74,4 +75,10 @@ v2Router.get(
   "/batch/scrape/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap((req: any, res: any) => crawlStatusController(req, res, true)),
+);
+
+v2Router.get(
+  "/crawl/:jobId/errors",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlErrorsController),
 );
