@@ -43,7 +43,7 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
 
     it.concurrent("should work with extract format and custom prompt", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["extract"],
         extract: {
           prompt: "Extract the main heading and domain name from the page",
@@ -63,7 +63,7 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(response.extract).toBeDefined();
       expect(response.json).toBeUndefined();
       expect(response.extract.mainHeading).toBeDefined();
-      expect(["example.com", "iana.org"]).toContain(response.extract.domain);
+      expect(response.extract.domain).toBe("firecrawl.dev");
     }, scrapeTimeout);
   });
 
@@ -98,7 +98,7 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
 
     it.concurrent("should work with json format and custom prompt", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["json"],
         jsonOptions: {
           prompt: "Extract the main heading and domain name from the page",
@@ -118,14 +118,14 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(response.json).toBeDefined();
       expect(response.extract).toBeUndefined();
       expect(response.json.mainHeading).toBeDefined();
-      expect(["example.com", "iana.org"]).toContain(response.json.domain);
+      expect(response.json.domain).toBe("firecrawl.dev");
     }, scrapeTimeout);
   });
 
   describe("multiple formats", () => {
     it.concurrent("should return markdown and extracted data in correct fields", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["markdown", "extract"],
         extract: {
           schema: {
@@ -150,7 +150,7 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
 
     it.concurrent("should return markdown and json data in correct fields", async () => {
       const response = await scrape({
-        url: "https://example.com", 
+        url: "https://firecrawl.dev", 
         formats: ["markdown", "json"],
         jsonOptions: {
           schema: {
