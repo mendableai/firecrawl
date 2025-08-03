@@ -11,7 +11,8 @@ beforeAll(async () => {
 }, 10000 + scrapeTimeout);
 
 describe("V1 JSON/Extract Format Backward Compatibility", () => {
-  describe("extract format", () => {
+  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
+    describe("extract format", () => {
     it.concurrent("should return extracted data in 'extract' field when using format='extract'", async () => {
       const response = await scrape({
         url: "https://jsonplaceholder.typicode.com/posts/1",
@@ -172,4 +173,5 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(typeof response.json.hasLinks).toBe("boolean");
     }, scrapeTimeout);
   });
+  }
 });
