@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { scrapeOptions } from '../../controllers/v1/types';
+import { scrapeOptions } from '../../../controllers/v1/types';
 
 describe('iframe selector transformation', () => {
   describe('Zod schema transformation', () => {

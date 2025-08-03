@@ -16,7 +16,7 @@
     "test:local-no-auth": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_withAuth/*'",
     "test:full": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='(src/__tests__/e2e_noAuth|src/__tests__/e2e_withAuth)'",
     "test:prod": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='(src/__tests__/e2e_noAuth|src/__tests__/e2e_full_withAuth|src/scraper/scrapeURL)'",
-    "test:snips": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false src/__tests__/snips/*.test.ts",
+    "test:snips": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false src/__tests__/snips/**/*.test.ts",
     "harness": "tsx src/harness.ts",
     "workers": "tsc-watch --onSuccess \"node dist/src/services/queue-worker.js\"",
     "worker:production": "node dist/src/services/queue-worker.js",

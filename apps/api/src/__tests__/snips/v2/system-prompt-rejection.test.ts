@@ -1,16 +1,5 @@
-import request from "supertest";
-import { Identity, idmux, scrapeTimeout } from "./lib";
-import { ScrapeRequestInput } from "../../controllers/v2/types";
-
-const TEST_URL = "http://127.0.0.1:3002";
-
-async function scrapeV2Raw(body: ScrapeRequestInput, identity: Identity) {
-  return await request(TEST_URL)
-    .post("/v2/scrape")
-    .set("Authorization", `Bearer ${identity.apiKey}`)
-    .set("Content-Type", "application/json")
-    .send(body);
-}
+import { Identity, idmux, scrapeTimeout, scrapeRaw } from "./lib";
+import { ScrapeRequestInput } from "../../../controllers/v2/types";
 
 describe("V2 System Prompt Rejection", () => {
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
@@ -25,7 +14,7 @@ describe("V2 System Prompt Rejection", () => {
     });
 
     it("should reject systemPrompt in json format options for v2 scrape", async () => {
-      const response = await scrapeV2Raw(
+      const response = await scrapeRaw(
         {
           url: "https://firecrawl.dev",
           formats: [
@@ -49,7 +38,7 @@ describe("V2 System Prompt Rejection", () => {
     }, scrapeTimeout);
 
     it("should accept valid json format options without systemPrompt", async () => {
-      const response = await scrapeV2Raw(
+      const response = await scrapeRaw(
         {
           url: "https://firecrawl.dev",
           formats: [

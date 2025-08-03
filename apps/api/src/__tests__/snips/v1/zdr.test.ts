@@ -1,5 +1,5 @@
-import { supabase_service } from "../../services/supabase";
-import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { getJobFromGCS } from "../../../lib/gcs-jobs";
+import { supabase_service } from "../../../services/supabase";
 import { scrape, crawl, batchScrape, scrapeStatusRaw, zdrcleaner, idmux } from "./lib";
 import { readFile, stat } from "node:fs/promises";
 
