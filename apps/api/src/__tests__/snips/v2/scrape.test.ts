@@ -846,6 +846,7 @@ describe("Scrape tests", () => {
         const response = await scrapeWithFailure({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         expect(response.error).toContain("Insufficient time to process PDF");
@@ -855,6 +856,7 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
           timeout: scrapeTimeout * 5,
+          maxAge: 0,
         }, identity);
 
         // text on the last page
@@ -874,6 +876,7 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://docs.google.com/presentation/d/1pDKL1UULpr6siq_eVWE1hjqt5MKCgSSuKS_MWahnHAQ/view",
           timeout: scrapeTimeout * 5,
+          maxAge: 0,
         }, identity);
 
         expect(response.markdown).toContain("This is a test to confirm Google Slides scraping abilities.");
