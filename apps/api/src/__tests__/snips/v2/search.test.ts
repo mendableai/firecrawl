@@ -12,9 +12,11 @@ beforeAll(async () => {
 
 describe("Search tests", () => {
   it.concurrent("works", async () => {
-    await search({
+    const res = await search({
       query: "firecrawl"
     }, identity);
+    expect(res.web).toBeDefined();
+    expect(res.web?.length).toBeGreaterThan(0);
   }, 60000);
 
   it.concurrent("works with scrape", async () => {
@@ -27,7 +29,7 @@ describe("Search tests", () => {
       timeout: 120000,
     }, identity);
 
-    for (const doc of res) {
+    for (const doc of res.web ?? []) {
       expect(doc.markdown).toBeDefined();
     }
   }, 125000);

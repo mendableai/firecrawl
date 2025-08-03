@@ -1,6 +1,7 @@
 import { ScrapeRequestInput, ScrapeResponse, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, CrawlResponse, CrawlStatusResponse, OngoingCrawlsResponse, ErrorResponse, CrawlErrorsResponse, MapRequestInput, MapResponse, BatchScrapeRequestInput, SearchRequestInput } from "../../../controllers/v2/types";
 import request from "supertest";
 import { TEST_URL, scrapeTimeout, indexCooldown, Identity, IdmuxRequest, idmux } from "../lib";
+import { SearchV2Response } from "../../../lib/entities";
 
 // Re-export shared utilities for backwards compatibility
 export { TEST_URL, scrapeTimeout, indexCooldown, Identity, IdmuxRequest, idmux };
@@ -276,11 +277,9 @@ function expectSearchToSucceed(response: Awaited<ReturnType<typeof searchRaw>>) 
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);
     expect(typeof response.body.data).toBe("object");
-    expect(Array.isArray(response.body.data)).toBe(true);
-    expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function search(body: SearchRequestInput, identity: Identity): Promise<Document[]> {
+export async function search(body: SearchRequestInput, identity: Identity): Promise<SearchV2Response> {
     const raw = await searchRaw(body, identity);
     expectSearchToSucceed(raw);
     return raw.body.data;

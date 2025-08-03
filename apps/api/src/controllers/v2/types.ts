@@ -917,6 +917,8 @@ export type TeamFlags = {
   allowZDR?: boolean;
   zdrCost?: number;
   checkRobotsOnScrape?: boolean;
+  allowTeammateInvites?: boolean;
+  crawlTtlHours?: number;
 } | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
