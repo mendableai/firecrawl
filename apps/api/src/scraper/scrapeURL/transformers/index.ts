@@ -121,7 +121,7 @@ export function coerceFieldsToFormats(
 ): Document {
   const formats = new Set(meta.options.formats);
   const hasJson = meta.options.formats.find(x => typeof x === "object" && x.type === "json");
-  const hasChangeTracking = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
+  const hasChangeTrackingObject = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
   const hasScreenshot = meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot");
 
   if (!formats.has("markdown") && document.markdown !== undefined) {
@@ -225,19 +225,19 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!hasChangeTracking && document.changeTracking !== undefined) {
+  if (!hasChangeTrackingObject && !formats.has("changeTracking") && document.changeTracking !== undefined) {
     meta.logger.warn(
       "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
     delete document.changeTracking;
-  } else if (formats.has("changeTracking") && document.changeTracking === undefined) {
+  } else if ((formats.has("changeTracking") || hasChangeTrackingObject) && document.changeTracking === undefined) {
     meta.logger.warn(
       "Request had format changeTracking, but there was no changeTracking field in the result.",
     );
   }
 
   if (document.changeTracking && 
-      (!hasChangeTracking?.modes?.includes("git-diff")) && 
+      (!hasChangeTrackingObject?.modes?.includes("git-diff")) && 
       document.changeTracking.diff !== undefined) {
     meta.logger.warn(
       "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
@@ -246,7 +246,7 @@ export function coerceFieldsToFormats(
   }
   
   if (document.changeTracking && 
-      (!hasChangeTracking?.modes?.includes("json")) && 
+      (!hasChangeTrackingObject?.modes?.includes("json")) && 
       document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",
