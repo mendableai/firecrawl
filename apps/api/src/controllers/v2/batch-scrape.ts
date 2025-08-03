@@ -187,7 +187,7 @@ export async function batchScrapeController(
       crawlId: id,
       data: null,
       webhook: req.body.webhook,
-      v1: false,
+      v1: true,
       eventType: "batch_scrape.started",
     });
   }
