@@ -92,6 +92,7 @@ function execForward(fancyName: string, command: string): Promise<void> {
 
     const api = execForward("api", "pnpm start:production:nobuild");
     const worker = execForward("worker", "pnpm worker:production");
+    const indexWorker = execForward("indexWorker", "pnpm index-worker:production");
 
     try {
         await Promise.race([
@@ -107,14 +108,17 @@ function execForward(fancyName: string, command: string): Promise<void> {
             cmd,
             api,
             worker,
+            indexWorker,
         ]);
     } finally {
         console.log("=== Tearing down API and Worker...");
         exec("pkill -f 'queue-worker.js'");
         exec("pkill -f 'index.js'");
+        exec("pkill -f 'index-worker.js'");
         await Promise.all([
             api,
             worker,
+            indexWorker,
         ]);
     }
     
