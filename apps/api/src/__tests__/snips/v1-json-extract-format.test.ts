@@ -173,5 +173,9 @@ describe("V1 JSON/Extract Format Backward Compatibility", () => {
       expect(typeof response.json.hasLinks).toBe("boolean");
     }, scrapeTimeout);
   });
+  } else {
+    it("should skip LLM tests in self-hosted mode without LLM keys", () => {
+      expect(true).toBe(true);
+    });
   }
 });
