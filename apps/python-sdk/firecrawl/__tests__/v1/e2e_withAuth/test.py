@@ -449,6 +449,19 @@ def test_search_with_invalid_params():
 #     if TEST_API_KEY:
 #         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #         response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=False)
+
+def test_scrape_url_with_agent():
+    if TEST_API_KEY:
+        app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+        response = app.scrape_url(
+            'https://example.com',
+            agent={
+                'model': 'FIRE-1',
+                'prompt': 'Extract the main heading from this page'
+            }
+        )
+        assert response is not None
+        assert 'markdown' in response or 'content' in response
 #         assert response is not None
 #         assert 'markdown' in response
 #         assert 'h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm' in response['markdown']
