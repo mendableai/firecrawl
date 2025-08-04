@@ -15,7 +15,7 @@
     "@anthropic-ai/sdk": "^0.57.0",
     "@dqbd/tiktoken": "^1.0.14",
     "@supabase/supabase-js": "^2.43.1",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.2.1",
     "jest": "^30.0.5",
     "openai": "^5.10.2",
     "playwright": "^1.54.1",
