@@ -2343,7 +2343,7 @@ class FirecrawlApp:
                 else:
                     error_message = f"Server returned empty response with status {response.status_code}"
                     error_details = "No additional details available"
-+        except ValueError:
+            except ValueError:
                 error_message = f"Server returned unreadable response with status {response.status_code}"
                 error_details = "No additional details available"
         
