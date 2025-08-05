@@ -36,6 +36,7 @@ export type Format =
   | "screenshot@fullPage"
   | "extract"
   | "json"
+  | "summary"
   | "changeTracking";
 
 export const url = z.preprocess(
@@ -292,6 +293,7 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
+        "summary",
         "changeTracking",
       ])
       .array()
@@ -444,7 +446,7 @@ const extractRefineOpts = {
   message:
     "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
 };
-const extractTransform = (obj) => {
+const extractTransform = (obj: ScrapeOptions) => {
   // Handle timeout
   if (
     (obj.formats?.includes("extract") ||
@@ -464,7 +466,7 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 60000 };
   }
 
-  if (obj.agent) {
+  if ((obj as ScrapeOptions).agent) {
     obj = { ...obj, timeout: 300000 };
   }
 
@@ -480,13 +482,7 @@ const extractTransform = (obj) => {
   if (obj.jsonOptions && !obj.extract) {
     obj = {
       ...obj,
-      extract: {
-        prompt: obj.jsonOptions.prompt,
-        systemPrompt: obj.jsonOptions.systemPrompt,
-        schema: obj.jsonOptions.schema,
-        agent: obj.jsonOptions.agent,
-        mode: "llm",
-      },
+      extract: obj.jsonOptions,
     };
   }
 
@@ -498,7 +494,7 @@ export const scrapeOptions = baseScrapeOptions
     agent: z
       .object({
         model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
+        prompt: z.string(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
       })
@@ -522,7 +518,9 @@ export const scrapeOptions = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform(obj => {
+    return extractTransform(obj) as typeof obj;
+  });
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
@@ -629,7 +627,7 @@ export const scrapeRequestSchema = baseScrapeOptions
     agent: z
       .object({
         model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
+        prompt: z.string(),
         sessionId: z.string().optional(),
         waitBeforeClosingMs: z.number().optional(),
       })
@@ -645,7 +643,9 @@ export const scrapeRequestSchema = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => {
+    return extractTransform(obj) as typeof obj;
+  });
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
@@ -685,7 +685,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => extractTransform(obj) as typeof obj);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .extend({
@@ -702,7 +702,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
   .refine(waitForRefine, waitForRefineOpts)
-  .transform(extractTransform);
+  .transform((obj) => extractTransform(obj) as typeof obj);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 export type BatchScrapeRequestInput = z.input<typeof batchScrapeRequestSchema>;
@@ -794,6 +794,7 @@ export const crawlRequestSchema = crawlerOptions
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
+// Note: Map types have been transitioned to v2/types.ts while maintaining backwards compatibility
 export const mapRequestSchema = crawlerOptions
   .extend({
     url,
@@ -830,6 +831,7 @@ export type Document = {
   screenshot?: string;
   extract?: any;
   json?: any;
+  summary?: string;
   warning?: string;
   actions?: {
     screenshots?: string[];
@@ -995,6 +997,7 @@ export type BatchScrapeResponse =
     invalidURLs?: string[];
   };
 
+// Note: This type has been transitioned to v2/types.ts (see MapV2Response) while maintaining backwards compatibility
 export type MapResponse =
   | ErrorResponse
   | {
@@ -1234,6 +1237,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
   };
 }
 
+// Note: This interface has been transitioned to v2/types.ts while maintaining backwards compatibility
 export interface MapDocument {
   url: string;
   title?: string;

@@ -18,7 +18,6 @@ export async function checkShouldExtract(
   const shouldExtractCheck = await generateCompletions({
     logger: logger.child({ method: "extractService/checkShouldExtract" }),
     options: {
-      mode: "llm",
       systemPrompt: buildShouldExtractSystemPrompt(),
       prompt: buildShouldExtractUserPrompt(prompt, multiEntitySchema),
       schema: {

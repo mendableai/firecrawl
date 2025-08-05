@@ -25,6 +25,7 @@ import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
+import { fromV1ScrapeOptions } from "../v2/types";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -104,16 +105,19 @@ async function scrapeSearchResult(
       origin: options.origin,
       zeroDataRetention,
     });
+    
+    const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(options.scrapeOptions, options.timeout, options.teamId);
+
     await addScrapeJob(
       {
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: {
-          ...options.scrapeOptions,
+          ...scrapeOptions,
           maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
         },
-        internalOptions: { teamId: options.teamId, bypassBilling: true, zeroDataRetention },
+        internalOptions: { ...internalOptions, teamId: options.teamId, bypassBilling: true, zeroDataRetention },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
@@ -321,9 +325,10 @@ export async function searchController(
         );
         
         if (matchingDocWithCost) {
+          const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body.scrapeOptions, req.body.timeout, req.auth.team_id);
           return await calculateCreditsToBeBilled(
-            req.body.scrapeOptions,
-            { teamId: req.auth.team_id, bypassBilling: true, zeroDataRetention: false },
+            scrapeOptions,
+            { ...internalOptions, teamId: req.auth.team_id, bypassBilling: true, zeroDataRetention: false },
             matchingDocWithCost.document, 
             matchingDocWithCost.costTracking,
             req.acuc?.flags ?? null,

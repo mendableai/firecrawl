@@ -21,22 +21,6 @@ beforeAll(async () => {
 }, 10000 + scrapeTimeout);
 
 describe("Scrape tests", () => {
-  it.concurrent("mocking works properly", async () => {
-    // depends on falsified mock mocking-works-properly
-    // this test will fail if mock is bypassed with real data -- firecrawl.dev will never have
-    // that as its actual markdown output
-
-    const response = await scrape({
-      url: "http://firecrawl.dev",
-      useMock: "mocking-works-properly",
-      timeout: scrapeTimeout,
-    }, identity);
-
-    expect(response.markdown).toBe(
-      "this is fake data coming from the mocking system!",
-    );
-  }, scrapeTimeout);
-
   it.concurrent("works", async () => {
     const response = await scrape({
       url: "http://firecrawl.dev",
@@ -611,10 +595,7 @@ describe("Scrape tests", () => {
       it.concurrent("includes git diff when requested", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: {
-            modes: ["git-diff"]
-          },
+          formats: ["markdown", { type: "changeTracking", modes: ["git-diff"] }],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -632,11 +613,7 @@ describe("Scrape tests", () => {
       it.concurrent("includes structured output when requested", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: {
-            modes: ["json"],
-            prompt: "Summarize the changes between the previous and current content",
-          },
+          formats: ["markdown", { type: "changeTracking", modes: ["json"], prompt: "Summarize the changes between the previous and current content" }],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -651,26 +628,29 @@ describe("Scrape tests", () => {
       it.concurrent("supports schema-based extraction for change tracking", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: {
-            modes: ["json"],
-            schema: {
-              type: "object",
-              properties: {
-                pricing: { 
-                  type: "object",
-                  properties: {
-                    amount: { type: "number" },
-                    currency: { type: "string" }
+          formats: [
+            "markdown",
+            {
+              type: "changeTracking",
+              modes: ["json"],
+              schema: {
+                type: "object",
+                properties: {
+                  pricing: { 
+                    type: "object",
+                    properties: {
+                      amount: { type: "number" },
+                      currency: { type: "string" }
+                    }
+                  },
+                  features: { 
+                    type: "array", 
+                    items: { type: "string" } 
                   }
-                },
-                features: { 
-                  type: "array", 
-                  items: { type: "string" } 
                 }
               }
             }
-          },
+          ],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -693,17 +673,14 @@ describe("Scrape tests", () => {
       it.concurrent("supports both git-diff and structured modes together", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: {
-            modes: ["git-diff", "json"],
-            schema: {
+          formats: ["markdown", { type: "changeTracking", modes: ["git-diff", "json"], schema: {
               type: "object",
               properties: {
                 summary: { type: "string" },
                 changes: { type: "array", items: { type: "string" } }
               }
             }
-          },
+          }],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -727,15 +704,13 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url: "https://firecrawl.dev/",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: { tag: uuid1 },
+          formats: ["markdown", { type: "changeTracking", tag: uuid1 }],
           timeout: scrapeTimeout,
         }, identity);
 
         const response2 = await scrape({
           url: "https://firecrawl.dev/",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: { tag: uuid2 },
+          formats: ["markdown", { type: "changeTracking", tag: uuid2 }],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -746,8 +721,7 @@ describe("Scrape tests", () => {
 
         const response3 = await scrape({
           url: "https://firecrawl.dev/",
-          formats: ["markdown", "changeTracking"],
-          changeTrackingOptions: { tag: uuid1 },
+          formats: ["markdown", { type: "changeTracking", tag: uuid1 }],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -872,6 +846,7 @@ describe("Scrape tests", () => {
         const response = await scrapeWithFailure({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         expect(response.error).toContain("Insufficient time to process PDF");
@@ -881,6 +856,7 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
           timeout: scrapeTimeout * 5,
+          maxAge: 0,
         }, identity);
 
         // text on the last page
@@ -900,6 +876,7 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://docs.google.com/presentation/d/1pDKL1UULpr6siq_eVWE1hjqt5MKCgSSuKS_MWahnHAQ/view",
           timeout: scrapeTimeout * 5,
+          maxAge: 0,
         }, identity);
 
         expect(response.markdown).toContain("This is a test to confirm Google Slides scraping abilities.");
@@ -912,10 +889,7 @@ describe("Scrape tests", () => {
       it.concurrent("works", async () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
-          formats: ["json"],
-          jsonOptions: {
-            prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source.",
-            schema: {
+          formats: [{ type: "json", prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source.", schema: {
               type: "object",
               properties: {
                 company_mission: {
@@ -929,8 +903,7 @@ describe("Scrape tests", () => {
                 },
               },
               required: ["company_mission", "supports_sso", "is_open_source"],
-            },
-          },
+            } }],
           timeout: scrapeTimeout,
         }, identity);
     
@@ -943,6 +916,65 @@ describe("Scrape tests", () => {
         expect(response.json).toHaveProperty("is_open_source");
         expect(response.json.is_open_source).toBe(true);
         expect(typeof response.json.is_open_source).toBe("boolean");
+      }, scrapeTimeout);
+    });
+
+    describe("Summary format", () => {
+      it.concurrent("generates basic summary with no options required", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["summary"],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.summary!.length).toBeGreaterThan(10);
+      }, scrapeTimeout);
+
+      it.concurrent("works with markdown format", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["markdown", "summary"],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.markdown).toBeDefined();
+      }, scrapeTimeout);
+
+      it.concurrent("works alongside json format", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["summary", { type: "json", prompt: "Extract company info as JSON", schema: {
+            prompt: "Extract company info as JSON",
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string" }
+              }
+            } }
+          }],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.json).toBeDefined();
+      }, scrapeTimeout);
+
+      it.concurrent("works with multiple formats", async () => {
+        const response = await scrape({
+          url: "https://firecrawl.dev",
+          formats: ["markdown", "html", "summary"],
+          timeout: scrapeTimeout,
+        }, identity);
+
+        expect(response.summary).toBeDefined();
+        expect(typeof response.summary).toBe("string");
+        expect(response.markdown).toBeDefined();
+        expect(response.html).toBeDefined();
       }, scrapeTimeout);
     });
   }

@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
+import { v2Router } from "./routes/v2";
 import domainFrequencyRouter from "./routes/domain-frequency";
 
 const { createBullBoard } = require("@bull-board/api");
@@ -83,6 +84,7 @@ app.get("/test", async (req, res) => {
 // register router
 app.use(v0Router);
 app.use("/v1", v1Router);
+app.use("/v2", v2Router);
 app.use(adminRouter);
 app.use(domainFrequencyRouter);
 

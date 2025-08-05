@@ -5,6 +5,7 @@ import os
 from uuid import uuid4
 from dotenv import load_dotenv
 from datetime import datetime
+from firecrawl.firecrawl import SearchParams
 
 load_dotenv()
 
@@ -43,7 +44,7 @@ def test_scrape_url_invalid_api_key():
 
 # def test_blocklisted_url():
 #     blocklisted_url = "https://facebook.com/fake-test"
-#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #     with pytest.raises(Exception) as excinfo:
 #         app.scrape_url(blocklisted_url)
 #     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
@@ -154,7 +155,7 @@ def test_crawl_url_invalid_api_key():
         assert response is not None
 
 # def test_should_return_error_for_blocklisted_url():
-#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #     blocklisted_url = "https://twitter.com/fake-test"
 #     with pytest.raises(Exception) as excinfo:
 #         app.crawl_url(blocklisted_url)
@@ -249,6 +250,21 @@ def test_crawl_url_with_idempotency_key_e2e():
         app.crawl_url('https://firecrawl.dev', {'excludePaths': ['blog/*']}, True, 2, uniqueIdempotencyKey)
     assert "Idempotency key already used" in str(excinfo.value)
 
+def test_crawl_url_with_crawl_entire_domain():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    response = app.crawl_url(
+        'https://roastmywebsite.ai',
+        crawl_entire_domain=True,
+        limit=3,
+        poll_interval=2
+    )
+    assert response is not None
+    assert 'total' in response
+    assert response['total'] > 0
+    assert 'status' in response
+    assert response['status'] == 'completed'
+    assert len(response['data']) > 0
+
 def test_check_crawl_status_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     response = app.crawl_url('https://firecrawl.dev', {'scrapeOptions': {'formats': ['markdown', 'html', 'rawHtml', 'screenshot', 'links']}}, False)
@@ -320,7 +336,7 @@ def test_invalid_api_key_on_map():
         assert response is not None
 
 # def test_blocklisted_url_on_map():
-#     app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
+#     app = V1FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
 #     blocklisted_url = "https://facebook.com/fake-test"
 #     with pytest.raises(Exception) as excinfo:
 #         app.map_url(blocklisted_url)
@@ -439,7 +455,7 @@ def test_search_with_invalid_params():
 
 # def test_scrape_url_with_parse_pdf_true():
 #     if TEST_API_KEY:
-#         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#         app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #         response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=True)
 #         assert response is not None
 #         assert 'markdown' in response
@@ -447,7 +463,7 @@ def test_search_with_invalid_params():
 
 # def test_scrape_url_with_parse_pdf_false():
 #     if TEST_API_KEY:
-#         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#         app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #         response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=False)
 #         assert response is not None
 #         assert 'markdown' in response
@@ -455,9 +471,9 @@ def test_search_with_invalid_params():
 
 # def test_scrape_options_with_parse_pdf():
 #     if TEST_API_KEY:
-#         from firecrawl.firecrawl import ScrapeOptions
-#         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-#         scrape_options = ScrapeOptions(parsePDF=False, formats=['markdown'])
+#         from firecrawl.firecrawl import V1ScrapeOptions
+#         app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#         scrape_options = V1ScrapeOptions(parsePDF=False, formats=['markdown'])
 #         response = app.search("firecrawl", limit=1, scrape_options=scrape_options)
 #         assert response is not None
 #         assert 'data' in response

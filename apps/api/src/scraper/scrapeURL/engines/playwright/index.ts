@@ -22,6 +22,7 @@ export async function scrapeURLWithPlaywright(
         wait_after_load: meta.options.waitFor,
         timeout,
         headers: meta.options.headers,
+        skip_tls_verification: meta.options.skipTlsVerification,
       },
       method: "POST",
       logger: meta.logger.child("scrapeURLWithPlaywright/robustFetch"),

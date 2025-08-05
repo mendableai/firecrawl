@@ -98,7 +98,7 @@ export async function robustFetch<
           headersTimeout: 0,
           bodyTimeout: 0,
           connect: {
-            lookup: cacheableLookup.lookup,
+            // lookup: cacheableLookup.lookup,
           },
         }),
         ...(body instanceof FormData

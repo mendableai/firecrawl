@@ -175,7 +175,9 @@ export async function scrapePDF(
 ): Promise<EngineScrapeResult> {
   const startTime = Date.now();
 
-  if (!meta.options.parsePDF) {
+  const shouldParsePDF = meta.options.parsers?.pdf ?? true;
+  
+  if (!shouldParsePDF) {
     if (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null) {
       const content = (await readFile(meta.pdfPrefetch.filePath)).toString(
         "base64",

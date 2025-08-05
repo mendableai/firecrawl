@@ -17,6 +17,7 @@ import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { fromLegacyScrapeOptions } from "../v1/types";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { fromV0ScrapeOptions } from "../v2/types";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -97,7 +98,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
       robots = await this.getRobotsTxt();
     } catch (_) {}
 
-    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
+    const { scrapeOptions, internalOptions } = fromV0ScrapeOptions(
       pageOptions,
       undefined,
       undefined,

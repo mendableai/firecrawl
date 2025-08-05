@@ -1,6 +1,6 @@
 import { asyncCrawl, asyncCrawlWaitForFinish, crawl, crawlOngoing, crawlStart, Identity, idmux, scrapeTimeout } from "./lib";
 import { describe, it, expect } from "@jest/globals";
-import { filterLinks } from "../../lib/crawler";
+import { filterLinks } from "../../../lib/crawler";
 
 let identity: Identity;
 
@@ -233,45 +233,6 @@ describe("Crawl tests", () => {
             }
         }
     }, 5 * scrapeTimeout);
-
-    it.concurrent("rejects crawl when URL depth exceeds maxDepth", async () => {
-        const response = await crawlStart({
-            url: "https://firecrawl.dev/blog/category/deep/nested/path",
-            maxDepth: 2,
-            limit: 5,
-        }, identity);
-
-        expect(response.statusCode).toBe(400);
-        expect(response.body.success).toBe(false);
-        expect(response.body.error).toBe("Bad Request");
-        expect(response.body.details).toBeDefined();
-        expect(response.body.details[0].message).toBe("URL depth exceeds the specified maxDepth");
-        expect(response.body.details[0].path).toEqual(["url"]);
-    });
-
-    it.concurrent("accepts crawl when URL depth equals maxDepth", async () => {
-        const response = await crawlStart({
-            url: "https://firecrawl.dev/blog/category",
-            maxDepth: 2,
-            limit: 5,
-        }, identity);
-
-        expect(response.statusCode).toBe(200);
-        expect(response.body.success).toBe(true);
-        expect(typeof response.body.id).toBe("string");
-    });
-
-    it.concurrent("accepts crawl when URL depth is less than maxDepth", async () => {
-        const response = await crawlStart({
-            url: "https://firecrawl.dev/blog",
-            maxDepth: 5,
-            limit: 5,
-        }, identity);
-
-        expect(response.statusCode).toBe(200);
-        expect(response.body.success).toBe(true);
-        expect(typeof response.body.id).toBe("string");
-    });
 });
 
 describe("Robots.txt FFI Integration tests", () => {

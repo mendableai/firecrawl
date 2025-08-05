@@ -4,7 +4,7 @@ import { Document } from "../../../controllers/v1/types";
 import { htmlTransform } from "../lib/removeUnwantedElements";
 import { extractLinks } from "../lib/extractLinks";
 import { extractMetadata } from "../lib/extractMetadata";
-import { performLLMExtract } from "./llmExtract";
+import { performLLMExtract, performSummary } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { performAgent } from "./agent";
@@ -120,6 +120,9 @@ export function coerceFieldsToFormats(
   document: Document,
 ): Document {
   const formats = new Set(meta.options.formats);
+  const hasJson = meta.options.formats.find(x => typeof x === "object" && x.type === "json");
+  const hasChangeTrackingObject = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
+  const hasScreenshot = meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot");
 
   if (!formats.has("markdown") && document.markdown !== undefined) {
     delete document.markdown;
@@ -148,6 +151,7 @@ export function coerceFieldsToFormats(
   if (
     !formats.has("screenshot") &&
     !formats.has("screenshot@fullPage") &&
+    !hasScreenshot &&
     document.screenshot !== undefined
   ) {
     meta.logger.warn(
@@ -155,7 +159,7 @@ export function coerceFieldsToFormats(
     );
     delete document.screenshot;
   } else if (
-    (formats.has("screenshot") || formats.has("screenshot@fullPage")) &&
+    (formats.has("screenshot") || formats.has("screenshot@fullPage") || hasScreenshot) &&
     document.screenshot === undefined
   ) {
     meta.logger.warn(
@@ -174,30 +178,66 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("extract") && (document.extract !== undefined || document.json !== undefined)) {
+  // Handle v1 backward compatibility - don't delete fields based on v1OriginalFormat
+  const shouldKeepExtract = meta.internalOptions.v1OriginalFormat === "extract";
+  const shouldKeepJson = meta.internalOptions.v1OriginalFormat === "json";
+  
+  // Debug logging for v1 format investigation
+  if (meta.internalOptions.v1OriginalFormat) {
+    meta.logger.debug("coerceFieldsToFormats v1 format debug", {
+      v1OriginalFormat: meta.internalOptions.v1OriginalFormat,
+      hasJson: !!hasJson,
+      shouldKeepExtract,
+      shouldKeepJson,
+      hasExtractField: document.extract !== undefined,
+      hasJsonField: document.json !== undefined
+    });
+  }
+  
+  if (!hasJson && (document.extract !== undefined || document.json !== undefined)) {
+    // For v1 API, keep the field specified by v1OriginalFormat
+    if (!shouldKeepExtract && document.extract !== undefined) {
+      meta.logger.warn(
+        "Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      );
+      delete document.extract;
+    }
+    if (!shouldKeepJson && document.json !== undefined) {
+      meta.logger.warn(
+        "Removed json from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      );
+      delete document.json;
+    }
+  } else if (hasJson && document.extract === undefined && document.json === undefined) {
     meta.logger.warn(
-      "Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
-    );
-    delete document.extract;
-  } else if (formats.has("extract") && document.extract === undefined && document.json === undefined) {
-    meta.logger.warn(
-      "Request had format extract, but there was no extract field in the result.",
+      "Request had format json, but there was no json field in the result.",
     );
   }
 
-  if (!formats.has("changeTracking") && document.changeTracking !== undefined) {
+  if (!formats.has("summary") && document.summary !== undefined) {
+    meta.logger.warn(
+      "Removed summary from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
+    );
+    delete document.summary;
+  } else if (formats.has("summary") && document.summary === undefined) {
+    meta.logger.warn(
+      "Request had format summary, but there was no summary field in the result.",
+    );
+  }
+
+  if (!hasChangeTrackingObject && !formats.has("changeTracking") && document.changeTracking !== undefined) {
     meta.logger.warn(
       "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
     delete document.changeTracking;
-  } else if (formats.has("changeTracking") && document.changeTracking === undefined) {
+  } else if ((formats.has("changeTracking") || hasChangeTrackingObject) && document.changeTracking === undefined) {
     meta.logger.warn(
       "Request had format changeTracking, but there was no changeTracking field in the result.",
     );
   }
 
   if (document.changeTracking && 
-      (!meta.options.changeTrackingOptions?.modes?.includes("git-diff")) && 
+      (!hasChangeTrackingObject?.modes?.includes("git-diff")) && 
       document.changeTracking.diff !== undefined) {
     meta.logger.warn(
       "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
@@ -206,7 +246,7 @@ export function coerceFieldsToFormats(
   }
   
   if (document.changeTracking && 
-      (!meta.options.changeTrackingOptions?.modes?.includes("json")) && 
+      (!hasChangeTrackingObject?.modes?.includes("json")) && 
       document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",
@@ -230,6 +270,7 @@ export const transformerStack: Transformer[] = [
   uploadScreenshot,
   ...(useIndex ? [sendDocumentToIndex] : []),
   performLLMExtract,
+  performSummary,
   performAgent,
   deriveDiff,
   coerceFieldsToFormats,

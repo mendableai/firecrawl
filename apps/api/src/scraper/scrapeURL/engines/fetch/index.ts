@@ -1,7 +1,7 @@
 import * as undici from "undici";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { TimeoutError } from "../../error";
+import { SSLError, TimeoutError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import {
   InsecureConnectionError,
@@ -56,7 +56,7 @@ export async function scrapeURLWithFetch(
     try {
       const x = await Promise.race([
         undici.fetch(meta.rewrittenUrl ?? meta.url, {
-          dispatcher: await makeSecureDispatcher(meta.rewrittenUrl ?? meta.url),
+          dispatcher: await makeSecureDispatcher(meta.rewrittenUrl ?? meta.url, meta.options.skipTlsVerification),
           redirect: "follow",
           headers: meta.options.headers,
           signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
@@ -102,6 +102,8 @@ export async function scrapeURLWithFetch(
         error.cause instanceof InsecureConnectionError
       ) {
         throw error.cause;
+      } else if (error instanceof Error && error.message === "fetch failed" && error.cause && (error.cause as any).code === "CERT_HAS_EXPIRED") {
+        throw new SSLError(meta.options.skipTlsVerification);
       } else {
         throw error;
       }
