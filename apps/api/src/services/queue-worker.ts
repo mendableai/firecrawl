@@ -332,6 +332,15 @@ const separateWorkerFun = (
   queue: Queue,
   path: string,
 ): Worker => {
+  // Extract memory size from --max-old-space-size flag if present
+  const maxOldSpaceSize = process.execArgv
+    .find(arg => arg.startsWith('--max-old-space-size='))
+    ?.split('=')[1];
+  
+  // Filter out the invalid flag for worker threads
+  const filteredExecArgv = process.execArgv
+    .filter(arg => !arg.startsWith('--max-old-space-size'));
+
   const worker = new Worker(queue.name, path, {
     connection: createRedisConnection(),
     lockDuration: 30 * 1000, // 30 seconds
@@ -339,6 +348,12 @@ const separateWorkerFun = (
     maxStalledCount: 10, // 10 times
     concurrency: 6, // from k8s setup
     useWorkerThreads: true,
+    workerThreadsOptions: {
+      execArgv: filteredExecArgv,
+      resourceLimits: maxOldSpaceSize ? {
+        maxOldGenerationSizeMb: parseInt(maxOldSpaceSize)
+      } : undefined
+    }
   });
 
   return worker;
