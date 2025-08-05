@@ -1,13 +1,15 @@
 """
-FirecrawlApp Module
+Firecrawl v1 API Client - Legacy Implementation
 
-This module provides a class `FirecrawlApp` for interacting with the Firecrawl API.
-It includes methods to scrape URLs, perform searches, initiate and monitor crawl jobs,
-and check the status of these jobs. The module uses requests for HTTP communication
-and handles retries for certain HTTP status codes.
+This module provides the legacy v1 implementation of the Firecrawl SDK.
+It contains the complete `V1FirecrawlApp` class with all v1 API methods and types
+for backward compatibility. This is used by the unified client to provide
+version-specific access patterns like app.v1.scrape_url().
 
 Classes:
-    - FirecrawlApp: Main class for interacting with the Firecrawl API.
+    - V1FirecrawlApp: Legacy v1 client for interacting with the Firecrawl API.
+    - AsyncV1FirecrawlApp: Async version of the v1 client.
+    - CrawlWatcher: WebSocket-based crawl monitoring for v1.
 """
 import logging
 import os
@@ -16,14 +18,13 @@ from typing import Any, Dict, Optional, List, Union, Callable, Literal, TypeVar,
 import json
 from datetime import datetime
 import re
-import warnings
 import requests
 import pydantic
 import websockets
 import aiohttp
 import asyncio
-from pydantic import Field
 
+logger : logging.Logger = logging.getLogger("firecrawl")
 
 def get_version():
   try:
@@ -39,11 +40,9 @@ def get_version():
 
 version = get_version()
 
-logger : logging.Logger = logging.getLogger("firecrawl")
-
 T = TypeVar('T')
 
-# class FirecrawlDocumentMetadata(pydantic.BaseModel):
+# class V1FirecrawlDocumentMetadata(pydantic.BaseModel):
 #     """Metadata for a Firecrawl document."""
 #     title: Optional[str] = None
 #     description: Optional[str] = None
@@ -78,21 +77,21 @@ T = TypeVar('T')
 #     statusCode: Optional[int] = None
 #     error: Optional[str] = None
 
-class AgentOptions(pydantic.BaseModel):
+class V1AgentOptions(pydantic.BaseModel):
     """Configuration for the agent."""
     model: Literal["FIRE-1"] = "FIRE-1"
     prompt: Optional[str] = None
 
-class AgentOptionsExtract(pydantic.BaseModel):
+class V1AgentOptionsExtract(pydantic.BaseModel):
     """Configuration for the agent in extract operations."""
     model: Literal["FIRE-1"] = "FIRE-1"
 
-class ActionsResult(pydantic.BaseModel):
+class V1ActionsResult(pydantic.BaseModel):
     """Result of actions performed during scraping."""
     screenshots: List[str]
     pdfs: List[str]
 
-class ChangeTrackingData(pydantic.BaseModel):
+class V1ChangeTrackingData(pydantic.BaseModel):
     """
     Data for the change tracking format.
     """
@@ -102,7 +101,7 @@ class ChangeTrackingData(pydantic.BaseModel):
     diff: Optional[Dict[str, Any]] = None
     json_field: Optional[Any] = pydantic.Field(None, alias='json')
 
-class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
+class V1FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     """Document retrieved or processed by Firecrawl."""
     url: Optional[str] = None
     markdown: Optional[str] = None
@@ -113,31 +112,31 @@ class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     json_field: Optional[T] = pydantic.Field(None, alias='json')
     screenshot: Optional[str] = None
     metadata: Optional[Any] = None
-    actions: Optional[ActionsResult] = None
+    actions: Optional[V1ActionsResult] = None
     title: Optional[str] = None  # v1 search only
     description: Optional[str] = None  # v1 search only
-    changeTracking: Optional[ChangeTrackingData] = None
+    changeTracking: Optional[V1ChangeTrackingData] = None
 
-class LocationConfig(pydantic.BaseModel):
+class V1LocationConfig(pydantic.BaseModel):
     """Location configuration for scraping."""
     country: Optional[str] = None
     languages: Optional[List[str]] = None
 
-class WebhookConfig(pydantic.BaseModel):
+class V1WebhookConfig(pydantic.BaseModel):
     """Configuration for webhooks."""
     url: str
     headers: Optional[Dict[str, str]] = None
     metadata: Optional[Dict[str, str]] = None
     events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
 
-class ChangeTrackingOptions(pydantic.BaseModel):
+class V1ChangeTrackingOptions(pydantic.BaseModel):
     """Configuration for change tracking."""
     modes: Optional[List[Literal["git-diff", "json"]]] = None
     schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
     prompt: Optional[str] = None
     tag: Optional[str] = None
 
-class ScrapeOptions(pydantic.BaseModel):
+class V1ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
     formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
     headers: Optional[Dict[str, str]] = None
@@ -146,92 +145,92 @@ class ScrapeOptions(pydantic.BaseModel):
     onlyMainContent: Optional[bool] = None
     waitFor: Optional[int] = None
     timeout: Optional[int] = 30000
-    location: Optional[LocationConfig] = None
+    location: Optional[V1LocationConfig] = None
     mobile: Optional[bool] = None
     skipTlsVerification: Optional[bool] = None
     removeBase64Images: Optional[bool] = None
     blockAds: Optional[bool] = None
     proxy: Optional[Literal["basic", "stealth", "auto"]] = None
-    changeTrackingOptions: Optional[ChangeTrackingOptions] = None
+    changeTrackingOptions: Optional[V1ChangeTrackingOptions] = None
     maxAge: Optional[int] = None
     storeInCache: Optional[bool] = None
     parsePDF: Optional[bool] = None
 
-class WaitAction(pydantic.BaseModel):
+class V1WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
     type: Literal["wait"]
     milliseconds: Optional[int] = None
     selector: Optional[str] = None
 
-class ScreenshotAction(pydantic.BaseModel):
+class V1ScreenshotAction(pydantic.BaseModel):
     """Screenshot action to perform during scraping."""
     type: Literal["screenshot"]
     fullPage: Optional[bool] = None
     quality: Optional[int] = None
 
-class ClickAction(pydantic.BaseModel):
+class V1ClickAction(pydantic.BaseModel):
     """Click action to perform during scraping."""
     type: Literal["click"]
     selector: str
 
-class WriteAction(pydantic.BaseModel):
+class V1WriteAction(pydantic.BaseModel):
     """Write action to perform during scraping."""
     type: Literal["write"]
     text: str
 
-class PressAction(pydantic.BaseModel):
+class V1PressAction(pydantic.BaseModel):
     """Press action to perform during scraping."""
     type: Literal["press"]
     key: str
 
-class ScrollAction(pydantic.BaseModel):
+class V1ScrollAction(pydantic.BaseModel):
     """Scroll action to perform during scraping."""
     type: Literal["scroll"]
     direction: Literal["up", "down"]
     selector: Optional[str] = None
 
-class ScrapeAction(pydantic.BaseModel):
+class V1ScrapeAction(pydantic.BaseModel):
     """Scrape action to perform during scraping."""
     type: Literal["scrape"]
 
-class ExecuteJavascriptAction(pydantic.BaseModel):
+class V1ExecuteJavascriptAction(pydantic.BaseModel):
     """Execute javascript action to perform during scraping."""
     type: Literal["executeJavascript"]
     script: str
 
-class PDFAction(pydantic.BaseModel):
+class V1PDFAction(pydantic.BaseModel):
     """PDF action to perform during scraping."""
     type: Literal["pdf"]
     format: Optional[Literal["A0", "A1", "A2", "A3", "A4", "A5", "A6", "Letter", "Legal", "Tabloid", "Ledger"]] = None
     landscape: Optional[bool] = None
     scale: Optional[float] = None
 
-class ExtractAgent(pydantic.BaseModel):
+class V1ExtractAgent(pydantic.BaseModel):
     """Configuration for the agent in extract operations."""
     model: Literal["FIRE-1"] = "FIRE-1"
 
-class JsonConfig(pydantic.BaseModel):
+class V1JsonConfig(pydantic.BaseModel):
     """Configuration for extraction."""
     prompt: Optional[str] = None
     schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
     systemPrompt: Optional[str] = None
-    agent: Optional[ExtractAgent] = None
+    agent: Optional[V1ExtractAgent] = None
 
-class ScrapeParams(ScrapeOptions):
+class V1ScrapeParams(V1ScrapeOptions):
     """Parameters for scraping operations."""
-    extract: Optional[JsonConfig] = None
-    jsonOptions: Optional[JsonConfig] = None
-    actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None
-    agent: Optional[AgentOptions] = None
-    webhook: Optional[WebhookConfig] = None
+    extract: Optional[V1JsonConfig] = None
+    jsonOptions: Optional[V1JsonConfig] = None
+    actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None
+    agent: Optional[V1AgentOptions] = None
+    webhook: Optional[V1WebhookConfig] = None
 
-class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
+class V1ScrapeResponse(V1FirecrawlDocument[T], Generic[T]):
     """Response from scraping operations."""
     success: bool = True
     warning: Optional[str] = None
     error: Optional[str] = None
 
-class BatchScrapeResponse(pydantic.BaseModel):
+class V1BatchScrapeResponse(pydantic.BaseModel):
     """Response from batch scrape operations."""
     id: Optional[str] = None
     url: Optional[str] = None
@@ -239,7 +238,7 @@ class BatchScrapeResponse(pydantic.BaseModel):
     error: Optional[str] = None
     invalidURLs: Optional[List[str]] = None
 
-class BatchScrapeStatusResponse(pydantic.BaseModel):
+class V1BatchScrapeStatusResponse(pydantic.BaseModel):
     """Response from batch scrape status checks."""
     success: bool = True
     status: Literal["scraping", "completed", "failed", "cancelled"]
@@ -248,9 +247,9 @@ class BatchScrapeStatusResponse(pydantic.BaseModel):
     creditsUsed: int
     expiresAt: datetime
     next: Optional[str] = None
-    data: List[FirecrawlDocument]
+    data: List[V1FirecrawlDocument]
 
-class CrawlParams(pydantic.BaseModel):
+class V1CrawlParams(pydantic.BaseModel):
     """Parameters for crawling operations."""
     includePaths: Optional[List[str]] = None
     excludePaths: Optional[List[str]] = None
@@ -261,8 +260,8 @@ class CrawlParams(pydantic.BaseModel):
     crawlEntireDomain: Optional[bool] = None
     allowExternalLinks: Optional[bool] = None
     ignoreSitemap: Optional[bool] = None
-    scrapeOptions: Optional[ScrapeOptions] = None
-    webhook: Optional[Union[str, WebhookConfig]] = None
+    scrapeOptions: Optional[V1ScrapeOptions] = None
+    webhook: Optional[Union[str, V1WebhookConfig]] = None
     deduplicateSimilarURLs: Optional[bool] = None
     ignoreQueryParameters: Optional[bool] = None
     regexOnFullURL: Optional[bool] = None
@@ -270,14 +269,14 @@ class CrawlParams(pydantic.BaseModel):
     maxConcurrency: Optional[int] = None
     allowSubdomains: Optional[bool] = None
 
-class CrawlResponse(pydantic.BaseModel):
+class V1CrawlResponse(pydantic.BaseModel):
     """Response from crawling operations."""
     id: Optional[str] = None
     url: Optional[str] = None
     success: bool = True
     error: Optional[str] = None
 
-class CrawlStatusResponse(pydantic.BaseModel):
+class V1CrawlStatusResponse(pydantic.BaseModel):
     """Response from crawl status checks."""
     success: bool = True
     status: Literal["scraping", "completed", "failed", "cancelled"]
@@ -286,14 +285,14 @@ class CrawlStatusResponse(pydantic.BaseModel):
     creditsUsed: int
     expiresAt: datetime
     next: Optional[str] = None
-    data: List[FirecrawlDocument]
+    data: List[V1FirecrawlDocument]
 
-class CrawlErrorsResponse(pydantic.BaseModel):
+class V1CrawlErrorsResponse(pydantic.BaseModel):
     """Response from crawl/batch scrape error monitoring."""
     errors: List[Dict[str, str]]  # {id: str, timestamp: str, url: str, error: str}
     robotsBlocked: List[str]
 
-class MapParams(pydantic.BaseModel):
+class V1MapParams(pydantic.BaseModel):
     """Parameters for mapping operations."""
     search: Optional[str] = None
     ignoreSitemap: Optional[bool] = None
@@ -303,13 +302,13 @@ class MapParams(pydantic.BaseModel):
     timeout: Optional[int] = 30000
     useIndex: Optional[bool] = None
 
-class MapResponse(pydantic.BaseModel):
+class V1MapResponse(pydantic.BaseModel):
     """Response from mapping operations."""
     success: bool = True
     links: Optional[List[str]] = None
     error: Optional[str] = None
 
-class ExtractParams(pydantic.BaseModel):
+class V1ExtractParams(pydantic.BaseModel):
     """Parameters for extracting information from URLs."""
     prompt: Optional[str] = None
     schema_field: Optional[Any] = pydantic.Field(None, alias='schema')
@@ -319,9 +318,9 @@ class ExtractParams(pydantic.BaseModel):
     includeSubdomains: Optional[bool] = None
     origin: Optional[str] = None
     showSources: Optional[bool] = None
-    scrapeOptions: Optional[ScrapeOptions] = None
+    scrapeOptions: Optional[V1ScrapeOptions] = None
 
-class ExtractResponse(pydantic.BaseModel, Generic[T]):
+class V1ExtractResponse(pydantic.BaseModel, Generic[T]):
     """Response from extract operations."""
     id: Optional[str] = None
     status: Optional[Literal["processing", "completed", "failed"]] = None
@@ -332,7 +331,7 @@ class ExtractResponse(pydantic.BaseModel, Generic[T]):
     warning: Optional[str] = None
     sources: Optional[Dict[Any, Any]] = None
 
-class SearchParams(pydantic.BaseModel):
+class V1SearchParams(pydantic.BaseModel):
     query: str
     limit: Optional[int] = 5
     tbs: Optional[str] = None
@@ -342,16 +341,16 @@ class SearchParams(pydantic.BaseModel):
     location: Optional[str] = None
     origin: Optional[str] = "api"
     timeout: Optional[int] = 60000
-    scrapeOptions: Optional[ScrapeOptions] = None
+    scrapeOptions: Optional[V1ScrapeOptions] = None
 
-class SearchResponse(pydantic.BaseModel):
+class V1SearchResponse(pydantic.BaseModel):
     """Response from search operations."""
     success: bool = True
-    data: List[FirecrawlDocument]
+    data: List[V1FirecrawlDocument]
     warning: Optional[str] = None
     error: Optional[str] = None
 
-class GenerateLLMsTextParams(pydantic.BaseModel):
+class V1GenerateLLMsTextParams(pydantic.BaseModel):
     """
     Parameters for the LLMs.txt generation operation.
     """
@@ -360,7 +359,7 @@ class GenerateLLMsTextParams(pydantic.BaseModel):
     cache: Optional[bool] = True
     __experimental_stream: Optional[bool] = None
 
-class DeepResearchParams(pydantic.BaseModel):
+class V1DeepResearchParams(pydantic.BaseModel):
     """
     Parameters for the deep research operation.
     """
@@ -371,7 +370,7 @@ class DeepResearchParams(pydantic.BaseModel):
     systemPrompt: Optional[str] = None
     __experimental_streamSteps: Optional[bool] = None
 
-class DeepResearchResponse(pydantic.BaseModel):
+class V1DeepResearchResponse(pydantic.BaseModel):
     """
     Response from the deep research operation.
     """
@@ -379,7 +378,7 @@ class DeepResearchResponse(pydantic.BaseModel):
     id: str
     error: Optional[str] = None
 
-class DeepResearchStatusResponse(pydantic.BaseModel):
+class V1DeepResearchStatusResponse(pydantic.BaseModel):
     """
     Status response from the deep research operation.
     """
@@ -394,25 +393,25 @@ class DeepResearchStatusResponse(pydantic.BaseModel):
     sources: List[Dict[str, Any]]
     summaries: List[str]
 
-class GenerateLLMsTextResponse(pydantic.BaseModel):
+class V1GenerateLLMsTextResponse(pydantic.BaseModel):
     """Response from LLMs.txt generation operations."""
     success: bool = True
     id: str
     error: Optional[str] = None
 
-class GenerateLLMsTextStatusResponseData(pydantic.BaseModel):
+class V1GenerateLLMsTextStatusResponseData(pydantic.BaseModel):
     llmstxt: str
     llmsfulltxt: Optional[str] = None
 
-class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
+class V1GenerateLLMsTextStatusResponse(pydantic.BaseModel):
     """Status response from LLMs.txt generation operations."""
     success: bool = True
-    data: Optional[GenerateLLMsTextStatusResponseData] = None
+    data: Optional[V1GenerateLLMsTextStatusResponseData] = None
     status: Literal["processing", "completed", "failed"]
     error: Optional[str] = None
     expiresAt: str
     
-class SearchResponse(pydantic.BaseModel):
+class V1SearchResponse(pydantic.BaseModel):
     """
     Response from the search operation.
     """
@@ -421,7 +420,7 @@ class SearchResponse(pydantic.BaseModel):
     warning: Optional[str] = None
     error: Optional[str] = None
 
-class ExtractParams(pydantic.BaseModel):
+class V1ExtractParams(pydantic.BaseModel):
     """
     Parameters for the extract operation.
     """
@@ -435,10 +434,25 @@ class ExtractParams(pydantic.BaseModel):
     show_sources: Optional[bool] = False
     agent: Optional[Dict[str, Any]] = None
 
-class FirecrawlApp:
+class V1FirecrawlApp:
+    """
+    Legacy v1 Firecrawl client for backward compatibility.
+    
+    This class provides the complete v1 API implementation including:
+    - URL scraping with various formats and options
+    - Website crawling with monitoring capabilities
+    - Batch scraping operations
+    - Search functionality
+    - Data extraction with LLM integration
+    - Deep research capabilities
+    - LLMs.txt generation
+    
+    This is used by the unified client to provide version-specific access
+    through app.v1.method_name() patterns.
+    """
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         """
-        Initialize the FirecrawlApp instance with API key, API URL.
+        Initialize the V1FirecrawlApp instance with API key, API URL.
 
         Args:
             api_key (Optional[str]): API key for authenticating with the Firecrawl API.
@@ -452,7 +466,7 @@ class FirecrawlApp:
             logger.warning("No API key provided for cloud service")
             raise ValueError('No API key provided')
             
-        logger.debug(f"Initialized FirecrawlApp with API URL: {self.api_url}")
+        logger.debug(f"Initialized V1FirecrawlApp with API URL: {self.api_url}")
 
     def scrape_url(
             self,
@@ -465,21 +479,21 @@ class FirecrawlApp:
             only_main_content: Optional[bool] = None,
             wait_for: Optional[int] = None,
             timeout: Optional[int] = 30000,
-            location: Optional[LocationConfig] = None,
+            location: Optional[V1LocationConfig] = None,
             mobile: Optional[bool] = None,
             skip_tls_verification: Optional[bool] = None,
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
             proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
             parse_pdf: Optional[bool] = None,
-            extract: Optional[JsonConfig] = None,
-            json_options: Optional[JsonConfig] = None,
-            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-            change_tracking_options: Optional[ChangeTrackingOptions] = None,
+            extract: Optional[V1JsonConfig] = None,
+            json_options: Optional[V1JsonConfig] = None,
+            actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+            change_tracking_options: Optional[V1ChangeTrackingOptions] = None,
             max_age: Optional[int] = None,
             store_in_cache: Optional[bool] = None,
             zero_data_retention: Optional[bool] = None,
-            **kwargs) -> ScrapeResponse[Any]:
+            **kwargs) -> V1ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
 
@@ -595,7 +609,7 @@ class FirecrawlApp:
             try:
                 response_json = response.json()
                 if response_json.get('success') and 'data' in response_json:
-                    return ScrapeResponse(**response_json['data'])
+                    return V1ScrapeResponse(**response_json['data'])
                 elif "error" in response_json:
                     raise Exception(f'Failed to scrape URL. Error: {response_json["error"]}')
                 else:
@@ -616,8 +630,8 @@ class FirecrawlApp:
             country: Optional[str] = None,
             location: Optional[str] = None,
             timeout: Optional[int] = 30000,
-            scrape_options: Optional[ScrapeOptions] = None,
-            **kwargs) -> SearchResponse:
+            scrape_options: Optional[V1ScrapeOptions] = None,
+            **kwargs) -> V1SearchResponse:
         """
         Search for content using Firecrawl.
 
@@ -672,7 +686,7 @@ class FirecrawlApp:
         _integration = search_params.get('integration')
 
         # Create final params object
-        final_params = SearchParams(query=query, **search_params)
+        final_params = V1SearchParams(query=query, **search_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['origin'] = f"python-sdk@{version}"
 
@@ -690,7 +704,7 @@ class FirecrawlApp:
             try:
                 response_json = response.json()
                 if response_json.get('success') and 'data' in response_json:
-                    return SearchResponse(**response_json)
+                    return V1SearchResponse(**response_json)
                 elif "error" in response_json:
                     raise Exception(f'Search failed. Error: {response_json["error"]}')
                 else:
@@ -713,8 +727,8 @@ class FirecrawlApp:
         crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[ScrapeOptions] = None,
-        webhook: Optional[Union[str, WebhookConfig]] = None,
+        scrape_options: Optional[V1ScrapeOptions] = None,
+        webhook: Optional[Union[str, V1WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
@@ -725,7 +739,7 @@ class FirecrawlApp:
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> CrawlStatusResponse:
+    ) -> V1CrawlStatusResponse:
         """
         Crawl a website starting from a URL.
 
@@ -809,7 +823,7 @@ class FirecrawlApp:
         _integration = crawl_params.get('integration')
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
+        final_params = V1CrawlParams(**crawl_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
@@ -843,8 +857,8 @@ class FirecrawlApp:
         crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[ScrapeOptions] = None,
-        webhook: Optional[Union[str, WebhookConfig]] = None,
+        scrape_options: Optional[V1ScrapeOptions] = None,
+        webhook: Optional[Union[str, V1WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
@@ -854,7 +868,7 @@ class FirecrawlApp:
         zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> CrawlResponse:
+    ) -> V1CrawlResponse:
         """
         Start an asynchronous crawl job.
 
@@ -869,8 +883,8 @@ class FirecrawlApp:
             crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
-            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            scrape_options (Optional[V1ScrapeOptions]): Page scraping configuration
+            webhook (Optional[Union[str, V1WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
@@ -882,7 +896,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            CrawlResponse with:
+            V1CrawlResponse with:
             * success - Whether crawl started successfully
             * id - Unique identifier for the crawl job
             * url - Status check URL for the crawl
@@ -937,7 +951,7 @@ class FirecrawlApp:
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
+        final_params = V1CrawlParams(**crawl_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
@@ -948,13 +962,13 @@ class FirecrawlApp:
 
         if response.status_code == 200:
             try:
-                return CrawlResponse(**response.json())
+                return V1CrawlResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
             self._handle_error(response, 'start crawl job')
 
-    def check_crawl_status(self, id: str) -> CrawlStatusResponse:
+    def check_crawl_status(self, id: str) -> V1CrawlStatusResponse:
         """
         Check the status and results of a crawl job.
 
@@ -962,7 +976,7 @@ class FirecrawlApp:
             id: Unique identifier for the crawl job
 
         Returns:
-            CrawlStatusResponse containing:
+            V1CrawlStatusResponse containing:
 
             Status Information:
             * status - Current state (scraping/completed/failed/cancelled)
@@ -1030,14 +1044,14 @@ class FirecrawlApp:
             if 'next' in status_data:
                 response['next'] = status_data['next']
 
-            return CrawlStatusResponse(
+            return V1CrawlStatusResponse(
                 success=False if 'error' in status_data else True,
                 **response
             )
         else:
             self._handle_error(response, 'check crawl status')
     
-    def check_crawl_errors(self, id: str) -> CrawlErrorsResponse:
+    def check_crawl_errors(self, id: str) -> V1CrawlErrorsResponse:
         """
         Returns information about crawl errors.
 
@@ -1045,7 +1059,7 @@ class FirecrawlApp:
             id (str): The ID of the crawl job
 
         Returns:
-            CrawlErrorsResponse containing:
+            V1CrawlErrorsResponse containing:
             * errors (List[Dict[str, str]]): List of errors with fields:
                 - id (str): Error ID
                 - timestamp (str): When the error occurred
@@ -1060,7 +1074,7 @@ class FirecrawlApp:
         response = self._get_request(f'{self.api_url}/v1/crawl/{id}/errors', headers)
         if response.status_code == 200:
             try:
-                return CrawlErrorsResponse(**response.json())
+                return V1CrawlErrorsResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -1104,8 +1118,8 @@ class FirecrawlApp:
             crawl_entire_domain: Optional[bool] = None,
             allow_external_links: Optional[bool] = None,
             ignore_sitemap: Optional[bool] = None,
-            scrape_options: Optional[ScrapeOptions] = None,
-            webhook: Optional[Union[str, WebhookConfig]] = None,
+            scrape_options: Optional[V1ScrapeOptions] = None,
+            webhook: Optional[Union[str, V1WebhookConfig]] = None,
             deduplicate_similar_urls: Optional[bool] = None,
             ignore_query_parameters: Optional[bool] = None,
             regex_on_full_url: Optional[bool] = None,
@@ -1115,7 +1129,7 @@ class FirecrawlApp:
             zero_data_retention: Optional[bool] = None,
             idempotency_key: Optional[str] = None,
             **kwargs
-    ) -> 'CrawlWatcher':
+    ) -> 'V1CrawlWatcher':
         """
         Initiate a crawl job and return a CrawlWatcher to monitor the job via WebSocket.
 
@@ -1130,8 +1144,8 @@ class FirecrawlApp:
             crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
-            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            scrape_options (Optional[V1ScrapeOptions]): Page scraping configuration
+            webhook (Optional[Union[str, V1WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
@@ -1143,7 +1157,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            CrawlWatcher: An instance to monitor the crawl job via WebSocket
+            V1CrawlWatcher: An instance to monitor the crawl job via WebSocket
 
         Raises:
             Exception: If crawl job fails to start
@@ -1172,7 +1186,7 @@ class FirecrawlApp:
             **kwargs
         )
         if crawl_response.success and crawl_response.id:
-            return CrawlWatcher(crawl_response.id, self)
+            return V1CrawlWatcher(crawl_response.id, self)
         else:
             raise Exception("Crawl job failed to start")
 
@@ -1187,7 +1201,7 @@ class FirecrawlApp:
             limit: Optional[int] = None,
             timeout: Optional[int] = 30000,
             use_index: Optional[bool] = None,
-            **kwargs) -> MapResponse:
+            **kwargs) -> V1MapResponse:
         """
         Map and discover links from a URL.
 
@@ -1202,7 +1216,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            MapResponse: Response containing:
+            V1MapResponse: Response containing:
                 * success (bool): Whether request succeeded
                 * links (List[str]): Discovered URLs
                 * error (Optional[str]): Error message if any
@@ -1237,7 +1251,7 @@ class FirecrawlApp:
         _integration = map_params.get('integration')
 
         # Create final params object
-        final_params = MapParams(**map_params)
+        final_params = V1MapParams(**map_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
@@ -1256,7 +1270,7 @@ class FirecrawlApp:
             try:
                 response_json = response.json()
                 if response_json.get('success') and 'links' in response_json:
-                    return MapResponse(**response_json)
+                    return V1MapResponse(**response_json)
                 elif "error" in response_json:
                     raise Exception(f'Map failed. Error: {response_json["error"]}')
                 else:
@@ -1277,22 +1291,22 @@ class FirecrawlApp:
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
         timeout: Optional[int] = 30000,
-        location: Optional[LocationConfig] = None,
+        location: Optional[V1LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
-        extract: Optional[JsonConfig] = None,
-        json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-        agent: Optional[AgentOptions] = None,
+        extract: Optional[V1JsonConfig] = None,
+        json_options: Optional[V1JsonConfig] = None,
+        actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+        agent: Optional[V1AgentOptions] = None,
         poll_interval: Optional[int] = 2,
         max_concurrency: Optional[int] = None,
         zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> BatchScrapeStatusResponse:
+    ) -> V1BatchScrapeStatusResponse:
         """
         Batch scrape multiple URLs and monitor until completion.
 
@@ -1321,7 +1335,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            BatchScrapeStatusResponse with:
+            V1BatchScrapeStatusResponse with:
             * Scraping status and progress
             * Scraped content for each URL
             * Success/error information
@@ -1384,7 +1398,7 @@ class FirecrawlApp:
         scrape_params.update(kwargs)
 
         # Create final params object
-        final_params = ScrapeParams(**scrape_params)
+        final_params = V1ScrapeParams(**scrape_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['urls'] = urls
         params_dict['origin'] = f"python-sdk@{version}"
@@ -1418,21 +1432,21 @@ class FirecrawlApp:
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
         timeout: Optional[int] = 30000,
-        location: Optional[LocationConfig] = None,
+        location: Optional[V1LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
-        extract: Optional[JsonConfig] = None,
-        json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-        agent: Optional[AgentOptions] = None,
+        extract: Optional[V1JsonConfig] = None,
+        json_options: Optional[V1JsonConfig] = None,
+        actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+        agent: Optional[V1AgentOptions] = None,
         max_concurrency: Optional[int] = None,
         idempotency_key: Optional[str] = None,
         zero_data_retention: Optional[bool] = None,
         **kwargs
-    ) -> BatchScrapeResponse:
+    ) -> V1BatchScrapeResponse:
         """
         Initiate a batch scrape job asynchronously.
 
@@ -1461,7 +1475,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            BatchScrapeResponse with:
+            V1BatchScrapeResponse with:
             * success - Whether job started successfully
             * id - Unique identifier for the job
             * url - Status check URL
@@ -1525,7 +1539,7 @@ class FirecrawlApp:
         scrape_params.update(kwargs)
 
         # Create final params object
-        final_params = ScrapeParams(**scrape_params)
+        final_params = V1ScrapeParams(**scrape_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['urls'] = urls
         params_dict['origin'] = f"python-sdk@{version}"
@@ -1541,7 +1555,7 @@ class FirecrawlApp:
 
         if response.status_code == 200:
             try:
-                return BatchScrapeResponse(**response.json())
+                return V1BatchScrapeResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -1558,21 +1572,21 @@ class FirecrawlApp:
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
         timeout: Optional[int] = 30000,
-        location: Optional[LocationConfig] = None,
+        location: Optional[V1LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
-        extract: Optional[JsonConfig] = None,
-        json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-        agent: Optional[AgentOptions] = None,
+        extract: Optional[V1JsonConfig] = None,
+        json_options: Optional[V1JsonConfig] = None,
+        actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+        agent: Optional[V1AgentOptions] = None,
         max_concurrency: Optional[int] = None,
         zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> 'CrawlWatcher':
+    ) -> 'V1CrawlWatcher':
         """
         Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
@@ -1601,7 +1615,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            CrawlWatcher: An instance to monitor the batch scrape job via WebSocket
+            V1CrawlWatcher: An instance to monitor the batch scrape job via WebSocket
 
         Raises:
             Exception: If batch scrape job fails to start
@@ -1661,7 +1675,7 @@ class FirecrawlApp:
         scrape_params.update(kwargs)
 
         # Create final params object
-        final_params = ScrapeParams(**scrape_params)
+        final_params = V1ScrapeParams(**scrape_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['urls'] = urls
         params_dict['origin'] = f"python-sdk@{version}"
@@ -1677,9 +1691,9 @@ class FirecrawlApp:
 
         if response.status_code == 200:
             try:
-                crawl_response = BatchScrapeResponse(**response.json())
+                crawl_response = V1BatchScrapeResponse(**response.json())
                 if crawl_response.success and crawl_response.id:
-                    return CrawlWatcher(crawl_response.id, self)
+                    return V1CrawlWatcher(crawl_response.id, self)
                 else:
                     raise Exception("Batch scrape job failed to start")
             except:
@@ -1687,7 +1701,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'start batch scrape job')
     
-    def check_batch_scrape_status(self, id: str) -> BatchScrapeStatusResponse:
+    def check_batch_scrape_status(self, id: str) -> V1BatchScrapeStatusResponse:
         """
         Check the status of a batch scrape job using the Firecrawl API.
 
@@ -1695,7 +1709,7 @@ class FirecrawlApp:
             id (str): The ID of the batch scrape job.
 
         Returns:
-            BatchScrapeStatusResponse: The status of the batch scrape job.
+            V1BatchScrapeStatusResponse: The status of the batch scrape job.
 
         Raises:
             Exception: If the status check request fails.
@@ -1735,7 +1749,7 @@ class FirecrawlApp:
                             break
                     status_data['data'] = data
 
-            return BatchScrapeStatusResponse(**{
+            return V1BatchScrapeStatusResponse(**{
                 'success': False if 'error' in status_data else True,
                 'status': status_data.get('status'),
                 'total': status_data.get('total'),
@@ -1749,7 +1763,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check batch scrape status')
 
-    def check_batch_scrape_errors(self, id: str) -> CrawlErrorsResponse:
+    def check_batch_scrape_errors(self, id: str) -> V1CrawlErrorsResponse:
         """
         Returns information about batch scrape errors.
 
@@ -1757,7 +1771,7 @@ class FirecrawlApp:
             id (str): The ID of the crawl job.
 
         Returns:
-            CrawlErrorsResponse containing:
+            V1CrawlErrorsResponse containing:
             * errors (List[Dict[str, str]]): List of errors with fields:
               * id (str): Error ID
               * timestamp (str): When the error occurred
@@ -1772,7 +1786,7 @@ class FirecrawlApp:
         response = self._get_request(f'{self.api_url}/v1/batch/scrape/{id}/errors', headers)
         if response.status_code == 200:
             try:
-                return CrawlErrorsResponse(**response.json())
+                return V1CrawlErrorsResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -1789,7 +1803,7 @@ class FirecrawlApp:
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
             agent: Optional[Dict[str, Any]] = None,
-            **kwargs) -> ExtractResponse[Any]:
+            **kwargs) -> V1ExtractResponse[Any]:
         """
         Extract structured information from URLs.
 
@@ -1805,7 +1819,7 @@ class FirecrawlApp:
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            ExtractResponse[Any] with:
+            V1ExtractResponse[Any] with:
             * success (bool): Whether request succeeded
             * data (Optional[Any]): Extracted data matching schema
             * error (Optional[str]): Error message if any
@@ -1877,7 +1891,7 @@ class FirecrawlApp:
                             except:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             if status_data['status'] == 'completed':
-                                return ExtractResponse(**status_data)
+                                return V1ExtractResponse(**status_data)
                             elif status_data['status'] in ['failed', 'cancelled']:
                                 raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
                         else:
@@ -1891,9 +1905,9 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e), 500)
 
-        return ExtractResponse(success=False, error="Internal server error.")
+        return V1ExtractResponse(success=False, error="Internal server error.")
     
-    def get_extract_status(self, job_id: str) -> ExtractResponse[Any]:
+    def get_extract_status(self, job_id: str) -> V1ExtractResponse[Any]:
         """
         Retrieve the status of an extract job.
 
@@ -1911,7 +1925,7 @@ class FirecrawlApp:
             response = self._get_request(f'{self.api_url}/v1/extract/{job_id}', headers)
             if response.status_code == 200:
                 try:
-                    return ExtractResponse(**response.json())
+                    return V1ExtractResponse(**response.json())
                 except:
                     raise Exception(f'Failed to parse Firecrawl response as JSON.')
             else:
@@ -1929,7 +1943,7 @@ class FirecrawlApp:
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
-            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
+            agent: Optional[Dict[str, Any]] = None) -> V1ExtractResponse[Any]:
         """
         Initiate an asynchronous extract job.
 
@@ -1979,7 +1993,7 @@ class FirecrawlApp:
             response = self._post_request(f'{self.api_url}/v1/extract', request_data, headers)
             if response.status_code == 200:
                 try:
-                    return ExtractResponse(**response.json())
+                    return V1ExtractResponse(**response.json())
                 except:
                     raise Exception(f'Failed to parse Firecrawl response as JSON.')
             else:
@@ -1994,7 +2008,7 @@ class FirecrawlApp:
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
             cache: Optional[bool] = None,
-            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
+            experimental_stream: Optional[bool] = None) -> V1GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and poll until completion.
 
@@ -2015,7 +2029,7 @@ class FirecrawlApp:
         Raises:
             Exception: If generation fails
         """
-        params = GenerateLLMsTextParams(
+        params = V1GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
             cache=cache,
@@ -2031,7 +2045,7 @@ class FirecrawlApp:
         )
         
         if not response.success or not response.id:
-            return GenerateLLMsTextStatusResponse(
+            return V1GenerateLLMsTextStatusResponse(
                 success=False,
                 error='Failed to start LLMs.txt generation',
                 status='failed',
@@ -2047,7 +2061,7 @@ class FirecrawlApp:
             elif status.status == 'failed':
                 return status
             elif status.status != 'processing':
-                return GenerateLLMsTextStatusResponse(
+                return V1GenerateLLMsTextStatusResponse(
                     success=False,
                     error='LLMs.txt generation job terminated unexpectedly',
                     status='failed',
@@ -2063,7 +2077,7 @@ class FirecrawlApp:
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
             cache: Optional[bool] = None,
-            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
+            experimental_stream: Optional[bool] = None) -> V1GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation operation.
 
@@ -2083,7 +2097,7 @@ class FirecrawlApp:
         Raises:
             Exception: If the generation job initiation fails.
         """
-        params = GenerateLLMsTextParams(
+        params = V1GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
             cache=cache,
@@ -2101,7 +2115,7 @@ class FirecrawlApp:
             print("response", response)
             if response.get('success'):
                 try:
-                    return GenerateLLMsTextResponse(**response)
+                    return V1GenerateLLMsTextResponse(**response)
                 except:
                     raise Exception('Failed to parse Firecrawl response as JSON.')
             else:
@@ -2109,12 +2123,12 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e))
 
-        return GenerateLLMsTextResponse(
+        return V1GenerateLLMsTextResponse(
             success=False,
             error='Internal server error'
         )
 
-    def check_generate_llms_text_status(self, id: str) -> GenerateLLMsTextStatusResponse:
+    def check_generate_llms_text_status(self, id: str) -> V1GenerateLLMsTextStatusResponse:
         """
         Check the status of a LLMs.txt generation operation.
 
@@ -2140,7 +2154,7 @@ class FirecrawlApp:
             if response.status_code == 200:
                 try:
                     json_data = response.json()
-                    return GenerateLLMsTextStatusResponse(**json_data)
+                    return V1GenerateLLMsTextStatusResponse(**json_data)
                 except Exception as e:
                     raise Exception(f'Failed to parse Firecrawl response as GenerateLLMsTextStatusResponse: {str(e)}')
             elif response.status_code == 404:
@@ -2150,7 +2164,7 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e))
 
-        return GenerateLLMsTextStatusResponse(success=False, error='Internal server error', status='failed', expiresAt='')
+        return V1GenerateLLMsTextStatusResponse(success=False, error='Internal server error', status='failed', expiresAt='')
 
     def _prepare_headers(
             self,
@@ -2269,7 +2283,7 @@ class FirecrawlApp:
             self,
             id: str,
             headers: Dict[str, str],
-            poll_interval: int) -> CrawlStatusResponse:
+            poll_interval: int) -> V1CrawlStatusResponse:
         """
         Monitor the status of a crawl job until completion.
 
@@ -2306,7 +2320,7 @@ class FirecrawlApp:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             data.extend(status_data.get('data', []))
                         status_data['data'] = data
-                        return CrawlStatusResponse(**status_data)
+                        return V1CrawlStatusResponse(**status_data)
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
@@ -2345,7 +2359,7 @@ class FirecrawlApp:
                 else:
                     error_message = f"Server returned empty response with status {response.status_code}"
                     error_details = "No additional details available"
-+        except ValueError:
+            except ValueError:
                 error_message = f"Server returned unreadable response with status {response.status_code}"
                 error_details = "No additional details available"
         
@@ -2391,7 +2405,7 @@ class FirecrawlApp:
             system_prompt: Optional[str] = None,
             __experimental_stream_steps: Optional[bool] = None,
             on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
-            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
+            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> V1DeepResearchStatusResponse:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
@@ -2433,7 +2447,7 @@ class FirecrawlApp:
             research_params['systemPrompt'] = system_prompt
         if __experimental_stream_steps is not None:
             research_params['__experimental_streamSteps'] = __experimental_stream_steps
-        research_params = DeepResearchParams(**research_params)
+        research_params = V1DeepResearchParams(**research_params)
 
         response = self.async_deep_research(
             query,
@@ -2520,7 +2534,7 @@ class FirecrawlApp:
             research_params['systemPrompt'] = system_prompt
         if __experimental_stream_steps is not None:
             research_params['__experimental_streamSteps'] = __experimental_stream_steps
-        research_params = DeepResearchParams(**research_params)
+        research_params = V1DeepResearchParams(**research_params)
 
         headers = self._prepare_headers()
         
@@ -2547,7 +2561,7 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
-    def check_deep_research_status(self, id: str) -> DeepResearchStatusResponse:
+    def check_deep_research_status(self, id: str) -> V1DeepResearchStatusResponse:
         """
         Check the status of a deep research operation.
 
@@ -2658,19 +2672,19 @@ class FirecrawlApp:
             return [self._ensure_schema_dict(v) for v in schema]
         return schema
 
-class CrawlWatcher:
+class V1CrawlWatcher:
     """
     A class to watch and handle crawl job events via WebSocket connection.
 
     Attributes:
         id (str): The ID of the crawl job to watch
-        app (FirecrawlApp): The FirecrawlApp instance
+        app (V1FirecrawlApp): The V1FirecrawlApp instance
         data (List[Dict[str, Any]]): List of crawled documents/data
         status (str): Current status of the crawl job
         ws_url (str): WebSocket URL for the crawl job
         event_handlers (dict): Dictionary of event type to list of handler functions
     """
-    def __init__(self, id: str, app: FirecrawlApp):
+    def __init__(self, id: str, app: V1FirecrawlApp):
         self.id = id
         self.app = app
         self.data: List[Dict[str, Any]] = []
@@ -2749,11 +2763,15 @@ class CrawlWatcher:
             self.data.append(msg['data'])
             self.dispatch_event('document', {'data': msg['data'], 'id': self.id})
 
-class AsyncFirecrawlApp(FirecrawlApp):
+class AsyncV1FirecrawlApp:
     """
-    Asynchronous version of FirecrawlApp that implements async methods using aiohttp.
-    Provides non-blocking alternatives to all FirecrawlApp operations.
+    Asynchronous version of V1FirecrawlApp that implements async methods using aiohttp.
+    Provides non-blocking alternatives to all V1FirecrawlApp operations.
     """
+
+    def __init__(self, api_key: str, api_url: str = "https://api.firecrawl.com"):
+        self.api_key = api_key
+        self.api_url = api_url
 
     async def _async_request(
             self,
@@ -2890,14 +2908,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def crawl_url_and_watch(
             self,
             url: str,
-            params: Optional[CrawlParams] = None,
-            idempotency_key: Optional[str] = None) -> 'AsyncCrawlWatcher':
+            params: Optional[V1CrawlParams] = None,
+            idempotency_key: Optional[str] = None) -> 'AsyncV1CrawlWatcher':
         """
-        Initiate an async crawl job and return an AsyncCrawlWatcher to monitor progress via WebSocket.
+        Initiate an async crawl job and return an AsyncV1CrawlWatcher to monitor progress via WebSocket.
 
         Args:
           url (str): Target URL to start crawling from
-          params (Optional[CrawlParams]): See CrawlParams model for configuration:
+          params (Optional[V1CrawlParams]): See V1CrawlParams model for configuration:
             URL Discovery:
             * includePaths - Patterns of URLs to include
             * excludePaths - Patterns of URLs to exclude
@@ -2920,28 +2938,28 @@ class AsyncFirecrawlApp(FirecrawlApp):
           idempotency_key (Optional[str]): Unique key to prevent duplicate requests
 
         Returns:
-          AsyncCrawlWatcher: An instance to monitor the crawl job via WebSocket
+          AsyncV1CrawlWatcher: An instance to monitor the crawl job via WebSocket
 
         Raises:
           Exception: If crawl job fails to start
         """
         crawl_response = await self.async_crawl_url(url, params, idempotency_key)
         if crawl_response.get('success') and 'id' in crawl_response:
-            return AsyncCrawlWatcher(crawl_response['id'], self)
+            return AsyncV1CrawlWatcher(crawl_response['id'], self)
         else:
             raise Exception("Crawl job failed to start")
 
     async def batch_scrape_urls_and_watch(
             self,
             urls: List[str],
-            params: Optional[ScrapeParams] = None,
-            idempotency_key: Optional[str] = None) -> 'AsyncCrawlWatcher':
+            params: Optional[V1ScrapeParams] = None,
+            idempotency_key: Optional[str] = None) -> 'AsyncV1CrawlWatcher':
         """
-        Initiate an async batch scrape job and return an AsyncCrawlWatcher to monitor progress.
+        Initiate an async batch scrape job and return an AsyncV1CrawlWatcher to monitor progress.
 
         Args:
             urls (List[str]): List of URLs to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
+            params (Optional[V1ScrapeParams]): See V1ScrapeParams model for configuration:
 
               Content Options:
               * formats - Content formats to retrieve
@@ -2962,14 +2980,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
 
         Returns:
-            AsyncCrawlWatcher: An instance to monitor the batch scrape job via WebSocket
+            AsyncV1CrawlWatcher: An instance to monitor the batch scrape job via WebSocket
 
         Raises:
             Exception: If batch scrape job fails to start
         """
         batch_response = await self.async_batch_scrape_urls(urls, params, idempotency_key)
         if batch_response.get('success') and 'id' in batch_response:
-            return AsyncCrawlWatcher(batch_response['id'], self)
+            return AsyncV1CrawlWatcher(batch_response['id'], self)
         else:
             raise Exception("Batch scrape job failed to start")
 
@@ -2984,17 +3002,17 @@ class AsyncFirecrawlApp(FirecrawlApp):
             only_main_content: Optional[bool] = None,
             wait_for: Optional[int] = None,
             timeout: Optional[int] = 30000,
-            location: Optional[LocationConfig] = None,
+            location: Optional[V1LocationConfig] = None,
             mobile: Optional[bool] = None,
             skip_tls_verification: Optional[bool] = None,
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
             proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
             parse_pdf: Optional[bool] = None,
-            extract: Optional[JsonConfig] = None,
-            json_options: Optional[JsonConfig] = None,
-            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-            **kwargs) -> ScrapeResponse[Any]:
+            extract: Optional[V1JsonConfig] = None,
+            json_options: Optional[V1JsonConfig] = None,
+            actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+            **kwargs) -> V1ScrapeResponse[Any]:
         """
         Scrape a single URL asynchronously.
 
@@ -3007,19 +3025,19 @@ class AsyncFirecrawlApp(FirecrawlApp):
           only_main_content (Optional[bool]): Extract main content only
           wait_for (Optional[int]): Wait for a specific element to appear
           timeout (Optional[int]): Request timeout (ms)
-          location (Optional[LocationConfig]): Location configuration
+          location (Optional[V1LocationConfig]): Location configuration
           mobile (Optional[bool]): Use mobile user agent
           skip_tls_verification (Optional[bool]): Skip TLS verification
           remove_base64_images (Optional[bool]): Remove base64 images
           block_ads (Optional[bool]): Block ads
           proxy (Optional[Literal["basic", "stealth", "auto"]]): Proxy type (basic/stealth)
-          extract (Optional[JsonConfig]): Content extraction settings
-          json_options (Optional[JsonConfig]): JSON extraction settings
-          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
+          extract (Optional[V1JsonConfig]): Content extraction settings
+          json_options (Optional[V1JsonConfig]): JSON extraction settings
+          actions (Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]]): Actions to perform
           **kwargs: Additional parameters to pass to the API
 
         Returns:
-            ScrapeResponse with:
+            V1ScrapeResponse with:
             * success - Whether scrape was successful
             * markdown - Markdown content if requested
             * html - HTML content if requested
@@ -3099,7 +3117,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         )
 
         if response.get('success') and 'data' in response:
-            return ScrapeResponse(**response['data'])
+            return V1ScrapeResponse(**response['data'])
         elif "error" in response:
             raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
         else:
@@ -3118,20 +3136,20 @@ class AsyncFirecrawlApp(FirecrawlApp):
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
         timeout: Optional[int] = 30000,
-        location: Optional[LocationConfig] = None,
+        location: Optional[V1LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
-        extract: Optional[JsonConfig] = None,
-        json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-        agent: Optional[AgentOptions] = None,
+        extract: Optional[V1JsonConfig] = None,
+        json_options: Optional[V1JsonConfig] = None,
+        actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+        agent: Optional[V1AgentOptions] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> BatchScrapeStatusResponse:
+    ) -> V1BatchScrapeStatusResponse:
         """
         Asynchronously scrape multiple URLs and monitor until completion.
 
@@ -3159,7 +3177,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            BatchScrapeStatusResponse with:
+            V1BatchScrapeStatusResponse with:
             * Scraping status and progress
             * Scraped content for each URL
             * Success/error information
@@ -3218,7 +3236,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         scrape_params.update(kwargs)
 
         # Create final params object
-        final_params = ScrapeParams(**scrape_params)
+        final_params = V1ScrapeParams(**scrape_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['urls'] = urls
         params_dict['origin'] = f"python-sdk@{version}"
@@ -3257,20 +3275,20 @@ class AsyncFirecrawlApp(FirecrawlApp):
         only_main_content: Optional[bool] = None,
         wait_for: Optional[int] = None,
         timeout: Optional[int] = 30000,
-        location: Optional[LocationConfig] = None,
+        location: Optional[V1LocationConfig] = None,
         mobile: Optional[bool] = None,
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
-        extract: Optional[JsonConfig] = None,
-        json_options: Optional[JsonConfig] = None,
-        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
-        agent: Optional[AgentOptions] = None,
+        extract: Optional[V1JsonConfig] = None,
+        json_options: Optional[V1JsonConfig] = None,
+        actions: Optional[List[Union[V1WaitAction, V1ScreenshotAction, V1ClickAction, V1WriteAction, V1PressAction, V1ScrollAction, V1ScrapeAction, V1ExecuteJavascriptAction, V1PDFAction]]] = None,
+        agent: Optional[V1AgentOptions] = None,
         zero_data_retention: Optional[bool] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> BatchScrapeResponse:
+    ) -> V1BatchScrapeResponse:
         """
         Initiate a batch scrape job asynchronously.
 
@@ -3298,7 +3316,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            BatchScrapeResponse with:
+            V1BatchScrapeResponse with:
             * success - Whether job started successfully
             * id - Unique identifier for the job
             * url - Status check URL
@@ -3360,7 +3378,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         scrape_params.update(kwargs)
 
         # Create final params object
-        final_params = ScrapeParams(**scrape_params)
+        final_params = V1ScrapeParams(**scrape_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['urls'] = urls
         params_dict['origin'] = f"python-sdk@{version}"
@@ -3380,7 +3398,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         if response.get('status_code') == 200:
             try:
-                return BatchScrapeResponse(**response.json())
+                return V1BatchScrapeResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -3399,8 +3417,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[ScrapeOptions] = None,
-        webhook: Optional[Union[str, WebhookConfig]] = None,
+        scrape_options: Optional[V1ScrapeOptions] = None,
+        webhook: Optional[Union[str, V1WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
@@ -3409,7 +3427,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> CrawlStatusResponse:
+    ) -> V1CrawlStatusResponse:
         """
         Crawl a website starting from a URL.
 
@@ -3424,8 +3442,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_entire_domain (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
-            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            scrape_options (Optional[V1ScrapeOptions]): Page scraping configuration
+            webhook (Optional[Union[str, V1WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
@@ -3436,7 +3454,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            CrawlStatusResponse with:
+            V1CrawlStatusResponse with:
             * Crawling status and progress
             * Crawled page contents
             * Success/error information
@@ -3487,7 +3505,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
+        final_params = V1CrawlParams(**crawl_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
@@ -3519,8 +3537,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         crawl_entire_domain: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[ScrapeOptions] = None,
-        webhook: Optional[Union[str, WebhookConfig]] = None,
+        scrape_options: Optional[V1ScrapeOptions] = None,
+        webhook: Optional[Union[str, V1WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
@@ -3529,7 +3547,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
-    ) -> CrawlResponse:
+    ) -> V1CrawlResponse:
         """
         Start an asynchronous crawl job.
 
@@ -3553,7 +3571,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **kwargs: Additional parameters to pass to the API
 
         Returns:
-            CrawlResponse with:
+            V1CrawlResponse with:
             * success - Whether crawl started successfully
             * id - Unique identifier for the crawl job
             * url - Status check URL for the crawl
@@ -3602,7 +3620,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
+        final_params = V1CrawlParams(**crawl_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
@@ -3617,13 +3635,13 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         if response.get('success'):
             try:
-                return CrawlResponse(**response)
+                return V1CrawlResponse(**response)
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
             await self._handle_error(response, 'start crawl job')
 
-    async def check_crawl_status(self, id: str) -> CrawlStatusResponse:
+    async def check_crawl_status(self, id: str) -> V1CrawlStatusResponse:
         """
         Check the status and results of an asynchronous crawl job.
 
@@ -3631,7 +3649,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             id (str): Unique identifier for the crawl job
 
         Returns:
-            CrawlStatusResponse containing:
+            V1CrawlStatusResponse containing:
             Status Information:
             * status - Current state (scraping/completed/failed/cancelled)
             * completed - Number of pages crawled
@@ -3670,8 +3688,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     data.extend(next_data.get('data', []))
                     status_data = next_data
                 status_data['data'] = data
-        # Create CrawlStatusResponse object from status data
-        response = CrawlStatusResponse(
+        # Create V1CrawlStatusResponse object from status data
+        response = V1CrawlStatusResponse(
             status=status_data.get('status'),
             total=status_data.get('total'),
             completed=status_data.get('completed'),
@@ -3689,7 +3707,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         return response
 
-    async def _async_monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int = 2) -> CrawlStatusResponse:
+    async def _async_monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int = 2) -> V1CrawlStatusResponse:
         """
         Monitor the status of an asynchronous job until completion.
 
@@ -3699,7 +3717,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             poll_interval (int): Seconds between status checks (default: 2)
 
         Returns:
-            CrawlStatusResponse: The job results if completed successfully
+            V1CrawlStatusResponse: The job results if completed successfully
 
         Raises:
             Exception: If the job fails or an error occurs during status checks
@@ -3724,7 +3742,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                         data.extend(next_data.get('data', []))
                         status_data = next_data
                     status_data['data'] = data
-                    return CrawlStatusResponse(**status_data)
+                    return V1CrawlStatusResponse(**status_data)
                 else:
                     raise Exception('Job completed but no data was returned')
             elif status_data.get('status') in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
@@ -3742,13 +3760,13 @@ class AsyncFirecrawlApp(FirecrawlApp):
         sitemap_only: Optional[bool] = None,
         limit: Optional[int] = None,
         timeout: Optional[int] = 30000,
-        params: Optional[MapParams] = None) -> MapResponse:
+        params: Optional[V1MapParams] = None) -> V1MapResponse:
         """
         Asynchronously map and discover links from a URL.
 
         Args:
           url (str): Target URL to map
-          params (Optional[MapParams]): See MapParams model:
+          params (Optional[V1MapParams]): See V1MapParams model:
             Discovery Options:
             * search - Filter pattern for URLs
             * ignoreSitemap - Skip sitemap.xml
@@ -3760,7 +3778,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             * timeout - Request timeout (ms)
 
         Returns:
-          MapResponse with:
+          V1MapResponse with:
           * Discovered URLs
           * Success/error status
 
@@ -3786,7 +3804,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             map_params['timeout'] = timeout
 
         # Create final params object
-        final_params = MapParams(**map_params)
+        final_params = V1MapParams(**map_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
@@ -3800,7 +3818,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         )
 
         if response.get('success') and 'links' in response:
-            return MapResponse(**response)
+            return V1MapResponse(**response)
         elif 'error' in response:
             raise Exception(f'Failed to map URL. Error: {response["error"]}')
         else:
@@ -3816,7 +3834,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
-            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
+            agent: Optional[Dict[str, Any]] = None) -> V1ExtractResponse[Any]:
             
         """
         Asynchronously extract structured information from URLs.
@@ -3832,7 +3850,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             agent (Optional[Dict[str, Any]]): Agent configuration
 
         Returns:
-          ExtractResponse with:
+          V1ExtractResponse with:
           * Structured data matching schema
           * Source information if requested
           * Success/error status
@@ -3887,7 +3905,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 )
 
                 if status_data['status'] == 'completed':
-                    return ExtractResponse(**status_data)
+                    return V1ExtractResponse(**status_data)
                 elif status_data['status'] in ['failed', 'cancelled']:
                     raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
 
@@ -3895,7 +3913,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         else:
             raise Exception(f'Failed to extract. Error: {response.get("error")}')
 
-    async def check_batch_scrape_status(self, id: str) -> BatchScrapeStatusResponse:
+    async def check_batch_scrape_status(self, id: str) -> V1BatchScrapeStatusResponse:
         """
         Check the status of an asynchronous batch scrape job.
 
@@ -3903,7 +3921,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             id (str): The ID of the batch scrape job
 
         Returns:
-            BatchScrapeStatusResponse containing:
+            V1BatchScrapeStatusResponse containing:
             Status Information:
             * status - Current state (scraping/completed/failed/cancelled)
             * completed - Number of URLs scraped
@@ -3943,7 +3961,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     status_data = next_data
                 status_data['data'] = data
 
-        response = BatchScrapeStatusResponse(
+        response = V1BatchScrapeStatusResponse(
             status=status_data.get('status'),
             total=status_data.get('total'),
             completed=status_data.get('completed'),
@@ -3963,7 +3981,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **response
         }
 
-    async def check_batch_scrape_errors(self, id: str) -> CrawlErrorsResponse:
+    async def check_batch_scrape_errors(self, id: str) -> V1CrawlErrorsResponse:
         """
         Get information about errors from an asynchronous batch scrape job.
 
@@ -3971,7 +3989,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
           id (str): The ID of the batch scrape job
 
         Returns:
-          CrawlErrorsResponse containing:
+          V1CrawlErrorsResponse containing:
             errors (List[Dict[str, str]]): List of errors with fields:
               * id (str): Error ID
               * timestamp (str): When the error occurred
@@ -3988,7 +4006,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             headers
         )
 
-    async def check_crawl_errors(self, id: str) -> CrawlErrorsResponse:
+    async def check_crawl_errors(self, id: str) -> V1CrawlErrorsResponse:
         """
         Get information about errors from an asynchronous crawl job.
 
@@ -3996,7 +4014,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             id (str): The ID of the crawl job
 
         Returns:
-            CrawlErrorsResponse containing:
+            V1CrawlErrorsResponse containing:
             * errors (List[Dict[str, str]]): List of errors with fields:
                 - id (str): Error ID
                 - timestamp (str): When the error occurred
@@ -4033,7 +4051,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             async with session.delete(f'{self.api_url}/v1/crawl/{id}', headers=headers) as response:
                 return await response.json()
 
-    async def get_extract_status(self, job_id: str) -> ExtractResponse[Any]:
+    async def get_extract_status(self, job_id: str) -> V1ExtractResponse[Any]:
         """
         Check the status of an asynchronous extraction job.
 
@@ -4041,7 +4059,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             job_id (str): The ID of the extraction job
 
         Returns:
-            ExtractResponse[Any] with:
+            V1ExtractResponse[Any] with:
             * success (bool): Whether request succeeded
             * data (Optional[Any]): Extracted data matching schema
             * error (Optional[str]): Error message if any
@@ -4070,7 +4088,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
-            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
+            agent: Optional[Dict[str, Any]] = None) -> V1ExtractResponse[Any]:
         """
         Initiate an asynchronous extraction job without waiting for completion.
 
@@ -4086,7 +4104,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
 
         Returns:
-            ExtractResponse[Any] with:
+            V1ExtractResponse[Any] with:
             * success (bool): Whether request succeeded
             * data (Optional[Any]): Extracted data matching schema
             * error (Optional[str]): Error message if any
@@ -4105,7 +4123,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if schema:
             schema = self._ensure_schema_dict(schema)
 
-        request_data = ExtractResponse(
+        request_data = V1ExtractResponse(
             urls=urls or [],
             allowExternalLinks=allow_external_links,
             enableWebSearch=enable_web_search,
@@ -4136,7 +4154,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             *,
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
-            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
+            experimental_stream: Optional[bool] = None) -> V1GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and monitor until completion.
 
@@ -4147,7 +4165,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-            GenerateLLMsTextStatusResponse containing:
+            V1GenerateLLMsTextStatusResponse containing:
             * success (bool): Whether generation completed successfully
             * status (str): Status of generation (processing/completed/failed)
             * data (Dict[str, str], optional): Generated text with fields:
@@ -4189,7 +4207,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
             await asyncio.sleep(2)
 
-        return GenerateLLMsTextStatusResponse(success=False, error='LLMs.txt generation job terminated unexpectedly')
+        return V1GenerateLLMsTextStatusResponse(success=False, error='LLMs.txt generation job terminated unexpectedly', status='failed', expiresAt='')
 
     async def async_generate_llms_text(
             self,
@@ -4198,7 +4216,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
             cache: Optional[bool] = None,
-            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
+            experimental_stream: Optional[bool] = None) -> V1GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation job without waiting for completion.
 
@@ -4210,7 +4228,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-            GenerateLLMsTextResponse containing:
+            V1GenerateLLMsTextResponse containing:
             * success (bool): Whether job started successfully
             * id (str): Unique identifier for the job
             * error (str, optional): Error message if start failed
@@ -4226,7 +4244,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if experimental_stream is not None:
             params['__experimental_stream'] = experimental_stream
 
-        params = GenerateLLMsTextParams(
+        params = V1GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
             cache=cache,
@@ -4246,7 +4264,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         except Exception as e:
             raise ValueError(str(e))
 
-    async def check_generate_llms_text_status(self, id: str) -> GenerateLLMsTextStatusResponse:
+    async def check_generate_llms_text_status(self, id: str) -> V1GenerateLLMsTextStatusResponse:
         """
         Check the status of an asynchronous LLMs.txt generation job.
 
@@ -4254,7 +4272,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             id (str): The ID of the generation job
 
         Returns:
-            GenerateLLMsTextStatusResponse containing:
+            V1GenerateLLMsTextStatusResponse containing:
             * success (bool): Whether generation completed successfully
             * status (str): Status of generation (processing/completed/failed)
             * data (Dict[str, str], optional): Generated text with fields:
@@ -4286,7 +4304,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             system_prompt: Optional[str] = None,
             __experimental_stream_steps: Optional[bool] = None,
             on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
-            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
+            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> V1DeepResearchStatusResponse:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
@@ -4328,7 +4346,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             research_params['systemPrompt'] = system_prompt
         if __experimental_stream_steps is not None:
             research_params['__experimental_streamSteps'] = __experimental_stream_steps
-        research_params = DeepResearchParams(**research_params)
+        research_params = V1DeepResearchParams(**research_params)
 
         response = await self.async_deep_research(
             query,
@@ -4369,7 +4387,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
             await asyncio.sleep(2)
 
-        return DeepResearchStatusResponse(success=False, error='Deep research job terminated unexpectedly')
+        return V1DeepResearchStatusResponse(success=False, error='Deep research job terminated unexpectedly')
 
     async def async_deep_research(
             self,
@@ -4415,7 +4433,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             research_params['systemPrompt'] = system_prompt
         if __experimental_stream_steps is not None:
             research_params['__experimental_streamSteps'] = __experimental_stream_steps
-        research_params = DeepResearchParams(**research_params)
+        research_params = V1DeepResearchParams(**research_params)
 
         headers = self._prepare_headers()
         
@@ -4431,7 +4449,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         except Exception as e:
             raise ValueError(str(e))
 
-    async def check_deep_research_status(self, id: str) -> DeepResearchStatusResponse:
+    async def check_deep_research_status(self, id: str) -> V1DeepResearchStatusResponse:
         """
         Check the status of a deep research operation.
 
@@ -4476,9 +4494,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
             country: Optional[str] = None,
             location: Optional[str] = None,
             timeout: Optional[int] = 30000,
-            scrape_options: Optional[ScrapeOptions] = None,
-            params: Optional[Union[Dict[str, Any], SearchParams]] = None,
-            **kwargs) -> SearchResponse:
+            scrape_options: Optional[V1ScrapeOptions] = None,
+            params: Optional[Union[Dict[str, Any], V1SearchParams]] = None,
+            **kwargs) -> V1SearchResponse:
         """
         Asynchronously search for content using Firecrawl.
 
@@ -4535,7 +4553,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         search_params.update(kwargs)
 
         # Create final params object
-        final_params = SearchParams(query=query, **search_params)
+        final_params = V1SearchParams(query=query, **search_params)
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['origin'] = f"python-sdk@{version}"
 
@@ -4545,11 +4563,11 @@ class AsyncFirecrawlApp(FirecrawlApp):
             {"Authorization": f"Bearer {self.api_key}"}
         )
 
-class AsyncCrawlWatcher(CrawlWatcher):
+class AsyncV1CrawlWatcher(V1CrawlWatcher):
     """
-    Async version of CrawlWatcher that properly handles async operations.
+    Async version of V1CrawlWatcher that properly handles async operations.
     """
-    def __init__(self, id: str, app: AsyncFirecrawlApp):
+    def __init__(self, id: str, app: AsyncV1FirecrawlApp):
         super().__init__(id, app)
 
     async def connect(self) -> None:

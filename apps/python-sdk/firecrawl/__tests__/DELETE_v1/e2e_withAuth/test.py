@@ -44,7 +44,7 @@ def test_scrape_url_invalid_api_key():
 
 # def test_blocklisted_url():
 #     blocklisted_url = "https://facebook.com/fake-test"
-#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #     with pytest.raises(Exception) as excinfo:
 #         app.scrape_url(blocklisted_url)
 #     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
@@ -155,7 +155,7 @@ def test_crawl_url_invalid_api_key():
         assert response is not None
 
 # def test_should_return_error_for_blocklisted_url():
-#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #     blocklisted_url = "https://twitter.com/fake-test"
 #     with pytest.raises(Exception) as excinfo:
 #         app.crawl_url(blocklisted_url)
@@ -336,7 +336,7 @@ def test_invalid_api_key_on_map():
         assert response is not None
 
 # def test_blocklisted_url_on_map():
-#     app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
+#     app = V1FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
 #     blocklisted_url = "https://facebook.com/fake-test"
 #     with pytest.raises(Exception) as excinfo:
 #         app.map_url(blocklisted_url)
@@ -455,7 +455,7 @@ def test_search_with_invalid_params():
 
 # def test_scrape_url_with_parse_pdf_true():
 #     if TEST_API_KEY:
-#         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#         app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #         response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=True)
 #         assert response is not None
 #         assert 'markdown' in response
@@ -463,7 +463,7 @@ def test_search_with_invalid_params():
 
 # def test_scrape_url_with_parse_pdf_false():
 #     if TEST_API_KEY:
-#         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#         app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
 #         response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf', parse_pdf=False)
 #         assert response is not None
 #         assert 'markdown' in response
@@ -471,9 +471,9 @@ def test_search_with_invalid_params():
 
 # def test_scrape_options_with_parse_pdf():
 #     if TEST_API_KEY:
-#         from firecrawl.firecrawl import ScrapeOptions
-#         app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-#         scrape_options = ScrapeOptions(parsePDF=False, formats=['markdown'])
+#         from firecrawl.firecrawl import V1ScrapeOptions
+#         app = V1FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#         scrape_options = V1ScrapeOptions(parsePDF=False, formats=['markdown'])
 #         response = app.search("firecrawl", limit=1, scrape_options=scrape_options)
 #         assert response is not None
 #         assert 'data' in response
