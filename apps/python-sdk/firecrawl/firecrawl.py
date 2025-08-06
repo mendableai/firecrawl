@@ -23,6 +23,7 @@ import websockets
 import aiohttp
 import asyncio
 from pydantic import Field
+import httpx
 
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
@@ -691,6 +692,84 @@ class FirecrawlApp:
             json=params_dict
         )
 
+        if response.status_code == 200:
+            try:
+                response_json = response.json()
+                if response_json.get('success') and 'data' in response_json:
+                    return SearchResponse(**response_json)
+                elif "error" in response_json:
+                    raise Exception(f'Search failed. Error: {response_json["error"]}')
+                else:
+                    raise Exception(f'Search failed. Error: {response_json}')
+            except ValueError:
+                raise Exception('Failed to parse Firecrawl response as JSON.')
+        else:
+            self._handle_error(response, 'search')
+            
+    async def search(
+        self,
+        query: str,
+        *,
+        limit: Optional[int] = None,
+        tbs: Optional[str] = None,
+        filter: Optional[str] = None,
+        lang: Optional[str] = None,
+        country: Optional[str] = None,
+        location: Optional[str] = None,
+        timeout: Optional[int] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
+        **kwargs) -> SearchResponse:
+        """
+        Async search for content using Firecrawl.
+        """
+    
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "search")
+    
+        # Build search parameters
+        search_params = {}
+    
+        # Add individual parameters
+        if limit is not None:
+            search_params['limit'] = limit
+        if tbs is not None:
+            search_params['tbs'] = tbs
+        if filter is not None:
+            search_params['filter'] = filter
+        if lang is not None:
+            search_params['lang'] = lang
+        if country is not None:
+            search_params['country'] = country
+        if location is not None:
+            search_params['location'] = location
+        if timeout is not None:
+            search_params['timeout'] = timeout
+        if scrape_options is not None:
+            search_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+    
+        # Add any additional kwargs
+        search_params.update(kwargs)
+        _integration = search_params.get('integration')
+    
+        # Create final params object
+        final_params = SearchParams(query=query, **search_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['origin'] = f"python-sdk@{version}"
+    
+        if _integration:
+            params_dict['integration'] = _integration
+    
+        # Make async HTTP request
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    f"{self.api_url}/v1/search",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json=params_dict
+                )
+            except httpx.RequestError as e:
+                raise Exception(f"An error occurred while requesting: {str(e)}")
+    
         if response.status_code == 200:
             try:
                 response_json = response.json()
