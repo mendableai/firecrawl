@@ -70,7 +70,7 @@ cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
 
 const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
-  traceExporter: new LangfuseExporter(),
+  traceExporter: new LangfuseExporter({ debug: true }),
   instrumentations: [getNodeAutoInstrumentations()],
 }) : null;
 
