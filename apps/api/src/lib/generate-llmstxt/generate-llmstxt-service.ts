@@ -180,6 +180,11 @@ export async function performGenerateLlmsTxt(
                   method: "generateDescription",
                 },
               },
+              metadata: {
+                teamId,
+                functionId: "generate-llmstxt",
+                llmsTxtId: generationId,
+              },
             });
 
             return {
