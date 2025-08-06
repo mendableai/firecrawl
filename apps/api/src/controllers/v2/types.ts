@@ -209,9 +209,7 @@ export const screenshotFormatWithOptions = z.object({
 
 export type ScreenshotFormatWithOptions = z.output<typeof screenshotFormatWithOptions>;
 
-export const parsersSchema = z.object({
-  pdf: z.boolean().default(true),
-}).default({ pdf: true });
+export const parsersSchema = z.array(z.enum(["pdf"])).default(["pdf"]);
 
 export type Parsers = z.infer<typeof parsersSchema>;
 
@@ -1094,7 +1092,7 @@ export function fromV0ScrapeOptions(
           : pageOptions.removeTags,
       onlyMainContent: pageOptions.onlyMainContent ?? false,
       timeout: timeout,
-      parsePDF: pageOptions.parsePDF,
+      parsers: pageOptions.parsePDF !== undefined ? (pageOptions.parsePDF ? ["pdf"] : []) : undefined,
       actions: pageOptions.actions,
       location: pageOptions.geolocation,
       skipTlsVerification: pageOptions.skipTlsVerification,
@@ -1190,7 +1188,7 @@ export function fromV1ScrapeOptions(
           return x;
         }
       }).filter(x => x !== null),
-      parsers: v1ScrapeOptions.parsePDF !== undefined ? { pdf: v1ScrapeOptions.parsePDF } : undefined,
+      parsers: v1ScrapeOptions.parsePDF !== undefined ? (v1ScrapeOptions.parsePDF ? ["pdf"] : []) : undefined,
     }),
     internalOptions: {
       teamId,
