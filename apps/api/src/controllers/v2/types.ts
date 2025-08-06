@@ -252,11 +252,7 @@ const baseScrapeOptions = z
           z.object({ type: z.literal("html") }),
           z.object({ type: z.literal("rawHtml") }),
           z.object({ type: z.literal("links") }),
-          z.object({ type: z.literal("screenshot") }),
-          z.object({ type: z.literal("screenshot@fullPage") }),
-          z.object({ type: z.literal("extract") }),
           z.object({ type: z.literal("summary") }),
-          z.object({ type: z.literal("changeTracking") }),
           jsonFormatWithOptions,
           changeTrackingFormatWithOptions,
           screenshotFormatWithOptions,
@@ -267,11 +263,7 @@ const baseScrapeOptions = z
     )
       .refine(
         (x) => {
-          const hasBasicScreenshot = x.find(f => f.type === "screenshot" && !('fullPage' in f));
-          const hasFullPageScreenshot = x.find(f => f.type === "screenshot@fullPage");
-          const hasScreenshotWithOptions = x.find(f => f.type === "screenshot" && ('fullPage' in f || 'quality' in f || 'viewport' in f));
-          const screenshots = [hasBasicScreenshot, hasFullPageScreenshot, hasScreenshotWithOptions].filter(Boolean);
-          return screenshots.length <= 1;
+          return x.filter(f => f.type === "screenshot").length <= 1;
         },
         "You may only specify one screenshot format",
       )
