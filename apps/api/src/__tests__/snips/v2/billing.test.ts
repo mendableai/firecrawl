@@ -224,7 +224,7 @@ describe("Billing tests", () => {
                 query: "firecrawl filetype:pdf",
                 scrapeOptions: {
                     formats: ["markdown"],
-                    parsers: { pdf: true },
+                    parsers: ["pdf"],
                 },
             }, identity);
 
@@ -249,7 +249,7 @@ describe("Billing tests", () => {
                 query: "firecrawl filetype:pdf",
                 scrapeOptions: {
                     formats: ["markdown"],
-                    parsers: { pdf: false },
+                    parsers: [],
                 },
             }, identity);
 
