@@ -1085,7 +1085,7 @@ export function fromV0ScrapeOptions(
         (pageOptions.includeRawHtml ?? false) ? ("rawHtml" as const) : null,
         (pageOptions.screenshot ?? false) ? ("screenshot" as const) : null,
         (pageOptions.fullPageScreenshot ?? false)
-          ? ("screenshot@fullPage" as const)
+          ? ({ type: "screenshot" as const, fullPage: true })
           : null,
         extractorOptions !== undefined &&
           extractorOptions.mode.includes("llm-extraction")
@@ -1201,6 +1201,8 @@ export function fromV1ScrapeOptions(
             prompt: opts?.prompt,
           };
           return fmt;
+        } else if (x === "screenshot@fullPage") {
+          return { type: "screenshot" as const, fullPage: true };
         } else {
           return x;
         }
