@@ -15,13 +15,13 @@ describe("Scrape format variations", () => {
     it.concurrent("accepts string format for markdown", async () => {
       const response = await scrape({
         url: "https://example.com",
-        formats: ["markdown"],
+        formats: [{ type: "markdown" }],
         timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
       expect(typeof response.markdown).toBe("string");
-      expect(response.markdown.length).toBeGreaterThan(0);
+      expect(response.markdown?.length).toBeGreaterThan(0);
     }, scrapeTimeout);
 
     it.concurrent("accepts multiple string formats", async () => {
@@ -78,7 +78,7 @@ describe("Scrape format variations", () => {
 
       expect(response.markdown).toBeDefined();
       expect(typeof response.markdown).toBe("string");
-      expect(response.markdown.length).toBeGreaterThan(0);
+      expect(response.markdown?.length).toBeGreaterThan(0);
     }, scrapeTimeout);
 
     it.concurrent("accepts multiple object formats", async () => {

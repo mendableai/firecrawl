@@ -214,11 +214,7 @@ export type FormatObject =
   | { type: "html" }
   | { type: "rawHtml" }
   | { type: "links" }
-  | { type: "screenshot" }
-  | { type: "screenshot@fullPage" }
-  | { type: "extract" }
   | { type: "summary" }
-  | { type: "changeTracking" }
   | JsonFormatWithOptions
   | ChangeTrackingFormatWithOptions
   | ScreenshotFormatWithOptions;

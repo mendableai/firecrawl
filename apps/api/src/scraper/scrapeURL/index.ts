@@ -86,16 +86,11 @@ function buildFeatureFlags(
   }
 
   if (hasFormatOfType(options.formats, "screenshot")) {
-    flags.add("screenshot");
-  }
-
-  if (hasFormatOfType(options.formats, "screenshot@fullPage")) {
-    flags.add("screenshot@fullScreen");
-  }
-
-  const screenshotFormat = hasFormatOfType(options.formats, "screenshot");
-  if (screenshotFormat && 'fullPage' in screenshotFormat) {
-    flags.add(screenshotFormat.fullPage ? "screenshot@fullScreen" : "screenshot");
+    if (hasFormatOfType(options.formats, "screenshot")?.fullPage) {
+      flags.add("screenshot@fullScreen");
+    } else {
+      flags.add("screenshot");
+    }
   }
 
   if (options.waitFor !== 0) {

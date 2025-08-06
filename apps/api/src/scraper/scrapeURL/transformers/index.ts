@@ -124,10 +124,9 @@ export function coerceFieldsToFormats(
   const hasRawHtml = hasFormatOfType(meta.options.formats, "rawHtml");
   const hasHtml = hasFormatOfType(meta.options.formats, "html");
   const hasLinks = hasFormatOfType(meta.options.formats, "links");
-  const hasExtract = hasFormatOfType(meta.options.formats, "extract");
   const hasChangeTracking = hasFormatOfType(meta.options.formats, "changeTracking");
   const hasJson = hasFormatOfType(meta.options.formats, "json");
-  const hasScreenshot = hasAnyFormatOfTypes(meta.options.formats, ["screenshot", "screenshot@fullPage"]);
+  const hasScreenshot = hasFormatOfType(meta.options.formats, "screenshot");
   const hasSummary = hasFormatOfType(meta.options.formats, "summary");
 
   if (!hasMarkdown && document.markdown !== undefined) {

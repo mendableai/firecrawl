@@ -206,12 +206,11 @@ export async function scrapeURLWithFireEngineChromeCDP(
     ...(meta.options.actions ?? []),
 
     // Transform screenshot format into an action (unsupported by chrome-cdp)
-    ...(hasAnyFormatOfTypes(meta.options.formats, ["screenshot", "screenshot@fullPage"])
+    ...(hasFormatOfType(meta.options.formats, "screenshot")
       ? [
           {
             type: "screenshot" as const,
-            fullPage: hasFormatOfType(meta.options.formats, "screenshot@fullPage") !== undefined || 
-                     hasFormatOfType(meta.options.formats, "screenshot")?.fullPage || false,
+            fullPage: hasFormatOfType(meta.options.formats, "screenshot")?.fullPage || false,
             ...(hasFormatOfType(meta.options.formats, "screenshot")?.viewport ? 
               { viewport: hasFormatOfType(meta.options.formats, "screenshot")!.viewport } : {}),
           },
@@ -289,9 +288,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     true,
   );
 
-  if (
-    hasAnyFormatOfTypes(meta.options.formats, ["screenshot", "screenshot@fullPage"])
-  ) {
+  if (hasFormatOfType(meta.options.formats, "screenshot")) {
     // meta.logger.debug(
     //   "Transforming screenshots from actions into screenshot field",
     //   { screenshots: response.screenshots },
@@ -356,8 +353,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     headers: meta.options.headers,
     priority: meta.internalOptions.priority,
     screenshot: hasFormatOfType(meta.options.formats, "screenshot") !== undefined,
-    fullPageScreenshot: hasFormatOfType(meta.options.formats, "screenshot@fullPage") !== undefined || 
-                       hasFormatOfType(meta.options.formats, "screenshot")?.fullPage,
+    fullPageScreenshot: hasFormatOfType(meta.options.formats, "screenshot")?.fullPage,
     wait: meta.options.waitFor,
     geolocation: meta.options.location,
     blockAds: meta.options.blockAds,
