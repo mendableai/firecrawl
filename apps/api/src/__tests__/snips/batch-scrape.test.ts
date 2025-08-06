@@ -67,7 +67,7 @@ describe("Batch scrape tests", () => {
         expect(response.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
     }, scrapeTimeout);
 
-    it.concurrent("should not log individual scrapes that are part of batch scrape operations", async () => {
+    it.concurrent("should log individual scrapes and parent batch scrape jobs", async () => {
         const originalLogJob = require("../../services/logging/log_job").logJob;
         const logJobCalls: any[] = [];
         const mockLogJob = jest.fn((...args) => {
@@ -88,7 +88,7 @@ describe("Batch scrape tests", () => {
         const individualScrapeJobs = logJobCalls.filter(job => 
             job.crawl_id && (job.mode === "scrape" || job.mode === "single_urls" || job.mode === "single_url")
         );
-        expect(individualScrapeJobs).toHaveLength(0);
+        expect(individualScrapeJobs.length).toBeGreaterThan(0);
         
         const batchScrapeJobs = logJobCalls.filter(job => job.mode === "batch_scrape");
         expect(batchScrapeJobs.length).toBeGreaterThan(0);

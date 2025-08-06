@@ -275,7 +275,7 @@ describe("Crawl tests", () => {
 });
 
 describe("Activity log filtering tests", () => {
-    it.concurrent("should not log individual scrapes that are part of crawl operations", async () => {
+    it.concurrent("should log individual scrapes and parent crawl jobs", async () => {
         const originalLogJob = require("../../services/logging/log_job").logJob;
         const logJobCalls: any[] = [];
         const mockLogJob = jest.fn((...args) => {
@@ -297,7 +297,7 @@ describe("Activity log filtering tests", () => {
         const individualScrapeJobs = logJobCalls.filter(job => 
             job.crawl_id && (job.mode === "scrape" || job.mode === "single_urls" || job.mode === "single_url")
         );
-        expect(individualScrapeJobs).toHaveLength(0);
+        expect(individualScrapeJobs.length).toBeGreaterThan(0);
         
         const crawlJobs = logJobCalls.filter(job => job.mode === "crawl");
         expect(crawlJobs.length).toBeGreaterThan(0);
