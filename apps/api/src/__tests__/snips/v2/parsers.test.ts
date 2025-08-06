@@ -23,7 +23,7 @@ describe("Parsers parameter tests", () => {
       }, identity);
 
       expect(response.markdown).toBeDefined();
-      expect(response.markdown).toContain("PDF test file");
+      expect(response.markdown).toContain("PDF Test File");
       expect(response.metadata.numPages).toBeGreaterThan(0);
     }, scrapeTimeout * 2);
 
@@ -70,7 +70,7 @@ describe("Parsers parameter tests", () => {
       }, identity);
 
       expect(response.markdown).toBeDefined();
-      expect(response.markdown).toContain("PDF test file");
+      expect(response.markdown).toContain("PDF Test File");
       expect(response.metadata.numPages).toBeGreaterThan(0);
     }, scrapeTimeout * 2);
   });
