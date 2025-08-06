@@ -11,6 +11,7 @@ import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
 import { scrapeURLWithIndex } from "./index/index";
 import { useIndex } from "../../../services";
+import { hasFormatOfType } from "../../../lib/format-utils";
 
 export type Engine =
   | "fire-engine;chrome-cdp"
@@ -424,7 +425,7 @@ export function buildFallbackList(meta: Meta): {
     useIndex
     && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true"
     && meta.options.waitFor === 0
-    && !meta.options.formats.includes("changeTracking")
+    && !hasFormatOfType(meta.options.formats, "changeTracking")
     && meta.options.maxAge !== 0
     && (
       meta.options.headers === undefined

@@ -12,6 +12,7 @@ import { performAgent } from "./agent";
 import { deriveDiff } from "./diff";
 import { useIndex } from "../../../services/index";
 import { sendDocumentToIndex } from "../engines/index/index";
+import { hasFormatOfType, hasAnyFormatOfTypes } from "../../../lib/format-utils";
 
 export type Transformer = (
   meta: Meta,
@@ -102,7 +103,7 @@ export async function deriveMarkdownFromHTML(
 
 export async function deriveLinksFromHTML(meta: Meta, document: Document): Promise<Document> {
   // Only derive if the formats has links
-  if (meta.options.formats.includes("links")) {
+  if (hasFormatOfType(meta.options.formats, "links")) {
     if (document.html === undefined) {
       throw new Error(
         "html is undefined -- this transformer is being called out of order",
@@ -119,38 +120,41 @@ export function coerceFieldsToFormats(
   meta: Meta,
   document: Document,
 ): Document {
-  const formats = new Set(meta.options.formats);
-  const hasJson = meta.options.formats.find(x => typeof x === "object" && x.type === "json");
-  const hasChangeTrackingObject = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
-  const hasScreenshot = meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot");
+  const hasMarkdown = hasFormatOfType(meta.options.formats, "markdown");
+  const hasRawHtml = hasFormatOfType(meta.options.formats, "rawHtml");
+  const hasHtml = hasFormatOfType(meta.options.formats, "html");
+  const hasLinks = hasFormatOfType(meta.options.formats, "links");
+  const hasExtract = hasFormatOfType(meta.options.formats, "extract");
+  const hasChangeTracking = hasFormatOfType(meta.options.formats, "changeTracking");
+  const hasJson = hasFormatOfType(meta.options.formats, "json");
+  const hasScreenshot = hasAnyFormatOfTypes(meta.options.formats, ["screenshot", "screenshot@fullPage"]);
+  const hasSummary = hasFormatOfType(meta.options.formats, "summary");
 
-  if (!formats.has("markdown") && document.markdown !== undefined) {
+  if (!hasMarkdown && document.markdown !== undefined) {
     delete document.markdown;
-  } else if (formats.has("markdown") && document.markdown === undefined) {
+  } else if (hasMarkdown && document.markdown === undefined) {
     meta.logger.warn(
       "Request had format: markdown, but there was no markdown field in the result.",
     );
   }
 
-  if (!formats.has("rawHtml") && document.rawHtml !== undefined) {
+  if (!hasRawHtml && document.rawHtml !== undefined) {
     delete document.rawHtml;
-  } else if (formats.has("rawHtml") && document.rawHtml === undefined) {
+  } else if (hasRawHtml && document.rawHtml === undefined) {
     meta.logger.warn(
       "Request had format: rawHtml, but there was no rawHtml field in the result.",
     );
   }
 
-  if (!formats.has("html") && document.html !== undefined) {
+  if (!hasHtml && document.html !== undefined) {
     delete document.html;
-  } else if (formats.has("html") && document.html === undefined) {
+  } else if (hasHtml && document.html === undefined) {
     meta.logger.warn(
       "Request had format: html, but there was no html field in the result.",
     );
   }
 
   if (
-    !formats.has("screenshot") &&
-    !formats.has("screenshot@fullPage") &&
     !hasScreenshot &&
     document.screenshot !== undefined
   ) {
@@ -159,7 +163,7 @@ export function coerceFieldsToFormats(
     );
     delete document.screenshot;
   } else if (
-    (formats.has("screenshot") || formats.has("screenshot@fullPage") || hasScreenshot) &&
+    hasScreenshot &&
     document.screenshot === undefined
   ) {
     meta.logger.warn(
@@ -167,12 +171,12 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("links") && document.links !== undefined) {
+  if (!hasLinks && document.links !== undefined) {
     meta.logger.warn(
       "Removed links from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
     );
     delete document.links;
-  } else if (formats.has("links") && document.links === undefined) {
+  } else if (hasLinks && document.links === undefined) {
     meta.logger.warn(
       "Request had format: links, but there was no links field in the result.",
     );
@@ -214,30 +218,30 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("summary") && document.summary !== undefined) {
+  if (!hasSummary && document.summary !== undefined) {
     meta.logger.warn(
       "Removed summary from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
     );
     delete document.summary;
-  } else if (formats.has("summary") && document.summary === undefined) {
+  } else if (hasSummary && document.summary === undefined) {
     meta.logger.warn(
       "Request had format summary, but there was no summary field in the result.",
     );
   }
 
-  if (!hasChangeTrackingObject && !formats.has("changeTracking") && document.changeTracking !== undefined) {
+  if (!hasChangeTracking && document.changeTracking !== undefined) {
     meta.logger.warn(
       "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
     delete document.changeTracking;
-  } else if ((formats.has("changeTracking") || hasChangeTrackingObject) && document.changeTracking === undefined) {
+  } else if (hasChangeTracking && document.changeTracking === undefined) {
     meta.logger.warn(
       "Request had format changeTracking, but there was no changeTracking field in the result.",
     );
   }
 
   if (document.changeTracking && 
-      (!hasChangeTrackingObject?.modes?.includes("git-diff")) && 
+      (!(hasChangeTracking && 'modes' in hasChangeTracking && hasChangeTracking.modes?.includes("git-diff"))) && 
       document.changeTracking.diff !== undefined) {
     meta.logger.warn(
       "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
@@ -246,7 +250,7 @@ export function coerceFieldsToFormats(
   }
   
   if (document.changeTracking && 
-      (!hasChangeTrackingObject?.modes?.includes("json")) && 
+      (!(hasChangeTracking && 'modes' in hasChangeTracking && hasChangeTracking.modes?.includes("json"))) && 
       document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",

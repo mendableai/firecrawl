@@ -1,6 +1,7 @@
 import { InternalOptions } from "src/scraper/scrapeURL";
 import { Document, ScrapeOptions, TeamFlags } from "../controllers/v2/types";
 import { CostTracking } from "./extract/extraction-service";
+import { hasFormatOfType } from "./format-utils";
 
 const creditsPerPDFPage = 1;
 const stealthProxyCostBonus = 4;
@@ -20,7 +21,8 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
     }
 
     let creditsToBeBilled = 1; // Assuming 1 credit per document
-    if (options.formats.find(x => typeof x === "object" && x.type === "json") || (options.formats.find(x => typeof x === "object" && x.type === "changeTracking")?.modes?.includes("json"))) {
+    const changeTrackingFormat = hasFormatOfType(options.formats, "changeTracking");
+    if (hasFormatOfType(options.formats, "json") || (changeTrackingFormat && 'modes' in changeTrackingFormat && changeTrackingFormat.modes?.includes("json"))) {
         creditsToBeBilled = 5;
     }
 
