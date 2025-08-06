@@ -343,8 +343,8 @@ const separateWorkerFun = (
 
   const worker = new Worker(queue.name, path, {
     connection: createRedisConnection(),
-    lockDuration: 30 * 1000, // 30 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
+    lockDuration: 60 * 1000, // 60 seconds
+    stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
     concurrency: 10,
     useWorkerThreads: true,
@@ -367,8 +367,8 @@ const workerFun = async (
 
   const worker = new Worker(queue.name, null, {
     connection: redisConnection,
-    lockDuration: 30 * 1000, // 30 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
+    lockDuration: 60 * 1000, // 60 seconds
+    stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
   });
 
