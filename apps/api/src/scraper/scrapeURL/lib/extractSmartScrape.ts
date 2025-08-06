@@ -214,6 +214,7 @@ export async function extractData({
   extractId,
   sessionId,
   scrapeId,
+  metadata,
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
@@ -221,6 +222,7 @@ export async function extractData({
   extractId?: string;
   sessionId?: string;
   scrapeId?: string;
+  metadata: { teamId: string, functionId?: string };
 }): Promise<{
   extractedDataArray: any[];
   warning: any;
@@ -233,7 +235,12 @@ export async function extractData({
   // TODO: remove the "required" fields here!! it breaks o3-mini
 
   if (!schema && extractOptions.options.prompt) {
-    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger, extractOptions.costTrackingOptions.costTracking);
+    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger, extractOptions.costTrackingOptions.costTracking, {
+      ...metadata,
+      extractId,
+      scrapeId,
+      functionId: metadata.functionId ? (metadata.functionId + "/extractData") : "extractData",
+    });
     schema = genRes.extract;
   }
 

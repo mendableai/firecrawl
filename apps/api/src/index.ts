@@ -27,6 +27,9 @@ import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
 import domainFrequencyRouter from "./routes/domain-frequency";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { LangfuseExporter } from "langfuse-vercel";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -38,6 +41,14 @@ logger.info(`Number of CPUs: ${numCPUs} available`);
 // Install cacheable lookup for all other requests
 cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
+
+const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+  traceExporter: new LangfuseExporter(),
+  instrumentations: [getNodeAutoInstrumentations()]
+}) : null;
+if (langfuseOtel) {
+  langfuseOtel.start();
+}
 
 // Initialize Express with WebSocket support
 const expressApp = express();
@@ -106,7 +117,13 @@ function startServer(port = DEFAULT_PORT) {
     }
     server.close(() => {
       logger.info("Server closed.");
-      process.exit(0);
+      if (langfuseOtel) {
+        langfuseOtel.shutdown().then(() => {
+          process.exit(0);
+        });
+      } else {
+        process.exit(0);
+      }
     });
   };
 

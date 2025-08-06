@@ -44,6 +44,9 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { redisEvictConnection } from "./redis";
 import path from "path";
 import { finishCrawlIfNeeded } from "./worker/crawl-logic";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { LangfuseExporter } from "langfuse-vercel";
 
 configDotenv();
 
@@ -65,6 +68,15 @@ const runningJobs: Set<string> = new Set();
 // Install cacheable lookup for all other requests
 cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
+
+const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+  traceExporter: new LangfuseExporter(),
+  instrumentations: [getNodeAutoInstrumentations()],
+}) : null;
+
+if (langfuseOtel) {
+  langfuseOtel.start();
+}
 
 const processExtractJobInternal = async (
   token: string,
@@ -547,5 +559,8 @@ app.listen(workerPort, () => {
 
   await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
+  if (langfuseOtel) {
+    await langfuseOtel.shutdown();
+  }
   process.exit(0);
 })();
