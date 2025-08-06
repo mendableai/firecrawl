@@ -705,8 +705,8 @@ class FirecrawlApp:
                 raise Exception('Failed to parse Firecrawl response as JSON.')
         else:
             self._handle_error(response, 'search')
-            
-    async def search(
+
+    async def async_search(
         self,
         query: str,
         *,
