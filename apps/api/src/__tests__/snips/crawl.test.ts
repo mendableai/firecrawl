@@ -274,38 +274,6 @@ describe("Crawl tests", () => {
     });
 });
 
-describe("Activity log filtering tests", () => {
-    it.concurrent("should log individual scrapes and parent crawl jobs", async () => {
-        const originalLogJob = require("../../services/logging/log_job").logJob;
-        const logJobCalls: any[] = [];
-        const mockLogJob = jest.fn((...args) => {
-            logJobCalls.push(args[0]);
-            return Promise.resolve();
-        });
-        
-        jest.doMock("../../services/logging/log_job", () => ({
-            logJob: mockLogJob
-        }));
-
-        const results = await crawl({
-            url: "https://firecrawl.dev",
-            limit: 3,
-        }, identity);
-
-        expect(results.completed).toBe(3);
-        
-        const individualScrapeJobs = logJobCalls.filter(job => 
-            job.crawl_id && (job.mode === "scrape" || job.mode === "single_urls" || job.mode === "single_url")
-        );
-        expect(individualScrapeJobs.length).toBeGreaterThan(0);
-        
-        const crawlJobs = logJobCalls.filter(job => job.mode === "crawl");
-        expect(crawlJobs.length).toBeGreaterThan(0);
-        
-        jest.restoreAllMocks();
-    }, 10 * scrapeTimeout);
-});
-
 describe("Robots.txt FFI Integration tests", () => {
     it.concurrent("handles normal robots.txt parsing via FFI", async () => {
         

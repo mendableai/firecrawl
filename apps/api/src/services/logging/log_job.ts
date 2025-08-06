@@ -22,10 +22,6 @@ function cleanOfNull<T>(x: T): T {
 }
 
 export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLogging: boolean = false) {
-  if (job.crawl_id && (job.mode === "scrape" || job.mode === "single_urls" || job.mode === "single_url")) {
-    return;
-  }
-
   let logger = _logger.child({
     module: "log_job",
     method: "logJob",
