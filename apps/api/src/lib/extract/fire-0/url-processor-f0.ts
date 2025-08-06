@@ -11,11 +11,18 @@ import { getModel } from "../../generic-ai";
 import { CostTracking } from "../extraction-service";
 import { getACUCTeam } from "../../../controllers/auth";
 
-export async function generateBasicCompletion_FO(prompt: string) {
+export async function generateBasicCompletion_FO(prompt: string, metadata: { teamId: string, extractId?: string }) {
   const { text } = await generateText({
     model: getModel("gpt-4o"),
     prompt: prompt,
-    temperature: 0
+    temperature: 0,
+    experimental_telemetry: {
+      isEnabled: true,
+      metadata: {
+        ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+        teamId: metadata.teamId,
+      }
+    }
   });
   return text;
 }
@@ -28,6 +35,7 @@ interface ProcessUrlOptions {
   origin?: string;
   limit?: number;
   includeSubdomains?: boolean;
+  extractId?: string;
 }
 
 export async function processUrl_F0(
@@ -67,6 +75,7 @@ export async function processUrl_F0(
       (
         await generateBasicCompletion_FO(
           buildRefrasedPrompt(options.prompt, baseUrl),
+          { teamId: options.teamId, extractId: options.extractId },
         )
       )
         ?.replace('"', "")
@@ -190,6 +199,7 @@ export async function processUrl_F0(
       rephrasedPrompt =
         (await generateBasicCompletion_FO(
           buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
+          { teamId: options.teamId, extractId: options.extractId },
         )) ??
         "Extract the data according to the schema: " +
           JSON.stringify(options.schema, null, 2);
@@ -216,6 +226,11 @@ export async function processUrl_F0(
       links: mappedLinks,
       searchQuery: rephrasedPrompt,
       urlTraces,
+      metadata: {
+        teamId: options.teamId,
+        functionId: "processUrl_F0",
+        extractId: options.extractId,
+      },
     }, new CostTracking());
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
@@ -230,6 +245,11 @@ export async function processUrl_F0(
         links: mappedLinks,
         searchQuery: rephrasedPrompt,
         urlTraces,
+        metadata: {
+          teamId: options.teamId,
+          functionId: "processUrl_F0",
+          extractId: options.extractId,
+        },
       }, new CostTracking());
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;

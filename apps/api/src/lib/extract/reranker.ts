@@ -57,6 +57,7 @@ export async function rerankLinks(
   searchQuery: string,
   urlTraces: URLTrace[],
   flags: TeamFlags,
+  metadata: { teamId: string, extractId?: string }
 ): Promise<MapDocument[]> {
   // console.log("Going to rerank links");
   const mappedLinksRerank = mappedLinks.map(
@@ -67,6 +68,7 @@ export async function rerankLinks(
     mappedLinksRerank,
     mappedLinks.map((l) => l.url),
     searchQuery,
+    metadata,
   );
 
   // First try with high threshold
@@ -182,6 +184,7 @@ export type RerankerOptions = {
   multiEntityKeys: string[];
   keyIndicators: string[];
   costTracking: CostTracking;
+  metadata: { teamId: string, functionId?: string, extractId?: string };
 };
 
 export async function rerankLinksWithLLM(
@@ -195,6 +198,7 @@ export async function rerankLinksWithLLM(
     reasoning,
     multiEntityKeys,
     keyIndicators,
+    metadata,
   } = options;
   const chunkSize = 5000;
   const chunks: MapDocument[][] = [];
@@ -326,6 +330,10 @@ export async function rerankLinksWithLLM(
                   module: "extract",
                   method: "rerankLinksWithLLM",
                 },
+              },
+              metadata: {
+                ...metadata,
+                functionId: metadata.functionId ? (metadata.functionId + "/rerankLinksWithLLM") : "rerankLinksWithLLM",
               },
             });
 

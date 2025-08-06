@@ -19,6 +19,7 @@ export async function singleAnswerCompletion({
   extractId,
   sessionId,
   costTracking,
+  metadata,
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
@@ -29,6 +30,7 @@ export async function singleAnswerCompletion({
   extractId: string;
   sessionId: string;
   costTracking: CostTracking;
+  metadata: { teamId: string, functionId?: string, extractId?: string, scrapeId?: string };
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
@@ -60,6 +62,10 @@ export async function singleAnswerCompletion({
         method: "singleAnswerCompletion",
       },
     },
+    metadata: {
+      ...metadata,
+      functionId: metadata.functionId ? (metadata.functionId + "/singleAnswerCompletion") : "singleAnswerCompletion",
+    },
   };
     
   const { extractedDataArray, warning } = await extractData({
@@ -68,6 +74,10 @@ export async function singleAnswerCompletion({
     useAgent,
     extractId,
     sessionId,
+    metadata: {
+      ...metadata,
+      functionId: metadata.functionId ? (metadata.functionId + "/singleAnswerCompletion") : "singleAnswerCompletion",
+    },
   });
 
   const completion = {

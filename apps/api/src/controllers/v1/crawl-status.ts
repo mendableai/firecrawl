@@ -13,7 +13,7 @@ import {
   getDoneJobsOrderedLength,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
@@ -24,7 +24,6 @@ import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
 import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitActiveJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
-import IORedis from "ioredis";
 configDotenv();
 
 export type PseudoJob<T> = {
@@ -41,9 +40,9 @@ export type PseudoJob<T> = {
 
 export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string }
 
-export async function getJob(id: string, conn: IORedis): Promise<PseudoJob<any> | null> {
+export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([
-    getScrapeQueue(conn).getJob(id),
+    getScrapeQueue().getJob(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
@@ -73,10 +72,9 @@ export async function getJob(id: string, conn: IORedis): Promise<PseudoJob<any> 
   return job;
 }
 
-export async function getJobs(ids: string[], conn: IORedis): Promise<PseudoJob<any>[]> {
-  const queue = getScrapeQueue(conn);
+export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
   const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-    Promise.all(ids.map((x) => queue.getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
@@ -159,14 +157,11 @@ export async function crawlStatusController(
     }
 
     let jobIDs = await getCrawlJobs(req.params.jobId);
-    const conn = createRedisConnection();
-    const queue = getScrapeQueue(conn);
     let jobStatuses = await Promise.all(
       jobIDs.map(
-        async (x) => [x, await queue.getJobState(x)] as const,
+        async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
       ),
     );
-    conn.disconnect();
 
     if (jobStatuses.filter((x) => x[1] === "unknown").length > 0 && process.env.USE_DB_AUTHENTICATION === "true") {
       for (let rangeStart = 0; ; rangeStart += 1000) {
@@ -261,7 +256,7 @@ export async function crawlStatusController(
       const creditsRpc = await supabase_rr_service
         .rpc("credits_billed_by_crawl_id_1", {
           i_crawl_id: req.params.jobId,
-        });
+        }, { get: true });
 
       creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? (totalCount * (
         sc.scrapeOptions?.extract
@@ -276,17 +271,6 @@ export async function crawlStatusController(
       )
     }
   } else if (process.env.USE_DB_AUTHENTICATION === "true") {
-    
-    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
-      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id });
-
-    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
-      logger.error("Error getting scrape job count", { error: scrapeJobError });
-      throw scrapeJobError;
-    }
-
-    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
-
     const { data: crawlJobs, error: crawlJobError } = await supabase_rr_service
       .from("firecrawl_jobs")
       .select("*")
@@ -299,6 +283,32 @@ export async function crawlStatusController(
       throw crawlJobError;
     }
 
+    const crawlJob = crawlJobs[0];
+
+    if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const crawlTtlHours = req.acuc?.flags?.crawlTtlHours ?? 24;
+    const crawlTtlMs = crawlTtlHours * 60 * 60 * 1000;
+
+    if (
+      crawlJob
+      && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > crawlTtlMs
+    ) {
+      return res.status(404).json({ success: false, error: "Job expired" });
+    }
+
+    const { data: scrapeJobCounts, error: scrapeJobError } = await supabase_rr_service
+      .rpc("count_jobs_of_crawl_team", { i_crawl_id: req.params.jobId, i_team_id: req.auth.team_id }, { get: true });
+
+    if (scrapeJobError || !scrapeJobCounts || scrapeJobCounts.length === 0) {
+      logger.error("Error getting scrape job count", { error: scrapeJobError });
+      throw (scrapeJobError ?? new Error("Unknown error getting scrape job count"));
+    }
+
+    const scrapeJobCount: number = scrapeJobCounts[0].count ?? 0;
+
     if (!crawlJobs || crawlJobs.length === 0) {
       if (scrapeJobCount === 0) {
         return res.status(404).json({ success: false, error: "Job not found" });
@@ -308,26 +318,7 @@ export async function crawlStatusController(
     } else {
       status = crawlJobs[0].success ? "completed" : "failed";
     }
-
-    const crawlJob = crawlJobs[0];
-
-    if (crawlJob && crawlJob.team_id !== req.auth.team_id) {
-      return res.status(403).json({ success: false, error: "Forbidden" });
-    }
-
-    const teamIdsExcludedFromExpiry = [
-      "8f819703-1b85-4f7f-a6eb-e03841ec6617",
-      "f96ad1a4-8102-4b35-9904-36fd517d3616",
-    ];
-
-    if (
-      crawlJob
-      && !teamIdsExcludedFromExpiry.includes(crawlJob.team_id)
-      && new Date().valueOf() - new Date(crawlJob.date_added).valueOf() > 24 * 60 * 60 * 1000
-    ) {
-      return res.status(404).json({ success: false, error: "Job expired" });
-    }
-
+    
     doneJobsLength = scrapeJobCount!;
     doneJobsOrder = [];
 
@@ -386,9 +377,8 @@ export async function crawlStatusController(
       i += factor
     ) {
       // get current chunk and retrieve jobs
-      const conn = createRedisConnection();
       const currentIDs = doneJobsOrder.slice(i, i + factor);
-      const jobs = await getJobs(currentIDs, conn);
+      const jobs = await getJobs(currentIDs);
 
       // iterate through jobs and add them one them one to the byte counter
       // both loops will break once we cross the byte counter
@@ -411,7 +401,6 @@ export async function crawlStatusController(
         doneJobs.push(job);
         bytes += JSON.stringify(job.returnvalue ?? null).length;
       }
-      conn.disconnect();
     }
 
     // if we ran over the bytes limit, remove the last document, except if it's the only document
@@ -419,15 +408,13 @@ export async function crawlStatusController(
       doneJobs.splice(doneJobs.length - 1, 1);
     }
   } else {
-    const conn = createRedisConnection();
     doneJobs = (
       await Promise.all(
-        (await getJobs(doneJobsOrder, conn)).map(async (x) =>
+        (await getJobs(doneJobsOrder)).map(async (x) =>
           (await x.getState()) === "failed" ? null : x,
         ),
       )
     ).filter((x) => x !== null) as PseudoJob<any>[];
-    conn.disconnect();
   }
 
   const data = doneJobs.map((x) => x.returnvalue);

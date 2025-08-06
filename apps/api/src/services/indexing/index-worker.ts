@@ -11,7 +11,7 @@ import {
 import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing } from "../billing/batch_billing";
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { index_supabase_service, processIndexInsertJobs, processIndexRFInsertJobs, processOMCEJobs } from "..";
+import { index_supabase_service, processIndexInsertJobs, processIndexRFInsertJobs, processOMCEJobs, processDomainFrequencyJobs } from "..";
 import { processWebhookInsertJobs } from "../webhook";
 import { scrapeOptions as scrapeOptionsSchema, crawlRequestSchema, toLegacyCrawlerOptions } from "../../controllers/v1/types";
 import { StoredCrawl, crawlToCrawler, saveCrawl } from "../../lib/crawl-redis";
@@ -261,30 +261,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
         runningJobs.add(job.id);
       }
 
-      if (job.data && job.data.sentry && Sentry.isInitialized()) {
-        Sentry.continueTrace(
-          {
-            sentryTrace: job.data.sentry.trace,
-            baggage: job.data.sentry.baggage,
-          },
-          () => {
-            Sentry.startSpan(
-              {
-                name: "Index job",
-                attributes: {
-                  job: job.id,
-                  worker: process.env.FLY_MACHINE_ID ?? worker.id,
-                },
-              },
-              async () => {
-                await jobProcessor(token, job);
-              },
-            );
-          },
-        );
-      } else {
-        await jobProcessor(token, job);
-      }
+      await jobProcessor(token, job);
 
       if (job.id) {
         runningJobs.delete(job.id);
@@ -309,6 +286,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
 const INDEX_INSERT_INTERVAL = 3000;
 const WEBHOOK_INSERT_INTERVAL = 15000;
 const OMCE_INSERT_INTERVAL = 5000;
+const DOMAIN_FREQUENCY_INTERVAL = 10000;
 
 // Start the workers
 (async () => {
@@ -348,6 +326,13 @@ const OMCE_INSERT_INTERVAL = 5000;
     await processOMCEJobs();
   }, OMCE_INSERT_INTERVAL);
 
+  const domainFrequencyInterval = setInterval(async () => {
+    if (isShuttingDown) {
+      return;
+    }
+    await processDomainFrequencyJobs();
+  }, DOMAIN_FREQUENCY_INTERVAL);
+
   // Wait for all workers to complete (which should only happen on shutdown)
   await Promise.all([billingWorkerPromise, precrawlWorkerPromise]);
 
@@ -355,4 +340,5 @@ const OMCE_INSERT_INTERVAL = 5000;
   clearInterval(webhookInserterInterval);
   clearInterval(indexRFInserterInterval);
   clearInterval(omceInserterInterval);
+  clearInterval(domainFrequencyInterval);
 })();

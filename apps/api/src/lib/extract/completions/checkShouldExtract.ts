@@ -14,6 +14,7 @@ export async function checkShouldExtract(
   multiEntitySchema: any,
   doc: Document,
   costTracking: CostTracking,
+  metadata: { teamId: string, functionId?: string, extractId?: string, scrapeId?: string, deepResearchId?: string },
 ): Promise<{ tokenUsage: TokenUsage; extract: boolean; }> {
   const shouldExtractCheck = await generateCompletions({
     logger: logger.child({ method: "extractService/checkShouldExtract" }),
@@ -40,6 +41,10 @@ export async function checkShouldExtract(
         module: "extract",
         method: "checkShouldExtract",
       },
+    },
+    metadata: {
+      ...metadata,
+      functionId: metadata.functionId ? (metadata.functionId + "/checkShouldExtract") : "checkShouldExtract",
     },
   });
 

@@ -10,13 +10,13 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { createRedisConnection, getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
   res: Response<ScrapeResponse>,
 ) {
-  const jobId = uuidv4();
+  const jobId: string = uuidv4();
   const preNormalizedBody = { ...req.body };
 
   if (req.body.zeroDataRetention && !req.acuc?.flags?.allowZDR) {
@@ -57,7 +57,7 @@ export async function scrapeController(
 
   const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
   
-  await addScrapeJob(
+  const bullJob = await addScrapeJob(
     {
       url: req.body.url,
       mode: "single_urls",
@@ -86,7 +86,7 @@ export async function scrapeController(
     jobPriority,
     isDirectToBullMQ,
   );
-  logger.info("Added scrape job now")
+  logger.info("Added scrape job now" + (bullJob ? "" : " (to concurrency queue)"));
 
   const totalWait =
     (req.body.waitFor ?? 0) +
@@ -97,7 +97,7 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob(jobId, timeout + totalWait, logger);
+    doc = await waitForJob(bullJob ? bullJob : jobId, timeout + totalWait, logger);
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,
@@ -126,9 +126,7 @@ export async function scrapeController(
 
   logger.info("Done with waitForJob");
 
-  const conn = createRedisConnection();
-  await getScrapeQueue(conn).remove(jobId);
-  conn.disconnect();
+  await getScrapeQueue().remove(jobId);
 
   logger.info("Removed job from queue");
   

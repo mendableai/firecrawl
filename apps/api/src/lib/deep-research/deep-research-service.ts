@@ -93,6 +93,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
           nextSearchTopic,
           state.getFindings(),
           costTracking,
+          {
+            teamId,
+            functionId: "performDeepResearch/nextSearchTopic",
+            deepResearchId: researchId,
+          },
         )
       ).slice(0, 3);
 
@@ -246,6 +251,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         timeRemaining,
         options.systemPrompt ?? "",
         costTracking,
+        {
+          teamId,
+          functionId: "performDeepResearch/analysisPhase",
+          deepResearchId: researchId,
+        },
       );
       
       if (checkTimeLimit()) {
@@ -321,6 +331,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getSummaries(),
         options.analysisPrompt,
         costTracking,
+        {
+          teamId,
+          functionId: "performDeepResearch/finalAnalysisJson",
+          deepResearchId: researchId,
+        },
         options.formats,
         options.jsonOptions,
       );
@@ -332,6 +347,12 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getSummaries(),
         options.analysisPrompt,
         costTracking,
+        {
+          teamId,
+          functionId: "performDeepResearch/finalAnalysisMarkdown",
+          deepResearchId: researchId,
+        },
+        options.formats,
       );
     }
 

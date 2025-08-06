@@ -75,34 +75,9 @@ export async function deepResearchController(
     summaries: [],
   });
 
-  if (Sentry.isInitialized()) {
-    const size = JSON.stringify(jobData).length;
-    await Sentry.startSpan(
-      {
-        name: "Add deep research job",
-        op: "queue.publish",
-        attributes: {
-          "messaging.message.id": researchId,
-          "messaging.destination.name": getDeepResearchQueue().name,
-          "messaging.message.body.size": size,
-        },
-      },
-      async (span) => {
-        await getDeepResearchQueue().add(researchId, {
-          ...jobData,
-          sentry: {
-            trace: Sentry.spanToTraceHeader(span),
-            baggage: Sentry.spanToBaggageHeader(span),
-            size,
-          },
-        }, { jobId: researchId });
-      },
-    );
-  } else {
-    await getDeepResearchQueue().add(researchId, jobData, {
-      jobId: researchId,
-    });
-  }
+  await getDeepResearchQueue().add(researchId, jobData, {
+    jobId: researchId,
+  });
 
   return res.status(200).json({
     success: true,

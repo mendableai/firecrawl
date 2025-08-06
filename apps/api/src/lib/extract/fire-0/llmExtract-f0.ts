@@ -157,6 +157,7 @@ export async function generateCompletions_F0({
   isExtractEndpoint,
   model = getModel("gpt-4o-mini"),
   mode = "object",
+  metadata,
 }: {
   model?: LanguageModel; 
   logger: Logger;
@@ -165,6 +166,7 @@ export async function generateCompletions_F0({
   previousWarning?: string;
   isExtractEndpoint?: boolean;
   mode?: "object" | "no-object";
+  metadata: { teamId: string, functionId?: string, extractId?: string, scrapeId?: string };
 }): Promise<{
   extract: any;
   numTokens: number;
@@ -205,6 +207,15 @@ export async function generateCompletions_F0({
         prompt: options.prompt + (markdown ? `\n\nData:${markdown}` : ""),
         temperature: options.temperature ?? 0,
         system: options.systemPrompt,
+        experimental_telemetry: {
+          isEnabled: true,
+          functionId: metadata.functionId,
+          metadata: {
+            teamId: metadata.teamId,
+            ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+            ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+          }
+        }
       });
 
       extract = result.text;
@@ -279,7 +290,16 @@ export async function generateCompletions_F0({
         const { text: fixedText } = await generateText({
           model: model,
           prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
-          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON."
+          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON.",
+          experimental_telemetry: {
+            isEnabled: true,
+            functionId: metadata.functionId,
+            metadata: {
+              teamId: metadata.teamId,
+              ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+              ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+            }
+          }
         });
         return fixedText;
       }
@@ -297,7 +317,16 @@ export async function generateCompletions_F0({
         onError: (error: Error) => {
           console.error(error);
         }
-      })
+      }),
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: metadata.functionId,
+        metadata: {
+          teamId: metadata.teamId,
+          ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+          ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+        }
+      }
     } satisfies Parameters<typeof generateObject>[0];
 
     const result = await generateObject(generateObjectConfig);
@@ -348,7 +377,8 @@ export async function performLLMExtract(
       }),
       options: meta.options.extract!,
       markdown: document.markdown,
-      previousWarning: document.warning
+      previousWarning: document.warning,
+      metadata: { teamId: meta.internalOptions.teamId, functionId: "performLLMExtract", scrapeId: meta.id },
     });
 
     if (meta.options.formats.includes("json")) {
@@ -408,7 +438,7 @@ export function removeDefaultProperty_F0(schema: any): any {
   return rest;
 }
 
-export async function generateSchemaFromPrompt_F0(prompt: string): Promise<any> {
+export async function generateSchemaFromPrompt_F0(prompt: string, metadata: { teamId: string, functionId?: string, extractId?: string }): Promise<any> {
   const model = getModel("gpt-4o");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
   let lastError: Error | null = null;
@@ -450,7 +480,11 @@ Return a valid JSON schema object with properties that would capture the informa
           prompt: `Generate a JSON schema for extracting the following information: ${prompt}`,
           temperature: temp 
         },
-        markdown: prompt
+        markdown: prompt,
+        metadata: {
+          ...metadata,
+          functionId: metadata.functionId ? (metadata.functionId + "/generateSchemaFromPrompt_F0") : "generateSchemaFromPrompt_F0",
+        },
       });
 
       return extract;

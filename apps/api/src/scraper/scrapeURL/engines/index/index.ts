@@ -1,11 +1,13 @@
 import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits, addOMCEJob } from "../../../../services";
+import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits, addOMCEJob, addDomainFrequencyJob } from "../../../../services";
 import { EngineError, IndexMissError, TimeoutError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
+   
+
     const shouldCache = meta.options.storeInCache
         && !meta.internalOptions.zeroDataRetention
         && meta.winnerEngine !== "index"

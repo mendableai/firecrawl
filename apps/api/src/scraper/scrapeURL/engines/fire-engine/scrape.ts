@@ -79,34 +79,17 @@ export async function fireEngineScrape<
   abort?: AbortSignal,
   production = true,
 ): Promise<z.infer<typeof schema>> {
-  const scrapeRequest = await Sentry.startSpan(
-    {
-      name: "fire-engine: Scrape",
-      attributes: {
-        url: request.url,
-      },
-    },
-    async (span) => {
-      return await robustFetch({
-        url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape`,
-        method: "POST",
-        headers: {
-          ...(Sentry.isInitialized()
-            ? {
-                "sentry-trace": Sentry.spanToTraceHeader(span),
-                baggage: Sentry.spanToBaggageHeader(span),
-              }
-            : {}),
-        },
-        body: request,
-        logger: logger.child({ method: "fireEngineScrape/robustFetch" }),
-        schema,
-        tryCount: 3,
-        mock,
-        abort,
-      });
-    },
-  );
+  const scrapeRequest = await robustFetch({
+    url: `${production ? fireEngineURL : fireEngineStagingURL}/scrape`,
+    method: "POST",
+    headers: {},
+    body: request,
+    logger: logger.child({ method: "fireEngineScrape/robustFetch" }),
+    schema,
+    tryCount: 3,
+    mock,
+    abort,
+  });
 
   return scrapeRequest;
 }

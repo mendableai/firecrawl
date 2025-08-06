@@ -37,6 +37,7 @@ import { deepResearchController } from "../controllers/v1/deep-research";
 import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 import { tokenUsageController } from "../controllers/v1/token-usage";
 import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
+import { addDomainFrequencyJob } from "../services"
 import { paymentMiddleware } from "x402-express";
 
 function checkCreditsMiddleware(
@@ -102,6 +103,18 @@ export function authMiddleware(
       if (currentRateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
         currentRateLimiterMode = RateLimiterMode.ExtractAgentPreview;
       }
+
+    // Track domain frequency regardless of caching
+    try {
+      // Use the URL from the request body if available
+      const urlToTrack = (req.body as any)?.url;
+      if (urlToTrack) {
+        await addDomainFrequencyJob(urlToTrack);
+      }
+    } catch (error) {
+      // Log error without meta.logger since it's not available in this context
+      logger.warn("Failed to track domain frequency", { error });
+    }
 
       // if (currentRateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
       //   currentRateLimiterMode = RateLimiterMode.ScrapeAgentPreview;

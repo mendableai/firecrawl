@@ -102,22 +102,25 @@ jobs:
           cargo build --release
           chmod +x target/release/libcrawler.so
         working-directory: ./apps/api/sharedLibs/crawler
+      - name: Build the application
+        run: npm run build
+        working-directory: ./apps/api
       - name: Start the application
-        run: npm run start:production > api.log 2>&1 &
+        run: npm run start:production:nobuild > api.log 2>&1 &
         env:
           PORT: 3002
           HOST: 0.0.0.0
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
-        run: npm run workers > worker.log 2>&1 &
+        run: npm run worker:production > worker.log 2>&1 &
         env:
           PORT: 3005
           HOST: 0.0.0.0
         working-directory: ./apps/api
         id: start_workers
       - name: Start index worker
-        run: npm run index-worker > index-worker.log 2>&1 &
+        run: npm run index-worker:production > index-worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_index_worker
       - name: Wait for API
