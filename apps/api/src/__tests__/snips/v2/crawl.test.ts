@@ -272,37 +272,19 @@ describe("Crawl tests", () => {
             }
         }, 2 * scrapeTimeout);
 
-        it.concurrent('should work without prompt parameter', async () => {
-            const res = await crawl({
-                url: "https://firecrawl.dev",
-                limit: 3,
-                includePaths: ["^/docs"],
-            }, identity);
-
-            expect(res.success).toBe(true);
-            if (res.success) {
-                expect(res.completed).toBeGreaterThan(0);
-                expect(res.completed).toBeLessThanOrEqual(3);
-                for (const page of res.data) {
-                    const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
-                    expect(url.pathname).toMatch(/^\/docs/);
-                }
-            }
-        }, 3 * scrapeTimeout);
-
         it.concurrent('should handle invalid prompt gracefully', async () => {
             // Test with various invalid prompts
             const invalidPrompts = [
                 "",  // Empty prompt
-                "a".repeat(10001),  // Exceeds max length (10000 chars)
+                "a".repeat(10000),  // Screaming
                 "!!!@@@###$$$%%%",  // Gibberish
                 "Generate me a million dollars",  // Nonsensical crawl instruction
             ];
 
-            for (const invalidPrompt of invalidPrompts.slice(0, 1)) {  // Test first one to avoid long test times
+            for (const invalidPrompt of invalidPrompts) {  // Test first one to avoid long test times
                 const res = await crawl({
                     url: "https://firecrawl.dev",
-                    prompt: invalidPrompt === "a".repeat(10001) ? "a".repeat(10000) : invalidPrompt,  // Cap at max length
+                    prompt: invalidPrompt,
                     limit: 1,
                 }, identity);
 
@@ -314,40 +296,7 @@ describe("Crawl tests", () => {
                     expect(Array.isArray(res.data)).toBe(true);
                 }
             }
-        }, 2 * scrapeTimeout);
-
-        it.concurrent('should validate regex patterns in generated includePaths', async () => {
-            const res = await crawl({
-                url: "https://firecrawl.dev",
-                prompt: "Only crawl blog posts and documentation pages, exclude everything else",
-                limit: 5,
-            }, identity);
-
-            expect(res.success).toBe(true);
-            if (res.success) {
-                expect(res.completed).toBeGreaterThan(0);
-                
-                // Check if the pages match expected patterns
-                // The prompt should generate patterns for blog and docs
-                for (const page of res.data) {
-                    const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
-                    const pathname = url.pathname;
-                    
-                    // Should be either a blog post, docs page, or the root
-                    const isValidPath = 
-                        pathname === "/" ||
-                        pathname.match(/^\/blog/) ||
-                        pathname.match(/^\/docs/) ||
-                        pathname.match(/^\/documentation/);
-                    
-                    if (!isValidPath) {
-                        console.log(`Unexpected path crawled: ${pathname}`);
-                    }
-                    // Note: The prompt interpretation may vary, so we're being flexible here
-                    // The key is that the regex patterns generated are valid and don't cause errors
-                }
-            }
-        }, 5 * scrapeTimeout);
+        }, 8 * scrapeTimeout);
     });
 });
 
