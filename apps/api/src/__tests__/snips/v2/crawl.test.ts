@@ -234,70 +234,72 @@ describe("Crawl tests", () => {
         }
     }, 5 * scrapeTimeout);
 
-    describe('Crawl API with Prompt', () => {
-        it.concurrent('should accept prompt parameter in schema', async () => {
-            const res = await crawlStart({
-                url: "https://firecrawl.dev",
-                prompt: "Crawl only blog posts",
-                limit: 1,
-            }, identity);
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.success).toBe(true);
-            expect(res.body.id).toBeDefined();
-            expect(typeof res.body.id).toBe("string");
-        }, scrapeTimeout);
-
-        it.concurrent('should prioritize explicit options over prompt-generated options', async () => {
-            const res = await crawl({
-                url: "https://firecrawl.dev",
-                prompt: "Crawl everything including external links and subdomains",
-                // Explicit options that should override the prompt
-                allowExternalLinks: false,
-                allowSubdomains: false,
-                includePaths: ["^/pricing"],
-                limit: 2,
-            }, identity);
-
-            expect(res.success).toBe(true);
-            if (res.success) {
-                // Verify that explicit options were respected
-                for (const page of res.data) {
-                    const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
-                    // Should only include pages matching the explicit includePaths
-                    expect(url.pathname).toMatch(/^\/pricing/);
-                    // Should not include external links despite prompt
-                    expect(url.hostname).toMatch(/firecrawl\.dev$/);
-                }
-            }
-        }, 2 * scrapeTimeout);
-
-        it.concurrent('should handle invalid prompt gracefully', async () => {
-            // Test with various invalid prompts
-            const invalidPrompts = [
-                "",  // Empty prompt
-                "a".repeat(10000),  // Screaming
-                "!!!@@@###$$$%%%",  // Gibberish
-                "Generate me a million dollars",  // Nonsensical crawl instruction
-            ];
-
-            for (const invalidPrompt of invalidPrompts) {  // Test first one to avoid long test times
-                const res = await crawl({
+    if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
+        describe('Crawl API with Prompt', () => {
+            it.concurrent('should accept prompt parameter in schema', async () => {
+                const res = await crawlStart({
                     url: "https://firecrawl.dev",
-                    prompt: invalidPrompt,
+                    prompt: "Crawl only blog posts",
                     limit: 1,
                 }, identity);
 
-                // Should still complete successfully, either ignoring the prompt or using defaults
+                expect(res.statusCode).toBe(200);
+                expect(res.body.success).toBe(true);
+                expect(res.body.id).toBeDefined();
+                expect(typeof res.body.id).toBe("string");
+            }, scrapeTimeout);
+
+            it.concurrent('should prioritize explicit options over prompt-generated options', async () => {
+                const res = await crawl({
+                    url: "https://firecrawl.dev",
+                    prompt: "Crawl everything including external links and subdomains",
+                    // Explicit options that should override the prompt
+                    allowExternalLinks: false,
+                    allowSubdomains: false,
+                    includePaths: ["^/pricing"],
+                    limit: 2,
+                }, identity);
+
                 expect(res.success).toBe(true);
                 if (res.success) {
-                    expect(res.completed).toBeGreaterThan(0);
-                    expect(res.data).toBeDefined();
-                    expect(Array.isArray(res.data)).toBe(true);
+                    // Verify that explicit options were respected
+                    for (const page of res.data) {
+                        const url = new URL(page.metadata.url ?? page.metadata.sourceURL!);
+                        // Should only include pages matching the explicit includePaths
+                        expect(url.pathname).toMatch(/^\/pricing/);
+                        // Should not include external links despite prompt
+                        expect(url.hostname).toMatch(/firecrawl\.dev$/);
+                    }
                 }
-            }
-        }, 8 * scrapeTimeout);
-    });
+            }, 2 * scrapeTimeout);
+
+            it.concurrent('should handle invalid prompt gracefully', async () => {
+                // Test with various invalid prompts
+                const invalidPrompts = [
+                    "",  // Empty prompt
+                    "a".repeat(10000),  // Screaming
+                    "!!!@@@###$$$%%%",  // Gibberish
+                    "Generate me a million dollars",  // Nonsensical crawl instruction
+                ];
+
+                for (const invalidPrompt of invalidPrompts) {  // Test first one to avoid long test times
+                    const res = await crawl({
+                        url: "https://firecrawl.dev",
+                        prompt: invalidPrompt,
+                        limit: 1,
+                    }, identity);
+
+                    // Should still complete successfully, either ignoring the prompt or using defaults
+                    expect(res.success).toBe(true);
+                    if (res.success) {
+                        expect(res.completed).toBeGreaterThan(0);
+                        expect(res.data).toBeDefined();
+                        expect(Array.isArray(res.data)).toBe(true);
+                    }
+                }
+            }, 8 * scrapeTimeout);
+        });
+    }
 });
 
 describe("Robots.txt FFI Integration tests", () => {
