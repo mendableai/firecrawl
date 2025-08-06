@@ -990,4 +990,30 @@ describe("Scrape tests", () => {
       expect(response.metadata).toBeDefined();
     }, scrapeTimeout);
   });
+
+  it.concurrent("should log standalone scrape jobs without crawl_id", async () => {
+    const originalLogJob = require("../../services/logging/log_job").logJob;
+    const logJobCalls: any[] = [];
+    const mockLogJob = jest.fn((...args) => {
+        logJobCalls.push(args[0]);
+        return Promise.resolve();
+    });
+    
+    jest.doMock("../../services/logging/log_job", () => ({
+        logJob: mockLogJob
+    }));
+
+    const response = await scrape({
+        url: "http://firecrawl.dev"
+    }, identity);
+    
+    expect(response).toHaveProperty("markdown");
+    
+    const standaloneJobs = logJobCalls.filter(job => 
+        !job.crawl_id && job.mode === "scrape"
+    );
+    expect(standaloneJobs.length).toBeGreaterThan(0);
+    
+    jest.restoreAllMocks();
+  }, scrapeTimeout);
 });
