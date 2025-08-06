@@ -327,14 +327,14 @@ export async function waitForJob(
       await new Promise(resolve => setTimeout(resolve, 500));
       job = await queue.getJob(_job as string);
       if (Date.now() - start > timeout) {
-        throw new Error("Job wait ");
+        throw new Error("Job wait (concurrency limited)");
       }
     }
     let doc: Document = await Promise.race([
       job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
       new Promise((resolve, reject) => {
         setTimeout(() => {
-          reject(new Error("Job wait "));
+          reject(new Error("Job wait " + (typeof _job == "string" ? "(was concurrency limited)" : "")));
         }, Math.max(0, timeout - (Date.now() - start)));
       }),
     ]);
