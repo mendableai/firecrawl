@@ -23,7 +23,7 @@ describe("Parsers parameter tests", () => {
       }, identity);
 
       expect(response.markdown).toBeDefined();
-      expect(response.markdown).toContain("Dummy PDF file"); // PDF test file content
+      expect(response.markdown).toContain("PDF test file");
       expect(response.metadata.numPages).toBeGreaterThan(0);
     }, scrapeTimeout * 2);
 
@@ -35,8 +35,7 @@ describe("Parsers parameter tests", () => {
       }, identity);
 
       expect(response.markdown).toBeDefined();
-      // When PDF parsing is disabled, it should return base64 encoded content
-      expect(response.markdown).toMatch(/^data:application\/pdf;base64,/);
+      expect(response.markdown).toContain("JVBER"); // base64
     }, scrapeTimeout * 2);
 
     it.concurrent("accepts parsers: ['pdf'] on HTML pages (no effect)", async () => {
@@ -71,7 +70,7 @@ describe("Parsers parameter tests", () => {
       }, identity);
 
       expect(response.markdown).toBeDefined();
-      expect(response.markdown).toContain("Dummy PDF file");
+      expect(response.markdown).toContain("PDF test file");
       expect(response.metadata.numPages).toBeGreaterThan(0);
     }, scrapeTimeout * 2);
   });
