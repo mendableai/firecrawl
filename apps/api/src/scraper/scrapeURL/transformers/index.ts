@@ -241,7 +241,7 @@ export function coerceFieldsToFormats(
   }
 
   if (document.changeTracking && 
-      (!(hasChangeTracking && 'modes' in hasChangeTracking && hasChangeTracking.modes?.includes("git-diff"))) && 
+      (!hasChangeTracking?.modes?.includes("git-diff")) && 
       document.changeTracking.diff !== undefined) {
     meta.logger.warn(
       "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
@@ -250,7 +250,7 @@ export function coerceFieldsToFormats(
   }
   
   if (document.changeTracking && 
-      (!(hasChangeTracking && 'modes' in hasChangeTracking && hasChangeTracking.modes?.includes("json"))) && 
+      (!hasChangeTracking?.modes?.includes("json")) && 
       document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",

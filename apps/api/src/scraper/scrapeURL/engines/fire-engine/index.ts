@@ -211,11 +211,9 @@ export async function scrapeURLWithFireEngineChromeCDP(
           {
             type: "screenshot" as const,
             fullPage: hasFormatOfType(meta.options.formats, "screenshot@fullPage") !== undefined || 
-                     ((() => { const fmt = hasFormatOfType(meta.options.formats, "screenshot"); return fmt && 'fullPage' in fmt ? fmt.fullPage : false; })()) || false,
-            ...((() => { 
-              const fmt = hasFormatOfType(meta.options.formats, "screenshot"); 
-              return fmt && 'viewport' in fmt && fmt.viewport ? { viewport: fmt.viewport } : {};
-            })()),
+                     hasFormatOfType(meta.options.formats, "screenshot")?.fullPage || false,
+            ...(hasFormatOfType(meta.options.formats, "screenshot")?.viewport ? 
+              { viewport: hasFormatOfType(meta.options.formats, "screenshot")!.viewport } : {}),
           },
         ]
       : []),
@@ -359,7 +357,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     priority: meta.internalOptions.priority,
     screenshot: hasFormatOfType(meta.options.formats, "screenshot") !== undefined,
     fullPageScreenshot: hasFormatOfType(meta.options.formats, "screenshot@fullPage") !== undefined || 
-                       ((() => { const fmt = hasFormatOfType(meta.options.formats, "screenshot"); return fmt && 'fullPage' in fmt ? fmt.fullPage : false; })()),
+                       hasFormatOfType(meta.options.formats, "screenshot")?.fullPage,
     wait: meta.options.waitFor,
     geolocation: meta.options.location,
     blockAds: meta.options.blockAds,

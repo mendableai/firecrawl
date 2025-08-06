@@ -22,7 +22,7 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, interna
 
     let creditsToBeBilled = 1; // Assuming 1 credit per document
     const changeTrackingFormat = hasFormatOfType(options.formats, "changeTracking");
-    if (hasFormatOfType(options.formats, "json") || (changeTrackingFormat && 'modes' in changeTrackingFormat && changeTrackingFormat.modes?.includes("json"))) {
+    if (hasFormatOfType(options.formats, "json") || changeTrackingFormat?.modes?.includes("json")) {
         creditsToBeBilled = 5;
     }
 
