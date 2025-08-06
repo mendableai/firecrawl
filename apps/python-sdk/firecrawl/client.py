@@ -53,14 +53,16 @@ class V2Proxy:
     def __init__(self, client_instance: Optional[V2FirecrawlClient]):
         self._client = client_instance
 
-        # TODO: Not implemented yet
         if client_instance:
-            self.scrape = client_instance.scrape
+            # self.scrape = client_instance.scrape
             self.search = client_instance.search
             self.crawl = client_instance.crawl
-            self.batch_scrape = client_instance.batch_scrape
             self.get_crawl_status = client_instance.get_crawl_status
             self.cancel_crawl = client_instance.cancel_crawl
+            self.start_crawl = client_instance.start_crawl
+            self.crawl_params = client_instance.crawl_params
+            # self.batch_scrape = client_instance.batch_scrape
+            # self.map = client_instance.map
     
     def __getattr__(self, name):
         """Forward attribute access to the underlying client."""
@@ -128,13 +130,15 @@ class Firecrawl:
         self.v1 = V1Proxy(self._v1_client) if self._v1_client else None
         self.v2 = V2Proxy(self._v2_client)
         
-        # Methods
-        # TODO: Not implemented yet
+        
         # self.scrape = self._v2_client.scrape
-        # self.crawl = self._v2_client.crawl
+        self.crawl = self._v2_client.crawl
+        self.start_crawl = self._v2_client.start_crawl
+        self.crawl_params = self._v2_client.crawl_params
+        self.get_crawl_status = self._v2_client.get_crawl_status
+        self.cancel_crawl = self._v2_client.cancel_crawl
         # self.batch_scrape = self._v2_client.batch_scrape
-        # self.get_crawl_status = self._v2_client.get_crawl_status
-        # self.cancel_crawl = self._v2_client.cancel_crawl
+        # self.map = self._v2_client.map
         self.search = self._v2_client.search
         
 class AsyncFirecrawl:

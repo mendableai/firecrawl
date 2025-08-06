@@ -5,11 +5,10 @@ Batch scraping functionality for Firecrawl v2 API.
 import time
 from typing import Optional, List, Callable
 from .types import (
-    BatchScrapeRequest, BatchScrapeResponse, BatchScrapeStatusResponse,
-    BatchScrapeJob, BatchScrapeStatusData, ScrapeOptions, Document
+    BatchScrapeRequest, BatchScrapeResponse,
+    BatchScrapeJob, BatchScrapeData, ScrapeOptions, Document
 )
-from .utils.http_client import HttpClient
-from .utils.error_handler import handle_response_error
+from .utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
 
 def start_batch_scrape(
@@ -32,10 +31,7 @@ def start_batch_scrape(
         FirecrawlError: If the batch scrape operation fails to start
     """
     # Prepare request data
-    request_data = {"urls": urls}
-    
-    if options:
-        request_data["pageOptions"] = options.dict(exclude_none=True, by_alias=True)
+    request_data = prepare_batch_request(urls, options)
     
     # Make the API request
     response = client.post("/v1/batch/scrape", request_data)
@@ -66,7 +62,7 @@ def start_batch_scrape(
 def get_batch_scrape_status(
     client: HttpClient,
     job_id: str
-) -> BatchScrapeStatusResponse:
+) -> BatchScrapeResponse:
     """
     Get the status of a batch scrape job.
     
@@ -99,20 +95,20 @@ def get_batch_scrape_status(
             for doc_data in status_data["data"]:
                 documents.append(Document(**doc_data))
         
-        batch_status = BatchScrapeStatusData(
+        batch_data = BatchScrapeData(
             status=status_data.get("status"),
             current=status_data.get("current", 0),
             total=status_data.get("total", 0),
             data=documents
         )
         
-        return BatchScrapeStatusResponse(
+        return BatchScrapeResponse(
             success=True,
-            data=batch_status,
+            data=batch_data,
             warning=response_data.get("warning")
         )
     else:
-        return BatchScrapeStatusResponse(
+        return BatchScrapeResponse(
             success=False,
             error=response_data.get("error", "Unknown error occurred")
         )
@@ -121,7 +117,7 @@ def get_batch_scrape_status(
 def cancel_batch_scrape(
     client: HttpClient,
     job_id: str
-) -> BatchScrapeStatusResponse:
+) -> BatchScrapeResponse:
     """
     Cancel a running batch scrape job.
     
@@ -148,20 +144,20 @@ def cancel_batch_scrape(
     if response_data.get("success"):
         status_data = response_data.get("data", {})
         
-        batch_status = BatchScrapeStatusData(
+        batch_data = BatchScrapeData(
             status=status_data.get("status", "cancelled"),
             current=status_data.get("current", 0),
             total=status_data.get("total", 0),
             data=[]
         )
         
-        return BatchScrapeStatusResponse(
+        return BatchScrapeResponse(
             success=True,
-            data=batch_status,
+            data=batch_data,
             warning=response_data.get("warning")
         )
     else:
-        return BatchScrapeStatusResponse(
+        return BatchScrapeResponse(
             success=False,
             error=response_data.get("error", "Unknown error occurred")
         )
@@ -172,8 +168,8 @@ def wait_for_batch_completion(
     job_id: str,
     poll_interval: int = 2,
     timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[BatchScrapeStatusData], None]] = None
-) -> BatchScrapeStatusResponse:
+    progress_callback: Optional[Callable[[BatchScrapeData], None]] = None
+) -> BatchScrapeResponse:
     """
     Wait for a batch scrape job to complete, polling for status updates.
     
@@ -223,8 +219,8 @@ def batch_scrape_and_wait(
     options: Optional[ScrapeOptions] = None,
     poll_interval: int = 2,
     timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[BatchScrapeStatusData], None]] = None
-) -> BatchScrapeStatusResponse:
+    progress_callback: Optional[Callable[[BatchScrapeData], None]] = None
+) -> BatchScrapeResponse:
     """
     Start a batch scrape job and wait for it to complete.
     
@@ -308,7 +304,10 @@ def prepare_batch_request(urls: List[str], options: Optional[ScrapeOptions] = No
     request_data = {"urls": validated_urls}
     
     if options:
-        request_data["pageOptions"] = options.dict(exclude_none=True, by_alias=True)
+        # Use shared function for ScrapeOptions preparation
+        scrape_data = prepare_scrape_options(options)
+        if scrape_data:
+            request_data["pageOptions"] = scrape_data
     
     return request_data
 

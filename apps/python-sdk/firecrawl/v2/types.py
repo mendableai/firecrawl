@@ -24,7 +24,7 @@ class DocumentMetadata(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     language: Optional[str] = None
-    keywords: Optional[str] = None
+    keywords: Optional[Union[str, List[str]]] = None
     robots: Optional[str] = None
     og_title: Optional[str] = Field(None, alias="ogTitle")
     og_description: Optional[str] = Field(None, alias="ogDescription")
@@ -36,15 +36,15 @@ class DocumentMetadata(BaseModel):
 
 class Document(BaseModel):
     """A scraped document."""
-    url: str
     markdown: Optional[str] = None
     html: Optional[str] = None
     raw_html: Optional[str] = Field(None, alias="rawHtml")
-    content: Optional[str] = None
     metadata: Optional[DocumentMetadata] = None
     links: Optional[List[str]] = None
     screenshot: Optional[str] = None
     actions: Optional[Dict[str, Any]] = None
+    warning: Optional[str] = None
+    change_tracking: Optional[Dict[str, Any]] = Field(None, alias="changeTracking")
 
 class Source(BaseModel):
     """Configuration for a search source."""
@@ -92,70 +92,144 @@ class ScrapeFormats(BaseModel):
 
 class ScrapeOptions(BaseModel):
     """Options for scraping operations."""
-    formats: Optional[ScrapeFormats] = None
+    formats: Optional[Union[ScrapeFormats, List[FormatOption]]] = None
     headers: Optional[Dict[str, str]] = None
-    include_tags: Optional[List[str]] = Field(None, alias="includeTags")
-    exclude_tags: Optional[List[str]] = Field(None, alias="excludeTags")
-    only_main_content: bool = Field(True, alias="onlyMainContent")
+    include_tags: Optional[List[str]] = None
+    exclude_tags: Optional[List[str]] = None
+    only_main_content: bool = True
     timeout: Optional[int] = None
-    wait_for: Optional[int] = Field(None, alias="waitFor")
+    wait_for: Optional[int] = None
     mobile: bool = False
-    skip_tls_verification: bool = Field(False, alias="skipTlsVerification")
-    remove_base64_images: bool = Field(True, alias="removeBase64Images")
+    skip_tls_verification: bool = False
+    remove_base64_images: bool = True
+    # Note: raw_html and screenshot_full_page are not supported by v2 API yet
+    # raw_html: bool = False
+    # screenshot_full_page: bool = False
+    block_ads: bool = False
+    proxy: Optional[str] = None
+    max_age: Optional[int] = None
+    store_in_cache: bool = False
+    location: Optional['Location'] = None
+    actions: Optional[List[Union['WaitAction', 'ScreenshotAction', 'ClickAction', 'WriteAction', 'PressAction', 'ScrollAction', 'ScrapeAction', 'ExecuteJavascriptAction', 'PDFAction']]] = None
+
+    @field_validator('formats')
+    @classmethod
+    def validate_formats(cls, v):
+        """Validate and normalize formats input."""
+        if v is None:
+            return v
+        
+        # If it's already a ScrapeFormats object, return as is
+        if isinstance(v, ScrapeFormats):
+            return v
+        
+        # If it's a list, keep it as a list (don't convert to ScrapeFormats)
+        if isinstance(v, list):
+            return v
+        
+        raise ValueError(f"Invalid formats type: {type(v)}. Expected ScrapeFormats or List[FormatOption]")
 
 class ScrapeRequest(BaseModel):
     """Request for scraping a single URL."""
     url: str
     options: Optional[ScrapeOptions] = None
 
-class ScrapeResponse(BaseResponse[Document]):
-    """Response from scraping operation."""
+class ScrapeData(Document):
+    """Scrape results data."""
+    pass
+
+class ScrapeResponse(BaseResponse[ScrapeData]):
+    """Response for scrape operations."""
     pass
 
 # Crawl types
-class CrawlOptions(BaseModel):
-    """Options for crawling operations."""
-    includes: Optional[List[str]] = None
-    excludes: Optional[List[str]] = None
-    generate_img_alt_text: bool = Field(False, alias="generateImgAltText")
-    return_only_urls: bool = Field(False, alias="returnOnlyUrls")
-    max_depth: Optional[int] = Field(None, alias="maxDepth")
-    mode: Literal["default", "fast"] = "default"
-    ignore_sitemap: bool = Field(False, alias="ignoreSitemap")
-    limit: Optional[int] = None
-    allow_backward_crawling: bool = Field(False, alias="allowBackwardCrawling")
-    allow_external_content_links: bool = Field(False, alias="allowExternalContentLinks")
-    scrape_options: Optional[ScrapeOptions] = Field(None, alias="scrapeOptions")
-
 class CrawlRequest(BaseModel):
     """Request for crawling a website."""
     url: str
-    options: Optional[CrawlOptions] = None
+    prompt: Optional[str] = None
+    exclude_paths: Optional[List[str]] = None
+    include_paths: Optional[List[str]] = None
+    max_discovery_depth: Optional[int] = None
+    ignore_sitemap: bool = False
+    ignore_query_parameters: bool = False
+    limit: Optional[int] = None
+    crawl_entire_domain: bool = False
+    allow_external_links: bool = False
+    allow_subdomains: bool = False
+    delay: Optional[int] = None
+    max_concurrency: Optional[int] = None
+    webhook: Optional[Dict[str, Any]] = None
+    scrape_options: Optional[ScrapeOptions] = None
+    zero_data_retention: bool = False
 
 class CrawlJob(BaseModel):
     """Information about a crawl job."""
     id: str
     url: str
-    status: Literal["scraping", "completed", "failed", "cancelled"]
+    status: Literal["scraping", "completed", "failed"]
     current: Optional[int] = None
     total: Optional[int] = None
     created_at: Optional[datetime] = Field(None, alias="createdAt")
     completed_at: Optional[datetime] = Field(None, alias="completedAt")
+    data: Optional[List[Document]] = None
+    partial_data: Optional[List[Document]] = Field(None, alias="partialData")
 
-class CrawlResponse(BaseResponse[CrawlJob]):
-    """Response from starting a crawl."""
-    pass
-
-class CrawlStatusData(BaseModel):
-    """Data for crawl status response."""
-    status: Literal["scraping", "completed", "failed", "cancelled"]
+class CrawlJobData(BaseModel):
+    """Crawl job status and progress data."""
+    id: str
+    status: Literal["scraping", "completed", "failed"]
     current: int
     total: int
     data: List[Document]
     partial_data: Optional[List[Document]] = Field(None, alias="partialData")
 
-class CrawlStatusResponse(BaseResponse[CrawlStatusData]):
-    """Response from checking crawl status."""
+class CrawlData(List[Document]):
+    """Crawl results - just the documents."""
+    pass
+
+class SearchDocument(Document):
+    """A document from a search operation with URL and description."""
+    url: str
+    description: Optional[str] = None
+
+class MapDocument(Document):
+    """A document from a map operation with URL and description."""
+    url: str
+    description: Optional[str] = None
+
+class CrawlStartResponse(BaseResponse[CrawlJob]):
+    """Response for starting a crawl job."""
+    pass
+
+class CrawlResponse(BaseResponse[CrawlJobData]):
+    """Response for crawl operations."""
+    pass
+
+# Crawl params types
+class CrawlParamsRequest(BaseModel):
+    """Request for getting crawl parameters from LLM."""
+    url: str
+    prompt: str
+
+class CrawlParamsData(BaseModel):
+    """Data returned from crawl params endpoint."""
+    include_paths: Optional[List[str]] = None
+    exclude_paths: Optional[List[str]] = None
+    max_discovery_depth: Optional[int] = None
+    ignore_sitemap: bool = False
+    ignore_query_parameters: bool = False
+    limit: Optional[int] = None
+    crawl_entire_domain: bool = False
+    allow_external_links: bool = False
+    allow_subdomains: bool = False
+    delay: Optional[int] = None
+    max_concurrency: Optional[int] = None
+    webhook: Optional[Dict[str, Any]] = None
+    scrape_options: Optional[ScrapeOptions] = None
+    zero_data_retention: bool = False
+
+class CrawlParamsResponse(BaseResponse[CrawlParamsData]):
+    """Response from crawl params endpoint."""
     pass
 
 # Batch scrape types
@@ -167,25 +241,21 @@ class BatchScrapeRequest(BaseModel):
 class BatchScrapeJob(BaseModel):
     """Information about a batch scrape job."""
     id: str
-    status: Literal["scraping", "completed", "failed", "cancelled"]
+    status: Literal["scraping", "completed", "failed"]
     current: Optional[int] = None
     total: Optional[int] = None
     created_at: Optional[datetime] = Field(None, alias="createdAt")
     completed_at: Optional[datetime] = Field(None, alias="completedAt")
 
-class BatchScrapeResponse(BaseResponse[BatchScrapeJob]):
-    """Response from starting a batch scrape."""
-    pass
-
-class BatchScrapeStatusData(BaseModel):
-    """Data for batch scrape status response."""
-    status: Literal["scraping", "completed", "failed", "cancelled"]
+class BatchScrapeData(BaseModel):
+    """Batch scrape results data."""
+    status: Literal["scraping", "completed", "failed"]
     current: int
     total: int
     data: List[Document]
 
-class BatchScrapeStatusResponse(BaseResponse[BatchScrapeStatusData]):
-    """Response from checking batch scrape status."""
+class BatchScrapeResponse(BaseResponse[BatchScrapeData]):
+    """Response for batch scrape operations."""
     pass
 
 # Map types
@@ -202,11 +272,11 @@ class MapRequest(BaseModel):
     options: Optional[MapOptions] = None
 
 class MapData(BaseModel):
-    """Data for map response."""
+    """Map results data."""
     links: List[str]
 
 class MapResponse(BaseResponse[MapData]):
-    """Response from mapping operation."""
+    """Response for map operations."""
     pass
 
 # Action types
@@ -270,7 +340,6 @@ class JsonFormat(BaseModel):
     """Configuration for JSON extraction."""
     prompt: Optional[str] = None
     schema_field: Optional[Dict[str, Any]] = Field(None, alias="schema")
-    system_prompt: Optional[str] = Field(None, alias="systemPrompt")
 
 class SearchRequest(BaseModel):
     """Request for search operations."""
@@ -279,9 +348,9 @@ class SearchRequest(BaseModel):
     limit: Optional[int] = 5
     tbs: Optional[str] = None
     location: Optional[str] = None
-    ignore_invalid_urls: Optional[bool] = Field(True, alias="ignoreInvalidURLs")
+    ignore_invalid_urls: Optional[bool] = None
     timeout: Optional[int] = 60000
-    scrape_options: Optional[ScrapeOptions] = Field(None, alias="scrapeOptions")
+    scrape_options: Optional[ScrapeOptions] = None
 
     @field_validator('sources')
     @classmethod
@@ -309,7 +378,13 @@ class SearchResult(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
 
-class SearchResponse(BaseResponse[Dict[str, List[Union[SearchResult, Document]]]]):
+class SearchData(BaseModel):
+    """Search results grouped by source type."""
+    web: Optional[List[Union[SearchResult, SearchDocument]]] = None
+    news: Optional[List[Union[SearchResult, SearchDocument]]] = None
+    images: Optional[List[Union[SearchResult, SearchDocument]]] = None
+
+class SearchResponse(BaseResponse[SearchData]):
     """Response from search operation."""
     pass
 
@@ -330,7 +405,7 @@ class ErrorResponse(BaseModel):
 class JobStatus(BaseModel):
     """Generic job status information."""
     id: str
-    status: Literal["pending", "scraping", "completed", "failed", "cancelled"]
+    status: Literal["pending", "scraping", "completed", "failed"]
     current: Optional[int] = None
     total: Optional[int] = None
     created_at: Optional[datetime] = Field(None, alias="createdAt")
@@ -358,18 +433,16 @@ class ClientConfig(BaseModel):
 
 # Union types for convenience
 ScrapeResult = Union[Document, List[Document]]
-CrawlResult = Union[CrawlJob, CrawlStatusData]
-BatchResult = Union[BatchScrapeJob, BatchScrapeStatusData]
+CrawlResult = Union[CrawlJob, CrawlJobData]
+BatchResult = Union[BatchScrapeJob, BatchScrapeData]
 JobResult = Union[CrawlJob, BatchScrapeJob]
-StatusResult = Union[CrawlStatusData, BatchScrapeStatusData]
+StatusResult = Union[CrawlJobData, BatchScrapeData]
 
 # Response union types
 AnyResponse = Union[
     ScrapeResponse,
     CrawlResponse,
-    CrawlStatusResponse,
     BatchScrapeResponse,
-    BatchScrapeStatusResponse,
     MapResponse,
     SearchResponse,
     ErrorResponse

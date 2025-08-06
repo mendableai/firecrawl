@@ -17,22 +17,24 @@ from .v2.types import (
     ScrapeFormats,
     ScrapeOptions,
     ScrapeRequest,
+    ScrapeData,
     ScrapeResponse,
     
     # Crawl types
-    CrawlOptions,
     CrawlRequest,
     CrawlJob,
+    CrawlJobData,
+    CrawlData,
     CrawlResponse,
-    CrawlStatusData,
-    CrawlStatusResponse,
+    CrawlParamsRequest,
+    CrawlParamsData,
+    CrawlParamsResponse,
     
     # Batch scrape types
     BatchScrapeRequest,
     BatchScrapeJob,
+    BatchScrapeData,
     BatchScrapeResponse,
-    BatchScrapeStatusData,
-    BatchScrapeStatusResponse,
     
     # Map types
     MapOptions,
@@ -47,6 +49,7 @@ from .v2.types import (
     FormatOption,
     SearchRequest,
     SearchResult,
+    SearchData,
     SearchResponse,
     
     # Action types
@@ -98,22 +101,24 @@ __all__ = [
     'ScrapeFormats',
     'ScrapeOptions',
     'ScrapeRequest',
+    'ScrapeData',
     'ScrapeResponse',
     
     # Crawl types
-    'CrawlOptions',
     'CrawlRequest',
     'CrawlJob',
+    'CrawlJobData',
+    'CrawlData',
     'CrawlResponse',
-    'CrawlStatusData',
-    'CrawlStatusResponse',
+    'CrawlParamsRequest',
+    'CrawlParamsData',
+    'CrawlParamsResponse',
     
     # Batch scrape types
     'BatchScrapeRequest',
     'BatchScrapeJob',
+    'BatchScrapeData',
     'BatchScrapeResponse',
-    'BatchScrapeStatusData',
-    'BatchScrapeStatusResponse',
     
     # Map types
     'MapOptions',
@@ -128,6 +133,7 @@ __all__ = [
     'FormatOption',
     'SearchRequest',
     'SearchResult',
+    'SearchData',
     'SearchResponse',
     
     # Action types

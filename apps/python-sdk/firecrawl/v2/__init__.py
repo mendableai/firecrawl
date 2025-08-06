@@ -1,11 +1,22 @@
-from typing import Optional, List, Union
-from ..types import SearchResponse, ScrapeOptions, SearchRequest, SourceOption, FormatOption
+from typing import Optional, List, Union, Dict, Callable, Literal, Any
+from ..types import (
+    SearchData, SearchResult, Document, ScrapeOptions, SearchRequest, 
+    SourceOption, FormatOption, CrawlRequest, CrawlJobData, CrawlData,
+    CrawlParamsRequest, CrawlParamsData
+)
 from .methods.search import search as search_method
+from .methods.crawl import (
+    crawl as crawl_method, 
+    start_crawl as start_crawl_method, 
+    cancel_crawl as cancel_crawl_method, 
+    get_crawl_status as get_crawl_status_method,
+    crawl_params as crawl_params_method
+)
 from .utils.http_client import HttpClient
 
 class FirecrawlClient:
     """
-
+    Firecrawl v2 API client.
     """
     
     def __init__(self, api_key: str = None, api_url: str = "https://api.firecrawl.dev"):
@@ -25,8 +36,8 @@ class FirecrawlClient:
     ):
         pass
 
-    # async-batch-scrape
-    def async_batch_scrape(
+    # start-batch-scrape
+    def start_batch_scrape(
           self
     ):
         pass
@@ -50,40 +61,121 @@ class FirecrawlClient:
     
     # crawl
     def crawl(
-          self
+        self,
+        url: str,
+        prompt: Optional[str] = None,
+        include_paths: Optional[List[str]] = None,
+        exclude_paths: Optional[List[str]] = None,
+        max_discovery_depth: Optional[int] = None,
+        ignore_sitemap: bool = False,
+        ignore_query_parameters: bool = False,
+        limit: Optional[int] = None,
+        crawl_entire_domain: bool = False,
+        allow_external_links: bool = False,
+        allow_subdomains: bool = False,
+        delay: Optional[int] = None,
+        max_concurrency: Optional[int] = None,
+        webhook: Optional[Dict[str, Any]] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
+        zero_data_retention: bool = False,
+        poll_interval: int = 2,
+        timeout: Optional[int] = None,
+        progress_callback: Optional[Callable[[CrawlJobData], None]] = None
     ):
-        pass
+        """Start a crawl job and wait for it to complete."""
+        request = CrawlRequest(
+            url=url, 
+            prompt=prompt,
+            include_paths=include_paths,
+            exclude_paths=exclude_paths,
+            max_discovery_depth=max_discovery_depth,
+            ignore_sitemap=ignore_sitemap,
+            ignore_query_parameters=ignore_query_parameters,
+            limit=limit,
+            crawl_entire_domain=crawl_entire_domain,
+            allow_external_links=allow_external_links,
+            allow_subdomains=allow_subdomains,
+            delay=delay,
+            max_concurrency=max_concurrency,
+            webhook=webhook,
+            scrape_options=scrape_options,
+            zero_data_retention=zero_data_retention
+        )
+        return crawl_method(self._client, request, poll_interval, timeout, progress_callback)
     
-    # async-crawl
-    def async_crawl(
-          self
-    ):
-        pass
-
-
-    # crawl-params
-    def crawl_params(
-          self
-    ):
-        pass
+    # start-crawl
+    def start_crawl(
+        self,
+        url: str,
+        prompt: Optional[str] = None,
+        include_paths: Optional[List[str]] = None,
+        exclude_paths: Optional[List[str]] = None,
+        max_discovery_depth: Optional[int] = None,
+        ignore_sitemap: bool = False,
+        ignore_query_parameters: bool = False,
+        limit: Optional[int] = None,
+        crawl_entire_domain: bool = False,
+        allow_external_links: bool = False,
+        allow_subdomains: bool = False,
+        delay: Optional[int] = None,
+        max_concurrency: Optional[int] = None,
+        webhook: Optional[Dict[str, Any]] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
+        zero_data_retention: bool = False
+    ) -> CrawlJobData:
+        """Start a crawl job and return immediately."""
+        request = CrawlRequest(
+            url=url, 
+            prompt=prompt,
+            include_paths=include_paths,
+            exclude_paths=exclude_paths,
+            max_discovery_depth=max_discovery_depth,
+            ignore_sitemap=ignore_sitemap,
+            ignore_query_parameters=ignore_query_parameters,
+            limit=limit,
+            crawl_entire_domain=crawl_entire_domain,
+            allow_external_links=allow_external_links,
+            allow_subdomains=allow_subdomains,
+            delay=delay,
+            max_concurrency=max_concurrency,
+            webhook=webhook,
+            scrape_options=scrape_options,
+            zero_data_retention=zero_data_retention
+        )
+        return start_crawl_method(self._client, request)
 
     # get-crawl-status
     def get_crawl_status(
-          self
+        self,
+        job_id: str
     ):
-        pass 
+        """Get the status of a crawl job."""
+        return get_crawl_status_method(self._client, job_id)
 
     # cancel-crawl
     def cancel_crawl(
-          self
+        self,
+        job_id: str
     ):
-        pass
+        """Cancel a running crawl job."""
+        return cancel_crawl_method(self._client, job_id)
+
+    # crawl-params
+    def crawl_params(
+        self,
+        url: str,
+        prompt: str
+    ) -> CrawlParamsData:
+        """Get crawl parameters from LLM based on URL and prompt."""
+        request = CrawlParamsRequest(url=url, prompt=prompt)
+        return crawl_params_method(self._client, request)
 
     # get-active-crawls
     def get_active_crawls(
           self
     ):
         pass
+    
     # get-crawl-errors
     def get_crawl_errors(
           self
@@ -106,7 +198,7 @@ class FirecrawlClient:
         ignore_invalid_urls: Optional[bool] = True,
         timeout: Optional[int] = 60000,
         scrape_options: Optional[ScrapeOptions] = None,
-    ) -> SearchResponse:
+    ) -> SearchData:
         """Search for documents."""
         request = SearchRequest(
             query=query,

@@ -5,8 +5,7 @@ Scraping functionality for Firecrawl v2 API.
 import json
 from typing import Optional, Dict, Any
 from .types import ScrapeRequest, ScrapeResponse, ScrapeOptions, Document
-from .utils.http_client import HttpClient
-from .utils.error_handler import handle_response_error
+from .utils import HttpClient, handle_response_error, validate_scrape_options
 
 
 def scrape(
@@ -167,31 +166,7 @@ def scrape_multiple(
     return results
 
 
-def validate_scrape_options(options: Optional[ScrapeOptions]) -> Optional[ScrapeOptions]:
-    """
-    Validate and normalize scrape options.
-    
-    Args:
-        options: Scraping options to validate
-        
-    Returns:
-        Validated options or None
-        
-    Raises:
-        ValueError: If options are invalid
-    """
-    if options is None:
-        return None
-    
-    # Validate timeout
-    if options.timeout is not None and options.timeout <= 0:
-        raise ValueError("Timeout must be positive")
-    
-    # Validate wait_for
-    if options.wait_for is not None and options.wait_for < 0:
-        raise ValueError("wait_for must be non-negative")
-    
-    return options
+
 
 
 def prepare_scrape_request(url: str, options: Optional[ScrapeOptions] = None) -> Dict[str, Any]:

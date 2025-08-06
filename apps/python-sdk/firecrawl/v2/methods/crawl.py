@@ -3,42 +3,116 @@ Crawling functionality for Firecrawl v2 API.
 """
 
 import time
-from typing import Optional, Callable, Generator
-from .types import (
-    CrawlRequest, CrawlResponse, CrawlStatusResponse, CrawlOptions,
-    CrawlJob, CrawlStatusData, Document
+from typing import Optional, Callable
+from ..types import (
+    CrawlRequest, CrawlResponse, CrawlStartResponse,
+    CrawlJob, CrawlJobData, CrawlData, Document, CrawlParamsRequest, CrawlParamsResponse, CrawlParamsData
 )
-from .utils.http_client import HttpClient
-from .utils.error_handler import handle_response_error
+from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
 
-def start_crawl(
-    client: HttpClient,
-    url: str,
-    options: Optional[CrawlOptions] = None
-) -> CrawlResponse:
+def _validate_crawl_request(request: CrawlRequest) -> None:
+    """
+    Validate crawl request parameters.
+    
+    Args:
+        request: CrawlRequest to validate
+        
+    Raises:
+        ValueError: If request is invalid
+    """
+    if not request.url or not request.url.strip():
+        raise ValueError("URL cannot be empty")
+    
+    if request.limit is not None and request.limit <= 0:
+        raise ValueError("Limit must be positive")
+    
+    # Validate scrape_options (if provided)
+    if request.scrape_options is not None:
+        validate_scrape_options(request.scrape_options)
+
+
+def _prepare_crawl_request(request: CrawlRequest) -> dict:
+    """
+    Prepare crawl request for API submission.
+    
+    Args:
+        request: CrawlRequest to prepare
+        
+    Returns:
+        Dictionary ready for API submission
+    """
+    # Validate request
+    _validate_crawl_request(request)
+    
+    # Start with basic data
+    data = {"url": request.url}
+    
+    # Add prompt if present
+    if request.prompt:
+        data["prompt"] = request.prompt
+    
+    # Handle scrape_options conversion first (before model_dump)
+    if request.scrape_options is not None:
+        scrape_data = prepare_scrape_options(request.scrape_options)
+        if scrape_data:
+            data["scrapeOptions"] = scrape_data
+    
+    # Convert request to dict
+    request_data = request.model_dump(exclude_none=True, exclude_unset=True)
+    
+    # Remove url, prompt, and scrape_options (already handled)
+    request_data.pop("url", None)
+    request_data.pop("prompt", None)
+    request_data.pop("scrape_options", None)
+    
+    # Convert other snake_case fields to camelCase
+    field_mappings = {
+        "include_paths": "includePaths",
+        "exclude_paths": "excludePaths", 
+        "max_discovery_depth": "maxDiscoveryDepth",
+        "ignore_sitemap": "ignoreSitemap",
+        "ignore_query_parameters": "ignoreQueryParameters",
+        "crawl_entire_domain": "crawlEntireDomain",
+        "allow_external_links": "allowExternalLinks",
+        "allow_subdomains": "allowSubdomains",
+        "delay": "delay",
+        "max_concurrency": "maxConcurrency",
+        "webhook": "webhook",
+        "zero_data_retention": "zeroDataRetention"
+    }
+    
+    # Apply field mappings
+    for snake_case, camel_case in field_mappings.items():
+        if snake_case in request_data:
+            data[camel_case] = request_data.pop(snake_case)
+    
+    # Add any remaining fields that don't need conversion (like limit)
+    data.update(request_data)
+    
+    return data
+
+
+def start_crawl(client: HttpClient, request: CrawlRequest) -> CrawlJob:
     """
     Start a crawl job for a website.
     
     Args:
         client: HTTP client instance
-        url: URL to crawl
-        options: Crawling options
+        request: CrawlRequest containing URL and options
         
     Returns:
-        CrawlResponse containing job information
+        CrawlJob with job information
         
     Raises:
-        FirecrawlError: If the crawl operation fails to start
+        ValueError: If request is invalid
+        Exception: If the crawl operation fails to start
     """
     # Prepare request data
-    request_data = {"url": url}
-    
-    if options:
-        request_data.update(options.dict(exclude_none=True, by_alias=True))
+    request_data = _prepare_crawl_request(request)
     
     # Make the API request
-    response = client.post("/v1/crawl", request_data)
+    response = client.post("/v2/crawl", request_data)
     
     # Handle errors
     if not response.ok:
@@ -48,25 +122,18 @@ def start_crawl(
     response_data = response.json()
     
     if response_data.get("success"):
-        job_data = response_data.get("data", {})
-        job = CrawlJob(**job_data)
-        
-        return CrawlResponse(
-            success=True,
-            data=job,
-            warning=response_data.get("warning")
-        )
+        # The API returns id and url at the top level, not in a data field
+        job_data = {
+            "id": response_data.get("id"),
+            "url": request.url,  # Use the original request URL
+            "status": "scraping"  # Default status for new jobs
+        }
+        return CrawlJob(**job_data)
     else:
-        return CrawlResponse(
-            success=False,
-            error=response_data.get("error", "Unknown error occurred")
-        )
+        raise Exception(response_data.get("error", "Unknown error occurred"))
 
 
-def get_crawl_status(
-    client: HttpClient,
-    job_id: str
-) -> CrawlStatusResponse:
+def get_crawl_status(client: HttpClient, job_id: str) -> CrawlJob:
     """
     Get the status of a crawl job.
     
@@ -75,13 +142,13 @@ def get_crawl_status(
         job_id: ID of the crawl job
         
     Returns:
-        CrawlStatusResponse containing job status and data
+        CrawlJob with current status and data
         
     Raises:
-        FirecrawlError: If the status check fails
+        Exception: If the status check fails
     """
     # Make the API request
-    response = client.get(f"/v1/crawl/{job_id}")
+    response = client.get(f"/v2/crawl/{job_id}")
     
     # Handle errors
     if not response.ok:
@@ -91,44 +158,47 @@ def get_crawl_status(
     response_data = response.json()
     
     if response_data.get("success"):
-        status_data = response_data.get("data", {})
+        # The API returns status fields at the top level, not in a data field
         
         # Convert documents
         documents = []
-        if "data" in status_data:
-            for doc_data in status_data["data"]:
+        data_list = response_data.get("data", [])
+        for doc_data in data_list:
+            if isinstance(doc_data, str):
+                # Handle case where API returns just URLs - this shouldn't happen for crawl
+                # but we'll handle it gracefully
+                continue
+            else:
                 documents.append(Document(**doc_data))
         
         # Convert partial data if present
         partial_documents = []
-        if "partialData" in status_data:
-            for doc_data in status_data["partialData"]:
+        partial_data_list = response_data.get("partialData", [])
+        for doc_data in partial_data_list:
+            if isinstance(doc_data, str):
+                # Handle case where API returns just URLs - this shouldn't happen for crawl
+                # but we'll handle it gracefully
+                continue
+            else:
                 partial_documents.append(Document(**doc_data))
         
-        crawl_status = CrawlStatusData(
-            status=status_data.get("status"),
-            current=status_data.get("current", 0),
-            total=status_data.get("total", 0),
+        # Create CrawlJob with current status and data
+        return CrawlJob(
+            id=job_id,
+            url=response_data.get("url", ""),  # URL might not be in status response
+            status=response_data.get("status"),
+            current=response_data.get("completed", 0),  # API uses "completed" instead of "current"
+            total=response_data.get("total", 0),
+            created_at=response_data.get("createdAt"),
+            completed_at=response_data.get("completedAt"),
             data=documents,
             partial_data=partial_documents if partial_documents else None
         )
-        
-        return CrawlStatusResponse(
-            success=True,
-            data=crawl_status,
-            warning=response_data.get("warning")
-        )
     else:
-        return CrawlStatusResponse(
-            success=False,
-            error=response_data.get("error", "Unknown error occurred")
-        )
+        raise Exception(response_data.get("error", "Unknown error occurred"))
 
 
-def cancel_crawl(
-    client: HttpClient,
-    job_id: str
-) -> CrawlStatusResponse:
+def cancel_crawl(client: HttpClient, job_id: str) -> CrawlResponse:
     """
     Cancel a running crawl job.
     
@@ -137,13 +207,13 @@ def cancel_crawl(
         job_id: ID of the crawl job to cancel
         
     Returns:
-        CrawlStatusResponse with updated status
+        CrawlResponse with updated status
         
     Raises:
-        FirecrawlError: If the cancellation fails
+        Exception: If the cancellation fails
     """
     # Make the API request
-    response = client.delete(f"/v1/crawl/{job_id}")
+    response = client.delete(f"/v2/crawl/{job_id}")
     
     # Handle errors
     if not response.ok:
@@ -155,20 +225,21 @@ def cancel_crawl(
     if response_data.get("success"):
         status_data = response_data.get("data", {})
         
-        crawl_status = CrawlStatusData(
-            status=status_data.get("status", "cancelled"),
+        crawl_job_data = CrawlJobData(
+            id=job_id,  # Use the job_id parameter
+            status=status_data.get("status", "failed"),
             current=status_data.get("current", 0),
             total=status_data.get("total", 0),
             data=[]
         )
         
-        return CrawlStatusResponse(
+        return CrawlResponse(
             success=True,
-            data=crawl_status,
+            data=crawl_job_data,
             warning=response_data.get("warning")
         )
     else:
-        return CrawlStatusResponse(
+        return CrawlResponse(
             success=False,
             error=response_data.get("error", "Unknown error occurred")
         )
@@ -179,8 +250,8 @@ def wait_for_crawl_completion(
     job_id: str,
     poll_interval: int = 2,
     timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[CrawlStatusData], None]] = None
-) -> CrawlStatusResponse:
+    progress_callback: Optional[Callable[[CrawlJob], None]] = None
+) -> CrawlJob:
     """
     Wait for a crawl job to complete, polling for status updates.
     
@@ -192,29 +263,24 @@ def wait_for_crawl_completion(
         progress_callback: Optional callback for progress updates
         
     Returns:
-        CrawlStatusResponse when job completes
+        CrawlJob when job completes
         
     Raises:
-        FirecrawlError: If the job fails or timeout is reached
+        Exception: If the job fails
         TimeoutError: If timeout is reached
     """
     start_time = time.time()
     
     while True:
-        status_response = get_crawl_status(client, job_id)
-        
-        if not status_response.success:
-            return status_response
-        
-        status_data = status_response.data
+        crawl_job = get_crawl_status(client, job_id)
         
         # Call progress callback if provided
-        if progress_callback and status_data:
-            progress_callback(status_data)
+        if progress_callback:
+            progress_callback(crawl_job)
         
         # Check if job is complete
-        if status_data and status_data.status in ["completed", "failed", "cancelled"]:
-            return status_response
+        if crawl_job.status in ["completed", "failed"]:
+            return crawl_job
         
         # Check timeout
         if timeout and (time.time() - start_time) > timeout:
@@ -224,42 +290,34 @@ def wait_for_crawl_completion(
         time.sleep(poll_interval)
 
 
-def crawl_and_wait(
+def crawl(
     client: HttpClient,
-    url: str,
-    options: Optional[CrawlOptions] = None,
+    request: CrawlRequest,
     poll_interval: int = 2,
     timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[CrawlStatusData], None]] = None
-) -> CrawlStatusResponse:
+    progress_callback: Optional[Callable[[CrawlJob], None]] = None
+) -> CrawlJob:
     """
     Start a crawl job and wait for it to complete.
     
     Args:
         client: HTTP client instance
-        url: URL to crawl
-        options: Crawling options
+        request: CrawlRequest containing URL and options
         poll_interval: Seconds between status checks
         timeout: Maximum seconds to wait (None for no timeout)
         progress_callback: Optional callback for progress updates
         
     Returns:
-        CrawlStatusResponse when job completes
+        CrawlJob when job completes
         
     Raises:
-        FirecrawlError: If the crawl fails to start or complete
+        ValueError: If request is invalid
+        Exception: If the crawl fails to start or complete
         TimeoutError: If timeout is reached
     """
     # Start the crawl
-    crawl_response = start_crawl(client, url, options)
-    
-    if not crawl_response.success or not crawl_response.data:
-        return CrawlStatusResponse(
-            success=False,
-            error=crawl_response.error or "Failed to start crawl"
-        )
-    
-    job_id = crawl_response.data.id
+    crawl_job = start_crawl(client, request)
+    job_id = crawl_job.id
     
     # Wait for completion
     return wait_for_crawl_completion(
@@ -267,94 +325,106 @@ def crawl_and_wait(
     )
 
 
-def stream_crawl_results(
-    client: HttpClient,
-    job_id: str,
-    poll_interval: int = 2
-) -> Generator[Document, None, None]:
+def crawl_params(client: HttpClient, request: CrawlParamsRequest) -> CrawlParamsData:
     """
-    Stream crawl results as they become available.
+    Get crawl parameters from LLM based on URL and prompt.
     
     Args:
         client: HTTP client instance
-        job_id: ID of the crawl job
-        poll_interval: Seconds between status checks
-        
-    Yields:
-        Document objects as they are crawled
-        
-    Raises:
-        FirecrawlError: If the job fails
-    """
-    seen_count = 0
-    
-    while True:
-        status_response = get_crawl_status(client, job_id)
-        
-        if not status_response.success:
-            raise Exception(f"Failed to get crawl status: {status_response.error}")
-        
-        status_data = status_response.data
-        if not status_data:
-            break
-        
-        # Yield new documents
-        if status_data.data:
-            for i in range(seen_count, len(status_data.data)):
-                yield status_data.data[i]
-            seen_count = len(status_data.data)
-        
-        # Check if job is complete
-        if status_data.status in ["completed", "failed", "cancelled"]:
-            break
-        
-        # Wait before next poll
-        time.sleep(poll_interval)
-
-
-def validate_crawl_options(options: Optional[CrawlOptions]) -> Optional[CrawlOptions]:
-    """
-    Validate and normalize crawl options.
-    
-    Args:
-        options: Crawling options to validate
+        request: CrawlParamsRequest containing URL and prompt
         
     Returns:
-        Validated options or None
+        CrawlParamsData containing suggested crawl options
         
     Raises:
-        ValueError: If options are invalid
+        ValueError: If request is invalid
+        Exception: If the operation fails
     """
-    if options is None:
-        return None
+    # Validate request
+    if not request.url or not request.url.strip():
+        raise ValueError("URL cannot be empty")
     
-    # Validate limit
-    if options.limit is not None and options.limit <= 0:
-        raise ValueError("Limit must be positive")
+    if not request.prompt or not request.prompt.strip():
+        raise ValueError("Prompt cannot be empty")
     
-    # Validate max_depth
-    if options.max_depth is not None and options.max_depth < 0:
-        raise ValueError("max_depth must be non-negative")
+    # Prepare request data
+    request_data = {
+        "url": request.url,
+        "prompt": request.prompt
+    }
     
-    return options
-
-
-def prepare_crawl_request(url: str, options: Optional[CrawlOptions] = None) -> dict:
-    """
-    Prepare a crawl request payload.
+    # Make the API request
+    response = client.post("/v2/crawl-params", request_data)
     
-    Args:
-        url: URL to crawl
-        options: Crawling options
+    # Handle errors
+    if not response.ok:
+        handle_response_error(response, "crawl params")
+    
+    # Parse response
+    response_data = response.json()
+    
+    if response_data.get("success"):
+        params_data = response_data.get("data", {})
         
-    Returns:
-        Request payload dictionary
-    """
-    request_data = {"url": url}
-    
-    if options:
-        validated_options = validate_crawl_options(options)
-        if validated_options:
-            request_data.update(validated_options.dict(exclude_none=True, by_alias=True))
-    
-    return request_data
+        # Convert camelCase to snake_case for CrawlParamsData
+        converted_params = {}
+        field_mappings = {
+            "includePaths": "include_paths",
+            "excludePaths": "exclude_paths", 
+            "maxDiscoveryDepth": "max_discovery_depth",
+            "ignoreSitemap": "ignore_sitemap",
+            "ignoreQueryParameters": "ignore_query_parameters",
+            "crawlEntireDomain": "crawl_entire_domain",
+            "allowExternalLinks": "allow_external_links",
+            "allowSubdomains": "allow_subdomains",
+            "maxConcurrency": "max_concurrency",
+            "scrapeOptions": "scrape_options",
+            "zeroDataRetention": "zero_data_retention"
+        }
+        
+        for camel_case, snake_case in field_mappings.items():
+            if camel_case in params_data:
+                if camel_case == "scrapeOptions" and params_data[camel_case] is not None:
+                    # Handle nested scrapeOptions conversion
+                    scrape_opts_data = params_data[camel_case]
+                    converted_scrape_opts = {}
+                    scrape_field_mappings = {
+                        "includeTags": "include_tags",
+                        "excludeTags": "exclude_tags",
+                        "onlyMainContent": "only_main_content",
+                        "waitFor": "wait_for",
+                        "skipTlsVerification": "skip_tls_verification",
+                        "removeBase64Images": "remove_base64_images"
+                    }
+                    
+                    for scrape_camel, scrape_snake in scrape_field_mappings.items():
+                        if scrape_camel in scrape_opts_data:
+                            converted_scrape_opts[scrape_snake] = scrape_opts_data[scrape_camel]
+                    
+                    # Handle formats field - if it's a list, convert to ScrapeFormats
+                    if "formats" in scrape_opts_data:
+                        formats_data = scrape_opts_data["formats"]
+                        if isinstance(formats_data, list):
+                            # Convert list to ScrapeFormats object
+                            from ..types import ScrapeFormats
+                            converted_scrape_opts["formats"] = ScrapeFormats(formats=formats_data)
+                        else:
+                            converted_scrape_opts["formats"] = formats_data
+                    
+                    # Add fields that don't need conversion
+                    for key, value in scrape_opts_data.items():
+                        if key not in scrape_field_mappings and key != "formats":
+                            converted_scrape_opts[key] = value
+                    
+                    converted_params[snake_case] = converted_scrape_opts
+                else:
+                    converted_params[snake_case] = params_data[camel_case]
+        
+        # Add fields that don't need conversion
+        for key, value in params_data.items():
+            if key not in field_mappings:
+                converted_params[key] = value
+        
+        return CrawlParamsData(**converted_params)
+    else:
+        raise Exception(response_data.get("error", "Unknown error occurred"))
