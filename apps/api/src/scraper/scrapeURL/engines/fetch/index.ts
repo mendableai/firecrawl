@@ -5,7 +5,7 @@ import { TimeoutError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import {
   InsecureConnectionError,
-  makeSecureDispatcher,
+  secureDispatcher,
 } from "../utils/safeFetch";
 import { MockState, saveMock } from "../../lib/mock";
 import { TextDecoder } from "util";
@@ -56,7 +56,7 @@ export async function scrapeURLWithFetch(
     try {
       const x = await Promise.race([
         undici.fetch(meta.rewrittenUrl ?? meta.url, {
-          dispatcher: await makeSecureDispatcher(meta.rewrittenUrl ?? meta.url),
+          dispatcher: secureDispatcher,
           redirect: "follow",
           headers: meta.options.headers,
           signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),

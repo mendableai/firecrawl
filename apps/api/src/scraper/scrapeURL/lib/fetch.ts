@@ -27,6 +27,22 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
   useCacheableLookup?: boolean;
 };
 
+const robustAgent = new Agent({
+  headersTimeout: 0,
+  bodyTimeout: 0,
+  connect: {
+    lookup: cacheableLookup.lookup,
+  },
+});
+
+const robustAgentNoLookup = new Agent({
+  headersTimeout: 0,
+  bodyTimeout: 0,
+  connect: {
+    lookup: dns.lookup,
+  },
+});
+
 export async function robustFetch<
   Schema extends z.Schema<any>,
   Output = z.infer<Schema>,
@@ -97,13 +113,7 @@ export async function robustFetch<
           ...(headers !== undefined ? headers : {}),
         },
         signal: abort,
-        dispatcher: new Agent({
-          headersTimeout: 0,
-          bodyTimeout: 0,
-          connect: {
-            lookup: useCacheableLookup ? cacheableLookup.lookup : dns.lookup,
-          },
-        }),
+        dispatcher: useCacheableLookup ? robustAgent : robustAgentNoLookup,
         ...(body instanceof FormData
           ? {
               body,

@@ -42,17 +42,13 @@ function isIPv6Private(ipv6) {
   return new Address6(ipv6).getScope() !== "Global";
 }
 
-export function makeSecureDispatcher(
-  url: string,
-  options?: undici.Agent.Options,
-) {
+function makeSecureDispatcher() {
   const agentOpts: undici.Agent.Options = {
     connect: {
       rejectUnauthorized: false, // bypass SSL failures -- this is fine
       lookup: cacheableLookup.lookup,
     },
     maxRedirections: 5000,
-    ...options,
   };
 
   const baseAgent = process.env.PROXY_SERVER
@@ -90,3 +86,5 @@ export function makeSecureDispatcher(
 
   return agent;
 }
+
+export const secureDispatcher = makeSecureDispatcher();
