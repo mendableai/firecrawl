@@ -131,3 +131,12 @@ content-type: application/json
 # @name activeCrawls
 GET {{baseUrl}}/v1/crawl/active HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+### Debug Job (Admin Endpoint)
+# @name debugJob
+POST http://localhost:3002/admin/{{$dotenv BULL_AUTH_KEY}}/debug-job HTTP/1.1
+Content-Type: application/json
+
+{
+  "job_id": "test-job-id-here"
+}
