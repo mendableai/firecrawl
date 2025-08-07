@@ -464,6 +464,7 @@ app.get("/liveness", (req, res) => {
       logger: _logger,
       abort: AbortSignal.timeout(5000),
       ignoreResponse: true,
+      useCacheableLookup: false,
     })
       .then(() => {
         currentLiveness = true;

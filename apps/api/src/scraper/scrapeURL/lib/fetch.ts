@@ -7,6 +7,7 @@ import { fireEngineURL } from "../engines/fire-engine/scrape";
 import { fetch, RequestInit, Response, FormData, Agent } from "undici";
 import { cacheableLookup } from "./cacheableLookup";
 import { log } from "console";
+import dns from "dns";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -23,6 +24,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
   tryCooldown?: number;
   mock: MockState | null;
   abort?: AbortSignal;
+  useCacheableLookup?: boolean;
 };
 
 export async function robustFetch<
@@ -42,6 +44,7 @@ export async function robustFetch<
   tryCooldown,
   mock,
   abort,
+  useCacheableLookup = true,
 }: RobustFetchParams<Schema>): Promise<Output> {
   abort?.throwIfAborted();
   
@@ -98,7 +101,7 @@ export async function robustFetch<
           headersTimeout: 0,
           bodyTimeout: 0,
           connect: {
-            lookup: cacheableLookup.lookup,
+            lookup: useCacheableLookup ? cacheableLookup.lookup : dns.lookup,
           },
         }),
         ...(body instanceof FormData
