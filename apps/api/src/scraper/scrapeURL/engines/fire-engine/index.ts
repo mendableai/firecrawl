@@ -139,12 +139,12 @@ async function performFireEngineScrape<
         );
         throw error;
       } else {
-        Sentry.captureException(error);
         errors.push(error);
         logger.debug(
           `An unexpeceted error occurred while calling checkStatus. Error counter is now at ${errors.length}.`,
           { error, jobId: scrape.jobId },
         );
+        Sentry.captureException(error);
       }
     }
 
