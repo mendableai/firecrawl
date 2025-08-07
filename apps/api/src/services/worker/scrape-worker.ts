@@ -794,14 +794,14 @@ export const processJobInternal = async (job: Job & { id: string }) => {
         zeroDataRetention: job.data?.zeroDataRetention ?? false,
     });
 
-    const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
-        traceExporter: new LangfuseExporter(),
-        instrumentations: [getNodeAutoInstrumentations()],
-    }) : null;
+    // const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+    //     traceExporter: new LangfuseExporter(),
+    //     instrumentations: [getNodeAutoInstrumentations()],
+    // }) : null;
       
-    if (langfuseOtel) {   
-        langfuseOtel.start();
-    }
+    // if (langfuseOtel) {   
+    //     langfuseOtel.start();
+    // }
     
     try {
         try {
@@ -856,11 +856,11 @@ export const processJobInternal = async (job: Job & { id: string }) => {
         Sentry.captureException(error);
         throw error;
     } finally {
-        if (langfuseOtel) {
-            langfuseOtel.shutdown().then(() => {
-                logger.debug("Langfuse OTEL shutdown");
-            });
-        }
+        // if (langfuseOtel) {
+        //     langfuseOtel.shutdown().then(() => {
+        //         logger.debug("Langfuse OTEL shutdown");
+        //     });
+        // }
     }
 };
 
