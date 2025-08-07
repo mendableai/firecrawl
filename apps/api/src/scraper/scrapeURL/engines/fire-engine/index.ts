@@ -137,7 +137,7 @@ async function performFireEngineScrape<
           undefined,
           production,
         );
-        throw error;
+        throw new TimeoutError("Fire-engine timed out while checking status", { cause: { errors, timeout } });
       } else {
         errors.push(error);
         logger.debug(
