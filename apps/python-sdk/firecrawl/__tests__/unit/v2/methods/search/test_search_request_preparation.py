@@ -99,11 +99,9 @@ class TestSearchRequestPreparation:
     
         data = _prepare_search_request(request)
     
-        # Default values should be included
+        # When limit and timeout are explicitly None, they should be excluded
         assert "query" in data
-        assert "limit" in data  # limit has default value 5
-        assert "timeout" in data  # timeout has default value 60000
-        assert len(data) == 3  # query, limit, and timeout should be present
+        assert len(data) == 1  # Only query should be present
 
     def test_empty_scrape_options(self):
         """Test that empty scrape options are handled correctly."""
@@ -129,14 +127,14 @@ class TestSearchRequestPreparation:
         """Test that the shared prepare_scrape_options function is being used."""
         # Test with all snake_case fields to ensure conversion
         scrape_opts = ScrapeOptions(
+            formats=["markdown", "rawHtml"],
             include_tags=["h1", "h2"],
             exclude_tags=["nav"],
             only_main_content=False,
             wait_for=2000,
             skip_tls_verification=True,
-            remove_base64_images=False,
-            raw_html=True,
-            screenshot_full_page=True
+            remove_base64_images=False
+            # Note: raw_html should be in formats array, not as a separate field
         )
         
         request = SearchRequest(
@@ -151,14 +149,14 @@ class TestSearchRequestPreparation:
         scrape_data = data["scrapeOptions"]
         
         # Check all conversions are working
+        assert "formats" in scrape_data
+        assert scrape_data["formats"] == ["markdown", "rawHtml"]
         assert "includeTags" in scrape_data
         assert "excludeTags" in scrape_data
         assert "onlyMainContent" in scrape_data
         assert "waitFor" in scrape_data
         assert "skipTlsVerification" in scrape_data
         assert "removeBase64Images" in scrape_data
-        assert "rawHtml" in scrape_data
-        assert "screenshot@fullPage" in scrape_data
         
         # Check that snake_case fields are not present
         assert "include_tags" not in scrape_data
@@ -166,6 +164,4 @@ class TestSearchRequestPreparation:
         assert "only_main_content" not in scrape_data
         assert "wait_for" not in scrape_data
         assert "skip_tls_verification" not in scrape_data
-        assert "remove_base64_images" not in scrape_data
-        assert "raw_html" not in scrape_data
-        assert "screenshot_full_page" not in scrape_data 
+        assert "remove_base64_images" not in scrape_data 

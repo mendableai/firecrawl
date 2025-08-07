@@ -116,12 +116,11 @@ class TestPrepareScrapeOptions:
             only_main_content=False,
             wait_for=2000,
             skip_tls_verification=True,
-            remove_base64_images=False,
-            raw_html=True,
-            screenshot_full_page=True
+            remove_base64_images=False
+            # Note: raw_html should be in formats array, not as a separate field
         )
         result = prepare_scrape_options(options)
-        
+    
         # Check conversions
         assert "includeTags" in result
         assert result["includeTags"] == ["h1", "h2"]
@@ -135,10 +134,6 @@ class TestPrepareScrapeOptions:
         assert result["skipTlsVerification"] is True
         assert "removeBase64Images" in result
         assert result["removeBase64Images"] is False
-        assert "rawHtml" in result
-        assert result["rawHtml"] is True
-        assert "screenshot@fullPage" in result
-        assert result["screenshot@fullPage"] is True
         
         # Check that snake_case fields are not present
         assert "include_tags" not in result
@@ -147,13 +142,11 @@ class TestPrepareScrapeOptions:
         assert "wait_for" not in result
         assert "skip_tls_verification" not in result
         assert "remove_base64_images" not in result
-        assert "raw_html" not in result
-        assert "screenshot_full_page" not in result
 
     def test_prepare_complex_options(self):
         """Test preparation with complex options."""
         options = ScrapeOptions(
-            formats=["markdown", "html"],
+            formats=["markdown", "html", "rawHtml"],
             headers={"User-Agent": "Test Bot"},
             include_tags=["h1", "h2", "h3"],
             exclude_tags=["nav", "footer"],
@@ -162,9 +155,7 @@ class TestPrepareScrapeOptions:
             wait_for=2000,
             mobile=True,
             skip_tls_verification=True,
-            remove_base64_images=False,
-            raw_html=True,
-            screenshot_full_page=True
+            remove_base64_images=False
         )
         result = prepare_scrape_options(options)
         
@@ -179,11 +170,9 @@ class TestPrepareScrapeOptions:
         assert "mobile" in result
         assert "skipTlsVerification" in result
         assert "removeBase64Images" in result
-        assert "rawHtml" in result
-        assert "screenshot@fullPage" in result
         
         # Check values
-        assert result["formats"] == ["markdown", "html"]
+        assert result["formats"] == ["markdown", "html", "rawHtml"]
         assert result["headers"] == {"User-Agent": "Test Bot"}
         assert result["includeTags"] == ["h1", "h2", "h3"]
         assert result["excludeTags"] == ["nav", "footer"]
@@ -193,8 +182,6 @@ class TestPrepareScrapeOptions:
         assert result["mobile"] is True
         assert result["skipTlsVerification"] is True
         assert result["removeBase64Images"] is False
-        assert result["rawHtml"] is True
-        assert result["screenshot@fullPage"] is True
 
     def test_prepare_invalid_options(self):
         """Test preparation with invalid options (should raise error)."""
@@ -230,3 +217,22 @@ class TestPrepareScrapeOptions:
         # Should have default values for required fields
         assert "onlyMainContent" in result
         assert "mobile" in result 
+
+    def test_format_schema_conversion(self):
+        """Test that Format schema is properly handled."""
+        from firecrawl.v2.types import Format
+        
+        # Create a Format object with schema
+        format_obj = Format(
+            type="json",
+            prompt="Extract product info",
+            schema={"type": "object", "properties": {"name": {"type": "string"}}}
+        )
+        
+        print(f"DEBUG: format_obj.schema = {format_obj.schema}")
+        print(f"DEBUG: format_obj.model_dump() = {format_obj.model_dump()}")
+        
+        # Check that model_dump() shows schema
+        dumped = format_obj.model_dump()
+        assert "schema" in dumped
+        assert dumped["schema"] == {"type": "object", "properties": {"name": {"type": "string"}}} 

@@ -4,9 +4,17 @@ Type definitions for Firecrawl v2 API.
 This module contains clean, modern type definitions for the v2 API.
 """
 
-from typing import Dict, List, Optional, Union, Literal, Any, TypeVar, Generic
-from pydantic import BaseModel, Field, field_validator
+import warnings
 from datetime import datetime
+from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar, Union
+from pydantic import BaseModel, Field, field_validator
+
+# Suppress pydantic warnings about schema field shadowing
+# Tested using schema_field alias="schema" but it doesn't work.
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"Format\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"JsonFormat\" shadows an attribute in parent \"Format\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ChangeTrackingFormat\" shadows an attribute in parent \"Format\"")
+warnings.filterwarnings("ignore", message="Field name \"json\" in \"ScrapeFormats\" shadows an attribute in parent \"BaseModel\"")
 
 T = TypeVar('T')
 
@@ -52,11 +60,31 @@ class Source(BaseModel):
 
 SourceOption = Union[str, Source]
 
+
+FormatString = Literal[
+    # camelCase versions (API format)
+    "markdown", "html", "rawHtml", "links", "screenshot", "json", "changeTracking",
+    # snake_case versions (user-friendly)
+    "raw_html", "change_tracking"
+]
+
 class Format(BaseModel):
     """Configuration for a format."""
-    type: str
+    type: FormatString
 
-FormatOption = Union[str, Format]
+class JsonFormat(Format):
+    """Configuration for JSON extraction."""
+    prompt: Optional[str] = None
+    schema: Optional[Dict[str, Any]] = None
+
+class ChangeTrackingFormat(Format):
+    """Configuration for change tracking."""
+    modes: List[Literal["git-diff", "json"]]
+    schema: Optional[Dict[str, Any]] = None
+    prompt: Optional[str] = None
+    tag: Optional[str] = None
+
+FormatOption = Union[FormatString, Format, JsonFormat, ChangeTrackingFormat]
 
 # Scrape types
 class ScrapeFormats(BaseModel):
@@ -65,10 +93,10 @@ class ScrapeFormats(BaseModel):
     markdown: bool = True
     html: bool = False
     raw_html: bool = Field(False, alias="rawHtml")
-    content: bool = False
     links: bool = False
     screenshot: bool = False
-    screenshot_full_page: bool = Field(False, alias="screenshot@fullPage")
+    change_tracking: bool = False
+    json: bool = False
 
     @field_validator('formats')
     @classmethod
@@ -102,9 +130,6 @@ class ScrapeOptions(BaseModel):
     mobile: bool = False
     skip_tls_verification: bool = False
     remove_base64_images: bool = True
-    # Note: raw_html and screenshot_full_page are not supported by v2 API yet
-    # raw_html: bool = False
-    # screenshot_full_page: bool = False
     block_ads: bool = False
     proxy: Optional[str] = None
     max_age: Optional[int] = None
@@ -162,30 +187,20 @@ class CrawlRequest(BaseModel):
     scrape_options: Optional[ScrapeOptions] = None
     zero_data_retention: bool = False
 
-class CrawlJob(BaseModel):
+class CrawlResponse(BaseModel):
     """Information about a crawl job."""
     id: str
     url: str
-    status: Literal["scraping", "completed", "failed"]
-    current: Optional[int] = None
-    total: Optional[int] = None
-    created_at: Optional[datetime] = Field(None, alias="createdAt")
-    completed_at: Optional[datetime] = Field(None, alias="completedAt")
-    data: Optional[List[Document]] = None
-    partial_data: Optional[List[Document]] = Field(None, alias="partialData")
 
-class CrawlJobData(BaseModel):
+class CrawlJob(BaseModel):
     """Crawl job status and progress data."""
-    id: str
     status: Literal["scraping", "completed", "failed"]
-    current: int
     total: int
+    completed: int
+    credits_used: int
+    expires_at: datetime
+    next: Optional[str] = None
     data: List[Document]
-    partial_data: Optional[List[Document]] = Field(None, alias="partialData")
-
-class CrawlData(List[Document]):
-    """Crawl results - just the documents."""
-    pass
 
 class SearchDocument(Document):
     """A document from a search operation with URL and description."""
@@ -196,14 +211,6 @@ class MapDocument(Document):
     """A document from a map operation with URL and description."""
     url: str
     description: Optional[str] = None
-
-class CrawlStartResponse(BaseResponse[CrawlJob]):
-    """Response for starting a crawl job."""
-    pass
-
-class CrawlResponse(BaseResponse[CrawlJobData]):
-    """Response for crawl operations."""
-    pass
 
 # Crawl params types
 class CrawlParamsRequest(BaseModel):
@@ -227,6 +234,7 @@ class CrawlParamsData(BaseModel):
     webhook: Optional[Dict[str, Any]] = None
     scrape_options: Optional[ScrapeOptions] = None
     zero_data_retention: bool = False
+    warning: Optional[str] = None
 
 class CrawlParamsResponse(BaseResponse[CrawlParamsData]):
     """Response from crawl params endpoint."""
@@ -430,13 +438,6 @@ class ClientConfig(BaseModel):
     timeout: Optional[float] = None
     max_retries: int = 3
     backoff_factor: float = 0.5
-
-# Union types for convenience
-ScrapeResult = Union[Document, List[Document]]
-CrawlResult = Union[CrawlJob, CrawlJobData]
-BatchResult = Union[BatchScrapeJob, BatchScrapeData]
-JobResult = Union[CrawlJob, BatchScrapeJob]
-StatusResult = Union[CrawlJobData, BatchScrapeData]
 
 # Response union types
 AnyResponse = Union[

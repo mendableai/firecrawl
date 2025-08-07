@@ -167,8 +167,7 @@ def wait_for_batch_completion(
     client: HttpClient,
     job_id: str,
     poll_interval: int = 2,
-    timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[BatchScrapeData], None]] = None
+    timeout: Optional[int] = None
 ) -> BatchScrapeResponse:
     """
     Wait for a batch scrape job to complete, polling for status updates.
@@ -178,7 +177,6 @@ def wait_for_batch_completion(
         job_id: ID of the batch scrape job
         poll_interval: Seconds between status checks
         timeout: Maximum seconds to wait (None for no timeout)
-        progress_callback: Optional callback for progress updates
         
     Returns:
         BatchScrapeStatusResponse when job completes
@@ -197,10 +195,6 @@ def wait_for_batch_completion(
         
         status_data = status_response.data
         
-        # Call progress callback if provided
-        if progress_callback and status_data:
-            progress_callback(status_data)
-        
         # Check if job is complete
         if status_data and status_data.status in ["completed", "failed", "cancelled"]:
             return status_response
@@ -218,8 +212,7 @@ def batch_scrape_and_wait(
     urls: List[str],
     options: Optional[ScrapeOptions] = None,
     poll_interval: int = 2,
-    timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[BatchScrapeData], None]] = None
+    timeout: Optional[int] = None
 ) -> BatchScrapeResponse:
     """
     Start a batch scrape job and wait for it to complete.
@@ -230,7 +223,6 @@ def batch_scrape_and_wait(
         options: Scraping options
         poll_interval: Seconds between status checks
         timeout: Maximum seconds to wait (None for no timeout)
-        progress_callback: Optional callback for progress updates
         
     Returns:
         BatchScrapeStatusResponse when job completes
@@ -252,7 +244,7 @@ def batch_scrape_and_wait(
     
     # Wait for completion
     return wait_for_batch_completion(
-        client, job_id, poll_interval, timeout, progress_callback
+        client, job_id, poll_interval, timeout
     )
 
 
@@ -335,8 +327,7 @@ def process_large_batch(
     options: Optional[ScrapeOptions] = None,
     chunk_size: int = 100,
     poll_interval: int = 2,
-    timeout: Optional[int] = None,
-    progress_callback: Optional[Callable[[int, int, List[Document]], None]] = None
+    timeout: Optional[int] = None
 ) -> List[Document]:
     """
     Process a large batch of URLs by splitting into smaller chunks.
@@ -348,7 +339,6 @@ def process_large_batch(
         chunk_size: Size of each batch chunk
         poll_interval: Seconds between status checks
         timeout: Maximum seconds to wait per chunk
-        progress_callback: Optional callback for overall progress (completed, total, documents)
         
     Returns:
         List of all scraped documents
@@ -374,9 +364,5 @@ def process_large_batch(
             all_documents.extend(result.data.data)
         
         completed_chunks += 1
-        
-        # Call progress callback if provided
-        if progress_callback:
-            progress_callback(completed_chunks, len(url_chunks), all_documents)
     
     return all_documents

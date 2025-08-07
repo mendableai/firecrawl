@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 from firecrawl import Firecrawl
 from firecrawl.v2.types import ScrapeOptions, ScrapeFormats
 
-
 load_dotenv()
 
 def main():
@@ -35,6 +34,13 @@ def main():
         time.sleep(2)
 
     print(crawl_job)
+
+    # crawl params preview
+    params_data = firecrawl.crawl_params_preview(
+      url="https://docs.firecrawl.dev",
+      prompt="Extract all blog posts and documentation"
+    )
+    print(params_data)
 
     # search examples
     search_response = firecrawl.search(

@@ -23,8 +23,6 @@ from .v2.types import (
     # Crawl types
     CrawlRequest,
     CrawlJob,
-    CrawlJobData,
-    CrawlData,
     CrawlResponse,
     CrawlParamsRequest,
     CrawlParamsData,
@@ -79,14 +77,6 @@ from .v2.types import (
     
     # Configuration types
     ClientConfig,
-    
-    # Union types
-    ScrapeResult,
-    CrawlResult,
-    BatchResult,
-    JobResult,
-    StatusResult,
-    AnyResponse,
 )
 
 __all__ = [
@@ -108,7 +98,6 @@ __all__ = [
     'CrawlRequest',
     'CrawlJob',
     'CrawlJobData',
-    'CrawlData',
     'CrawlResponse',
     'CrawlParamsRequest',
     'CrawlParamsData',
@@ -163,12 +152,4 @@ __all__ = [
     
     # Configuration types
     'ClientConfig',
-    
-    # Union types
-    'ScrapeResult',
-    'CrawlResult',
-    'BatchResult',
-    'JobResult',
-    'StatusResult',
-    'AnyResponse',
 ] 

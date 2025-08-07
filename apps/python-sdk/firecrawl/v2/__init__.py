@@ -1,7 +1,7 @@
 from typing import Optional, List, Union, Dict, Callable, Literal, Any
 from ..types import (
     SearchData, SearchResult, Document, ScrapeOptions, SearchRequest, 
-    SourceOption, FormatOption, CrawlRequest, CrawlJobData, CrawlData,
+    SourceOption, FormatOption, CrawlRequest, CrawlJob, CrawlResponse,
     CrawlParamsRequest, CrawlParamsData
 )
 from .methods.search import search as search_method
@@ -10,7 +10,7 @@ from .methods.crawl import (
     start_crawl as start_crawl_method, 
     cancel_crawl as cancel_crawl_method, 
     get_crawl_status as get_crawl_status_method,
-    crawl_params as crawl_params_method
+    crawl_params_preview as crawl_params_preview_method
 )
 from .utils.http_client import HttpClient
 
@@ -79,9 +79,8 @@ class FirecrawlClient:
         scrape_options: Optional[ScrapeOptions] = None,
         zero_data_retention: bool = False,
         poll_interval: int = 2,
-        timeout: Optional[int] = None,
-        progress_callback: Optional[Callable[[CrawlJobData], None]] = None
-    ):
+        timeout: Optional[int] = None
+    ) -> CrawlJob:
         """Start a crawl job and wait for it to complete."""
         request = CrawlRequest(
             url=url, 
@@ -101,7 +100,7 @@ class FirecrawlClient:
             scrape_options=scrape_options,
             zero_data_retention=zero_data_retention
         )
-        return crawl_method(self._client, request, poll_interval, timeout, progress_callback)
+        return crawl_method(self._client, request, poll_interval, timeout)
     
     # start-crawl
     def start_crawl(
@@ -122,7 +121,7 @@ class FirecrawlClient:
         webhook: Optional[Dict[str, Any]] = None,
         scrape_options: Optional[ScrapeOptions] = None,
         zero_data_retention: bool = False
-    ) -> CrawlJobData:
+    ) -> CrawlResponse:
         """Start a crawl job and return immediately."""
         request = CrawlRequest(
             url=url, 
@@ -148,7 +147,7 @@ class FirecrawlClient:
     def get_crawl_status(
         self,
         job_id: str
-    ):
+    ) -> CrawlJob:
         """Get the status of a crawl job."""
         return get_crawl_status_method(self._client, job_id)
 
@@ -156,19 +155,19 @@ class FirecrawlClient:
     def cancel_crawl(
         self,
         job_id: str
-    ):
+    ) -> bool:
         """Cancel a running crawl job."""
         return cancel_crawl_method(self._client, job_id)
 
-    # crawl-params
-    def crawl_params(
+    # crawl-params-preview
+    def crawl_params_preview(
         self,
         url: str,
         prompt: str
     ) -> CrawlParamsData:
         """Get crawl parameters from LLM based on URL and prompt."""
         request = CrawlParamsRequest(url=url, prompt=prompt)
-        return crawl_params_method(self._client, request)
+        return crawl_params_preview_method(self._client, request)
 
     # get-active-crawls
     def get_active_crawls(

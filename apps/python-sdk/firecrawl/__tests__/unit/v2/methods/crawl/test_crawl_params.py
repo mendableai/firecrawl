@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from firecrawl.v2.types import CrawlParamsRequest, CrawlParamsResponse, CrawlParamsData
-from firecrawl.v2.methods.crawl import crawl_params
+from firecrawl.v2.methods.crawl import crawl_params_preview
 
 
 class TestCrawlParams:
@@ -31,7 +31,7 @@ class TestCrawlParams:
         )
         
         # Call function
-        result = crawl_params(mock_client, request)
+        result = crawl_params_preview(mock_client, request)
         
         # Verify client call
         mock_client.post.assert_called_once_with("/v2/crawl-params", {
@@ -64,7 +64,7 @@ class TestCrawlParams:
         
         # Call function and expect exception
         with pytest.raises(Exception, match="crawl params"):
-            crawl_params(mock_client, request)
+            crawl_params_preview(mock_client, request)
 
     def test_crawl_params_success_false(self):
         """Test crawl_params with success=False in response."""
@@ -86,7 +86,7 @@ class TestCrawlParams:
         
         # Call function and expect exception
         with pytest.raises(Exception, match="Invalid URL provided"):
-            crawl_params(mock_client, request)
+            crawl_params_preview(mock_client, request)
 
     def test_crawl_params_empty_url(self):
         """Test crawl_params with empty URL."""
@@ -98,7 +98,7 @@ class TestCrawlParams:
         
         # Call function and expect exception
         with pytest.raises(ValueError, match="URL cannot be empty"):
-            crawl_params(Mock(), request)
+            crawl_params_preview(Mock(), request)
 
     def test_crawl_params_whitespace_url(self):
         """Test crawl_params with whitespace-only URL."""
@@ -110,7 +110,7 @@ class TestCrawlParams:
         
         # Call function and expect exception
         with pytest.raises(ValueError, match="URL cannot be empty"):
-            crawl_params(Mock(), request)
+            crawl_params_preview(Mock(), request)
 
     def test_crawl_params_empty_prompt(self):
         """Test crawl_params with empty prompt."""
@@ -122,7 +122,7 @@ class TestCrawlParams:
         
         # Call function and expect exception
         with pytest.raises(ValueError, match="Prompt cannot be empty"):
-            crawl_params(Mock(), request)
+            crawl_params_preview(Mock(), request)
 
     def test_crawl_params_whitespace_prompt(self):
         """Test crawl_params with whitespace-only prompt."""
@@ -134,7 +134,7 @@ class TestCrawlParams:
         
         # Call function and expect exception
         with pytest.raises(ValueError, match="Prompt cannot be empty"):
-            crawl_params(Mock(), request)
+            crawl_params_preview(Mock(), request)
 
     def test_crawl_params_complex_options(self):
         """Test crawl_params with complex options in response."""
@@ -172,7 +172,7 @@ class TestCrawlParams:
         )
         
         # Call function
-        result = crawl_params(mock_client, request)
+        result = crawl_params_preview(mock_client, request)
         
         # Verify result
         assert result is not None

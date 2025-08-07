@@ -140,6 +140,12 @@ def _prepare_search_request(request: SearchRequest) -> Dict[str, Any]:
     validated_request = _validate_search_request(request)
     data = validated_request.model_dump(exclude_none=True, by_alias=True)
     
+    # Ensure default values are included only if not explicitly set to None
+    if "limit" not in data and validated_request.limit is not None:
+        data["limit"] = validated_request.limit
+    if "timeout" not in data and validated_request.timeout is not None:
+        data["timeout"] = validated_request.timeout
+    
     # Handle snake_case to camelCase conversions manually
     # (Pydantic Field() aliases interfere with value assignment)
     

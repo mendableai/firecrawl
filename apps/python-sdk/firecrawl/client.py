@@ -60,7 +60,7 @@ class V2Proxy:
             self.get_crawl_status = client_instance.get_crawl_status
             self.cancel_crawl = client_instance.cancel_crawl
             self.start_crawl = client_instance.start_crawl
-            self.crawl_params = client_instance.crawl_params
+            self.crawl_params_preview = client_instance.crawl_params_preview
             # self.batch_scrape = client_instance.batch_scrape
             # self.map = client_instance.map
     
@@ -134,7 +134,7 @@ class Firecrawl:
         # self.scrape = self._v2_client.scrape
         self.crawl = self._v2_client.crawl
         self.start_crawl = self._v2_client.start_crawl
-        self.crawl_params = self._v2_client.crawl_params
+        self.crawl_params_preview = self._v2_client.crawl_params_preview
         self.get_crawl_status = self._v2_client.get_crawl_status
         self.cancel_crawl = self._v2_client.cancel_crawl
         # self.batch_scrape = self._v2_client.batch_scrape
