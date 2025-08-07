@@ -3,11 +3,12 @@ Crawling functionality for Firecrawl v2 API.
 """
 
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 from ..types import (
     CrawlRequest,
     CrawlJob,
-    CrawlResponse, Document, CrawlParamsRequest, CrawlParamsResponse, CrawlParamsData
+    CrawlResponse, Document, CrawlParamsRequest, CrawlParamsResponse, CrawlParamsData,
+    WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse
 )
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
@@ -67,6 +68,14 @@ def _prepare_crawl_request(request: CrawlRequest) -> dict:
     request_data.pop("prompt", None)
     request_data.pop("scrape_options", None)
     
+    # Handle webhook conversion first (before model_dump)
+    if request.webhook is not None:
+        if isinstance(request.webhook, str):
+            data["webhook"] = request.webhook
+        else:
+            # Convert WebhookConfig to dict
+            data["webhook"] = request.webhook.model_dump(exclude_none=True)
+    
     # Convert other snake_case fields to camelCase
     field_mappings = {
         "include_paths": "includePaths",
@@ -79,7 +88,6 @@ def _prepare_crawl_request(request: CrawlRequest) -> dict:
         "allow_subdomains": "allowSubdomains",
         "delay": "delay",
         "max_concurrency": "maxConcurrency",
-        "webhook": "webhook",
         "zero_data_retention": "zeroDataRetention"
     }
     
@@ -333,6 +341,14 @@ def crawl_params_preview(client: HttpClient, request: CrawlParamsRequest) -> Cra
             "zeroDataRetention": "zero_data_retention"
         }
         
+        # Handle webhook conversion
+        if "webhook" in params_data:
+            webhook_data = params_data["webhook"]
+            if isinstance(webhook_data, dict):
+                converted_params["webhook"] = WebhookConfig(**webhook_data)
+            else:
+                converted_params["webhook"] = webhook_data
+        
         for camel_case, snake_case in field_mappings.items():
             if camel_case in params_data:
                 if camel_case == "scrapeOptions" and params_data[camel_case] is not None:
@@ -381,5 +397,57 @@ def crawl_params_preview(client: HttpClient, request: CrawlParamsRequest) -> Cra
             converted_params["warning"] = response_data["warning"]
         
         return CrawlParamsData(**converted_params)
+    else:
+        raise Exception(response_data.get("error", "Unknown error occurred"))
+
+
+def get_crawl_errors(http_client: HttpClient, crawl_id: str) -> CrawlErrorsResponse:
+    """
+    Get errors from a crawl job.
+    
+    Args:
+        http_client: HTTP client for making requests
+        crawl_id: The ID of the crawl job
+        
+    Returns:
+        CrawlErrorsResponse containing errors and robots blocked URLs
+        
+    Raises:
+        Exception: If the request fails
+    """
+    response = http_client.get(f"/v2/crawl/{crawl_id}/errors")
+    
+    if response.status_code != 200:
+        handle_response_error(response, "check crawl errors")
+    
+    try:
+        data = response.json()
+        return CrawlErrorsResponse(**data)
+    except Exception as e:
+        raise Exception(f"Failed to parse crawl errors response: {e}")
+
+
+def get_active_crawls(client: HttpClient) -> ActiveCrawlsResponse:
+    """
+    Get a list of currently active crawl jobs.
+    
+    Args:
+        client: HTTP client instance
+        
+    Returns:
+        ActiveCrawlsResponse containing a list of active crawl jobs
+        
+    Raises:
+        Exception: If the request fails
+    """
+    response = client.get("/v2/crawl/active")
+    
+    if not response.ok:
+        handle_response_error(response, "get active crawls")
+    
+    response_data = response.json()
+    
+    if response_data.get("success"):
+        return ActiveCrawlsResponse(**response_data.get("data", {}))
     else:
         raise Exception(response_data.get("error", "Unknown error occurred"))

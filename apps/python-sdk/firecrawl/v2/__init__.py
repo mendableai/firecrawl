@@ -2,7 +2,7 @@ from typing import Optional, List, Union, Dict, Callable, Literal, Any
 from ..types import (
     SearchData, SearchResult, Document, ScrapeOptions, SearchRequest, 
     SourceOption, FormatOption, CrawlRequest, CrawlJob, CrawlResponse,
-    CrawlParamsRequest, CrawlParamsData
+    CrawlParamsRequest, CrawlParamsData, CrawlErrorsResponse, ActiveCrawlsResponse
 )
 from .methods.search import search as search_method
 from .methods.crawl import (
@@ -10,7 +10,9 @@ from .methods.crawl import (
     start_crawl as start_crawl_method, 
     cancel_crawl as cancel_crawl_method, 
     get_crawl_status as get_crawl_status_method,
-    crawl_params_preview as crawl_params_preview_method
+    crawl_params_preview as crawl_params_preview_method,
+    get_crawl_errors as get_crawl_errors_method,
+    get_active_crawls as get_active_crawls_method
 )
 from .utils.http_client import HttpClient
 
@@ -20,7 +22,7 @@ class FirecrawlClient:
     """
     
     def __init__(self, api_key: str = None, api_url: str = "https://api.firecrawl.dev"):
-        self.api_key = api_key or "placeholder-key"
+        self.api_key = api_key
         self.api_url = api_url
         self._client = HttpClient(api_key=self.api_key, api_url=self.api_url)
 
@@ -143,7 +145,6 @@ class FirecrawlClient:
         )
         return start_crawl_method(self._client, request)
 
-    # get-crawl-status
     def get_crawl_status(
         self,
         job_id: str
@@ -151,7 +152,6 @@ class FirecrawlClient:
         """Get the status of a crawl job."""
         return get_crawl_status_method(self._client, job_id)
 
-    # cancel-crawl
     def cancel_crawl(
         self,
         job_id: str
@@ -159,7 +159,6 @@ class FirecrawlClient:
         """Cancel a running crawl job."""
         return cancel_crawl_method(self._client, job_id)
 
-    # crawl-params-preview
     def crawl_params_preview(
         self,
         url: str,
@@ -169,17 +168,18 @@ class FirecrawlClient:
         request = CrawlParamsRequest(url=url, prompt=prompt)
         return crawl_params_preview_method(self._client, request)
 
-    # get-active-crawls
-    def get_active_crawls(
+    def active_crawls(
           self
-    ):
-        pass
+    ) -> ActiveCrawlsResponse:
+        """Get a list of active crawl jobs."""
+        return get_active_crawls_method(self._client)
     
-    # get-crawl-errors
     def get_crawl_errors(
-          self
-    ):
-        pass
+        self,
+        crawl_id: str
+    ) -> CrawlErrorsResponse:
+        """Get errors from a crawl job."""
+        return get_crawl_errors_method(self._client, crawl_id)
 
     # map
     def map(

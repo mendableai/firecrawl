@@ -27,6 +27,8 @@ from .v2.types import (
     CrawlParamsRequest,
     CrawlParamsData,
     CrawlParamsResponse,
+    CrawlErrorsResponse,
+    ActiveCrawlsResponse,
     
     # Batch scrape types
     BatchScrapeRequest,
@@ -44,6 +46,7 @@ from .v2.types import (
     Source,
     SourceOption,
     Format,
+    JsonFormat,
     FormatOption,
     SearchRequest,
     SearchResult,
@@ -63,7 +66,6 @@ from .v2.types import (
     
     # Location and format types
     Location,
-    JsonFormat,
     
     # Error types
     ErrorDetails,
@@ -102,6 +104,8 @@ __all__ = [
     'CrawlParamsRequest',
     'CrawlParamsData',
     'CrawlParamsResponse',
+    'CrawlErrorsResponse',
+    'ActiveCrawlsResponse',
     
     # Batch scrape types
     'BatchScrapeRequest',
@@ -119,6 +123,7 @@ __all__ = [
     'Source',
     'SourceOption',
     'Format',
+    'JsonFormat',
     'FormatOption',
     'SearchRequest',
     'SearchResult',
@@ -138,7 +143,6 @@ __all__ = [
     
     # Location and format types
     'Location',
-    'JsonFormat',
     
     # Error types
     'ErrorDetails',

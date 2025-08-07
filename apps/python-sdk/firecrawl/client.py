@@ -137,6 +137,9 @@ class Firecrawl:
         self.crawl_params_preview = self._v2_client.crawl_params_preview
         self.get_crawl_status = self._v2_client.get_crawl_status
         self.cancel_crawl = self._v2_client.cancel_crawl
+        self.get_crawl_errors = self._v2_client.get_crawl_errors
+        self.active_crawls = self._v2_client.active_crawls
+
         # self.batch_scrape = self._v2_client.batch_scrape
         # self.map = self._v2_client.map
         self.search = self._v2_client.search

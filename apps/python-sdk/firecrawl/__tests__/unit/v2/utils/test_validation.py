@@ -1,5 +1,5 @@
 import pytest
-from firecrawl.v2.types import ScrapeOptions
+from firecrawl.v2.types import JsonFormat, ScrapeOptions
 from firecrawl.v2.utils.validation import validate_scrape_options, prepare_scrape_options
 
 
@@ -220,10 +220,8 @@ class TestPrepareScrapeOptions:
 
     def test_format_schema_conversion(self):
         """Test that Format schema is properly handled."""
-        from firecrawl.v2.types import Format
-        
-        # Create a Format object with schema
-        format_obj = Format(
+        # Create a JsonFormat object with schema
+        format_obj = JsonFormat(
             type="json",
             prompt="Extract product info",
             schema={"type": "object", "properties": {"name": {"type": "string"}}}

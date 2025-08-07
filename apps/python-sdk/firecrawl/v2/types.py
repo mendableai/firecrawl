@@ -54,12 +54,28 @@ class Document(BaseModel):
     warning: Optional[str] = None
     change_tracking: Optional[Dict[str, Any]] = Field(None, alias="changeTracking")
 
+# Webhook types
+class WebhookConfig(BaseModel):
+    """Configuration for webhooks."""
+    url: str
+    headers: Optional[Dict[str, str]] = None
+    metadata: Optional[Dict[str, str]] = None
+    events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
+
+class WebhookData(BaseModel):
+    """Data sent to webhooks."""
+    job_id: str = Field(alias="jobId")
+    status: str
+    current: Optional[int] = None
+    total: Optional[int] = None
+    data: Optional[List[Document]] = None
+    error: Optional[str] = None
+
 class Source(BaseModel):
     """Configuration for a search source."""
     type: str
 
 SourceOption = Union[str, Source]
-
 
 FormatString = Literal[
     # camelCase versions (API format)
@@ -183,7 +199,7 @@ class CrawlRequest(BaseModel):
     allow_subdomains: bool = False
     delay: Optional[int] = None
     max_concurrency: Optional[int] = None
-    webhook: Optional[Dict[str, Any]] = None
+    webhook: Optional[Union[str, WebhookConfig]] = None
     scrape_options: Optional[ScrapeOptions] = None
     zero_data_retention: bool = False
 
@@ -231,7 +247,7 @@ class CrawlParamsData(BaseModel):
     allow_subdomains: bool = False
     delay: Optional[int] = None
     max_concurrency: Optional[int] = None
-    webhook: Optional[Dict[str, Any]] = None
+    webhook: Optional[Union[str, WebhookConfig]] = None
     scrape_options: Optional[ScrapeOptions] = None
     zero_data_retention: bool = False
     warning: Optional[str] = None
@@ -343,12 +359,6 @@ class Location(BaseModel):
     country: Optional[str] = None
     languages: Optional[List[str]] = None
 
-# JSON format types
-class JsonFormat(BaseModel):
-    """Configuration for JSON extraction."""
-    prompt: Optional[str] = None
-    schema_field: Optional[Dict[str, Any]] = Field(None, alias="schema")
-
 class SearchRequest(BaseModel):
     """Request for search operations."""
     query: str
@@ -420,15 +430,22 @@ class JobStatus(BaseModel):
     completed_at: Optional[datetime] = Field(None, alias="completedAt")
     expires_at: Optional[datetime] = Field(None, alias="expiresAt")
 
-# Webhook types
-class WebhookData(BaseModel):
-    """Data sent to webhooks."""
-    job_id: str = Field(alias="jobId")
-    status: str
-    current: Optional[int] = None
-    total: Optional[int] = None
-    data: Optional[List[Document]] = None
-    error: Optional[str] = None
+class CrawlErrorsResponse(BaseModel):
+    """Response from crawl error monitoring."""
+    errors: List[Dict[str, str]] = Field(description="List of errors with fields: id, timestamp, url, error")
+    robots_blocked: List[str] = Field(alias="robotsBlocked", description="List of URLs blocked by robots.txt")
+
+class ActiveCrawl(BaseModel):
+    """Information about an active crawl job."""
+    id: str
+    team_id: str = Field(alias="teamId")
+    url: str
+    options: Optional[Dict[str, Any]] = None
+
+class ActiveCrawlsResponse(BaseModel):
+    """Response from active crawls endpoint."""
+    success: bool = True
+    crawls: List[ActiveCrawl]
 
 # Configuration types
 class ClientConfig(BaseModel):
@@ -446,5 +463,5 @@ AnyResponse = Union[
     BatchScrapeResponse,
     MapResponse,
     SearchResponse,
-    ErrorResponse
+    ErrorResponse,
 ]

@@ -48,3 +48,10 @@ content-type: application/json
     "url": "https://firecrawl.dev",
     "includePaths": ["blog", "news"]
 }
+
+
+### Active Crawls
+# @name activeCrawls
+GET {{baseUrl}}/v2/crawl/active HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json

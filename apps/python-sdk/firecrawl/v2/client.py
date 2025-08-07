@@ -5,21 +5,19 @@ This module provides the main client class that orchestrates all v2 functionalit
 """
 
 import os
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Union
 from .types import (
     ClientConfig, ScrapeOptions, CrawlOptions, MapOptions, ExtractOptions,
     ScrapeResponse, CrawlResponse, CrawlStatusResponse, BatchScrapeResponse,
     BatchScrapeStatusResponse, MapResponse, ExtractResponse, Document,
-    SearchRequest, SearchResponse
+    SearchRequest, SearchResponse, CrawlRequest, WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse
 )
 from .utils.http_client import HttpClient
 from .utils.error_handler import FirecrawlError
-# Import functions from modules
-from . import scrape as scrape_module
-from . import crawl as crawl_module  
-from . import batch as batch_module
-from . import search as search_module
-
+from .methods import scrape as scrape_module
+from .methods import crawl as crawl_module  
+from .methods import batch as batch_module
+from .methods import search as search_module
 
 class FirecrawlClient:
     """
@@ -108,7 +106,6 @@ class FirecrawlClient:
         Returns:
             SearchResponse containing the search results
         """
-        # Build options object from individual parameters
         options = SearchRequest(
             limit=limit,
             tbs=tbs,
@@ -118,4 +115,200 @@ class FirecrawlClient:
         )
         
         return search_module.search(self.http_client, query, options)
+    
+    def crawl(
+        self,
+        url: str,
+        *,
+        prompt: Optional[str] = None,
+        exclude_paths: Optional[List[str]] = None,
+        include_paths: Optional[List[str]] = None,
+        max_discovery_depth: Optional[int] = None,
+        ignore_sitemap: bool = False,
+        ignore_query_parameters: bool = False,
+        limit: Optional[int] = None,
+        crawl_entire_domain: bool = False,
+        allow_external_links: bool = False,
+        allow_subdomains: bool = False,
+        delay: Optional[int] = None,
+        max_concurrency: Optional[int] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
+        zero_data_retention: bool = False,
+        poll_interval: int = 2,
+        timeout: Optional[int] = None
+    ) -> CrawlStatusResponse:
+        """
+        Start a crawl job and wait for it to complete.
+        
+        Args:
+            url: Target URL to start crawling from
+            prompt: Optional prompt to guide the crawl
+            exclude_paths: Patterns of URLs to exclude
+            include_paths: Patterns of URLs to include
+            max_discovery_depth: Maximum depth for finding new URLs
+            ignore_sitemap: Skip sitemap.xml processing
+            ignore_query_parameters: Ignore URL parameters
+            limit: Maximum pages to crawl
+            crawl_entire_domain: Follow parent directory links
+            allow_external_links: Follow external domain links
+            allow_subdomains: Follow subdomains
+            delay: Delay in seconds between scrapes
+            max_concurrency: Maximum number of concurrent scrapes
+            webhook: Webhook configuration for notifications
+            scrape_options: Page scraping configuration
+            zero_data_retention: Whether to delete data after 24 hours
+            poll_interval: Seconds between status checks
+            timeout: Maximum seconds to wait (None for no timeout)
+            
+        Returns:
+            CrawlStatusResponse when job completes
+            
+        Raises:
+            ValueError: If request is invalid
+            Exception: If the crawl fails to start or complete
+            TimeoutError: If timeout is reached
+        """
+        request = CrawlRequest(
+            url=url,
+            prompt=prompt,
+            exclude_paths=exclude_paths,
+            include_paths=include_paths,
+            max_discovery_depth=max_discovery_depth,
+            ignore_sitemap=ignore_sitemap,
+            ignore_query_parameters=ignore_query_parameters,
+            limit=limit,
+            crawl_entire_domain=crawl_entire_domain,
+            allow_external_links=allow_external_links,
+            allow_subdomains=allow_subdomains,
+            delay=delay,
+            max_concurrency=max_concurrency,
+            webhook=webhook,
+            scrape_options=scrape_options,
+            zero_data_retention=zero_data_retention
+        )
+        
+        return crawl_module.crawl(
+            self.http_client, 
+            request, 
+            poll_interval=poll_interval, 
+            timeout=timeout
+        )
+    
+    def start_crawl(
+        self,
+        url: str,
+        *,
+        prompt: Optional[str] = None,
+        exclude_paths: Optional[List[str]] = None,
+        include_paths: Optional[List[str]] = None,
+        max_discovery_depth: Optional[int] = None,
+        ignore_sitemap: bool = False,
+        ignore_query_parameters: bool = False,
+        limit: Optional[int] = None,
+        crawl_entire_domain: bool = False,
+        allow_external_links: bool = False,
+        allow_subdomains: bool = False,
+        delay: Optional[int] = None,
+        max_concurrency: Optional[int] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
+        zero_data_retention: bool = False
+    ) -> CrawlResponse:
+        """
+        Start an asynchronous crawl job.
+        
+        Args:
+            url: Target URL to start crawling from
+            prompt: Optional prompt to guide the crawl
+            exclude_paths: Patterns of URLs to exclude
+            include_paths: Patterns of URLs to include
+            max_discovery_depth: Maximum depth for finding new URLs
+            ignore_sitemap: Skip sitemap.xml processing
+            ignore_query_parameters: Ignore URL parameters
+            limit: Maximum pages to crawl
+            crawl_entire_domain: Follow parent directory links
+            allow_external_links: Follow external domain links
+            allow_subdomains: Follow subdomains
+            delay: Delay in seconds between scrapes
+            max_concurrency: Maximum number of concurrent scrapes
+            webhook: Webhook configuration for notifications
+            scrape_options: Page scraping configuration
+            zero_data_retention: Whether to delete data after 24 hours
+            
+        Returns:
+            CrawlResponse with job information
+            
+        Raises:
+            ValueError: If request is invalid
+            Exception: If the crawl operation fails to start
+        """
+        request = CrawlRequest(
+            url=url,
+            prompt=prompt,
+            exclude_paths=exclude_paths,
+            include_paths=include_paths,
+            max_discovery_depth=max_discovery_depth,
+            ignore_sitemap=ignore_sitemap,
+            ignore_query_parameters=ignore_query_parameters,
+            limit=limit,
+            crawl_entire_domain=crawl_entire_domain,
+            allow_external_links=allow_external_links,
+            allow_subdomains=allow_subdomains,
+            delay=delay,
+            max_concurrency=max_concurrency,
+            webhook=webhook,
+            scrape_options=scrape_options,
+            zero_data_retention=zero_data_retention
+        )
+        
+        return crawl_module.start_crawl(self.http_client, request)
+    
+    def get_crawl_status(self, job_id: str) -> CrawlStatusResponse:
+        """
+        Get the status of a crawl job.
+        
+        Args:
+            job_id: ID of the crawl job
+            
+        Returns:
+            CrawlStatusResponse with current status and data
+            
+        Raises:
+            Exception: If the status check fails
+        """
+        return crawl_module.get_crawl_status(self.http_client, job_id)
+    
+    def check_crawl_errors(self, crawl_id: str) -> CrawlErrorsResponse:
+        """
+        Get errors from a crawl job.
+        
+        Args:
+            crawl_id: The ID of the crawl job
+            
+        Returns:
+            CrawlErrorsResponse containing errors and robots blocked URLs
+        """
+        return crawl_module.check_crawl_errors(self.http_client, crawl_id)
+    
+    def get_active_crawls(self) -> ActiveCrawlsResponse:
+        """
+        Get a list of currently active crawl jobs.
+        
+        Returns:
+            ActiveCrawlsResponse containing a list of active crawl jobs.
+        """
+        return crawl_module.get_active_crawls(self.http_client)
+    
+    def cancel_crawl(self, crawl_id: str) -> bool:
+        """
+        Cancel a crawl job.
+        
+        Args:
+            crawl_id: The ID of the crawl job to cancel
+            
+        Returns:
+            bool: True if the crawl was cancelled, False otherwise
+        """
+        return crawl_module.cancel_crawl(self.http_client, crawl_id)
     
