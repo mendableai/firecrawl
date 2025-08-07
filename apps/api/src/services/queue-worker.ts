@@ -71,7 +71,10 @@ cacheableLookup.install(https.globalAgent);
 
 const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
   traceExporter: new LangfuseExporter(),
-  instrumentations: [getNodeAutoInstrumentations()],
+  instrumentations: [getNodeAutoInstrumentations({
+    '@opentelemetry/instrumentation-undici': { enabled: false },
+    '@opentelemetry/instrumentation-http': { enabled: false },
+  })],
 }) : null;
 
 if (langfuseOtel) {
