@@ -313,6 +313,7 @@ export async function lockURL(
         proof: "ENG-3085",
         permutations: permutations.length,
         result: x,
+        zeroDataRetention: sc.zeroDataRetention,
       });
     } else {
       logger.warn("proof failed", {
@@ -320,6 +321,7 @@ export async function lockURL(
         permutations: permutations.length,
         result: x,
         url,
+        zeroDataRetention: sc.zeroDataRetention,
       });
     }
     res = x === permutations.length;
