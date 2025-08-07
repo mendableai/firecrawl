@@ -451,6 +451,7 @@ const app = Express();
 let currentLiveness: boolean = true;
 
 app.get("/liveness", (req, res) => {
+  _logger.info("Liveness endpoint hit");
   if (process.env.USE_DB_AUTHENTICATION === "true") {
     // networking check for Kubernetes environments
     const host = process.env.FIRECRAWL_APP_HOST || "firecrawl-app-service";
