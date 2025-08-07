@@ -2,7 +2,7 @@ import { InternalOptions } from "../scraper/scrapeURL";
 import { ScrapeOptions, TeamFlags } from "../controllers/v1/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisEvictConnection } from "../services/redis";
-import { logger as _logger } from "./logger";
+import { logger as _logger, logger } from "./logger";
 import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
 import type { Logger } from "winston";
 
@@ -307,6 +307,21 @@ export async function lockURL(
       "crawl:" + id + ":visited",
       ...permutations,
     );
+    // TEMP: proving ENG-3085
+    if (x === permutations.length || x === 0) {
+      logger.debug("proof OK", {
+        proof: "ENG-3085",
+        permutations: permutations.length,
+        result: x,
+      });
+    } else {
+      logger.warn("proof failed", {
+        proof: "ENG-3085",
+        permutations: permutations.length,
+        result: x,
+        url,
+      });
+    }
     res = x === permutations.length;
   }
 
