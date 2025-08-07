@@ -131,7 +131,7 @@ class Firecrawl:
         self.v2 = V2Proxy(self._v2_client)
         
         
-        # self.scrape = self._v2_client.scrape
+        self.scrape = self._v2_client.scrape
         self.crawl = self._v2_client.crawl
         self.start_crawl = self._v2_client.start_crawl
         self.crawl_params_preview = self._v2_client.crawl_params_preview

@@ -10,7 +10,8 @@ from .types import (
     ClientConfig, ScrapeOptions, CrawlOptions, MapOptions, ExtractOptions,
     ScrapeResponse, CrawlResponse, CrawlStatusResponse, BatchScrapeResponse,
     BatchScrapeStatusResponse, MapResponse, ExtractResponse, Document,
-    SearchRequest, SearchResponse, CrawlRequest, WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse
+    SearchRequest, SearchResponse, CrawlRequest, WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse,
+    FormatOption, WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction, Location,
 )
 from .utils.http_client import HttpClient
 from .utils.error_handler import FirecrawlError
@@ -63,24 +64,80 @@ class FirecrawlClient:
         
         self.http_client = HttpClient(api_key, api_url)
     
-    # def scrape(
-    #     self,
-    #     url: str,
-    #     options: Optional[ScrapeOptions] = None
-    # ) -> ScrapeResponse:
-    #     """
-    #     Scrape a single URL.
-        
-    #     Args:
-    #         url: URL to scrape
-    #         options: Scraping options
-            
-    #     Returns:
-    #         ScrapeResponse containing the scraped document
-    #     """
-    
-    #     return scrape_module.scrape(self.http_client, url, options)
-
+    def scrape(
+        self,
+        url: str,
+        *,
+        formats: Optional[List['FormatOption']] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        wait_for: Optional[int] = None,
+        mobile: Optional[bool] = None,
+        parsers: Optional[List[str]] = None,
+        actions: Optional[List[Union['WaitAction', 'ScreenshotAction', 'ClickAction', 'WriteAction', 'PressAction', 'ScrollAction', 'ScrapeAction', 'ExecuteJavascriptAction', 'PDFAction']]] = None,
+        location: Optional['Location'] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        fast_mode: Optional[bool] = None,
+        use_mock: Optional[str] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[str] = None,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
+    ) -> Document:
+        """
+        Scrape a single URL and return the document.
+        Args:
+            url: URL to scrape
+            formats: List of formats to scrape
+            headers: Dictionary of headers to use
+            include_tags: List of tags to include
+            exclude_tags: List of tags to exclude
+            only_main_content: Whether to only scrape the main content
+            timeout: Timeout in seconds
+            wait_for: Wait for a specific element to be present
+            mobile: Whether to use mobile mode
+            parsers: List of parsers to use
+            actions: List of actions to perform
+            location: Location to scrape
+            skip_tls_verification: Whether to skip TLS verification
+            remove_base64_images: Whether to remove base64 images
+            fast_mode: Whether to use fast mode
+            use_mock: Whether to use mock mode
+            block_ads: Whether to block ads
+            proxy: Proxy to use
+            max_age: Maximum age of the cache
+            store_in_cache: Whether to store the result in the cache
+        Returns:
+            Document
+        """
+        options = ScrapeOptions(
+            **{k: v for k, v in dict(
+                formats=formats,
+                headers=headers,
+                include_tags=include_tags,
+                exclude_tags=exclude_tags,
+                only_main_content=only_main_content,
+                timeout=timeout,
+                wait_for=wait_for,
+                mobile=mobile,
+                parsers=parsers,
+                actions=actions,
+                location=location,
+                skip_tls_verification=skip_tls_verification,
+                remove_base64_images=remove_base64_images,
+                fast_mode=fast_mode,
+                use_mock=use_mock,
+                block_ads=block_ads,
+                proxy=proxy,
+                max_age=max_age,
+                store_in_cache=store_in_cache,
+            ).items() if v is not None}
+        ) if any(v is not None for v in [formats, headers, include_tags, exclude_tags, only_main_content, timeout, wait_for, mobile, parsers, actions, location, skip_tls_verification, remove_base64_images, fast_mode, use_mock, block_ads, proxy, max_age, store_in_cache]) else None
+        return scrape_module.scrape(self.http_client, url, options)
 
     def search(
         self,

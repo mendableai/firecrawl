@@ -97,116 +97,111 @@ def prepare_scrape_options(options: Optional[ScrapeOptions]) -> Optional[Dict[st
     if validated_options is None:
         return None
     
+    # Apply default values for None fields
+    default_values = {
+        "only_main_content": True,
+        "mobile": False,
+        "skip_tls_verification": True,
+        "remove_base64_images": True,
+        "fast_mode": False,
+        "block_ads": True,
+        "max_age": 14400000,
+        "store_in_cache": True
+    }
+    
     # Convert to dict and handle manual snake_case to camelCase conversion
     options_data = validated_options.model_dump(exclude_none=True)
+    
+    # Apply defaults for None fields
+    for field, default_value in default_values.items():
+        if field not in options_data:
+            options_data[field] = default_value
+    
     scrape_data = {}
     
+    # Manual field mapping for snake_case to camelCase conversion
+    field_mappings = {
+        "include_tags": "includeTags",
+        "exclude_tags": "excludeTags",
+        "only_main_content": "onlyMainContent",
+        "wait_for": "waitFor",
+        "skip_tls_verification": "skipTlsVerification",
+        "remove_base64_images": "removeBase64Images",
+        "fast_mode": "fastMode",
+        "use_mock": "useMock",
+        "block_ads": "blockAds",
+        "store_in_cache": "storeInCache",
+        "max_age": "maxAge"
+    }
+    
+    # Apply field mappings
+    for snake_case, camel_case in field_mappings.items():
+        if snake_case in options_data:
+            scrape_data[camel_case] = options_data.pop(snake_case)
+    
+    # Handle special cases
     for key, value in options_data.items():
         if value is not None:
             if key == "formats":
-                # Handle formats - if it's a ScrapeFormats object, convert boolean flags to format strings
-                if isinstance(value, dict) and any(key in value for key in ['markdown', 'html', 'raw_html', 'content', 'links', 'screenshot', 'screenshot_full_page']):
-                    # Convert ScrapeFormats boolean flags to format strings
-                    formats = []
-                    if value.get('markdown', False):
-                        formats.append("markdown")
-                    if value.get('html', False):
-                        formats.append("html")
-                    if value.get('raw_html', False):
-                        formats.append("rawHtml")
-                    if value.get('content', False):
-                        formats.append("content")
-                    if value.get('links', False):
-                        formats.append("links")
-                    if value.get('screenshot', False):
-                        formats.append("screenshot")
-                    if value.get('screenshot_full_page', False):
-                        formats.append("screenshot@fullPage")
-                    scrape_data["formats"] = formats
-                elif hasattr(value, 'markdown') or hasattr(value, 'html') or hasattr(value, 'raw_html') or hasattr(value, 'content') or hasattr(value, 'links') or hasattr(value, 'screenshot') or hasattr(value, 'screenshot_full_page'):
-                    # Convert ScrapeFormats boolean flags to format strings
-                    formats = []
-                    if getattr(value, 'markdown', False):
-                        formats.append("markdown")
-                    if getattr(value, 'html', False):
-                        formats.append("html")
-                    if getattr(value, 'raw_html', False):
-                        formats.append("rawHtml")
-                    if getattr(value, 'content', False):
-                        formats.append("content")
-                    if getattr(value, 'links', False):
-                        formats.append("links")
-                    if getattr(value, 'screenshot', False):
-                        formats.append("screenshot")
-                    if getattr(value, 'screenshot_full_page', False):
-                        formats.append("screenshot@fullPage")
-                    scrape_data["formats"] = formats
-                elif hasattr(value, 'formats') and value.formats is not None:
-                    # Convert format strings from snake_case to camelCase
-                    converted_formats = []
-                    for fmt in value.formats:
-                        if isinstance(fmt, str):
-                            converted_formats.append(_convert_format_string(fmt))
-                        elif hasattr(fmt, 'type'):
+                # Handle formats conversion
+                converted_formats = []
+                for fmt in value:
+                    if isinstance(fmt, str):
+                        # Handle format strings
+                        if fmt == "json":
+                            raise ValueError("json format must be an object with 'type', 'prompt', and 'schema' fields")
+                        converted_formats.append(_convert_format_string(fmt))
+                    elif isinstance(fmt, dict):
+                        # Handle format objects
+                        if fmt.get('type') == 'json':
+                            validated_json = _validate_json_format(fmt)
+                            converted_formats.append(validated_json)
+                        else:
+                            # Convert other format objects
+                            if 'type' in fmt:
+                                fmt['type'] = _convert_format_string(fmt['type'])
+                            converted_formats.append(fmt)
+                    elif hasattr(fmt, 'type'):
+                        # Handle Format objects
+                        if fmt.type == 'json':
+                            # For json format, we need the full object
+                            converted_formats.append(fmt.model_dump())
+                        else:
+                            # For other formats, just convert the type
                             converted_formats.append(_convert_format_string(fmt.type))
-                        else:
-                            converted_formats.append(fmt)
-                    scrape_data["formats"] = converted_formats
-                elif isinstance(value, list):
-                    # If it's already a list, convert format strings from snake_case to camelCase
-                    converted_formats = []
-                    for fmt in value:
-                        if isinstance(fmt, str):
-                            # Handle json format specially - it can't be a string
-                            if fmt == "json":
-                                raise ValueError("json format must be an object with 'type', 'prompt', and 'schema' fields")
-                            converted_formats.append(_convert_format_string(fmt))
-                        elif isinstance(fmt, dict):
-                            # Handle format objects (like json format)
-                            if fmt.get('type') == 'json':
-                                validated_json = _validate_json_format(fmt)
-                                converted_formats.append(validated_json)
+                    else:
+                        converted_formats.append(fmt)
+                scrape_data["formats"] = converted_formats
+            elif key == "actions":
+                # Handle actions conversion
+                converted_actions = []
+                for action in value:
+                    if isinstance(action, dict):
+                        # Convert action dict
+                        converted_action = {}
+                        for action_key, action_value in action.items():
+                            if action_key == "full_page":
+                                converted_action["fullPage"] = action_value
                             else:
-                                # Convert other format objects
-                                if 'type' in fmt:
-                                    fmt['type'] = _convert_format_string(fmt['type'])
-                                converted_formats.append(fmt)
-                        elif hasattr(fmt, 'type'):
-                            # Handle Format objects
-                            if fmt.type == 'json':
-                                # For json format, we need the full object
-                                converted_formats.append(fmt.model_dump())
+                                converted_action[action_key] = action_value
+                        converted_actions.append(converted_action)
+                    else:
+                        # Handle action objects
+                        action_data = action.model_dump(exclude_none=True)
+                        converted_action = {}
+                        for action_key, action_value in action_data.items():
+                            if action_key == "full_page":
+                                converted_action["fullPage"] = action_value
                             else:
-                                # For other formats, just convert the type
-                                converted_formats.append(_convert_format_string(fmt.type))
-                        else:
-                            converted_formats.append(fmt)
-                    scrape_data["formats"] = converted_formats
+                                converted_action[action_key] = action_value
+                        converted_actions.append(converted_action)
+                scrape_data["actions"] = converted_actions
+            elif key == "location":
+                # Handle location conversion
+                if isinstance(value, dict):
+                    scrape_data["location"] = value
                 else:
-                    # Fallback - use the value as-is
-                    scrape_data["formats"] = value
-            elif key == "include_tags":
-                scrape_data["includeTags"] = value
-            elif key == "exclude_tags":
-                scrape_data["excludeTags"] = value
-            elif key == "only_main_content":
-                scrape_data["onlyMainContent"] = value
-            elif key == "wait_for":
-                scrape_data["waitFor"] = value
-            elif key == "skip_tls_verification":
-                scrape_data["skipTlsVerification"] = value
-            elif key == "remove_base64_images":
-                scrape_data["removeBase64Images"] = value
-            elif key == "block_ads":
-                scrape_data["blockAds"] = value
-            elif key == "store_in_cache":
-                scrape_data["storeInCache"] = value
-            elif key == "max_age":
-                scrape_data["maxAge"] = value
-            # Note: raw_html should be in formats array, not as a separate field
-            # Note: screenshot_full_page is not supported by v2 API
-            # elif key == "screenshot_full_page":
-            #     scrape_data["screenshot@fullPage"] = value
+                    scrape_data["location"] = value.model_dump(exclude_none=True)
             else:
                 # For fields that don't need conversion, use as-is
                 scrape_data[key] = value

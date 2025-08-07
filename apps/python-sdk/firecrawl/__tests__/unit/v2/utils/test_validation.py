@@ -227,10 +227,64 @@ class TestPrepareScrapeOptions:
             schema={"type": "object", "properties": {"name": {"type": "string"}}}
         )
         
-        print(f"DEBUG: format_obj.schema = {format_obj.schema}")
-        print(f"DEBUG: format_obj.model_dump() = {format_obj.model_dump()}")
-        
-        # Check that model_dump() shows schema
         dumped = format_obj.model_dump()
         assert "schema" in dumped
         assert dumped["schema"] == {"type": "object", "properties": {"name": {"type": "string"}}} 
+
+    def test_prepare_new_v2_fields(self):
+        """Test preparation with new v2 fields."""
+        from firecrawl.v2.types import Viewport, ScreenshotAction
+        
+        viewport = Viewport(width=1920, height=1080)
+        screenshot_action = ScreenshotAction(
+            type="screenshot",
+            full_page=True,
+            quality=90,
+            viewport=viewport
+        )
+        
+        options = ScrapeOptions(
+            fast_mode=True,
+            use_mock="test-mock",
+            block_ads=False,
+            store_in_cache=False,
+            max_age=7200000,  # 2 hours
+            actions=[screenshot_action],
+            parsers=["pdf"]
+        )
+        
+        result = prepare_scrape_options(options)
+        
+        # Check new field conversions
+        assert "fastMode" in result
+        assert result["fastMode"] is True
+        assert "useMock" in result
+        assert result["useMock"] == "test-mock"
+        assert "blockAds" in result
+        assert result["blockAds"] is False
+        assert "storeInCache" in result
+        assert result["storeInCache"] is False
+        assert "maxAge" in result
+        assert result["maxAge"] == 7200000
+        
+        # Check actions conversion
+        assert "actions" in result
+        assert len(result["actions"]) == 1
+        action = result["actions"][0]
+        assert action["type"] == "screenshot"
+        assert action["fullPage"] is True
+        assert action["quality"] == 90
+        assert "viewport" in action
+        assert action["viewport"]["width"] == 1920
+        assert action["viewport"]["height"] == 1080
+        
+        # Check parsers
+        assert "parsers" in result
+        assert result["parsers"] == ["pdf"]
+        
+        # Check that snake_case fields are not present
+        assert "fast_mode" not in result
+        assert "use_mock" not in result
+        assert "block_ads" not in result
+        assert "store_in_cache" not in result
+        assert "max_age" not in result 

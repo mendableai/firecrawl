@@ -1,8 +1,9 @@
-from typing import Optional, List, Union, Dict, Callable, Literal, Any
+from typing import Optional, List, Union, Dict, Any
 from ..types import (
-    SearchData, SearchResult, Document, ScrapeOptions, SearchRequest, 
+    SearchData, Document, ScrapeOptions, SearchRequest, 
     SourceOption, FormatOption, CrawlRequest, CrawlJob, CrawlResponse,
-    CrawlParamsRequest, CrawlParamsData, CrawlErrorsResponse, ActiveCrawlsResponse
+    CrawlParamsRequest, CrawlParamsData, CrawlErrorsResponse, ActiveCrawlsResponse,
+    WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction, Location
 )
 from .methods.search import search as search_method
 from .methods.crawl import (
@@ -14,6 +15,7 @@ from .methods.crawl import (
     get_crawl_errors as get_crawl_errors_method,
     get_active_crawls as get_active_crawls_method
 )
+from .methods.scrape import scrape as scrape_method
 from .utils.http_client import HttpClient
 
 class FirecrawlClient:
@@ -26,11 +28,52 @@ class FirecrawlClient:
         self.api_url = api_url
         self._client = HttpClient(api_key=self.api_key, api_url=self.api_url)
 
-    # scrape
     def scrape(
-          self
-    ):
-        pass
+        self,
+        url: str,
+        formats: Optional[List[FormatOption]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        wait_for: Optional[int] = None,
+        mobile: Optional[bool] = None,
+        parsers: Optional[List[str]] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
+        location: Optional[Location] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        fast_mode: Optional[bool] = None,
+        use_mock: Optional[str] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[str] = None,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
+    ) -> Document:
+        """Scrape a single URL and return the document."""
+        options = ScrapeOptions(
+            formats=formats,
+            headers=headers,
+            include_tags=include_tags,
+            exclude_tags=exclude_tags,
+            only_main_content=only_main_content,
+            timeout=timeout,
+            wait_for=wait_for,
+            mobile=mobile,
+            parsers=parsers,
+            actions=actions,
+            location=location,
+            skip_tls_verification=skip_tls_verification,
+            remove_base64_images=remove_base64_images,
+            fast_mode=fast_mode,
+            use_mock=use_mock,
+            block_ads=block_ads,
+            proxy=proxy,
+            max_age=max_age,
+            store_in_cache=store_in_cache
+        )
+        return scrape_method(self._client, url, options)
 
     # batch-scrape
     def batch_scrape(
@@ -61,7 +104,6 @@ class FirecrawlClient:
     ):
         pass
     
-    # crawl
     def crawl(
         self,
         url: str,
@@ -104,7 +146,6 @@ class FirecrawlClient:
         )
         return crawl_method(self._client, request, poll_interval, timeout)
     
-    # start-crawl
     def start_crawl(
         self,
         url: str,
@@ -213,8 +254,8 @@ class FirecrawlClient:
 
     # credit-usage
     def credit_usage(
-            self
+        self
     ):
-          pass
+        pass
 
 __all__ = ['FirecrawlClient']

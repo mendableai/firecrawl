@@ -79,10 +79,15 @@ SourceOption = Union[str, Source]
 
 FormatString = Literal[
     # camelCase versions (API format)
-    "markdown", "html", "rawHtml", "links", "screenshot", "json", "changeTracking",
+    "markdown", "html", "rawHtml", "links", "screenshot", "summary", "changeTracking", "json",
     # snake_case versions (user-friendly)
     "raw_html", "change_tracking"
 ]
+
+class Viewport(BaseModel):
+    """Viewport configuration for screenshots."""
+    width: int
+    height: int
 
 class Format(BaseModel):
     """Configuration for a format."""
@@ -100,7 +105,14 @@ class ChangeTrackingFormat(Format):
     prompt: Optional[str] = None
     tag: Optional[str] = None
 
-FormatOption = Union[FormatString, Format, JsonFormat, ChangeTrackingFormat]
+class ScreenshotFormat(BaseModel):
+    """Configuration for screenshot format."""
+    type: Literal["screenshot"] = "screenshot"
+    full_page: Optional[bool] = None
+    quality: Optional[int] = None
+    viewport: Optional[Union[Dict[str, int], Viewport]] = None
+
+FormatOption = Union[FormatString, Format, JsonFormat, ChangeTrackingFormat, ScreenshotFormat]
 
 # Scrape types
 class ScrapeFormats(BaseModel):
@@ -136,22 +148,25 @@ class ScrapeFormats(BaseModel):
 
 class ScrapeOptions(BaseModel):
     """Options for scraping operations."""
-    formats: Optional[Union[ScrapeFormats, List[FormatOption]]] = None
+    formats: Optional[List[FormatOption]] = None
     headers: Optional[Dict[str, str]] = None
     include_tags: Optional[List[str]] = None
     exclude_tags: Optional[List[str]] = None
-    only_main_content: bool = True
+    only_main_content: Optional[bool] = None
     timeout: Optional[int] = None
     wait_for: Optional[int] = None
-    mobile: bool = False
-    skip_tls_verification: bool = False
-    remove_base64_images: bool = True
-    block_ads: bool = False
-    proxy: Optional[str] = None
-    max_age: Optional[int] = None
-    store_in_cache: bool = False
-    location: Optional['Location'] = None
+    mobile: Optional[bool] = None
+    parsers: Optional[List[str]] = None
     actions: Optional[List[Union['WaitAction', 'ScreenshotAction', 'ClickAction', 'WriteAction', 'PressAction', 'ScrollAction', 'ScrapeAction', 'ExecuteJavascriptAction', 'PDFAction']]] = None
+    location: Optional['Location'] = None
+    skip_tls_verification: Optional[bool] = None
+    remove_base64_images: Optional[bool] = None
+    fast_mode: Optional[bool] = None
+    use_mock: Optional[str] = None
+    block_ads: Optional[bool] = None
+    proxy: Optional[Literal["basic", "stealth", "auto"]] = None
+    max_age: Optional[int] = None
+    store_in_cache: Optional[bool] = None
 
     @field_validator('formats')
     @classmethod
@@ -313,8 +328,9 @@ class WaitAction(BaseModel):
 class ScreenshotAction(BaseModel):
     """Screenshot action to perform during scraping."""
     type: Literal["screenshot"] = "screenshot"
-    full_page: Optional[bool] = Field(None, alias="fullPage")
+    full_page: Optional[bool] = None
     quality: Optional[int] = None
+    viewport: Optional[Union[Dict[str, int], Viewport]] = None
 
 class ClickAction(BaseModel):
     """Click action to perform during scraping."""
