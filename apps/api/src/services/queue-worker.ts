@@ -358,7 +358,7 @@ const separateWorkerFun = (
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
-    concurrency: 8,
+    concurrency: 10,
     useWorkerThreads: true,
     workerThreadsOptions: {
       execArgv: filteredExecArgv,
