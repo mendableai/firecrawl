@@ -594,8 +594,9 @@ export async function scrapeURL(
   // Global A/B test: mirror request to staging /v1/scrape based on SCRAPEURL_AB_RATE
   try {
     const abRateEnv = process.env.SCRAPEURL_AB_RATE;
+    const abHostEnv = process.env.SCRAPEURL_AB_HOST;
     const abRate = abRateEnv !== undefined ? Math.max(0, Math.min(1, Number(abRateEnv))) : 0;
-    const shouldABTest = !meta.internalOptions.zeroDataRetention && abRate > 0 && Math.random() <= abRate;
+    const shouldABTest = !meta.internalOptions.zeroDataRetention && abRate > 0 && Math.random() <= abRate && abHostEnv;
     if (shouldABTest) {
       (async () => {
         try {
@@ -603,7 +604,7 @@ export async function scrapeURL(
           abLogger.info("A/B-testing scrapeURL to staging");
           const abort = AbortSignal.timeout(Math.min(60000, (meta.options.timeout ?? 30000) + 10000));
           await robustFetch({
-            url: `http://firecrawl-staging-app:3002/v1/scrape`,
+            url: `http://${abHostEnv}/v1/scrape`,
             method: "POST",
             body: {
               url: meta.url,
