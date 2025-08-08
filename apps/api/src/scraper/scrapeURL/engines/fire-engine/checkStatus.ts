@@ -97,6 +97,7 @@ const successSchema = z.object({
   docUrl: z.string().optional(),
 
   usedMobileProxy: z.boolean().optional(),
+  usedDDAntibot: z.boolean().optional(),
 });
 
 export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
