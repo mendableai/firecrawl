@@ -596,7 +596,12 @@ export async function scrapeURL(
     const abRateEnv = process.env.SCRAPEURL_AB_RATE;
     const abHostEnv = process.env.SCRAPEURL_AB_HOST;
     const abRate = abRateEnv !== undefined ? Math.max(0, Math.min(1, Number(abRateEnv))) : 0;
-    const shouldABTest = !meta.internalOptions.zeroDataRetention && abRate > 0 && Math.random() <= abRate && abHostEnv;
+    const shouldABTest = !meta.internalOptions.zeroDataRetention
+      && abRate > 0
+      && Math.random() <= abRate
+      && abHostEnv
+      && meta.options.agent === undefined
+      && (meta.options.extract || meta.options.jsonOptions)?.agent === undefined;
     if (shouldABTest) {
       (async () => {
         try {
