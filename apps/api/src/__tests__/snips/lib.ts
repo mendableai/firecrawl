@@ -482,6 +482,19 @@ export async function zdrcleaner(teamId: string) {
     expect(res.body.ok).toBe(true);
 }
 
+export async function rerunJob(jobId: string, teamId: string) {
+    const res = await request(TEST_URL)
+        .post(`/admin/${process.env.BULL_AUTH_KEY}/rerun-job`)
+        .query({ jobId, teamId });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.newJobId).toBeDefined();
+    expect(res.body.originalJobId).toBe(jobId);
+    
+    return res.body;
+}
+
 // =========================================
 // =========================================
 

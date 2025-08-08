@@ -131,3 +131,12 @@ content-type: application/json
 # @name activeCrawls
 GET {{baseUrl}}/v1/crawl/active HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+### Re-run Job (Admin endpoint)
+# @name rerunJob
+POST {{baseUrl}}/admin/{{$dotenv BULL_AUTH_KEY}}/rerun-job?jobId={{JOB_ID}}&teamId=a4569b15-9727-4e5a-b5da-1dd7c94377b1 HTTP/1.1
+Content-Type: application/json
+
+### Example with actual values (replace JOB_ID with real job ID)
+POST http://localhost:3002/admin/your-bull-auth-key/rerun-job?jobId=some-job-id&teamId=a4569b15-9727-4e5a-b5da-1dd7c94377b1 HTTP/1.1
+Content-Type: application/json
