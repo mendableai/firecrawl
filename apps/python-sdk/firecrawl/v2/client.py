@@ -7,11 +7,33 @@ This module provides the main client class that orchestrates all v2 functionalit
 import os
 from typing import Optional, List, Dict, Any, Callable, Union
 from .types import (
-    ClientConfig, ScrapeOptions, CrawlOptions, MapOptions, ExtractOptions,
-    ScrapeResponse, CrawlResponse, CrawlStatusResponse, BatchScrapeResponse,
-    BatchScrapeStatusResponse, MapResponse, ExtractResponse, Document,
-    SearchRequest, SearchResponse, CrawlRequest, WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse,
-    FormatOption, WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction, Location,
+    ClientConfig,
+    ScrapeOptions,
+    Document,
+    SearchRequest,
+    SearchData,
+    SourceOption,
+    CrawlRequest,
+    CrawlResponse,
+    CrawlJob,
+    CrawlParamsRequest,
+    CrawlParamsData,
+    WebhookConfig,
+    CrawlErrorsResponse,
+    ActiveCrawlsResponse,
+    MapOptions,
+    MapResponse,
+    FormatOption,
+    WaitAction,
+    ScreenshotAction,
+    ClickAction,
+    WriteAction,
+    PressAction,
+    ScrollAction,
+    ScrapeAction,
+    ExecuteJavascriptAction,
+    PDFAction,
+    Location,
 )
 from .utils.http_client import HttpClient
 from .utils.error_handler import FirecrawlError
@@ -19,6 +41,7 @@ from .methods import scrape as scrape_module
 from .methods import crawl as crawl_module  
 from .methods import batch as batch_module
 from .methods import search as search_module
+from .methods import map as map_module
 
 class FirecrawlClient:
     """
@@ -143,12 +166,14 @@ class FirecrawlClient:
         self,
         query: str,
         *,
+        sources: Optional[List[SourceOption]] = None,
         limit: Optional[int] = None,
         tbs: Optional[str] = None,
         location: Optional[str] = None,
+        ignore_invalid_urls: Optional[bool] = None,
         timeout: Optional[int] = None,
-        page_options: Optional[ScrapeOptions] = None,
-    ) -> SearchResponse:
+        scrape_options: Optional[ScrapeOptions] = None,
+    ) -> SearchData:
         """
         Search for documents.
         
@@ -161,17 +186,20 @@ class FirecrawlClient:
             page_options: Options for scraping individual pages
             
         Returns:
-            SearchResponse containing the search results
+            SearchData containing the search results
         """
-        options = SearchRequest(
+        request = SearchRequest(
+            query=query,
+            sources=sources,
             limit=limit,
             tbs=tbs,
             location=location,
+            ignore_invalid_urls=ignore_invalid_urls,
             timeout=timeout,
-            page_options=page_options
+            scrape_options=scrape_options,
         )
-        
-        return search_module.search(self.http_client, query, options)
+
+        return search_module.search(self.http_client, request)
     
     def crawl(
         self,
@@ -194,7 +222,7 @@ class FirecrawlClient:
         zero_data_retention: bool = False,
         poll_interval: int = 2,
         timeout: Optional[int] = None
-    ) -> CrawlStatusResponse:
+    ) -> CrawlJob:
         """
         Start a crawl job and wait for it to complete.
         
@@ -219,7 +247,7 @@ class FirecrawlClient:
             timeout: Maximum seconds to wait (None for no timeout)
             
         Returns:
-            CrawlStatusResponse when job completes
+            CrawlJob when job completes
             
         Raises:
             ValueError: If request is invalid
@@ -321,7 +349,7 @@ class FirecrawlClient:
         
         return crawl_module.start_crawl(self.http_client, request)
     
-    def get_crawl_status(self, job_id: str) -> CrawlStatusResponse:
+    def get_crawl_status(self, job_id: str) -> CrawlJob:
         """
         Get the status of a crawl job.
         
@@ -329,24 +357,24 @@ class FirecrawlClient:
             job_id: ID of the crawl job
             
         Returns:
-            CrawlStatusResponse with current status and data
+            CrawlJob with current status and data
             
         Raises:
             Exception: If the status check fails
         """
         return crawl_module.get_crawl_status(self.http_client, job_id)
     
-    def check_crawl_errors(self, crawl_id: str) -> CrawlErrorsResponse:
+    def get_crawl_errors(self, crawl_id: str) -> CrawlErrorsResponse:
         """
-        Get errors from a crawl job.
+        Retrieve error details and robots.txt blocks for a given crawl job.
         
         Args:
             crawl_id: The ID of the crawl job
-            
+        
         Returns:
-            CrawlErrorsResponse containing errors and robots blocked URLs
+            CrawlErrorsResponse containing per-URL errors and robots-blocked URLs
         """
-        return crawl_module.check_crawl_errors(self.http_client, crawl_id)
+        return crawl_module.get_crawl_errors(self.http_client, crawl_id)
     
     def get_active_crawls(self) -> ActiveCrawlsResponse:
         """
@@ -356,6 +384,38 @@ class FirecrawlClient:
             ActiveCrawlsResponse containing a list of active crawl jobs.
         """
         return crawl_module.get_active_crawls(self.http_client)
+    
+    def active_crawls(self) -> ActiveCrawlsResponse:
+        """
+        List currently active crawl jobs for the authenticated team.
+        
+        Returns:
+            ActiveCrawlsResponse containing the list of active crawl jobs
+        """
+        return self.get_active_crawls()
+
+    def map(
+        self,
+        url: str,
+        *,
+        search: Optional[str] = None,
+        include_subdomains: Optional[bool] = None,
+        limit: Optional[int] = None,
+        ignore_sitemap: Optional[bool] = None,
+        sitemap_only: Optional[bool] = None,
+    ) -> MapResponse:
+        """
+        Map a URL and return discovered links (with optional titles/descriptions).
+        """
+        options = MapOptions(
+            search=search,
+            include_subdomains=include_subdomains,
+            limit=limit,
+            ignore_sitemap=ignore_sitemap,
+            sitemap_only=sitemap_only,
+        ) if any(v is not None for v in [search, include_subdomains, limit, ignore_sitemap, sitemap_only]) else None
+
+        return map_module.map(self.http_client, url, options)
     
     def cancel_crawl(self, crawl_id: str) -> bool:
         """
@@ -368,4 +428,11 @@ class FirecrawlClient:
             bool: True if the crawl was cancelled, False otherwise
         """
         return crawl_module.cancel_crawl(self.http_client, crawl_id)
+
+    def crawl_params_preview(self, url: str, prompt: str) -> CrawlParamsData:
+        """
+        Get crawl parameters from LLM based on URL and prompt.
+        """
+        request = CrawlParamsRequest(url=url, prompt=prompt)
+        return crawl_module.crawl_params_preview(self.http_client, request)
     

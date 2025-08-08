@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore", message="Field name \"schema\" in \"Format\" s
 warnings.filterwarnings("ignore", message="Field name \"schema\" in \"JsonFormat\" shadows an attribute in parent \"Format\"")
 warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ChangeTrackingFormat\" shadows an attribute in parent \"Format\"")
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"ScrapeFormats\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"json\" in \"Document\" shadows an attribute in parent \"BaseModel\"")
 
 T = TypeVar('T')
 
@@ -34,25 +35,26 @@ class DocumentMetadata(BaseModel):
     language: Optional[str] = None
     keywords: Optional[Union[str, List[str]]] = None
     robots: Optional[str] = None
-    og_title: Optional[str] = Field(None, alias="ogTitle")
-    og_description: Optional[str] = Field(None, alias="ogDescription")
-    og_url: Optional[str] = Field(None, alias="ogUrl")
-    og_image: Optional[str] = Field(None, alias="ogImage")
-    source_url: Optional[str] = Field(None, alias="sourceURL")
-    status_code: Optional[int] = Field(None, alias="statusCode")
+    og_title: Optional[str] = None
+    og_description: Optional[str] = None
+    og_url: Optional[str] = None
+    og_image: Optional[str] = None
+    source_url: Optional[str] = None
+    status_code: Optional[int] = None
     error: Optional[str] = None
 
 class Document(BaseModel):
     """A scraped document."""
     markdown: Optional[str] = None
     html: Optional[str] = None
-    raw_html: Optional[str] = Field(None, alias="rawHtml")
+    raw_html: Optional[str] = None
+    json: Optional[Any] = None
     metadata: Optional[DocumentMetadata] = None
     links: Optional[List[str]] = None
     screenshot: Optional[str] = None
     actions: Optional[Dict[str, Any]] = None
     warning: Optional[str] = None
-    change_tracking: Optional[Dict[str, Any]] = Field(None, alias="changeTracking")
+    change_tracking: Optional[Dict[str, Any]] = None
 
 # Webhook types
 class WebhookConfig(BaseModel):
@@ -64,7 +66,7 @@ class WebhookConfig(BaseModel):
 
 class WebhookData(BaseModel):
     """Data sent to webhooks."""
-    job_id: str = Field(alias="jobId")
+    job_id: str
     status: str
     current: Optional[int] = None
     total: Optional[int] = None
@@ -120,7 +122,7 @@ class ScrapeFormats(BaseModel):
     formats: Optional[List[FormatOption]] = None
     markdown: bool = True
     html: bool = False
-    raw_html: bool = Field(False, alias="rawHtml")
+    raw_html: bool = False
     links: bool = False
     screenshot: bool = False
     change_tracking: bool = False
@@ -148,7 +150,7 @@ class ScrapeFormats(BaseModel):
 
 class ScrapeOptions(BaseModel):
     """Options for scraping operations."""
-    formats: Optional[List[FormatOption]] = None
+    formats: Optional[Union['ScrapeFormats', List[FormatOption]]] = None
     headers: Optional[Dict[str, str]] = None
     include_tags: Optional[List[str]] = None
     exclude_tags: Optional[List[str]] = None
@@ -174,15 +176,10 @@ class ScrapeOptions(BaseModel):
         """Validate and normalize formats input."""
         if v is None:
             return v
-        
-        # If it's already a ScrapeFormats object, return as is
         if isinstance(v, ScrapeFormats):
             return v
-        
-        # If it's a list, keep it as a list (don't convert to ScrapeFormats)
         if isinstance(v, list):
             return v
-        
         raise ValueError(f"Invalid formats type: {type(v)}. Expected ScrapeFormats or List[FormatOption]")
 
 class ScrapeRequest(BaseModel):
@@ -236,6 +233,7 @@ class CrawlJob(BaseModel):
 class SearchDocument(Document):
     """A document from a search operation with URL and description."""
     url: str
+    title: Optional[str] = None
     description: Optional[str] = None
 
 class MapDocument(Document):
@@ -283,8 +281,8 @@ class BatchScrapeJob(BaseModel):
     status: Literal["scraping", "completed", "failed"]
     current: Optional[int] = None
     total: Optional[int] = None
-    created_at: Optional[datetime] = Field(None, alias="createdAt")
-    completed_at: Optional[datetime] = Field(None, alias="completedAt")
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
 
 class BatchScrapeData(BaseModel):
     """Batch scrape results data."""
@@ -301,8 +299,9 @@ class BatchScrapeResponse(BaseResponse[BatchScrapeData]):
 class MapOptions(BaseModel):
     """Options for mapping operations."""
     search: Optional[str] = None
-    ignore_sitemap: bool = Field(False, alias="ignoreSitemap")
-    include_subdomains: bool = Field(False, alias="includeSubdomains")
+    ignore_sitemap: Optional[bool] = None
+    sitemap_only: Optional[bool] = None
+    include_subdomains: Optional[bool] = None
     limit: Optional[int] = None
 
 class MapRequest(BaseModel):
@@ -312,7 +311,7 @@ class MapRequest(BaseModel):
 
 class MapData(BaseModel):
     """Map results data."""
-    links: List[str]
+    links: List['SearchResult']
 
 class MapResponse(BaseResponse[MapData]):
     """Response for map operations."""
@@ -406,17 +405,20 @@ class SearchRequest(BaseModel):
         
         return normalized_sources
 
-class SearchResult(BaseModel):
-    """A search result with basic information."""
+class LinkResult(BaseModel):
+    """A generic link result with optional metadata (used by search and map)."""
     url: str
     title: Optional[str] = None
     description: Optional[str] = None
+    
+# Backward-compatible alias for existing tests/usages
+SearchResult = LinkResult
 
 class SearchData(BaseModel):
     """Search results grouped by source type."""
-    web: Optional[List[Union[SearchResult, SearchDocument]]] = None
-    news: Optional[List[Union[SearchResult, SearchDocument]]] = None
-    images: Optional[List[Union[SearchResult, SearchDocument]]] = None
+    web: Optional[List[Union[LinkResult, SearchDocument]]] = None
+    news: Optional[List[Union[LinkResult, SearchDocument]]] = None
+    images: Optional[List[Union[LinkResult, SearchDocument]]] = None
 
 class SearchResponse(BaseResponse[SearchData]):
     """Response from search operation."""
@@ -442,19 +444,19 @@ class JobStatus(BaseModel):
     status: Literal["pending", "scraping", "completed", "failed"]
     current: Optional[int] = None
     total: Optional[int] = None
-    created_at: Optional[datetime] = Field(None, alias="createdAt")
-    completed_at: Optional[datetime] = Field(None, alias="completedAt")
-    expires_at: Optional[datetime] = Field(None, alias="expiresAt")
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
 
 class CrawlErrorsResponse(BaseModel):
     """Response from crawl error monitoring."""
-    errors: List[Dict[str, str]] = Field(description="List of errors with fields: id, timestamp, url, error")
-    robots_blocked: List[str] = Field(alias="robotsBlocked", description="List of URLs blocked by robots.txt")
+    errors: List[Dict[str, str]]
+    robots_blocked: List[str]
 
 class ActiveCrawl(BaseModel):
     """Information about an active crawl job."""
     id: str
-    team_id: str = Field(alias="teamId")
+    team_id: str
     url: str
     options: Optional[Dict[str, Any]] = None
 

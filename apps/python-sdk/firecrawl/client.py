@@ -62,7 +62,7 @@ class V2Proxy:
             self.start_crawl = client_instance.start_crawl
             self.crawl_params_preview = client_instance.crawl_params_preview
             # self.batch_scrape = client_instance.batch_scrape
-            # self.map = client_instance.map
+            self.map = client_instance.map
     
     def __getattr__(self, name):
         """Forward attribute access to the underlying client."""
@@ -141,7 +141,7 @@ class Firecrawl:
         self.active_crawls = self._v2_client.active_crawls
 
         # self.batch_scrape = self._v2_client.batch_scrape
-        # self.map = self._v2_client.map
+        self.map = self._v2_client.map
         self.search = self._v2_client.search
         
 class AsyncFirecrawl:

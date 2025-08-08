@@ -194,7 +194,7 @@ class TestCrawlE2E:
     def test_crawl_with_scrape_options(self):
         """Test crawl with scrape options."""
         scrape_opts = ScrapeOptions(
-            formats=["markdown"],
+            formats=["markdown", "links"],
             only_main_content=False,
             mobile=True,
         )
@@ -205,6 +205,25 @@ class TestCrawlE2E:
             scrape_options=scrape_opts
         )
         
+        assert crawl_job.id is not None
+
+    def test_crawl_with_json_format_object(self):
+        """Crawl with scrape_options including a JSON format object (prompt + schema)."""
+        json_schema = {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"}
+            },
+            "required": ["title"],
+        }
+        scrape_opts = ScrapeOptions(
+            formats=[{"type": "json", "prompt": "Extract page title", "schema": json_schema}]
+        )
+        crawl_job = self.client.start_crawl(
+            "https://docs.firecrawl.dev", 
+            limit=2,
+            scrape_options=scrape_opts
+        )
         assert crawl_job.id is not None
 
     def test_crawl_all_parameters(self):

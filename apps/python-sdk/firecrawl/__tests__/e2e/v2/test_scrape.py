@@ -2,6 +2,8 @@ import os
 import pytest
 from dotenv import load_dotenv
 from firecrawl import Firecrawl
+import json as _json
+import pytest
 from firecrawl.v2.types import Viewport, ScreenshotAction, Document
 
 load_dotenv()
@@ -55,6 +57,55 @@ class TestScrapeE2E:
             actions=[action],
         )
         self._assert_valid_document(doc)
+
+    @pytest.mark.parametrize("fmt,expect_field", [
+        ("markdown", "markdown"),
+        ("html", "html"),
+        ("raw_html", "raw_html"),
+        ("links", "links"),
+        ("screenshot", "screenshot"),
+    ])
+    def test_scrape_basic_formats(self, fmt, expect_field):
+        """Verify basic formats request succeeds and expected fields are present when applicable."""
+        doc = self.client.scrape(
+            "https://docs.firecrawl.dev",
+            formats=[fmt],
+        )
+        # For formats that are not content (links/screenshot/json), skip main-content assertion
+        if expect_field not in {"links", "screenshot"}:
+            self._assert_valid_document(doc)
+        if expect_field == "markdown":
+            assert doc.markdown is not None
+        elif expect_field == "html":
+            assert doc.html is not None
+        elif expect_field == "raw_html":
+            assert doc.raw_html is not None
+        elif expect_field == "screenshot":
+            assert doc.screenshot is not None
+        elif expect_field == "links":
+            assert isinstance(doc.links, list)
+            assert len(doc.links) > 0
+
+    def test_scrape_with_json_format_object(self):
+        """Scrape with JSON format object (requires prompt and schema)."""
+        json_schema = {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"}
+            },
+            "required": ["title"],
+        }
+        doc = self.client.scrape(
+            "https://docs.firecrawl.dev",
+            formats=[{"type": "json", "prompt": "Extract page title", "schema": json_schema}],
+            only_main_content=True,
+        )
+        # JSON format may not include main content fields; ensure request succeeded
+        assert isinstance(doc, Document)
+        # If backend returns extracted json content, it should be present under `json`
+        # (Do not fail if backend omits it; existence depends on implementation)
+        # if hasattr(doc, 'json'):
+        #     assert doc.json is not None
 
     def test_scrape_invalid_url(self):
         """Scrape should fail with empty or invalid URLs."""

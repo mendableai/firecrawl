@@ -3,7 +3,7 @@ Search functionality for Firecrawl v2 API.
 """
 
 from typing import Optional, Dict, Any, Union
-from ...types import SearchRequest, SearchData, SearchResult, Document
+from ..types import SearchRequest, SearchData, SearchResult, Document
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
 
@@ -46,9 +46,19 @@ def search(
             results = []
             for doc_data in source_documents:
                 if isinstance(doc_data, dict):
-                    if any(key in doc_data for key in ['markdown', 'html', 'content', 'screenshot']):
-                        results.append(Document(**doc_data))
+                    # If page scraping options were provided, API returns full Document objects
+                    if request.scrape_options is not None and any(
+                        key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'screenshot', 'changeTracking']
+                    ):
+                        # Normalize keys for Document (no Pydantic aliases)
+                        normalized = dict(doc_data)
+                        if 'rawHtml' in normalized and 'raw_html' not in normalized:
+                            normalized['raw_html'] = normalized.pop('rawHtml')
+                        if 'changeTracking' in normalized and 'change_tracking' not in normalized:
+                            normalized['change_tracking'] = normalized.pop('changeTracking')
+                        results.append(Document(**normalized))
                     else:
+                        # Minimal search result shape
                         results.append(SearchResult(
                             url=doc_data.get('url', ''),
                             title=doc_data.get('title'),
@@ -56,8 +66,7 @@ def search(
                         ))
                 elif isinstance(doc_data, str):
                     results.append(SearchResult(url=doc_data))
-            
-            # Set the appropriate field based on source type
+
             if hasattr(search_data, source_type):
                 setattr(search_data, source_type, results)
     

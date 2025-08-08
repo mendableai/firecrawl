@@ -8,7 +8,7 @@ from ..types import (
     CrawlRequest,
     CrawlJob,
     CrawlResponse, Document, CrawlParamsRequest, CrawlParamsResponse, CrawlParamsData,
-    WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse
+    WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse, ActiveCrawl
 )
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
@@ -416,13 +416,19 @@ def get_crawl_errors(http_client: HttpClient, crawl_id: str) -> CrawlErrorsRespo
         Exception: If the request fails
     """
     response = http_client.get(f"/v2/crawl/{crawl_id}/errors")
-    
-    if response.status_code != 200:
+
+    if not response.ok:
         handle_response_error(response, "check crawl errors")
-    
+
     try:
-        data = response.json()
-        return CrawlErrorsResponse(**data)
+        body = response.json()
+        payload = body.get("data", body)
+        # Manual key normalization since we avoid Pydantic aliases
+        normalized = {
+            "errors": payload.get("errors", []),
+            "robots_blocked": payload.get("robotsBlocked", payload.get("robots_blocked", [])),
+        }
+        return CrawlErrorsResponse(**normalized)
     except Exception as e:
         raise Exception(f"Failed to parse crawl errors response: {e}")
 
@@ -441,13 +447,23 @@ def get_active_crawls(client: HttpClient) -> ActiveCrawlsResponse:
         Exception: If the request fails
     """
     response = client.get("/v2/crawl/active")
-    
+
     if not response.ok:
         handle_response_error(response, "get active crawls")
-    
-    response_data = response.json()
-    
-    if response_data.get("success"):
-        return ActiveCrawlsResponse(**response_data.get("data", {}))
-    else:
-        raise Exception(response_data.get("error", "Unknown error occurred"))
+
+    body = response.json()
+    if not body.get("success"):
+        raise Exception(body.get("error", "Unknown error occurred"))
+
+    data = body.get("data", {})
+    crawls_in = data.get("crawls", [])
+    normalized_crawls = []
+    for c in crawls_in:
+        if isinstance(c, dict):
+            normalized_crawls.append({
+                "id": c.get("id"),
+                "team_id": c.get("teamId", c.get("team_id")),
+                "url": c.get("url"),
+                "options": c.get("options"),
+            })
+    return ActiveCrawlsResponse(success=True, crawls=[ActiveCrawl(**nc) for nc in normalized_crawls])

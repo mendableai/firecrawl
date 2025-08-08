@@ -2,8 +2,8 @@
 Shared validation functions for Firecrawl v2 API.
 """
 
-from typing import Optional, Dict, Any
-from ..types import ScrapeOptions
+from typing import Optional, Dict, Any, List
+from ..types import ScrapeOptions, ScrapeFormats
 
 
 def _convert_format_string(format_str: str) -> str:
@@ -144,34 +144,112 @@ def prepare_scrape_options(options: Optional[ScrapeOptions]) -> Optional[Dict[st
         if value is not None:
             if key == "formats":
                 # Handle formats conversion
-                converted_formats = []
-                for fmt in value:
-                    if isinstance(fmt, str):
-                        # Handle format strings
-                        if fmt == "json":
-                            raise ValueError("json format must be an object with 'type', 'prompt', and 'schema' fields")
-                        converted_formats.append(_convert_format_string(fmt))
-                    elif isinstance(fmt, dict):
-                        # Handle format objects
-                        if fmt.get('type') == 'json':
-                            validated_json = _validate_json_format(fmt)
-                            converted_formats.append(validated_json)
+                converted_formats: List[Any] = []
+
+                # Prefer using original object to detect ScrapeFormats vs list
+                original_formats = getattr(options, 'formats', None)
+
+                if isinstance(original_formats, ScrapeFormats):
+                    # Include explicit list first
+                    if original_formats.formats:
+                        for fmt in original_formats.formats:
+                            if isinstance(fmt, str):
+                                if fmt == "json":
+                                    raise ValueError("json format must be an object with 'type', 'prompt', and 'schema' fields")
+                                converted_formats.append(_convert_format_string(fmt))
+                            elif isinstance(fmt, dict):
+                                fmt_type = _convert_format_string(fmt.get('type')) if fmt.get('type') else None
+                                if fmt_type == 'json':
+                                    validated_json = _validate_json_format({**fmt, 'type': 'json'})
+                                    converted_formats.append(validated_json)
+                                elif fmt_type == 'screenshot':
+                                    # Normalize screenshot options
+                                    normalized = {**fmt, 'type': 'screenshot'}
+                                    if 'full_page' in normalized:
+                                        normalized['fullPage'] = normalized.pop('full_page')
+                                    # Normalize viewport if it's a model instance
+                                    vp = normalized.get('viewport')
+                                    if hasattr(vp, 'model_dump'):
+                                        normalized['viewport'] = vp.model_dump(exclude_none=True)
+                                    converted_formats.append(normalized)
+                                else:
+                                    if 'type' in fmt:
+                                        fmt['type'] = fmt_type or fmt['type']
+                                    converted_formats.append(fmt)
+                            elif hasattr(fmt, 'type'):
+                                if fmt.type == 'json':
+                                    converted_formats.append(fmt.model_dump())
+                                else:
+                                    converted_formats.append(_convert_format_string(fmt.type))
+                            else:
+                                converted_formats.append(fmt)
+
+                    # Add booleans from ScrapeFormats
+                    if original_formats.markdown:
+                        converted_formats.append("markdown")
+                    if original_formats.html:
+                        converted_formats.append("html")
+                    if original_formats.raw_html:
+                        converted_formats.append("rawHtml")
+                    if original_formats.links:
+                        converted_formats.append("links")
+                    if original_formats.screenshot:
+                        converted_formats.append("screenshot")
+                    if original_formats.change_tracking:
+                        converted_formats.append("changeTracking")
+                    # Note: We intentionally do not auto-include 'json' when boolean is set,
+                    # because JSON requires an object with schema/prompt. The caller must
+                    # supply the full json format object explicitly.
+                elif isinstance(original_formats, list):
+                    for fmt in original_formats:
+                        if isinstance(fmt, str):
+                            if fmt == "json":
+                                raise ValueError("json format must be an object with 'type', 'prompt', and 'schema' fields")
+                            converted_formats.append(_convert_format_string(fmt))
+                        elif isinstance(fmt, dict):
+                            fmt_type = _convert_format_string(fmt.get('type')) if fmt.get('type') else None
+                            if fmt_type == 'json':
+                                validated_json = _validate_json_format({**fmt, 'type': 'json'})
+                                converted_formats.append(validated_json)
+                            elif fmt_type == 'screenshot':
+                                normalized = {**fmt, 'type': 'screenshot'}
+                                if 'full_page' in normalized:
+                                    normalized['fullPage'] = normalized.pop('full_page')
+                                vp = normalized.get('viewport')
+                                if hasattr(vp, 'model_dump'):
+                                    normalized['viewport'] = vp.model_dump(exclude_none=True)
+                                converted_formats.append(normalized)
+                            else:
+                                if 'type' in fmt:
+                                    fmt['type'] = fmt_type or fmt['type']
+                                converted_formats.append(fmt)
+                        elif hasattr(fmt, 'type'):
+                            if fmt.type == 'json':
+                                converted_formats.append(fmt.model_dump())
+                            elif fmt.type == 'screenshot':
+                                normalized = {'type': 'screenshot'}
+                                if getattr(fmt, 'full_page', None) is not None:
+                                    normalized['fullPage'] = fmt.full_page
+                                if getattr(fmt, 'quality', None) is not None:
+                                    normalized['quality'] = fmt.quality
+                                vp = getattr(fmt, 'viewport', None)
+                                if vp is not None:
+                                    normalized['viewport'] = vp.model_dump(exclude_none=True) if hasattr(vp, 'model_dump') else vp
+                                converted_formats.append(normalized)
+                            else:
+                                converted_formats.append(_convert_format_string(fmt.type))
                         else:
-                            # Convert other format objects
-                            if 'type' in fmt:
-                                fmt['type'] = _convert_format_string(fmt['type'])
                             converted_formats.append(fmt)
-                    elif hasattr(fmt, 'type'):
-                        # Handle Format objects
-                        if fmt.type == 'json':
-                            # For json format, we need the full object
-                            converted_formats.append(fmt.model_dump())
-                        else:
-                            # For other formats, just convert the type
-                            converted_formats.append(_convert_format_string(fmt.type))
-                    else:
-                        converted_formats.append(fmt)
-                scrape_data["formats"] = converted_formats
+                else:
+                    # Fallback: try to iterate over value if it's a list-like
+                    try:
+                        for fmt in value:
+                            converted_formats.append(fmt)
+                    except TypeError:
+                        pass
+
+                if converted_formats:
+                    scrape_data["formats"] = converted_formats
             elif key == "actions":
                 # Handle actions conversion
                 converted_actions = []

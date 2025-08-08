@@ -10,7 +10,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url": "https://firecrawl.dev",
+  "url": "https://firecrawl.dev"
 }
 
 # {

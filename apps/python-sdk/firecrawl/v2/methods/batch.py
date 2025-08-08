@@ -4,11 +4,11 @@ Batch scraping functionality for Firecrawl v2 API.
 
 import time
 from typing import Optional, List, Callable
-from .types import (
+from ..types import (
     BatchScrapeRequest, BatchScrapeResponse,
     BatchScrapeJob, BatchScrapeData, ScrapeOptions, Document
 )
-from .utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
+from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
 
 def start_batch_scrape(
@@ -34,7 +34,7 @@ def start_batch_scrape(
     request_data = prepare_batch_request(urls, options)
     
     # Make the API request
-    response = client.post("/v1/batch/scrape", request_data)
+    response = client.post("/v2/batch/scrape", request_data)
     
     # Handle errors
     if not response.ok:
@@ -77,7 +77,7 @@ def get_batch_scrape_status(
         FirecrawlError: If the status check fails
     """
     # Make the API request
-    response = client.get(f"/v1/batch/scrape/{job_id}")
+    response = client.get(f"/v2/batch/scrape/{job_id}")
     
     # Handle errors
     if not response.ok:
@@ -132,7 +132,7 @@ def cancel_batch_scrape(
         FirecrawlError: If the cancellation fails
     """
     # Make the API request
-    response = client.delete(f"/v1/batch/scrape/{job_id}")
+    response = client.delete(f"/v2/batch/scrape/{job_id}")
     
     # Handle errors
     if not response.ok:
@@ -235,7 +235,7 @@ def batch_scrape_and_wait(
     batch_response = start_batch_scrape(client, urls, options)
     
     if not batch_response.success or not batch_response.data:
-        return BatchScrapeStatusResponse(
+        return BatchScrapeResponse(
             success=False,
             error=batch_response.error or "Failed to start batch scrape"
         )

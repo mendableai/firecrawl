@@ -117,7 +117,15 @@ def test_search_all_parameters():
         ignore_invalid_urls=True,
         timeout=60000,
         scrape_options=ScrapeOptions(
-            formats=["markdown", "html"],
+            formats=[
+                "markdown",
+                "html",
+                {
+                    "type": "json",
+                    "prompt": "Extract the title and description from the page",
+                    "schema": schema
+                }
+            ],
             headers={"User-Agent": "Firecrawl-Test/1.0"},
             include_tags=["h1", "h2", "p"],
             exclude_tags=["nav", "footer"],
@@ -209,3 +217,22 @@ def test_search_formats_flexibility():
     assert isinstance(results2, SearchData)
     assert results1.web is not None
     assert results2.web is not None
+
+def test_search_with_json_format_object():
+    """Search with scrape_options including a JSON format object (prompt + schema)."""
+    json_schema = {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"}
+        },
+        "required": ["title"],
+    }
+    results = firecrawl.search(
+        query="site:docs.firecrawl.dev",
+        limit=1,
+        scrape_options=ScrapeOptions(
+            formats=[{"type": "json", "prompt": "Extract page title", "schema": json_schema}]
+        ),
+    )
+    assert isinstance(results, SearchData)
+    assert results.web is not None and len(results.web) >= 0

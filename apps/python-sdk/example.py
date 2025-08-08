@@ -81,5 +81,9 @@ def main():
     
     print(search_response)
 
+    # map example
+    map_response = firecrawl.map("https://firecrawl.dev")
+    print(map_response)
+
 if __name__ == "__main__":
     main() 

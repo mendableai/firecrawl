@@ -59,4 +59,10 @@ def scrape(client: HttpClient, url: str, options: Optional[ScrapeOptions] = None
         raise Exception(body.get("error", "Unknown error occurred"))
 
     document_data = body.get("data", {})
-    return Document(**document_data)
+    # Normalize keys for Document (no Pydantic aliases)
+    normalized = dict(document_data)
+    if 'rawHtml' in normalized and 'raw_html' not in normalized:
+        normalized['raw_html'] = normalized.pop('rawHtml')
+    if 'changeTracking' in normalized and 'change_tracking' not in normalized:
+        normalized['change_tracking'] = normalized.pop('changeTracking')
+    return Document(**normalized)
