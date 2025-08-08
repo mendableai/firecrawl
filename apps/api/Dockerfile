@@ -17,6 +17,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install && pnpm run build
 FROM golang:1.24 AS go-base
 COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 
+ENV GOEXPERIMENT=cgocheck2
+
 # Install Go dependencies and build parser lib
 RUN cd /app/sharedLibs/go-html-to-md && \
     go mod download && \
