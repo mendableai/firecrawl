@@ -39,7 +39,6 @@ env:
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   VERTEX_CREDENTIALS: ${{ secrets.VERTEX_CREDENTIALS }}
-  USE_GO_MARKDOWN_PARSER: true
   SENTRY_ENVIRONMENT: dev
   IDMUX_URL: ${{ secrets.IDMUX_URL }}
 
@@ -74,19 +73,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
         working-directory: ./apps/api
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: ./apps/api/sharedLibs/go-html-to-md/go.sum
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
-      - name: Build go-html-to-md
-        run: |
-          go mod tidy
-          go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go
-          chmod +x html-to-markdown.so
-        working-directory: ./apps/api/sharedLibs/go-html-to-md
       - name: Build html-transformer
         run: |
           cargo build --release

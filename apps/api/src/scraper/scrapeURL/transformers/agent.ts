@@ -3,8 +3,8 @@ import {
 } from "../../../controllers/v1/types";
 import { Meta } from "..";
 import { logger } from "../../../lib/logger";
-import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { smartScrape, SmartScrapeResult } from "../lib/smartScrape";
+import { parseMarkdownRust } from "../../../lib/html-transformer";
 
 
 export async function performAgent(
@@ -50,7 +50,7 @@ export async function performAgent(
     const html = smartscrapeResults.scrapedPages[smartscrapeResults.scrapedPages.length - 1].html
 
     if (meta.options.formats.includes("markdown")) {
-      const markdown = await parseMarkdown(html)
+      const markdown = await parseMarkdownRust(html)
       document.markdown = markdown
     }
     if (meta.options.formats.includes("html")) {
