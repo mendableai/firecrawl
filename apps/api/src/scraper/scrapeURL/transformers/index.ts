@@ -12,6 +12,7 @@ import { performAgent } from "./agent";
 import { deriveDiff } from "./diff";
 import { useIndex } from "../../../services/index";
 import { sendDocumentToIndex } from "../engines/index/index";
+import { parseMarkdownRust } from "../../../lib/html-transformer";
 
 export type Transformer = (
   meta: Meta,
@@ -74,7 +75,7 @@ export async function deriveMarkdownFromHTML(
     return document;
   }
 
-  document.markdown = await parseMarkdown(document.html);
+  document.markdown = await parseMarkdownRust(document.html);
 
   if (meta.options.onlyMainContent === true && 
       (!document.markdown || document.markdown.trim().length === 0)) {
@@ -90,7 +91,7 @@ export async function deriveMarkdownFromHTML(
     };
     
     document = await deriveHTMLFromRawHTML(fallbackMeta, document);
-    document.markdown = await parseMarkdown(document.html);
+    document.markdown = await parseMarkdownRust(document.html);
     
     meta.logger.info("Fallback to full content extraction completed", {
       markdownLength: document.markdown?.length || 0

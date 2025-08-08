@@ -122,7 +122,7 @@ export async function parseMarkdown(
   }
 }
 
-function processMultiLineLinks(markdownContent: string): string {
+export function processMultiLineLinks(markdownContent: string): string {
   let insideLinkContent = false;
   let newMarkdownContent = "";
   let linkOpenCount = 0;
@@ -145,7 +145,7 @@ function processMultiLineLinks(markdownContent: string): string {
   return newMarkdownContent;
 }
 
-function removeSkipToContentLinks(markdownContent: string): string {
+export function removeSkipToContentLinks(markdownContent: string): string {
   // Remove [Skip to Content](#page) and [Skip to content](#skip)
   const newMarkdownContent = markdownContent.replace(
     /\[Skip to Content\]\(#[^\)]*\)/gi,

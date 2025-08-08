@@ -2,6 +2,8 @@ import koffi, { KoffiFunction } from "koffi";
 import { join } from "path";
 import { stat } from "fs/promises";
 import { platform } from "os";
+import { processMultiLineLinks, removeSkipToContentLinks } from "./html-to-markdown";
+import { logger } from "./logger";
 
 // TODO: add a timeout to the Rust transformer
 const rustExecutablePath = join(
@@ -27,7 +29,8 @@ class RustHTMLTransformer {
   private _transformHtml: KoffiFunction;
   private _freeString: KoffiFunction;
   private _getInnerJSON: KoffiFunction;
-
+  private _htmlToMarkdown: KoffiFunction;
+  
   private constructor() {
     const lib = koffi.load(rustExecutablePath);
     this._freeString = lib.func("free_string", "void", ["string"]);
@@ -38,6 +41,7 @@ class RustHTMLTransformer {
     this._extractMetadata = lib.func("extract_metadata", freedResultString, ["string"]);
     this._transformHtml = lib.func("transform_html", freedResultString, ["string"]);
     this._getInnerJSON = lib.func("get_inner_json", freedResultString, ["string"]);
+    this._htmlToMarkdown = lib.func("html_to_markdown", freedResultString, ["string"]);
   }
 
   public static async getInstance(): Promise<RustHTMLTransformer> {
@@ -119,6 +123,18 @@ class RustHTMLTransformer {
       });
     });
   }
+
+  public async htmlToMarkdown(html: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      this._htmlToMarkdown.async(html, (err: Error, res: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(res);
+        }
+      });
+    });
+  }
 }
 
 export async function extractLinks(
@@ -167,4 +183,69 @@ export async function getInnerJSON(
 ): Promise<string> {
   const converter = await RustHTMLTransformer.getInstance();
   return await converter.getInnerJSON(html);
+}
+
+export async function parseMarkdownRust(
+  html: string | null | undefined,
+): Promise<string> {
+  if (!html) {
+    return "";
+  }
+
+  try {
+    const converter = await RustHTMLTransformer.getInstance();
+    let markdownContent = await converter.htmlToMarkdown(html);
+
+    markdownContent = processMultiLineLinks(markdownContent);
+    markdownContent = removeSkipToContentLinks(markdownContent);
+    // logger.info(`HTML to Markdown conversion using Go parser successful`);
+    return markdownContent;
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      error.message !== "Rust html-transformer shared library not found"
+    ) {
+      logger.error(
+        `Error converting HTML to Markdown with Rust parser: ${error}`,
+      );
+    } else {
+      logger.warn(
+        "Tried to use Rust parser, but it doesn't exist in the file system.",
+        { rustExecutablePath },
+      );
+    }
+  }
+
+  // Fallback to TurndownService if Rust parser fails or is not enabled
+  var TurndownService = require("turndown");
+  var turndownPluginGfm = require("joplin-turndown-plugin-gfm");
+
+  const turndownService = new TurndownService();
+  turndownService.addRule("inlineLink", {
+    filter: function (node, options) {
+      return (
+        options.linkStyle === "inlined" &&
+        node.nodeName === "A" &&
+        node.getAttribute("href")
+      );
+    },
+    replacement: function (content, node) {
+      var href = node.getAttribute("href").trim();
+      var title = node.title ? ' "' + node.title + '"' : "";
+      return "[" + content.trim() + "](" + href + title + ")\n";
+    },
+  });
+  var gfm = turndownPluginGfm.gfm;
+  turndownService.use(gfm);
+
+  try {
+    let markdownContent = await turndownService.turndown(html);
+    markdownContent = processMultiLineLinks(markdownContent);
+    markdownContent = removeSkipToContentLinks(markdownContent);
+
+    return markdownContent;
+  } catch (error) {
+    logger.error("Error converting HTML to Markdown", { error });
+    return ""; // Optionally return an empty string or handle the error as needed
+  }
 }

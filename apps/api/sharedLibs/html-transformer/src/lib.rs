@@ -29,7 +29,7 @@ fn _extract_base_href(html: &str, url: &str) -> Result<String, Box<dyn std::erro
 /// 
 /// # Safety
 /// Input must be a C HTML string and a C URL string. Output will be a string. Output string must be freed with free_string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char, url: *const libc::c_char) -> *mut libc::c_char {
     let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
         Ok(x) => x,
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char, url: *cons
 /// 
 /// # Safety
 /// Input options must be a C HTML string. Output will be a JSON string array. Output string must be freed with free_string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut libc::c_char {
     let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
         Ok(x) => x,
@@ -233,7 +233,7 @@ fn _extract_metadata(html: &str) -> Result<String, Box<dyn std::error::Error>> {
 /// 
 /// # Safety
 /// Input options must be a C HTML string. Output will be a JSON object. Output string must be freed with free_string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut libc::c_char {
     let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
         Ok(x) => x,
@@ -490,7 +490,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
 /// 
 /// # Safety
 /// Input options must be a C JSON string. Output will be an HTML string. Output string must be freed with free_string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut libc::c_char {
     let opts: TranformHTMLOptions = match unsafe { CStr::from_ptr(opts) }.to_str().map_err(|_| ()).and_then(|x| serde_json::de::from_str(x).map_err(|_| ())) {
         Ok(x) => x,
@@ -515,7 +515,7 @@ fn _get_inner_json(html: &str) -> Result<String, ()> {
 /// 
 /// # Safety
 /// Input must be a C HTML string. Output will be an HTML string. Output string must be freed with free_string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc::c_char {
     let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
         Ok(x) => x,
@@ -532,11 +532,38 @@ pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc:
     CString::new(out).unwrap().into_raw()
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn html_to_markdown(html: *const libc::c_char) -> *mut libc::c_char {
+    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
+        }
+    };
+    
+    let converter = htmd::HtmlToMarkdown::builder()
+        .options(htmd::options::Options {
+            link_style: htmd::options::LinkStyle::Inlined,
+            bullet_list_marker: htmd::options::BulletListMarker::Dash,
+            ul_bullet_spacing: 1,
+            ol_number_spacing: 1,
+            ..Default::default()
+        })
+        .build();
+    
+    let out = match converter.convert(html) {
+        Ok(x) => x,
+        Err(e) => format!("RUSTFC:ERROR:{}", e),
+    };
+
+    CString::new(out).unwrap().into_raw()
+}
+
 /// Frees a string allocated in Rust-land.
 /// 
 /// # Safety
 /// ptr must be a non-freed string pointer returned by Rust code.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn free_string(ptr: *mut libc::c_char) {
     drop(unsafe { CString::from_raw(ptr) })
 }
