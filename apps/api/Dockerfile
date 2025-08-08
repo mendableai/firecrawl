@@ -24,15 +24,15 @@ RUN cd /app/sharedLibs/html-transformer && \
     cargo build --release --locked && \
     chmod +x target/release/libhtml_transformer.so
 
-# Install Rust dependencies and build PDF parser lib
-RUN cd /app/sharedLibs/pdf-parser && \
-    cargo build --release --locked && \
-    chmod +x target/release/libpdf_parser.so
+# # Install Rust dependencies and build PDF parser lib
+# RUN cd /app/sharedLibs/pdf-parser && \
+#     cargo build --release --locked && \
+#     chmod +x target/release/libpdf_parser.so
 
-# Install Rust dependencies and build crawler lib
-RUN cd /app/sharedLibs/crawler && \
-    cargo build --release --locked && \
-    chmod +x target/release/libcrawler.so
+# # Install Rust dependencies and build crawler lib
+# RUN cd /app/sharedLibs/crawler && \
+#     cargo build --release --locked && \
+#     chmod +x target/release/libcrawler.so
 
 FROM base
 COPY --from=build /app/dist /app/dist
