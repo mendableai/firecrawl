@@ -603,7 +603,7 @@ export async function scrapeURL(
           abLogger.info("A/B-testing scrapeURL to staging");
           const abort = AbortSignal.timeout(Math.min(60000, (meta.options.timeout ?? 30000) + 10000));
           await robustFetch({
-            url: `http://firecrawl-app-staging:3002/v1/scrape`,
+            url: `http://firecrawl-staging-app:3002/v1/scrape`,
             method: "POST",
             body: {
               url: meta.url,

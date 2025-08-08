@@ -223,9 +223,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
   const timeout = (timeToRun ?? 300000) + totalWait;
 
-  // const shouldABTest = false;
-  const shouldABTest = !meta.internalOptions.zeroDataRetention && Math.random() <= (1/30);
-
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
     url: meta.rewrittenUrl ?? meta.url,
@@ -247,31 +244,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
-
-  if (shouldABTest) {
-    (async () => {
-      try {
-        meta.logger.info("AB-testing fire-engine", { request });
-
-        await performFireEngineScrape(
-          meta,
-          meta.logger.child({
-            method: "scrapeURLWithFireEngineChromeCDP/callFireEngineAB",
-            request,
-          }),
-          request,
-          timeout,
-          meta.mock,
-          meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-          false,
-        );
-
-        meta.logger.info("AB-testing fire-engine success", { request });
-      } catch (error) {
-        meta.logger.error("AB-testing fire-engine failed", { error });
-      }
-    })();
-  }
 
   let response = await performFireEngineScrape(
     meta,
