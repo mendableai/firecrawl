@@ -23,7 +23,7 @@ class GoMarkdownConverter {
   
   private constructor() {
     const lib = koffi.load(goExecutablePath);
-    this.free = lib.func("FreeCString", "void", ["string"]);
+    this.free = lib.func("FreeCString", "void", ["void*"]);
     const cstn = "CString:" + crypto.randomUUID();
     const freedResultString = koffi.disposable(cstn, "string", this.free);
     this.convert = lib.func("ConvertHTMLToMarkdown", freedResultString, ["string"]);
@@ -63,6 +63,7 @@ export async function parseMarkdown(
 
   try {
     if (process.env.USE_GO_MARKDOWN_PARSER == "true") {
+      logger.debug("Using Go parser for HTML to Markdown conversion");
       const converter = await GoMarkdownConverter.getInstance();
       let markdownContent = await converter.convertHTMLToMarkdown(html);
 
