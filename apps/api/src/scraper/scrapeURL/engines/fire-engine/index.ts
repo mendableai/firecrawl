@@ -22,9 +22,10 @@ import {
   TimeoutError,
   UnsupportedFileError,
   FEPageLoadFailed,
+  DatadomeError,
 } from "../../error";
 import * as Sentry from "@sentry/node";
-import { specialtyScrapeCheck } from "../utils/specialtyHandler";
+import { specialtyScrapeCheck, checkDatadomeError } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
@@ -246,6 +247,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
+    ddAntibot: meta.featureFlags.has("ddAntibot"),
   };
 
   if (shouldABTest) {
@@ -273,18 +275,24 @@ export async function scrapeURLWithFireEngineChromeCDP(
     })();
   }
 
-  let response = await performFireEngineScrape(
-    meta,
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+  let response;
+  try {
+    response = await performFireEngineScrape(
+      meta,
+      meta.logger.child({
+        method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
+        request,
+      }),
       request,
-    }),
-    request,
-    timeout,
-    meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-    true,
-  );
+      timeout,
+      meta.mock,
+      meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+      true,
+    );
+  } catch (error) {
+    checkDatadomeError(error as Error, meta);
+    throw error;
+  }
 
   if (
     meta.options.formats.includes("screenshot") ||
@@ -320,7 +328,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    )?.[1] as string) ?? undefined,
 
     screenshot: response.screenshot,
     ...(actions.length > 0
@@ -334,7 +342,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
         }
       : {}),
 
-    proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
+    proxyUsed: response.usedMobileProxy ? "stealth" : (meta.options.proxy === "auto" && meta.featureFlags.has("ddAntibot") ? "stealth" : "basic"),
   };
 }
 
@@ -393,7 +401,7 @@ export async function scrapeURLWithFireEnginePlaywright(
 
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    )?.[1] as string) ?? undefined,
 
     ...(response.screenshots !== undefined && response.screenshots.length > 0
       ? {
@@ -458,7 +466,7 @@ export async function scrapeURLWithFireEngineTLSClient(
 
     contentType: (Object.entries(response.responseHeaders ?? {}).find(
       (x) => x[0].toLowerCase() === "content-type",
-    ) ?? [])[1] ?? undefined,
+    )?.[1] as string) ?? undefined,
 
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
