@@ -24,6 +24,7 @@ import Ajv from "ajv";
 import { extractData } from "../lib/extractSmartScrape";
 import { CostTracking } from "../../../lib/extract/extraction-service";
 import { isAgentExtractModelValid } from "../../../controllers/v1/types";
+import { hasFormatOfType } from "../../../lib/format-utils";
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
   anthropic?: {
@@ -657,7 +658,7 @@ export async function performLLMExtract(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
-  const jsonFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "json") as JsonFormatWithOptions | undefined;
+  const jsonFormat = hasFormatOfType(meta.options.formats, "json");
   
   // Debug logging for v1 format investigation
   if (meta.internalOptions.v1OriginalFormat) {
@@ -823,7 +824,7 @@ export async function performSummary(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
-  if (meta.options.formats.includes("summary")) {
+  if (hasFormatOfType(meta.options.formats, "summary")) {
     if (meta.internalOptions.zeroDataRetention) {
       document.warning = "Summary mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
       return document;

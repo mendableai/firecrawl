@@ -35,16 +35,7 @@ describe("Queue Concurrency Integration", () => {
   const mockNow = Date.now();
 
   const defaultScrapeOptions = {
-    formats: ["markdown"] as (
-      | "markdown"
-      | "html"
-      | "rawHtml"
-      | "links"
-      | "screenshot"
-      | "screenshot@fullPage"
-      | "extract"
-      | "json"
-    )[],
+    formats: [{ type: "markdown" }],
     onlyMainContent: true,
     waitFor: 0,
     mobile: false,

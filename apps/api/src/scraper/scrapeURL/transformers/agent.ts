@@ -5,6 +5,7 @@ import { Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { smartScrape, SmartScrapeResult } from "../lib/smartScrape";
+import { hasFormatOfType } from "../../../lib/format-utils";
 
 
 export async function performAgent(
@@ -49,11 +50,11 @@ export async function performAgent(
 
     const html = smartscrapeResults.scrapedPages[smartscrapeResults.scrapedPages.length - 1].html
 
-    if (meta.options.formats.includes("markdown")) {
+    if (hasFormatOfType(meta.options.formats, "markdown")) {
       const markdown = await parseMarkdown(html)
       document.markdown = markdown
     }
-    if (meta.options.formats.includes("html")) {
+    if (hasFormatOfType(meta.options.formats, "html")) {
       document.html = html
     }
   }
