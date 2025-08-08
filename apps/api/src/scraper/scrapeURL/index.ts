@@ -616,6 +616,7 @@ export async function scrapeURL(
               ...meta.options,
               origin: (meta.options as any).origin ?? "api",
               timeout: meta.options.timeout ?? 30000,
+              maxAge: 1000000000,
             },
             logger: abLogger,
             tryCount: 1,
