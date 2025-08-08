@@ -47,6 +47,8 @@ import { finishCrawlIfNeeded } from "./worker/crawl-logic";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { LangfuseExporter } from "langfuse-vercel";
+import * as v8 from "v8";
+import * as fs from "fs";
 
 configDotenv();
 
@@ -79,6 +81,86 @@ const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
 
 if (langfuseOtel) {
   langfuseOtel.start();
+}
+
+if (process.env.HEAP_SNAPSHOT_ENABLED === "true") {
+  const heapSnapshotDir = process.env.HEAP_SNAPSHOT_DIR || "/tmp/heapdumps";
+  const heapSnapshotThresholdPct = Number(process.env.HEAP_SNAPSHOT_THRESHOLD_PCT) || 85;
+  const heapSnapshotCooldownMs = Number(process.env.HEAP_SNAPSHOT_COOLDOWN_MS) || (10 * 60 * 1000);
+  let lastHeapDumpAt = 0;
+
+  async function readContainerMemoryLimitBytes(): Promise<number | null> {
+    try {
+      // cgroup v2
+      const v2Path = "/sys/fs/cgroup/memory.max";
+      if (fs.existsSync(v2Path)) {
+        const raw = (await fs.promises.readFile(v2Path, "utf8")).trim();
+        if (raw !== "max") {
+          const val = Number(raw);
+          return Number.isFinite(val) ? val : null;
+        }
+        return null;
+      }
+    } catch {}
+    try {
+      // cgroup v1
+      const v1Path = "/sys/fs/cgroup/memory/memory.limit_in_bytes";
+      if (fs.existsSync(v1Path)) {
+        const raw = (await fs.promises.readFile(v1Path, "utf8")).trim();
+        const val = Number(raw);
+        return Number.isFinite(val) ? val : null;
+      }
+    } catch {}
+    return null;
+  }
+
+  async function ensureDir(dir: string): Promise<void> {
+    try {
+      await fs.promises.mkdir(dir, { recursive: true });
+    } catch {}
+  }
+
+  async function writeHeapArtifacts(reason: string): Promise<void> {
+    const now = Date.now();
+    if (now - lastHeapDumpAt < heapSnapshotCooldownMs) return;
+    _logger.info("Writing heap artifacts", { reason, module: "queue-worker", method: "writeHeapArtifacts" });
+    lastHeapDumpAt = now;
+    const ts = new Date(now).toISOString().replace(/[:.]/g, "-");
+    await ensureDir(heapSnapshotDir);
+    const snapshotPath = path.join(heapSnapshotDir, `heap-${process.pid}-${ts}-${reason}.heapsnapshot`);
+    try {
+      v8.writeHeapSnapshot(snapshotPath);
+    } catch (e) {
+      _logger.error("Failed to write heap snapshot", { error: e, module: "queue-worker", method: "writeHeapArtifacts" });
+    }
+    try {
+      if ((process as any).report && typeof (process as any).report.writeReport === "function") {
+        const reportPath = path.join(heapSnapshotDir, `diag-${process.pid}-${ts}-${reason}.json`);
+        (process as any).report.writeReport(reportPath);
+      }
+    } catch (e) {
+      _logger.error("Failed to write diag report", { error: e, module: "queue-worker", method: "writeHeapArtifacts" });
+    }
+  }
+
+  let containerMemoryLimitBytes: number | null = null;
+  setInterval(async () => {
+    try {
+      if (containerMemoryLimitBytes === null) {
+        containerMemoryLimitBytes = await readContainerMemoryLimitBytes();
+      }
+      if (!containerMemoryLimitBytes || !Number.isFinite(containerMemoryLimitBytes)) return;
+      const rss = process.memoryUsage().rss;
+      const pct = (rss / containerMemoryLimitBytes) * 100;
+      if (pct >= heapSnapshotThresholdPct) {
+        await writeHeapArtifacts("high-rss");
+      }
+    } catch {}
+  }, 5000);
+
+  process.on("SIGUSR2", () => {
+    void writeHeapArtifacts("sigusr2");
+  });
 }
 
 const processExtractJobInternal = async (
