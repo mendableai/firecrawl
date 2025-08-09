@@ -250,6 +250,8 @@ export async function scrapePDF(
 
   const base64Content = (await readFile(tempFilePath)).toString("base64");
 
+  const remainingTime = timeToRun ? timeToRun - (Date.now() - startTime) : undefined;
+
   // First try RunPod MU if conditions are met
   if (
     base64Content.length < MAX_FILE_SIZE &&
@@ -265,7 +267,7 @@ export async function scrapePDF(
           }),
         },
         tempFilePath,
-        timeToRun ? timeToRun - (Date.now() - startTime) : undefined,
+        remainingTime,
         base64Content,
       );
     } catch (error) {
@@ -283,7 +285,7 @@ export async function scrapePDF(
           error.cause.name === "TimeoutError") ||
         (error instanceof Error && error.name === "TimeoutSignal")
       ) {
-        meta.logger.warn("RunPod MU timed out");
+        meta.logger.warn("RunPod MU timed out", { remainingTime });
         throw new TimeoutError(
           "PDF parsing timed out, please increase the timeout parameter in your scrape request",
         );
