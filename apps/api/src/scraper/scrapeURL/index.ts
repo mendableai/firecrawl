@@ -244,6 +244,7 @@ export type EngineResultsTracker = {
       }
     | {
         state: "timeout";
+        error: any;
       }
   ) & {
     startedAt: number;
@@ -384,6 +385,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           state: "timeout",
           startedAt,
           finishedAt: Date.now(),
+          error: safeguardCircularError(error),
         };
       } else if (
         error instanceof AddFeatureError ||
@@ -443,6 +445,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   }
 
   if (result === null) {
+    if (meta.results["pdf"]?.state === "timeout") {
+      throw meta.results["pdf"].error ?? new TimeoutSignal();
+    }
     if (Object.values(meta.results).every(x => x.state === "timeout")) {
       throw new TimeoutSignal();
     } else {
