@@ -19,7 +19,7 @@ COPY sharedLibs/html-transformer /app/sharedLibs/html-transformer
 COPY sharedLibs/pdf-parser /app/sharedLibs/pdf-parser
 COPY sharedLibs/crawler /app/sharedLibs/crawler
 
-Install Rust dependencies and build transformer lib
+# Install Rust dependencies and build transformer lib
 RUN cd /app/sharedLibs/html-transformer && \
     cargo build --release --locked && \
     chmod +x target/release/libhtml_transformer.so
