@@ -362,7 +362,12 @@ const separateWorkerFun = (
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
     concurrency: 8,
-    useWorkerThreads: true,
+    useWorkerThreads: false,
+    workerForkOptions: {
+      execArgv: filteredExecArgv.concat(maxOldSpaceSize ? (
+        ['--max-old-space-size=' + maxOldSpaceSize]
+      ) : []),
+    },
     workerThreadsOptions: {
       execArgv: filteredExecArgv,
       resourceLimits: maxOldSpaceSize ? {
