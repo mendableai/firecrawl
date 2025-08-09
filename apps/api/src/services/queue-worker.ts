@@ -348,7 +348,7 @@ const separateWorkerFun = (
   path: string,
 ): Worker => {
   // Extract memory size from --max-old-space-size flag if present
-  const maxOldSpaceSize = process.execArgv
+  const maxOldSpaceSize = process.env.SCRAPE_WORKER_MAX_OLD_SPACE_SIZE || process.execArgv
     .find(arg => arg.startsWith('--max-old-space-size='))
     ?.split('=')[1];
   
