@@ -17,10 +17,10 @@ WORKDIR /app/native
 RUN apt-get update && apt-get install -y build-essential curl && rm -rf /var/lib/apt/lists/* && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     . $HOME/.cargo/env && \
-    pnpm install --frozen-lockfile && \
+    pnpm install --frozen-lockfile --no-optional && \
     pnpm build && \
     rm -r node_modules && \
-    pnpm install --prod --frozen-lockfile
+    pnpm install --prod --frozen-lockfile --no-optional
 
 FROM base
 COPY --from=build /app/dist /app/dist

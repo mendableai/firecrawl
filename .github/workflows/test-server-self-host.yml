@@ -48,9 +48,6 @@ jobs:
           node-version: "20"
           cache: "pnpm"
           cache-dependency-path: './apps/api/pnpm-lock.yaml'
-      - name: Install dependencies
-        run: pnpm install
-        working-directory: ./apps/api
       - name: Install Playwright dependencies
         if: matrix.engine == 'playwright'
         run: |
@@ -60,11 +57,12 @@ jobs:
         working-directory: ./apps/playwright-service-ts
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
-      - name: Build html-transformer
-        run: |
-          cargo build --release
-          chmod +x target/release/libhtml_transformer.so
-        working-directory: ./apps/api/sharedLibs/html-transformer
+      - name: Install native dependencies
+        run: pnpm install --frozen-lockfile --no-optional
+        working-directory: ./apps/api/native
+      - name: Build native
+        run: pnpm build
+        working-directory: ./apps/api/native
       - name: Build pdf-parser
         run: |
           cargo build --release
@@ -89,6 +87,9 @@ jobs:
           docker run -d -p 3434:8080 -v "${PWD}/searxng:/etc/searxng" --name searxng searxng/searxng
           pnpx wait-on tcp:3434 -t 30s
         working-directory: ./
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ./apps/api
       - name: Build the application
         run: npm run build
         working-directory: ./apps/api
