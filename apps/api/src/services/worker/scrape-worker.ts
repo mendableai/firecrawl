@@ -793,15 +793,6 @@ export const processJobInternal = async (job: Job & { id: string }) => {
         crawlId: job.data?.crawl_id ?? undefined,
         zeroDataRetention: job.data?.zeroDataRetention ?? false,
     });
-
-    // const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
-    //     traceExporter: new LangfuseExporter(),
-    //     instrumentations: [getNodeAutoInstrumentations()],
-    // }) : null;
-      
-    // if (langfuseOtel) {   
-    //     langfuseOtel.start();
-    // }
     
     try {
         try {
@@ -855,13 +846,29 @@ export const processJobInternal = async (job: Job & { id: string }) => {
         logger.debug("Job failed", { error });
         Sentry.captureException(error);
         throw error;
-    } finally {
-        // if (langfuseOtel) {
-        //     langfuseOtel.shutdown().then(() => {
-        //         logger.debug("Langfuse OTEL shutdown");
-        //     });
-        // }
     }
 };
 
+const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+    traceExporter: new LangfuseExporter(),
+    instrumentations: [getNodeAutoInstrumentations()],
+}) : null;
+    
+if (langfuseOtel) {   
+    langfuseOtel.start();
+}
+
 module.exports = processJobInternal;
+
+const exitHandler = () => {
+    if (langfuseOtel) {
+        langfuseOtel.shutdown().then(() => {
+            _logger.debug("Langfuse OTEL shutdown");
+            process.exit(0);
+        });
+    }
+}
+
+process.on("SIGINT", exitHandler);
+process.on("SIGTERM", exitHandler);
+process.on("exit", exitHandler);
