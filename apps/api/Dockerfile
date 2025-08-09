@@ -16,7 +16,7 @@ WORKDIR /app/native
 
 RUN apt-get update && apt-get install -y build-essential curl && rm -rf /var/lib/apt/lists/* && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    source $HOME/.cargo/env && \
+    . $HOME/.cargo/env && \
     pnpm install --frozen-lockfile && \
     pnpm build && \
     rm -r node_modules && \
