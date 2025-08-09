@@ -90,7 +90,7 @@
     "singleQuote": true,
     "arrowParens": "always"
   },
-  "packageManager": "pnpm",
+  "packageManager": "pnpm@10.14.0",
   "optionalDependencies": {
     "@mendableai/firecrawl-api-native-win32-x64-msvc": "1.0.0",
     "@mendableai/firecrawl-api-native-darwin-x64": "1.0.0",
