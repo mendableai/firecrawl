@@ -148,7 +148,8 @@
     "wordpos": "^2.1.0",
     "ws": "^8.18.0",
     "xml2js": "^0.6.2",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "@mendableai/firecrawl-api-native": "./native"
   },
   "nodemonConfig": {
     "ignore": [

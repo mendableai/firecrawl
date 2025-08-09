@@ -10,7 +10,7 @@ import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 import type { SmartScrapeResult } from "./smartScrape";
 import { CostLimitExceededError, CostTracking } from "../../../lib/extract/extraction-service";
-import { parseMarkdownRust } from "../../../lib/html-transformer";
+import { parseMarkdown } from "../../../lib/html-transformer";
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
@@ -360,7 +360,7 @@ export async function extractData({
       const htmls = scrapedPages.flat().map((page) => page.html);
       // console.log("htmls", htmls);
       const markdowns = await Promise.all(
-        htmls.map(async (html) => await parseMarkdownRust(html)),
+        htmls.map(async (html) => await parseMarkdown(html)),
       );
       // console.log("markdowns", markdowns);
       extractedData = await Promise.all(

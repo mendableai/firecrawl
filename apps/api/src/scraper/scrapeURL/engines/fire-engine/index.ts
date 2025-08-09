@@ -27,7 +27,7 @@ import * as Sentry from "@sentry/node";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
-import { getInnerJSON } from "../../../../lib/html-transformer";
+import { getInnerJson } from "@mendableai/firecrawl-api-native";
 import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
 
 // This function does not take `Meta` on purpose. It may not access any
@@ -164,7 +164,7 @@ async function performFireEngineScrape<
   ) ?? [])[1] ?? "";
 
   if (contentType.includes("application/json")) {
-    status.content = await getInnerJSON(status.content);
+    status.content = await getInnerJson(status.content);
   }
 
   if (status.file) {

@@ -36,7 +36,7 @@ import { CostTracking } from "../../lib/extract/extraction-service";
 import { robustFetch } from "./lib/fetch";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 import { checkRobotsTxt } from "../../lib/robots-txt";
-import { parseMarkdownRust } from "../../lib/html-transformer";
+import { parseMarkdown } from "../../lib/html-transformer";
 
 export type ScrapeUrlResponse = (
   | {
@@ -310,7 +310,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       const _engineResult = await scrapeURLWithEngine(meta, engine, timeToRun);
       if (_engineResult.markdown === undefined) {
         // Some engines emit Markdown directly.
-        _engineResult.markdown = await parseMarkdownRust(_engineResult.html);
+        _engineResult.markdown = await parseMarkdown(_engineResult.html);
       }
       const engineResult = _engineResult as EngineScrapeResult & {
         markdown: string;

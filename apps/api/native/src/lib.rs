@@ -1,10 +1,13 @@
-use std::{collections::{HashMap, HashSet}, ffi::{CStr, CString}};
+#![deny(clippy::all)]
+
+use std::collections::{HashMap, HashSet};
 
 use nodesig::{get_node_signature, SignatureMode};
 use kuchikiki::{iter::NodeEdge, parse_html, traits::TendrilSink, NodeRef};
 use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
+use napi_derive::napi;
 
 fn _extract_base_href_from_document(document: &NodeRef, url: &Url) -> Result<String, Box<dyn std::error::Error>> {
     if let Some(base) = document.select("base[href]").map_err(|_| "Failed to select base href".to_string())?.next()
@@ -18,65 +21,23 @@ fn _extract_base_href_from_document(document: &NodeRef, url: &Url) -> Result<Str
     Ok(url.to_string())
 }
 
-fn _extract_base_href(html: &str, url: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let document = parse_html().one(html);
-    let url = Url::parse(url)?;
-
-    _extract_base_href_from_document(&document, &url)
-}
-
 /// Extracts base href from HTML
-/// 
-/// # Safety
-/// Input must be a C HTML string and a C URL string. Output will be a string. Output string must be freed with free_string.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn extract_base_href(html: *const libc::c_char, url: *const libc::c_char) -> *mut libc::c_char {
-    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
-        }
-    };
-    let url = match unsafe { CStr::from_ptr(url) }.to_str().map_err(|_| ()) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input URL as C string").unwrap().into_raw();
-        }
-    };
+#[napi]
+pub fn extract_base_href(html: String, url: String) -> Result<String, napi::Error> {
+    let document = parse_html().one(html);
+    let url = Url::parse(&url).map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
 
-    let base_href = match _extract_base_href(html, url) {
-        Ok(x) => x,
-        Err(e) => {
-            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
-        }
-    };
-
-    CString::new(base_href).unwrap().into_raw()
+    _extract_base_href_from_document(&document, &url).map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
 }
 
 /// Extracts links from HTML
-/// 
-/// # Safety
-/// Input options must be a C HTML string. Output will be a JSON string array. Output string must be freed with free_string.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
-        }
-    };
-
+#[napi]
+pub fn extract_links(html: String) -> Result<Vec<String>, napi::Error> {
     let document = parse_html().one(html);
 
     let mut out: Vec<String> = Vec::new();
 
-    let anchors: Vec<_> = match document.select("a[href]").map_err(|_| "Failed to select links") {
-        Ok(x) => x.collect(),
-        Err(e) => {
-            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
-        }
-    };
+    let anchors: Vec<_> = document.select("a[href]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select links".to_string()))?.collect();
 
     for anchor in anchors {
         let mut href = match anchor.attributes.borrow().get("href") {
@@ -93,19 +54,12 @@ pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut libc::
         out.push(href);
     }
 
-    let links_out = match serde_json::ser::to_string(&out) {
-        Ok(x) => x,
-        Err(e) => {
-            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
-        }
-    };
-
-    CString::new(links_out).unwrap().into_raw()
+    Ok(out)
 }
 
 macro_rules! insert_meta_name {
     ($out:ident, $document:ident, $metaName:expr, $outName:expr) => {
-        if let Some(x) = $document.select(&format!("meta[name=\"{}\"]", $metaName)).map_err(|_| "Failed to select meta name")?.next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
+        if let Some(x) = $document.select(&format!("meta[name=\"{}\"]", $metaName)).map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select meta name".to_string()))?.next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
             $out.insert(($outName).to_string(), Value::String(x));
         }
     };
@@ -113,29 +67,31 @@ macro_rules! insert_meta_name {
 
 macro_rules! insert_meta_property {
     ($out:ident, $document:ident, $metaName:expr, $outName:expr) => {
-        if let Some(x) = $document.select(&format!("meta[property=\"{}\"]", $metaName)).map_err(|_| "Failed to select meta property")?.next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
+        if let Some(x) = $document.select(&format!("meta[property=\"{}\"]", $metaName)).map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select meta property".to_string()))?.next().and_then(|description| description.attributes.borrow().get("content").map(|x| x.to_string())) {
             $out.insert(($outName).to_string(), Value::String(x));
         }
     };
 }
 
-fn _extract_metadata(html: &str) -> Result<String, Box<dyn std::error::Error>> {
+/// Extracts metadata from HTML
+#[napi]
+pub fn extract_metadata(html: String) -> Result<HashMap<String, Value>, napi::Error> {
     let document = parse_html().one(html);
     let mut out = HashMap::<String, Value>::new();
 
-    if let Some(title) = document.select("title").map_err(|_| "Failed to select title")?.next() {
+    if let Some(title) = document.select("title").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select title".to_string()))?.next() {
         out.insert("title".to_string(), Value::String(title.text_contents()));
     }
     // insert_meta_name!(out, document, "description", "description");
 
-    if let Some(favicon_link) = document.select("link[rel=\"icon\"]").map_err(|_| "Failed to select favicon")?.next()
+    if let Some(favicon_link) = document.select("link[rel=\"icon\"]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select favicon".to_string()))?.next()
         .and_then(|x| x.attributes.borrow().get("href").map(|x| x.to_string()))
         .or_else(|| document.select("link[rel*=\"icon\"]").unwrap().next()
             .and_then(|x| x.attributes.borrow().get("href").map(|x| x.to_string()))) {
         out.insert("favicon".to_string(), Value::String(favicon_link));
     }
 
-    if let Some(lang) = document.select("html[lang]").map_err(|_| "Failed to select lang")?.next().and_then(|x| x.attributes.borrow().get("lang").map(|x| x.to_string())) {
+    if let Some(lang) = document.select("html[lang]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select lang".to_string()))?.next().and_then(|x| x.attributes.borrow().get("lang").map(|x| x.to_string())) {
         out.insert("language".to_string(), Value::String(lang));
     }
 
@@ -149,7 +105,7 @@ fn _extract_metadata(html: &str) -> Result<String, Box<dyn std::error::Error>> {
     insert_meta_property!(out, document, "og:determiner", "ogDeterminer");
     insert_meta_property!(out, document, "og:locale", "ogLocale");
 
-    for meta in document.select("meta[property=\"og:locale:alternate\"]").map_err(|_| "Failed to select og locale alternate")? {
+    for meta in document.select("meta[property=\"og:locale:alternate\"]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select og locale alternate".to_string()))? {
         let attrs = meta.attributes.borrow();
 
         if let Some(content) = attrs.get("content") {
@@ -183,7 +139,7 @@ fn _extract_metadata(html: &str) -> Result<String, Box<dyn std::error::Error>> {
     insert_meta_name!(out, document, "dc.date.created", "dcDateCreated");
     insert_meta_name!(out, document, "dcterms.created", "dcTermsCreated");
 
-    for meta in document.select("meta").map_err(|_| "Failed to select meta")? {
+    for meta in document.select("meta").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select meta".to_string()))? {
         let meta = meta.as_node().as_element().unwrap();
         let attrs = meta.attributes.borrow();
 
@@ -226,30 +182,7 @@ fn _extract_metadata(html: &str) -> Result<String, Box<dyn std::error::Error>> {
         }
     }
 
-    Ok(serde_json::ser::to_string(&out)?)
-}
-
-/// Extracts metadata from HTML
-/// 
-/// # Safety
-/// Input options must be a C HTML string. Output will be a JSON object. Output string must be freed with free_string.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
-        }
-    };
-
-    let metadata_out = match _extract_metadata(html) {
-        Ok(x) => x,
-        Err(e) => {
-            return CString::new(format!("RUSTFC:ERROR:{}", e)).unwrap().into_raw();
-        }
-    };
-
-    CString::new(metadata_out).unwrap().into_raw()
+    Ok(out)
 }
 
 const EXCLUDE_NON_MAIN_TAGS: [&str; 41] = [
@@ -314,14 +247,15 @@ const FORCE_INCLUDE_MAIN_TAGS: [&str; 13] = [
     ".swoogo-agenda",
 ];
 
+#[napi(object)]
 #[derive(Deserialize)]
-struct TranformHTMLOptions {
-    html: String,
-    url: String,
-    include_tags: Vec<String>,
-    exclude_tags: Vec<String>,
-    only_main_content: bool,
-    omce_signatures: Option<Vec<String>>,
+pub struct TranformHTMLOptions {
+    pub html: String,
+    pub url: String,
+    pub include_tags: Vec<String>,
+    pub exclude_tags: Vec<String>,
+    pub only_main_content: bool,
+    pub omce_signatures: Option<Vec<String>>,
 }
 
 struct ImageSource {
@@ -330,16 +264,20 @@ struct ImageSource {
     is_x: bool,
 }
 
-fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn std::error::Error>> {
+/// Transforms rawHtml to html (formerly removeUnwantedElements)
+#[napi]
+pub fn transform_html(opts: TranformHTMLOptions) -> Result<String, napi::Error> {
     let mut document = parse_html().one(opts.html.as_ref());
-    let url = Url::parse(&_extract_base_href_from_document(&document, &Url::parse(&opts.url)?)?)?;
+    let url = Url::parse(&opts.url).map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+    let url = _extract_base_href_from_document(&document, &url).map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
+    let url = Url::parse(&url).map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?;
 
     if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
-        let root = new_document.select_first("div").map_err(|_| "Failed to select root element")?;
+        let root = new_document.select_first("div").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select root element".to_string()))?;
 
         for x in opts.include_tags.iter() {
-            let matching_nodes: Vec<_> = document.select(x).map_err(|_| "Failed to include_tags tags")?.collect();
+            let matching_nodes: Vec<_> = document.select(x).map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to include_tags tags".to_string()))?.collect();
             for tag in matching_nodes {
                 root.as_node().append(tag.as_node().clone());
             }
@@ -414,7 +352,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
 
     if opts.only_main_content {
         for x in EXCLUDE_NON_MAIN_TAGS.iter() {
-            let x: Vec<_> = document.select(x).map_err(|_| "Failed to select tags")?.collect();
+            let x: Vec<_> = document.select(x).map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select tags".to_string()))?.collect();
             for tag in x {
                 if !FORCE_INCLUDE_MAIN_TAGS.iter().any(|x| tag.as_node().select(x).is_ok_and(|mut x| x.next().is_some())) {
                     tag.as_node().detach();
@@ -423,9 +361,9 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
         }
     }
 
-    let srcset_images: Vec<_> = document.select("img[srcset]").map_err(|_| "Failed to select srcset images")?.collect();
+    let srcset_images: Vec<_> = document.select("img[srcset]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select srcset images".to_string()))?.collect();
     for img in srcset_images {
-        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or("Failed to get srcset")?.split(",").filter_map(|x| {
+        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(napi::Error::new(napi::Status::GenericFailure, "Failed to get srcset".to_string()))?.split(",").filter_map(|x| {
             let tok: Vec<&str> = x.trim().split(" ").collect();
             let last_token = tok[tok.len() - 1]; // SAFETY: split is guaranteed to return at least one token
             let (last_token, last_token_used) = if tok.len() > 1 && !last_token.is_empty() && (last_token.ends_with("x") || last_token.ends_with("w")) {
@@ -467,17 +405,17 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
         }
     }
     
-    let src_images: Vec<_> = document.select("img[src]").map_err(|_| "Failed to select src images")?.collect();
+    let src_images: Vec<_> = document.select("img[src]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select src images".to_string()))?.collect();
     for img in src_images {
-        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or("Failed to get src")?;
+        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or(napi::Error::new(napi::Status::GenericFailure, "Failed to get src".to_string()))?;
         if let Ok(new) = url.join(&old) {
             img.attributes.borrow_mut().insert("src", new.to_string());            
         }
     }
 
-    let href_anchors: Vec<_> = document.select("a[href]").map_err(|_| "Failed to select href anchors")?.collect();
+    let href_anchors: Vec<_> = document.select("a[href]").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select href anchors".to_string()))?.collect();
     for anchor in href_anchors {
-        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or("Failed to get href")?;
+        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or(napi::Error::new(napi::Status::GenericFailure, "Failed to get href".to_string()))?;
         if let Ok(new) = url.join(&old) {
             anchor.attributes.borrow_mut().insert("href", new.to_string());            
         }
@@ -486,61 +424,15 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, Box<dyn st
     Ok(document.to_string())
 }
 
-/// Transforms rawHtml to html (formerly removeUnwantedElements)
-/// 
-/// # Safety
-/// Input options must be a C JSON string. Output will be an HTML string. Output string must be freed with free_string.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut libc::c_char {
-    let opts: TranformHTMLOptions = match unsafe { CStr::from_ptr(opts) }.to_str().map_err(|_| ()).and_then(|x| serde_json::de::from_str(x).map_err(|_| ())) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR").unwrap().into_raw();
-        }
-    };
-
-    let out = match _transform_html_inner(opts) {
-        Ok(x) => x,
-        Err(e) => format!("RUSTFC:ERROR:{}", e),
-    };
-
-    CString::new(out).unwrap().into_raw()
-}
-
-fn _get_inner_json(html: &str) -> Result<String, ()> {
-    Ok(parse_html().one(html).select_first("body")?.text_contents())
-}
-
 /// For JSON pages retrieved by browser engines, this function can be used to transform it back into valid JSON.
-/// 
-/// # Safety
-/// Input must be a C HTML string. Output will be an HTML string. Output string must be freed with free_string.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
-        }
-    };
-
-    let out = match _get_inner_json(html) {
-        Ok(x) => x,
-        Err(_) => "RUSTFC:ERROR".to_string(),
-    };
-
-    CString::new(out).unwrap().into_raw()
+#[napi]
+pub fn get_inner_json(html: String) -> Result<String, napi::Error> {
+    Ok(parse_html().one(html).select_first("body").map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Failed to select body".to_string()))?.text_contents().to_string())
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn html_to_markdown(html: *const libc::c_char) -> *mut libc::c_char {
-    let html = match unsafe { CStr::from_ptr(html) }.to_str().map_err(|_| ()) {
-        Ok(x) => x,
-        Err(_) => {
-            return CString::new("RUSTFC:ERROR:Failed to parse input HTML as C string").unwrap().into_raw();
-        }
-    };
-    
+/// Converts HTML to Markdown
+#[napi]
+pub fn html_to_markdown(html: String) -> Result<String, napi::Error> {
     let converter = htmd::HtmlToMarkdown::builder()
         .options(htmd::options::Options {
             link_style: htmd::options::LinkStyle::Inlined,
@@ -551,19 +443,5 @@ pub unsafe extern "C" fn html_to_markdown(html: *const libc::c_char) -> *mut lib
         })
         .build();
     
-    let out = match converter.convert(html) {
-        Ok(x) => x,
-        Err(e) => format!("RUSTFC:ERROR:{}", e),
-    };
-
-    CString::new(out).unwrap().into_raw()
-}
-
-/// Frees a string allocated in Rust-land.
-/// 
-/// # Safety
-/// ptr must be a non-freed string pointer returned by Rust code.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn free_string(ptr: *mut libc::c_char) {
-    drop(unsafe { CString::from_raw(ptr) })
+    Ok(converter.convert(&html).map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?)
 }

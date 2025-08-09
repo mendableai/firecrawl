@@ -4,7 +4,7 @@ import {
 import { Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { smartScrape, SmartScrapeResult } from "../lib/smartScrape";
-import { parseMarkdownRust } from "../../../lib/html-transformer";
+import { parseMarkdown } from "../../../lib/html-transformer";
 
 
 export async function performAgent(
@@ -50,7 +50,7 @@ export async function performAgent(
     const html = smartscrapeResults.scrapedPages[smartscrapeResults.scrapedPages.length - 1].html
 
     if (meta.options.formats.includes("markdown")) {
-      const markdown = await parseMarkdownRust(html)
+      const markdown = await parseMarkdown(html)
       document.markdown = markdown
     }
     if (meta.options.formats.includes("html")) {

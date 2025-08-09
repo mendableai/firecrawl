@@ -3,7 +3,7 @@ import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { TimeoutError } from "../../error";
 import { robustFetch } from "../../lib/fetch";
-import { getInnerJSON } from "../../../../lib/html-transformer";
+import { getInnerJson } from "@mendableai/firecrawl-api-native";
 
 export async function scrapeURLWithPlaywright(
   meta: Meta,
@@ -44,7 +44,7 @@ export async function scrapeURLWithPlaywright(
   ]);
 
   if (response.contentType?.includes("application/json")) {
-    response.content = await getInnerJSON(response.content);
+    response.content = await getInnerJson(response.content);
   }
 
   return {
