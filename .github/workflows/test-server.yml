@@ -73,7 +73,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install native dependencies
-        run: pnpm install --frozen-lockfile --no-optional
+        run: pnpm install --no-frozen-lockfile
         working-directory: ./apps/api/native
       - name: Build native
         run: pnpm build
