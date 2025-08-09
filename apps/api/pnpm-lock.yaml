@@ -56,6 +56,9 @@ importers:
       '@google-cloud/storage':
         specifier: ^7.16.0
         version: 7.16.0(encoding@0.1.13)
+      '@mendableai/firecrawl-api-native':
+        specifier: ./native
+        version: link:native
       '@nangohq/node':
         specifier: ^0.40.8
         version: 0.40.8

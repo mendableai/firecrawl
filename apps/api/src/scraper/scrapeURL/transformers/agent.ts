@@ -3,8 +3,8 @@ import {
 } from "../../../controllers/v1/types";
 import { Meta } from "..";
 import { logger } from "../../../lib/logger";
-import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { smartScrape, SmartScrapeResult } from "../lib/smartScrape";
+import { parseMarkdown } from "../../../lib/html-transformer";
 
 
 export async function performAgent(

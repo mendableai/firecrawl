@@ -9,7 +9,7 @@ import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
 import https from "https";
 import { redisEvictConnection } from "../../services/redis";
-import { extractLinks } from "../../lib/html-transformer";
+import { extractLinks } from "@mendableai/firecrawl-api-native";
 import { TimeoutSignal } from "../../controllers/v1/types";
 import { filterLinks } from "../../lib/crawler";
 import { fetchRobotsTxt, createRobotsChecker, isUrlAllowedByRobots } from "../../lib/robots-txt";

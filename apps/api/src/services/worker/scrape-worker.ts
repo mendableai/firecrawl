@@ -67,6 +67,8 @@ const jobLockExtensionTime =
 cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
 
+_logger.info("Scrape worker spawned");
+
 async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking, flags: TeamFlags) {
     let creditsToBeBilled: number | null = null;
 

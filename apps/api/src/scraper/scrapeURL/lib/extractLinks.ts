@@ -1,7 +1,7 @@
 // TODO: refactor
 import { load } from "cheerio"; // rustified
 import { logger } from "../../../lib/logger";
-import { extractLinks as _extractLinks, extractBaseHref as _extractBaseHref } from "../../../lib/html-transformer";
+import { extractLinks as _extractLinks, extractBaseHref as _extractBaseHref } from "@mendableai/firecrawl-api-native";
 
 function resolveUrlWithBaseHref(href: string, baseUrl: string, baseHref: string): string {
   let resolutionBase = baseUrl;

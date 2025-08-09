@@ -10,7 +10,6 @@ import {
   FeatureFlag,
   scrapeURLWithEngine,
 } from "./engines";
-import { parseMarkdown } from "../../lib/html-to-markdown";
 import {
   ActionError,
   AddFeatureError,
@@ -37,6 +36,7 @@ import { CostTracking } from "../../lib/extract/extraction-service";
 import { robustFetch } from "./lib/fetch";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 import { checkRobotsTxt } from "../../lib/robots-txt";
+import { parseMarkdown } from "../../lib/html-transformer";
 
 export type ScrapeUrlResponse = (
   | {

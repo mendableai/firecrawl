@@ -1,4 +1,3 @@
-import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { Meta } from "..";
 import { Document } from "../../../controllers/v1/types";
 import { htmlTransform } from "../lib/removeUnwantedElements";
@@ -12,6 +11,7 @@ import { performAgent } from "./agent";
 import { deriveDiff } from "./diff";
 import { useIndex } from "../../../services/index";
 import { sendDocumentToIndex } from "../engines/index/index";
+import { parseMarkdown } from "../../../lib/html-transformer";
 
 export type Transformer = (
   meta: Meta,

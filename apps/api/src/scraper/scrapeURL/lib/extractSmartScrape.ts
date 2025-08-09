@@ -6,11 +6,11 @@ import {
   generateSchemaFromPrompt,
 } from "../transformers/llmExtract";
 import { smartScrape } from "./smartScrape";
-import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 import type { SmartScrapeResult } from "./smartScrape";
 import { CostLimitExceededError, CostTracking } from "../../../lib/extract/extraction-service";
+import { parseMarkdown } from "../../../lib/html-transformer";
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
