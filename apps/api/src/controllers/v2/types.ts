@@ -804,14 +804,6 @@ export type BatchScrapeResponse =
     invalidURLs?: string[];
   };
 
-export type MapResponse =
-  | ErrorResponse
-  | {
-    success: true;
-    links: string[];
-    scrape_id?: string;
-  };
-
 // Map document interface (transitioned from v1)
 export interface MapDocument {
   url: string;
@@ -820,12 +812,11 @@ export interface MapDocument {
 }
 
 // V2 Map Response with dictionary format
-export type MapV2Response =
+export type MapResponse =
   | ErrorResponse
   | {
     success: true;
-    links?: string[]; // For backwards compatibility
-    web?: WebSearchResult[]; // New structured format
+    links?: MapDocument[];
     metadata?: {
       totalCount: number;
       hasMore: boolean;

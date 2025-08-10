@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { redisEvictConnection } from "./redis";
 import type { Logger } from "winston";
 import psl from "psl";
+import { MapDocument } from "../controllers/v2/types";
 configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
@@ -624,69 +625,108 @@ export async function queryOMCESignatures(hostname: string, maxAge = 2 * 24 * 60
   return data?.[0]?.signatures ?? [];
 }
 
-export async function queryIndexDocument(url: string): Promise<{
-  title?: string;
-  description?: string;
-  language?: string;
-  keywords?: string;
-  robots?: string;
-  ogTitle?: string;
-  ogDescription?: string;
-  ogUrl?: string;
-  ogImage?: string;
-  ogLocale?: string;
-  ogSiteName?: string;
-  createdAt?: string;
-  lastScrapedAt?: string;
-} | null> {
+export async function queryIndexAtSplitLevelWithMeta(url: string, limit: number): Promise<MapDocument[]> {
   if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
-    return null;
+    return [];
   }
 
-  try {
-    const normalizedUrl = normalizeURLForIndex(url);
-    const urlHash = hashURL(normalizedUrl);
+  const urlObj = new URL(url);
+  urlObj.search = "";
 
-    const { data, error } = await index_supabase_service
-      .from("index")
-      .select("id, title, description, created_at")
-      .eq("url_hash", urlHash)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+  const urlSplitsHash = generateURLSplits(urlObj.href).map(x => hashURL(x));
 
-    if (error || !data) {
-      return null;
-    }
+  const level = urlSplitsHash.length - 1;
 
-    // Try to get more metadata from GCS if available
-    let gcsData: any = null;
-    try {
-      gcsData = await getIndexFromGCS(data.id + ".json");
-    } catch (e) {
-      // Ignore GCS errors, we'll use what we have from the database
-    }
+  let links: MapDocument[] = [];
+  let iteration = 0;
 
-    return {
-      title: data.title,
-      description: data.description,
-      createdAt: data.created_at,
-      lastScrapedAt: data.created_at,
-      // Add more fields from GCS data if available
-      ...(gcsData && {
-        language: gcsData.language,
-        keywords: gcsData.keywords,
-        robots: gcsData.robots,
-        ogTitle: gcsData.ogTitle,
-        ogDescription: gcsData.ogDescription,
-        ogUrl: gcsData.ogUrl,
-        ogImage: gcsData.ogImage,
-        ogLocale: gcsData.ogLocale,
-        ogSiteName: gcsData.ogSiteName,
+  while (true) {
+    // Query the index for the next set of links
+    const { data: _data, error } = await index_supabase_service
+      .rpc("query_index_at_split_level_with_meta", {
+        i_level: level,
+        i_url_hash: urlSplitsHash[level],
+        i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       })
-    };
-  } catch (error) {
-    _logger.warn("Error querying index document", { error, url });
-    return null;
+      .range(iteration * 1000, (iteration + 1) * 1000)
+
+    // If there's an error, return the links we have
+    if (error) {
+      _logger.warn("Error querying index", { error, url, limit });
+      return links.slice(0, limit);
+    }
+
+    // Add the links to the set
+    const data = _data ?? [];
+    data.forEach((x) => links.push({
+      url: x.resolved_url,
+      title: x.title ?? undefined,
+      description: x.description ?? undefined,
+    }));
+
+    // If we have enough links, return them
+    if (links.length >= limit) {
+      return links.slice(0, limit);
+    }
+
+    // If we get less than 1000 links from the query, we're done
+    if (data.length < 1000) {
+      return links.slice(0, limit);
+    }
+
+    iteration++;
+  }
+}
+
+export async function queryIndexAtDomainSplitLevelWithMeta(hostname: string, limit: number): Promise<MapDocument[]> {
+  if (!useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
+    return [];
+  }
+
+  const domainSplitsHash = generateDomainSplits(hostname).map(x => hashURL(x));
+
+  const level = domainSplitsHash.length - 1;
+  if (domainSplitsHash.length === 0) {
+    return [];
+  }
+
+  let links: MapDocument[] = [];
+  let iteration = 0;
+
+  while (true) {
+    // Query the index for the next set of links
+    const { data: _data, error } = await index_supabase_service
+      .rpc("query_index_at_domain_split_level_with_meta", {
+        i_level: level,
+        i_domain_hash: domainSplitsHash[level],
+        i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .range(iteration * 1000, (iteration + 1) * 1000)
+
+    // If there's an error, return the links we have
+    if (error) {
+      _logger.warn("Error querying index", { error, hostname, limit });
+      return links.slice(0, limit);
+    }
+
+    // Add the links to the set
+    const data = _data ?? [];
+    data.forEach((x) => links.push({
+      url: x.resolved_url,
+      title: x.title ?? undefined,
+      description: x.description ?? undefined,
+    }));
+
+    // If we have enough links, return them
+    if (links.length >= limit) {
+      return links.slice(0, limit);
+    }
+
+    // If we get less than 1000 links from the query, we're done
+    if (data.length < 1000) {
+      return links.slice(0, limit);
+    }
+
+    iteration++;
   }
 }

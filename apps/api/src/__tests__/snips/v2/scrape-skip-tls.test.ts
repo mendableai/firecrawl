@@ -15,6 +15,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
     const data = await scrape({
       url: "https://expired.badssl.com/",
       timeout: scrapeTimeout,
+      maxAge: 0,
     }, identity);
 
     expect(data).toBeDefined();
@@ -26,6 +27,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
       url: "https://expired.badssl.com/",
       skipTlsVerification: false,
       timeout: scrapeTimeout,
+      maxAge: 0,
     }, identity);
 
     if (response.status !== 500) {
@@ -40,6 +42,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
     const data = await scrape({
       url: "https://firecrawl.dev",
       timeout: scrapeTimeout,
+      maxAge: 0,
     }, identity);
 
     expect(data).toBeDefined();
@@ -52,6 +55,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         url: "https://firecrawl.dev",
         formats: [{ type: "screenshot", fullPage: false }],
         timeout: scrapeTimeout,
+        maxAge: 0,
       }, identity);
 
       expect(data).toBeDefined();
@@ -64,6 +68,7 @@ describe("V2 Scrape skipTlsVerification Default", () => {
         url: "https://firecrawl.dev",
         formats: [{ type: "screenshot", fullPage: true }],
         timeout: scrapeTimeout,
+        maxAge: 0,
       }, identity);
 
       expect(data).toBeDefined();
