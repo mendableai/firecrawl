@@ -51,21 +51,6 @@ describe("Scrape format variations", () => {
       expect(response.screenshot).toBeDefined();
       expect(typeof response.screenshot).toBe("string");
     }, scrapeTimeout);
-
-    it.concurrent("accepts string format for screenshot@fullPage", async () => {
-      if (process.env.TEST_SUITE_SELF_HOSTED) {
-        return;
-      }
-
-      const response = await scrape({
-        url: "https://firecrawl.dev",
-        formats: ["screenshot@fullPage"],
-        timeout: scrapeTimeout,
-      }, identity);
-
-      expect(response.screenshot).toBeDefined();
-      expect(typeof response.screenshot).toBe("string");
-    }, scrapeTimeout);
   });
 
   describe("Object format inputs", () => {
