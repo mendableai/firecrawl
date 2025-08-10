@@ -68,7 +68,8 @@ export async function crawlController(
       const { extract } = await generateCrawlerOptionsFromPrompt(
         req.body.prompt,
         logger,
-        costTracking
+        costTracking,
+        { teamId: req.auth.team_id, crawlId: id }
       );
       promptGeneratedOptions = extract || {};
       logger.debug("Generated crawler options from prompt", {

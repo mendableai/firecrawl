@@ -6,13 +6,11 @@ import { EngineError, IndexMissError, TimeoutError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
-   
-
     const shouldCache = meta.options.storeInCache
         && !meta.internalOptions.zeroDataRetention
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
-        && !(meta.winnerEngine === "pdf" && meta.options.parsePDF === false)
+        && !(meta.winnerEngine === "pdf" && meta.options.parsers?.includes("pdf") === false)
         && (
             meta.internalOptions.teamId === "sitemap"
             || (
@@ -212,13 +210,13 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
     const isCachedPdfBase64 = doc.html && doc.html.startsWith("JVBERi");
     
     // If the cached content is base64 PDF but we want parsed PDF (parsePDF:true or default)
-    if (isCachedPdfBase64 && meta.options.parsePDF !== false) {
+    if (isCachedPdfBase64 && meta.options.parsers?.includes("pdf") !== false) {
         // Cached content is unparsed PDF, but we want parsed - report cache miss
         throw new IndexMissError();
     }
     
     // If the cached content is NOT base64 PDF but we want unparsed PDF (parsePDF:false)
-    if (!isCachedPdfBase64 && meta.options.parsePDF === false) {
+    if (!isCachedPdfBase64 && meta.options.parsers?.includes("pdf") === false) {
         // Check if URL looks like a PDF
         const isPdfUrl = meta.url.toLowerCase().endsWith(".pdf") || meta.url.includes(".pdf?");
         if (isPdfUrl) {

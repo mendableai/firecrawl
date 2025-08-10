@@ -612,8 +612,8 @@ export async function scrapeURL(
       && abRate > 0
       && Math.random() <= abRate
       && abHostEnv
-      && meta.options.agent === undefined
-      && (meta.options.extract || meta.options.jsonOptions)?.agent === undefined;
+      && meta.internalOptions.v1Agent === undefined
+      && meta.internalOptions.v1JSONAgent === undefined;
     if (shouldABTest) {
       (async () => {
         try {
@@ -621,7 +621,7 @@ export async function scrapeURL(
           abLogger.info("A/B-testing scrapeURL to staging");
           const abort = AbortSignal.timeout(Math.min(60000, (meta.options.timeout ?? 30000) + 10000));
           await robustFetch({
-            url: `http://${abHostEnv}/v1/scrape`,
+            url: `http://${abHostEnv}/v2/scrape`,
             method: "POST",
             body: {
               url: meta.url,

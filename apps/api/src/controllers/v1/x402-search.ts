@@ -22,6 +22,7 @@ import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { supabase_service } from "../../services/supabase";
+import { fromV1ScrapeOptions } from "../v2/types";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -101,16 +102,17 @@ async function scrapeX402SearchResult(
       origin: options.origin,
       zeroDataRetention,
     });
+    const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(options.scrapeOptions, options.timeout, options.teamId);
     await addScrapeJob(
       {
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: {
-          ...options.scrapeOptions,
-          maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
+          ...scrapeOptions,
+          maxAge: scrapeOptions.maxAge === 0 ? 3 * 24 * 60 * 60 * 1000 : scrapeOptions.maxAge,
         },
-        internalOptions: { teamId: options.teamId, bypassBilling: true, zeroDataRetention },
+        internalOptions: { ...internalOptions, teamId: options.teamId, bypassBilling: true, zeroDataRetention },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),

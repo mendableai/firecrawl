@@ -957,6 +957,11 @@ export async function performSummary(
           method: "performSummary",
         },
       },
+      metadata: {
+        teamId: meta.internalOptions.teamId,
+        functionId: "performSummary",
+        scrapeId: meta.id,
+      }
     };
 
     const {
@@ -1109,6 +1114,7 @@ export async function generateCrawlerOptionsFromPrompt(
   prompt: string,
   logger: Logger,
   costTracking: CostTracking,
+  metadata: { teamId: string, crawlId?: string },
 ): Promise<{ extract: any }> {
   const model = getModel("gpt-4o", "openai");
   const retryModel = getModel("gpt-4o-mini", "openai");
@@ -1151,6 +1157,10 @@ Return a JSON object with only the relevant options for the user's request. Don'
             method: "generateCrawlerOptionsFromPrompt",
           },
         },
+        metadata: {
+          ...metadata,
+          functionId: "generateCrawlerOptionsFromPrompt",
+        }
       });
 
       return { extract };

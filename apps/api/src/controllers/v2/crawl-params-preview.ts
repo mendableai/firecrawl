@@ -61,7 +61,8 @@ export async function crawlParamsPreviewController(
     const { extract } = await generateCrawlerOptionsFromPrompt(
       parsedBody.prompt,
       logger,
-      costTracking
+      costTracking,
+      { teamId: req.auth.team_id }
     );
 
     const generatedOptions = extract || {};
