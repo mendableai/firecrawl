@@ -343,10 +343,11 @@ process.on("SIGTERM", () => {
 
 let cantAcceptConnectionCount = 0;
 
-const separateWorkerFun = (
+const separateWorkerFun = async (
   queue: Queue,
   path: string,
-): Worker => {
+  soloMode: boolean,
+): Promise<Worker> => {
   // Extract memory size from --max-old-space-size flag if present
   const maxOldSpaceSize = process.env.SCRAPE_WORKER_MAX_OLD_SPACE_SIZE || process.execArgv
     .find(arg => arg.startsWith('--max-old-space-size='))
@@ -356,12 +357,12 @@ const separateWorkerFun = (
   const filteredExecArgv = process.execArgv
     .filter(arg => !arg.startsWith('--max-old-space-size'));
 
-  const worker = new Worker(queue.name, path, {
+  const worker = new Worker(queue.name, soloMode ? (await import(path)).default : path, {
     connection: createRedisConnection(),
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
-    concurrency: 8,
+    concurrency: soloMode ? 1 : 8,
     useWorkerThreads: false,
     workerForkOptions: {
       execArgv: filteredExecArgv.concat(maxOldSpaceSize ? (
@@ -494,77 +495,111 @@ app.listen(workerPort, () => {
   _logger.info(`Liveness endpoint is running on port ${workerPort}`);
 });
 
-(async () => {
-  async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
-    if (args.failedReason === "job stalled more than allowable limit") {
-      const set = await redisEvictConnection.set("stalled-job-cleaner:" + args.jobId, "1", "EX", 60 * 60 * 24, "NX");
-      if (!set) {
-        return;
-      }
+if (process.env.SOLO_SCRAPE_WORKER_MODE === "scrape") {
+  (async () => {
+    const worker = await separateWorkerFun(getScrapeQueue(), path.join(__dirname, "worker", "scrape-worker.js"), true);
 
-      const job = await getScrapeQueue().getJob(args.jobId);
+    await new Promise((resolve) => {
+      const interval = setInterval(async () => {
+        if (isShuttingDown) {
+          clearInterval(interval);
+          await worker.close();
+          resolve(void 0);
+        }
+      }, 1000);
+    });
 
-      let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
-      if (job && job.data.crawl_id) {
-        logger = logger.child({ crawlId: job.data.crawl_id });
-        logger.warn("Job stalled more than allowable limit");
+    console.log("All jobs finished. Worker out!");
+    if (langfuseOtel) {
+      await langfuseOtel.shutdown();
+    }
+    process.exit(0);
+  })();
+} else if (process.env.SOLO_SCRAPE_WORKER_MODE === "other") {
+  (async () => {
+    await Promise.all([
+      workerFun(getExtractQueue(), processExtractJobInternal),
+      workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
+      workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
+    ]);
 
-        const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    console.log("All workers exited. Waiting for all jobs to finish...");
 
-        if (job.data.mode === "kickoff") {
-          await finishCrawlKickoff(job.data.crawl_id);
-          if (sc) {
+    while (runningJobs.size > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    console.log("All jobs finished. Worker out!");
+    if (langfuseOtel) {
+      await langfuseOtel.shutdown();
+    }
+    process.exit(0);
+  })();
+} else {
+  (async () => {
+    async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
+      if (args.failedReason === "job stalled more than allowable limit") {
+        const set = await redisEvictConnection.set("stalled-job-cleaner:" + args.jobId, "1", "EX", 60 * 60 * 24, "NX");
+        if (!set) {
+          return;
+        }
+
+        const job = await getScrapeQueue().getJob(args.jobId);
+
+        let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
+        if (job && job.data.crawl_id) {
+          logger = logger.child({ crawlId: job.data.crawl_id });
+          logger.warn("Job stalled more than allowable limit");
+
+          const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
+          if (job.data.mode === "kickoff") {
+            await finishCrawlKickoff(job.data.crawl_id);
+            if (sc) {
+              await finishCrawlIfNeeded(job, sc);
+            }
+          } else {
+            const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    
+            logger.debug("Declaring job as done...");
+            await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
+            await redisEvictConnection.srem(
+              "crawl:" + job.data.crawl_id + ":visited_unique",
+              normalizeURL(job.data.url, sc),
+            );
+      
             await finishCrawlIfNeeded(job, sc);
           }
         } else {
-          const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
-  
-          logger.debug("Declaring job as done...");
-          await addCrawlJobDone(job.data.crawl_id, job.id, false, logger);
-          await redisEvictConnection.srem(
-            "crawl:" + job.data.crawl_id + ":visited_unique",
-            normalizeURL(job.data.url, sc),
-          );
-    
-          await finishCrawlIfNeeded(job, sc);
+          logger.warn("Job stalled more than allowable limit");
         }
-      } else {
-        logger.warn("Job stalled more than allowable limit");
       }
     }
-  }
 
-  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
-  scrapeQueueEvents.on("failed", failedListener);
+    const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
+    scrapeQueueEvents.on("failed", failedListener);
 
-  const results = await Promise.all([
-    separateWorkerFun(getScrapeQueue(), path.join(__dirname, "worker", "scrape-worker.js")),
-    workerFun(getExtractQueue(), processExtractJobInternal),
-    workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
-    workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
-  ]);
+    const results = await Promise.all([
+      separateWorkerFun(getScrapeQueue(), path.join(__dirname, "worker", "scrape-worker.js"), false),
+      workerFun(getExtractQueue(), processExtractJobInternal),
+      workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
+      workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
+    ]);
 
-  console.log("All workers exited. Waiting for all jobs to finish...");
+    console.log("All workers exited. Waiting for all jobs to finish...");
 
-  const workerResults = results.filter(x => x instanceof Worker);
-  await Promise.all(workerResults.map(x => x.close()));
+    const workerResults = results.filter(x => x instanceof Worker);
+    await Promise.all(workerResults.map(x => x.close()));
 
-  while (runningJobs.size > 0) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+    while (runningJobs.size > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
 
-  setInterval(async () => {
-    _logger.debug("Currently running jobs", {
-      jobs: (await Promise.all([...runningJobs].map(async (jobId) => {
-        return await getScrapeQueue().getJob(jobId);
-      }))).filter(x => x && !x.data?.zeroDataRetention),
-    });
-  }, 1000);
-
-  await scrapeQueueEvents.close();
-  console.log("All jobs finished. Worker out!");
-  if (langfuseOtel) {
-    await langfuseOtel.shutdown();
-  }
-  process.exit(0);
-})();
+    await scrapeQueueEvents.close();
+    console.log("All jobs finished. Worker out!");
+    if (langfuseOtel) {
+      await langfuseOtel.shutdown();
+    }
+    process.exit(0);
+  })();
+}

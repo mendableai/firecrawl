@@ -59,13 +59,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 configDotenv();
 
-const jobLockExtendInterval =
-    Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 10000;
-const jobLockExtensionTime =
-    Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
-
-cacheableLookup.install(http.globalAgent);
-cacheableLookup.install(https.globalAgent);
+if (!process.env.SOLO_SCRAPE_WORKER_MODE) {
+    cacheableLookup.install(http.globalAgent);
+    cacheableLookup.install(https.globalAgent);
+}
 
 async function billScrapeJob(job: Job & { id: string }, document: Document | null, logger: Logger, costTracking: CostTracking, flags: TeamFlags) {
     let creditsToBeBilled: number | null = null;
@@ -800,7 +797,7 @@ export const processJobInternal = async (job: Job & { id: string }) => {
             if (job.data?.mode !== "kickoff" && job.data?.team_id) {
                 extendLockInterval = setInterval(async () => {
                     await pushConcurrencyLimitActiveJob(job.data.team_id, job.id, 60 * 1000); // 60s lock renew, just like in the queue
-                }, jobLockExtendInterval);
+                }, 10000);
             }
 
             await addJobPriority(job.data.team_id, job.id);
@@ -849,7 +846,7 @@ export const processJobInternal = async (job: Job & { id: string }) => {
     }
 };
 
-const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+const langfuseOtel = (process.env.LANGFUSE_PUBLIC_KEY && !process.env.SOLO_SCRAPE_WORKER_MODE) ? new NodeSDK({
     traceExporter: new LangfuseExporter(),
     instrumentations: [getNodeAutoInstrumentations()],
 }) : null;
@@ -860,15 +857,15 @@ if (langfuseOtel) {
 
 module.exports = processJobInternal;
 
-const exitHandler = () => {
-    if (langfuseOtel) {
+if (langfuseOtel) {
+    const exitHandler = () => {
         langfuseOtel.shutdown().then(() => {
             _logger.debug("Langfuse OTEL shutdown");
             process.exit(0);
         });
     }
+    
+    process.on("SIGINT", exitHandler);
+    process.on("SIGTERM", exitHandler);
+    process.on("exit", exitHandler);
 }
-
-process.on("SIGINT", exitHandler);
-process.on("SIGTERM", exitHandler);
-process.on("exit", exitHandler);
