@@ -1324,20 +1324,36 @@ export const searchRequestSchema = z
     __searchPreviewToken: z.string().optional(),
     scrapeOptions: baseScrapeOptions
       .extend({
-        formats: z
-          .array(
-            z.enum([
-              "markdown",
-              "html",
-              "rawHtml",
-              "links",
-              "screenshot",
-              "screenshot@fullPage",
-              "extract",
-              "json",
-            ]),
-          )
-          .default([]),
+        formats: z.preprocess(
+          (val) => {
+            if (!Array.isArray(val)) return val;
+            return val.map(format => {
+              if (typeof format === 'string') {
+                return { type: format };
+              }
+              return format;
+            });
+          },
+          z
+            .union([
+              z.object({ type: z.literal("markdown") }),
+              z.object({ type: z.literal("html") }),
+              z.object({ type: z.literal("rawHtml") }),
+              z.object({ type: z.literal("links") }),
+              z.object({ type: z.literal("summary") }),
+              jsonFormatWithOptions,
+              screenshotFormatWithOptions,
+            ])
+            .array()
+            .optional()
+            .default([])
+        )
+          .refine(
+            (x) => {
+              return x.filter(f => f.type === "screenshot").length <= 1;
+            },
+            "You may only specify one screenshot format",
+          ),
       })
       .default({}),
   })
