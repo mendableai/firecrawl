@@ -203,6 +203,7 @@ export async function searchController(
     module: "search",
     method: "searchController",
     zeroDataRetention: req.acuc?.flags?.forceZDR,
+    searchQuery: req.body.query.slice(0, 100),
   });
 
   if (req.acuc?.flags?.forceZDR) {
