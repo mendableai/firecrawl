@@ -295,7 +295,7 @@ describe("Scrape tests", () => {
 
         const response3 = await scrape({
           url,
-          formats: ["screenshot@fullPage"],
+          formats: [{ type: "screenshot", fullPage: true }],
           timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3,
         }, identity);
@@ -310,7 +310,7 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url,
-          formats: ["screenshot@fullPage"],
+          formats: [{ type: "screenshot", fullPage: true }],
           timeout: scrapeTimeout,
         }, identity);
 
@@ -320,7 +320,7 @@ describe("Scrape tests", () => {
 
         const response2 = await scrape({ 
           url,
-          formats: ["screenshot@fullPage"],
+          formats: [{ type: "screenshot", fullPage: true }],
           timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
@@ -763,7 +763,7 @@ describe("Scrape tests", () => {
       it.concurrent("screenshot@fullPage format works", async () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
-          formats: ["screenshot@fullPage"],
+          formats: [{ type: "screenshot", fullPage: true }],
           timeout: scrapeTimeout,
         }, identity);
     
