@@ -282,6 +282,16 @@ export async function generateCompletions({
             anthropic: {
               thinking: { type: "enabled", budgetTokens: 12000 },
             },
+            google: {
+              labels: {
+                teamId: metadata.teamId,
+                functionId: metadata.functionId ?? "unspecified",
+                extractId: metadata.extractId ?? "unspecified",
+                scrapeId: metadata.scrapeId ?? "unspecified",
+                deepResearchId: metadata.deepResearchId ?? "unspecified",
+                llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+              }
+            }
           },
           experimental_telemetry: {
             isEnabled: true,
@@ -347,6 +357,16 @@ export async function generateCompletions({
                 anthropic: {
                   thinking: { type: "enabled", budgetTokens: 12000 },
                 },
+                google: {
+                  labels: {
+                    teamId: metadata.teamId,
+                    functionId: metadata.functionId ?? "unspecified",
+                    extractId: metadata.extractId ?? "unspecified",
+                    scrapeId: metadata.scrapeId ?? "unspecified",
+                    deepResearchId: metadata.deepResearchId ?? "unspecified",
+                    llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+                  }
+                }
               },
               experimental_telemetry: {
                 isEnabled: true,
@@ -474,6 +494,16 @@ export async function generateCompletions({
               anthropic: {
                 thinking: { type: "enabled", budgetTokens: 12000 },
               },
+              google: {
+                labels: {
+                  teamId: metadata.teamId,
+                  functionId: metadata.functionId ?? "unspecified",
+                  extractId: metadata.extractId ?? "unspecified",
+                  scrapeId: metadata.scrapeId ?? "unspecified",
+                  deepResearchId: metadata.deepResearchId ?? "unspecified",
+                  llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+                }
+              }
             },
             experimental_telemetry: {
               isEnabled: true,
@@ -518,7 +548,21 @@ export async function generateCompletions({
     const generateObjectConfig = {
       model: currentModel,
       prompt: prompt,
-      providerOptions: providerOptions || undefined,
+      providerOptions: {
+        ...(providerOptions || {}),
+        google: {
+          ...((providerOptions as any)?.vertex || {}),
+          labels: {
+            ...((providerOptions as any)?.vertex?.labels || {}),
+            teamId: metadata.teamId,
+            functionId: metadata.functionId ?? "unspecified",
+            extractId: metadata.extractId ?? "unspecified",
+            scrapeId: metadata.scrapeId ?? "unspecified",
+            deepResearchId: metadata.deepResearchId ?? "unspecified",
+            llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+          }
+        }
+      },
       system: options.systemPrompt,
       ...(schema && {
         schema: schema instanceof z.ZodType ? schema : jsonSchema(schema),

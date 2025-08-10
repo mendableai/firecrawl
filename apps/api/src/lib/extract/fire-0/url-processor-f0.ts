@@ -16,8 +16,18 @@ export async function generateBasicCompletion_FO(prompt: string, metadata: { tea
     model: getModel("gpt-4o"),
     prompt: prompt,
     temperature: 0,
+    providerOptions: {
+      google: {
+        labels: {
+          functionId: "generateBasicCompletion_F0",
+          extractId: metadata.extractId ?? "unspecified",
+          teamId: metadata.teamId,
+        }
+      }
+    },
     experimental_telemetry: {
       isEnabled: true,
+      functionId: "generateBasicCompletion_F0",
       metadata: {
         ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
         teamId: metadata.teamId,
