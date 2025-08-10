@@ -3,6 +3,8 @@ import crypto from "crypto";
 
 let identity: Identity;
 
+let changeTrackingTestUrl = "https://firecrawl.dev?testId=" + crypto.randomUUID();
+
 beforeAll(async () => {
   identity = await idmux({
     name: "scrape",
@@ -13,7 +15,7 @@ beforeAll(async () => {
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
     // Needed for change tracking tests to work
     await scrape({
-      url: "https://example.com",
+      url: changeTrackingTestUrl,
       formats: ["markdown", "changeTracking"],
       timeout: scrapeTimeout,
     }, identity);
@@ -583,7 +585,7 @@ describe("Scrape tests", () => {
     describe("Change Tracking format", () => {
       it.concurrent("works", async () => {
         const response = await scrape({
-          url: "https://example.com",
+          url: changeTrackingTestUrl,
           formats: ["markdown", "changeTracking"],
           timeout: scrapeTimeout,
         }, identity);
@@ -594,7 +596,7 @@ describe("Scrape tests", () => {
 
       it.concurrent("includes git diff when requested", async () => {
         const response = await scrape({
-          url: "https://example.com",
+          url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", modes: ["git-diff"] }],
           timeout: scrapeTimeout,
         }, identity);
@@ -612,7 +614,7 @@ describe("Scrape tests", () => {
       
       it.concurrent("includes structured output when requested", async () => {
         const response = await scrape({
-          url: "https://example.com",
+          url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", modes: ["json"], prompt: "Summarize the changes between the previous and current content" }],
           timeout: scrapeTimeout,
         }, identity);
@@ -627,7 +629,7 @@ describe("Scrape tests", () => {
       
       it.concurrent("supports schema-based extraction for change tracking", async () => {
         const response = await scrape({
-          url: "https://example.com",
+          url: changeTrackingTestUrl,
           formats: [
             "markdown",
             {
@@ -672,7 +674,7 @@ describe("Scrape tests", () => {
       
       it.concurrent("supports both git-diff and structured modes together", async () => {
         const response = await scrape({
-          url: "https://example.com",
+          url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", modes: ["git-diff", "json"], schema: {
               type: "object",
               properties: {
@@ -703,13 +705,13 @@ describe("Scrape tests", () => {
         const uuid2 = crypto.randomUUID();
 
         const response1 = await scrape({
-          url: "https://firecrawl.dev/",
+          url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", tag: uuid1 }],
           timeout: scrapeTimeout,
         }, identity);
 
         const response2 = await scrape({
-          url: "https://firecrawl.dev/",
+          url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", tag: uuid2 }],
           timeout: scrapeTimeout,
         }, identity);
@@ -720,7 +722,7 @@ describe("Scrape tests", () => {
         expect(response2.changeTracking?.changeStatus).toBe("new");
 
         const response3 = await scrape({
-          url: "https://firecrawl.dev/",
+          url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", tag: uuid1 }],
           timeout: scrapeTimeout,
         }, identity);
