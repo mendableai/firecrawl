@@ -817,11 +817,6 @@ export type MapResponse =
   | {
     success: true;
     links?: MapDocument[];
-    metadata?: {
-      totalCount: number;
-      hasMore: boolean;
-      searchQuery?: string;
-    };
   };
 
 export type CrawlStatusParams = {

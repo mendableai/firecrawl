@@ -21,11 +21,11 @@ import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { logger } from "../../lib/logger";
-import Redis from "ioredis";
 import { generateURLSplits, queryIndexAtDomainSplitLevelWithMeta, queryIndexAtSplitLevelWithMeta } from "../../services/index";
+import { redisEvictConnection } from "../../services/redis";
+import { performCosineSimilarityV2 } from "../../lib/map-cosine";
 
 configDotenv();
-const redis = new Redis(process.env.REDIS_URL!);
 
 // Max Links that /map can return
 const MAX_MAP_LIMIT = 30000;
@@ -39,7 +39,20 @@ interface MapResult {
   mapResults: MapDocument[];
 }
 
-async function queryIndex(url: string, limit: number, useIndex: boolean): Promise<MapDocument[]> {
+function dedupeMapDocumentArray(documents: MapDocument[]): MapDocument[] {
+  let urlSet = new Set<string>(documents.map(x => x.url));
+
+  let newDocuments: MapDocument[] = [
+    ...Array.from(urlSet).map(x => {
+      let localDocs = documents.filter(y => y.url === x);
+      return localDocs.find(x => x.title !== undefined) || localDocs[0];
+    }),
+  ];
+
+  return newDocuments;
+}
+
+async function queryIndex(url: string, limit: number, useIndex: boolean, includeSubdomains: boolean): Promise<MapDocument[]> {
   if (!useIndex) {
     return [];
   }
@@ -49,7 +62,13 @@ async function queryIndex(url: string, limit: number, useIndex: boolean): Promis
     const urlObj = new URL(url);
     const hostname = urlObj.hostname;
 
-    return (await queryIndexAtDomainSplitLevelWithMeta(hostname, limit));
+    // TEMP: this should be altered on June 15th 2025 7AM PT - mogery
+    const [domainLinks, splitLinks] = await Promise.all([
+      includeSubdomains ? queryIndexAtDomainSplitLevelWithMeta(hostname, limit) : [],
+      queryIndexAtSplitLevelWithMeta(url, limit),
+    ]);
+
+    return dedupeMapDocumentArray([...domainLinks, ...splitLinks]);
   } else {
     return (await queryIndexAtSplitLevelWithMeta(url, limit));
   }
@@ -86,6 +105,7 @@ export async function getMapResults({
 }): Promise<MapResult> {
   const id = uuidv4();
   let mapResults: MapDocument[] = [];
+  const zeroDataRetention = flags?.forceZDR ?? false;
 
   const sc: StoredCrawl = {
     originUrl: url,
@@ -98,6 +118,7 @@ export async function getMapResults({
     internalOptions: { teamId },
     team_id: teamId,
     createdAt: Date.now(),
+    zeroDataRetention,
   };
 
   const crawler = crawlToCrawler(id, sc, flags);
@@ -107,114 +128,176 @@ export async function getMapResults({
     crawler.importRobotsTxt(sc.robots);
   } catch (_) {}
 
-  let urlWithoutWww = url.replace("www.", "");
-
-  let mapUrl =
-    search && allowExternalLinks
-      ? `${search} ${urlWithoutWww}`
-      : search
-        ? `${search} site:${urlWithoutWww}`
-        : `site:${url}`;
-
-  const resultsPerPage = 100;
-  const maxPages = Math.ceil(
-    Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage,
-  );
-
-  const cacheKey = `fireEngineMap:${mapUrl}`;
-  const cachedResult = await redis.get(cacheKey);
-
-  let allResults: any[] = [];
-  let pagePromises: Promise<any>[] = [];
-
-  if (cachedResult) {
-    allResults = JSON.parse(cachedResult);
-  } else {
-    const fetchPage = async (page: number) => {
-      return fireEngineMap(mapUrl, {
-        numResults: resultsPerPage,
-        page: page,
-      }, abort);
-    };
-
-    pagePromises = Array.from({ length: maxPages }, (_, i) =>
-      fetchPage(i + 1),
-    );
-    allResults = await Promise.all(pagePromises);
-
-    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
-  }
-
-  // Parallelize sitemap index query with search results
-  const [indexResults, ...searchResults] = await Promise.all([
-    queryIndex(url, limit, useIndex),
-    ...(cachedResult ? [] : pagePromises),
-  ]);
-
-  if (indexResults.length > 0) {
-    mapResults.push(...indexResults);
-  }
-
-  console.log("searchResults", searchResults);
-
-  mapResults = mapResults.concat(searchResults.map(x => ({
-    url: x.url,
-    title: x.title,
-    description: x.description,
-  })).flat());
-
-  const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
-  if (mapResults.length > minumumCutoff) {
-    mapResults = mapResults.slice(0, minumumCutoff);
-  }
-
-  mapResults = mapResults
-    .map((x) => {
-      try {
-        return {
-          ...x,
-          url: checkAndUpdateURLForMap(x.url).url.trim(),
-        };
-      } catch (_) {
-        return null;
-      }
-    })
-    .filter((x) => x !== null) as MapDocument[];
-
-  // allows for subdomains to be included
-  mapResults = mapResults.filter((x) => isSameDomain(x.url, url));
-
-  // if includeSubdomains is false, filter out subdomains
-  if (!includeSubdomains) {
-    mapResults = mapResults.filter((x) => isSameSubdomain(x.url, url));
-  }
-
-  // Filter by path if enabled
-  if (filterByPath && !allowExternalLinks) {
-    try {
-      const urlObj = new URL(url);
-      const urlPath = urlObj.pathname;
-      // Only apply path filtering if the URL has a significant path (not just '/' or empty)
-      // This means we only filter by path if the user has not selected a root domain
-      if (urlPath && urlPath !== '/' && urlPath.length > 1) {
-        mapResults = mapResults.filter(x => {
-          try {
-            const linkObj = new URL(x.url);
-            return linkObj.pathname.startsWith(urlPath);
-          } catch (e) {
-            return false;
-          }
+  // If sitemapOnly is true, only get links from sitemap
+  if (crawlerOptions.sitemapOnly) {
+    const sitemap = await crawler.tryGetSitemap(
+      (urls) => {
+        urls.forEach((x) => {
+          mapResults.push({
+            url: x,
+          });
         });
-      }
-    } catch (e) {
-      // If URL parsing fails, continue without path filtering
-      logger.warn(`Failed to parse URL for path filtering: ${url}`, { error: e });
+      },
+      true,
+      true,
+      crawlerOptions.timeout ?? 30000,
+      abort,
+      crawlerOptions.useMock,
+    );
+    if (sitemap > 0) {
+      mapResults = mapResults
+        .slice(1)
+        .map((x) => {
+          try {
+            return {
+              ...x,
+              url: checkAndUpdateURLForMap(x.url).url.trim(),
+            };
+          } catch (_) {
+            return null;
+          }
+        })
+        .filter((x) => x !== null) as MapDocument[];
     }
+  } else {
+    let urlWithoutWww = url.replace("www.", "");
+
+    let mapUrl =
+      search && allowExternalLinks
+        ? `${search} ${urlWithoutWww}`
+        : search
+          ? `${search} site:${urlWithoutWww}`
+          : `site:${url}`;
+
+    const resultsPerPage = 100;
+    const maxPages = Math.ceil(
+      Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage,
+    );
+
+    const cacheKey = `fireEngineMap:${mapUrl}`;
+    const cachedResult = await redisEvictConnection.get(cacheKey);
+
+    let pagePromises: (Promise<any> | any)[];
+
+    if (cachedResult) {
+      pagePromises = JSON.parse(cachedResult);
+    } else {
+      const fetchPage = async (page: number) => {
+        return fireEngineMap(mapUrl, {
+          numResults: resultsPerPage,
+          page: page,
+        }, abort);
+      };
+
+      pagePromises = Array.from({ length: maxPages }, (_, i) =>
+        fetchPage(i + 1),
+      );
+    }
+
+    // Parallelize sitemap index query with search results
+    const [indexResults, searchResults] = await Promise.all([
+      queryIndex(url, limit, useIndex, includeSubdomains),
+      Promise.all(pagePromises),
+    ]);
+
+    if (!zeroDataRetention) {
+      await redisEvictConnection.set(cacheKey, JSON.stringify(searchResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+    }
+
+    if (indexResults.length > 0) {
+      mapResults.push(...indexResults);
+    }
+
+    // If sitemap is not ignored, fetch sitemap
+    // This will attempt to find it in the index at first, or fetch a fresh one if it's older than 2 days
+    if (!crawlerOptions.ignoreSitemap) {
+      try {
+        await crawler.tryGetSitemap(
+          (urls) => {
+            mapResults.push(...urls.map(x => ({
+              url: x,
+            })));
+          },
+          true,
+          false,
+          crawlerOptions.timeout ?? 30000,
+          abort,
+        );
+      } catch (e) {
+        logger.warn("tryGetSitemap threw an error", { error: e });
+      }
+    }
+
+    mapResults = mapResults.concat(searchResults.flat().map(x => ({
+      url: x.url,
+      title: x.title,
+      description: x.description,
+    })));
+
+    const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
+    if (mapResults.length > minumumCutoff) {
+      mapResults = mapResults.slice(0, minumumCutoff);
+    }
+
+    if (search) {
+      const searchQuery = search.toLowerCase();
+      mapResults = performCosineSimilarityV2(mapResults, searchQuery);
+    }
+
+    mapResults = mapResults
+      .map((x) => {
+        try {
+          return {
+            ...x,
+            url: checkAndUpdateURLForMap(x.url).url.trim(),
+          };
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter((x) => x !== null) as MapDocument[];
+    
+    // allows for subdomains to be included
+    mapResults = mapResults.filter((x) => isSameDomain(x.url, url));
+
+    // if includeSubdomains is false, filter out subdomains
+    if (!includeSubdomains) {
+      mapResults = mapResults.filter((x) => isSameSubdomain(x.url, url));
+    }
+
+    // Filter by path if enabled
+    if (filterByPath && !allowExternalLinks) {
+      try {
+        const urlObj = new URL(url);
+        const urlPath = urlObj.pathname;
+        // Only apply path filtering if the URL has a significant path (not just '/' or empty)
+        // This means we only filter by path if the user has not selected a root domain
+        if (urlPath && urlPath !== '/' && urlPath.length > 1) {
+          mapResults = mapResults.filter(x => {
+            try {
+              const linkObj = new URL(x.url);
+              return linkObj.pathname.startsWith(urlPath);
+            } catch (e) {
+              return false;
+            }
+          });
+        }
+      } catch (e) {
+        // If URL parsing fails, continue without path filtering
+        logger.warn(`Failed to parse URL for path filtering: ${url}`, { error: e });
+      }
+    }
+
+    mapResults = dedupeMapDocumentArray(mapResults);
   }
+
+  mapResults = crawlerOptions.sitemapOnly
+    ? mapResults
+    : mapResults.slice(0, limit);
 
   return {
     success: true,
-    mapResults: mapResults,
+    mapResults,
     job_id: id,
     time_taken: (new Date().getTime() - Date.now()) / 1000,
   };

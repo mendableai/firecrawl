@@ -74,7 +74,7 @@ export async function getLinksFromSitemap(
             mode,
             sitemapUrl,
             error: response.success
-              ? response.document
+              ? response.document.metadata.statusCode
               : response.error,
           },
         );
