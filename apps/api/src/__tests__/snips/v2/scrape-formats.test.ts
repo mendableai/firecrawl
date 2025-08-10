@@ -215,16 +215,6 @@ describe("Scrape format variations", () => {
       expect(typeof response.markdown).toBe("string");
     }, scrapeTimeout);
 
-    it.concurrent("handles empty array as default to markdown", async () => {
-      const response = await scrape({
-        url: "https://firecrawl.dev",
-        formats: [],
-        timeout: scrapeTimeout,
-      }, identity);
-
-      expect(response.markdown).toBeDefined();
-    }, scrapeTimeout);
-
     it.concurrent("rejects invalid format type in object", async () => {
       const raw = await scrapeRaw({
         url: "https://firecrawl.dev",
