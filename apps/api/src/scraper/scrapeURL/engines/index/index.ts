@@ -54,6 +54,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                     error: document.metadata.error,
                     screenshot: document.screenshot,
                     numPages: document.metadata.numPages,
+                    contentType: document.metadata.contentType,
                 });
             } catch (error) {
                 meta.logger.error("Failed to save document to index", {
@@ -232,7 +233,8 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
         error: doc.error,
         screenshot: doc.screenshot,
         numPages: doc.numPages,
-
+        contentType: doc.contentType,
+        
         cacheInfo: {
             created_at: new Date(data[0].created_at),
         },

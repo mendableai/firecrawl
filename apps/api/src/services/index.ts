@@ -98,6 +98,7 @@ export async function saveIndexToGCS(id: string, doc: {
   error?: string;
   screenshot?: string;
   numPages?: number;
+  contentType?: string;
 }): Promise<void> {
   try {
       if (!process.env.GCS_INDEX_BUCKET_NAME) {
