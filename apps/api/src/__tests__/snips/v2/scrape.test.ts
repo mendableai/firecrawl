@@ -278,6 +278,7 @@ describe("Scrape tests", () => {
           url,
           formats: ["screenshot"],
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         expect(response1.screenshot).toBeDefined();
@@ -312,6 +313,7 @@ describe("Scrape tests", () => {
           url,
           formats: ["screenshot@fullPage"],
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         expect(response1.screenshot).toBeDefined();
@@ -346,6 +348,7 @@ describe("Scrape tests", () => {
           url,
           formats: ["markdown", "changeTracking"],
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         const response1 = await scrape({
@@ -379,6 +382,7 @@ describe("Scrape tests", () => {
             "X-Test": "test",
           },
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         await new Promise(resolve => setTimeout(resolve, indexCooldown));
@@ -399,6 +403,7 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         await new Promise(resolve => setTimeout(resolve, indexCooldown));
@@ -458,6 +463,7 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         await new Promise(resolve => setTimeout(resolve, indexCooldown));
@@ -491,6 +497,7 @@ describe("Scrape tests", () => {
           url,
           blockAds: true,
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         await new Promise(resolve => setTimeout(resolve, indexCooldown));
@@ -566,6 +573,7 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           timeout: scrapeTimeout,
+          maxAge: 0,
         }, identity);
 
         await new Promise(resolve => setTimeout(resolve, indexCooldown));
