@@ -14,7 +14,7 @@ describe("Scrape format variations", () => {
   describe("String format inputs", () => {
     it.concurrent("accepts string format for markdown", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }],
         timeout: scrapeTimeout,
       }, identity);
@@ -26,7 +26,7 @@ describe("Scrape format variations", () => {
 
     it.concurrent("accepts multiple string formats", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["markdown", "html", "links"],
         timeout: scrapeTimeout,
       }, identity);
@@ -43,7 +43,7 @@ describe("Scrape format variations", () => {
       }
 
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["screenshot"],
         timeout: scrapeTimeout,
       }, identity);
@@ -58,7 +58,7 @@ describe("Scrape format variations", () => {
       }
 
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["screenshot@fullPage"],
         timeout: scrapeTimeout,
       }, identity);
@@ -71,7 +71,7 @@ describe("Scrape format variations", () => {
   describe("Object format inputs", () => {
     it.concurrent("accepts object format for markdown", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }],
         timeout: scrapeTimeout,
       }, identity);
@@ -83,7 +83,7 @@ describe("Scrape format variations", () => {
 
     it.concurrent("accepts multiple object formats", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [
           { type: "markdown" },
           { type: "html" },
@@ -104,7 +104,7 @@ describe("Scrape format variations", () => {
       }
 
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [{
           type: "screenshot",
           fullPage: true,
@@ -122,7 +122,7 @@ describe("Scrape format variations", () => {
   describe("Mixed format inputs", () => {
     it.concurrent("accepts mixed string and object formats", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [
           "markdown",
           { type: "html" },
@@ -139,7 +139,7 @@ describe("Scrape format variations", () => {
     it.concurrent("handles complex formats alongside simple ones", async () => {
       if (!process.env.TEST_SUITE_SELF_HOSTED) {
         const response = await scrape({
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [
             "markdown",
             {
@@ -163,7 +163,7 @@ describe("Scrape format variations", () => {
     it.concurrent("handles json format with schema", async () => {
       if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
         const response = await scrape({
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [{
             type: "json",
             prompt: "Extract the main heading and description",
@@ -186,7 +186,7 @@ describe("Scrape format variations", () => {
     it.concurrent("handles changeTracking format with options", async () => {
       if (!process.env.TEST_SUITE_SELF_HOSTED) {
         const response = await scrape({
-          url: "https://example.com",
+          url: "https://firecrawl.dev",
           formats: [
             "markdown",
             {
@@ -207,7 +207,7 @@ describe("Scrape format variations", () => {
   describe("Edge cases and validation", () => {
     it.concurrent("default format is markdown when formats not specified", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         timeout: scrapeTimeout,
       }, identity);
 
@@ -217,7 +217,7 @@ describe("Scrape format variations", () => {
 
     it.concurrent("handles empty array as default to markdown", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [],
         timeout: scrapeTimeout,
       }, identity);
@@ -227,7 +227,7 @@ describe("Scrape format variations", () => {
 
     it.concurrent("rejects invalid format type in object", async () => {
       const raw = await scrapeRaw({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [{ type: "invalid-format" } as any],
         timeout: scrapeTimeout,
       }, identity);
@@ -238,7 +238,7 @@ describe("Scrape format variations", () => {
 
     it.concurrent("maintains backward compatibility with string-only formats", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["markdown", "html", "rawHtml", "links"],
         timeout: scrapeTimeout,
       }, identity);
@@ -253,7 +253,7 @@ describe("Scrape format variations", () => {
   describe("Format type consistency in output", () => {
     it.concurrent("string input produces consistent output structure", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["markdown", "html"],
         timeout: scrapeTimeout,
       }, identity);
@@ -266,7 +266,7 @@ describe("Scrape format variations", () => {
 
     it.concurrent("object input produces identical output structure", async () => {
       const response = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }, { type: "html" }],
         timeout: scrapeTimeout,
       }, identity);
@@ -279,19 +279,19 @@ describe("Scrape format variations", () => {
 
     it.concurrent("mixed input produces consistent output", async () => {
       const response1 = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["markdown", "html"],
         timeout: scrapeTimeout,
       }, identity);
 
       const response2 = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }, { type: "html" }],
         timeout: scrapeTimeout,
       }, identity);
 
       const response3 = await scrape({
-        url: "https://example.com",
+        url: "https://firecrawl.dev",
         formats: ["markdown", { type: "html" }],
         timeout: scrapeTimeout,
       }, identity);
