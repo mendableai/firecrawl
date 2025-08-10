@@ -396,7 +396,7 @@ async function processJob(job: Job & { id: string }) {
                     cost_tracking: costTracking,
                     pdf_num_pages: doc.metadata.numPages,
                     credits_billed,
-                    change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+                    change_tracking_tag: hasFormatOfType(job.data.scrapeOptions.formats, "changeTracking")?.tag ?? null,
                     zeroDataRetention: job.data.zeroDataRetention,
                 },
                 true,
@@ -450,7 +450,7 @@ async function processJob(job: Job & { id: string }) {
                 cost_tracking: costTracking,
                 pdf_num_pages: doc.metadata.numPages,
                 credits_billed,
-                change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+                change_tracking_tag: hasFormatOfType(job.data.scrapeOptions.formats, "changeTracking")?.tag ?? null,
                 zeroDataRetention: job.data.zeroDataRetention,
             }, false, job.data.internalOptions?.bypassBilling ?? false);
         }
