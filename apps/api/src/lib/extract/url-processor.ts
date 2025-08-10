@@ -20,9 +20,17 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
         anthropic: {
           thinking: { type: "enabled", budgetTokens: 12000 },
         },
+        google: {
+          labels: {
+            functionId: "generateBasicCompletion",
+            teamId: metadata.teamId,
+            extractId: metadata.extractId ?? "unspecified",
+          }
+        }
       },
       experimental_telemetry: {
         isEnabled: true,
+        functionId: "generateBasicCompletion",
         metadata: {
           ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
           teamId: metadata.teamId,
@@ -54,6 +62,12 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
             anthropic: {
               thinking: { type: "enabled", budgetTokens: 12000 },
             },
+            google: {
+              labels: {
+                teamId: metadata.teamId,
+                extractId: metadata.extractId ?? "unspecified",
+              }
+            }
           },
           experimental_telemetry: {
             isEnabled: true,

@@ -5,7 +5,6 @@ import {
   buildAnalyzeSchemaUserPrompt,
 } from "../../build-prompts";
 import { logger } from "../../../logger";
-import { jsonSchema } from "ai";
 import { getModel } from "../../../generic-ai";
 import {
   generateCompletions_F0,
