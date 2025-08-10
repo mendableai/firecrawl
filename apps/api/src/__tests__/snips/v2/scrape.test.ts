@@ -691,7 +691,7 @@ describe("Scrape tests", () => {
               }
             }
           }],
-          timeout: scrapeTimeout,
+          timeout: scrapeTimeout * 2, // takes a while to run, LLM
         }, identity);
 
         expect(response.changeTracking).toBeDefined();
@@ -706,7 +706,7 @@ describe("Scrape tests", () => {
           expect(response.changeTracking?.json).toHaveProperty("summary");
           expect(response.changeTracking?.json).toHaveProperty("changes");
         }
-      }, scrapeTimeout);
+      }, scrapeTimeout * 2);
 
       it.concurrent("supports tags properly", async () => {
         const uuid1 = crypto.randomUUID();
