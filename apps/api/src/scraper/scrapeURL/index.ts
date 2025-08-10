@@ -12,6 +12,7 @@ import {
   scrapeURLWithEngine,
 } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
+import { hasFormatOfType } from "../../lib/format-utils";
 import {
   ActionError,
   AddFeatureError,
@@ -84,17 +85,12 @@ function buildFeatureFlags(
     flags.add("actions");
   }
 
-  if (options.formats.includes("screenshot")) {
-    flags.add("screenshot");
-  }
-
-  if (options.formats.includes("screenshot@fullPage")) {
-    flags.add("screenshot@fullScreen");
-  }
-
-  const screenshotFormat = options.formats.find(x => typeof x === "object" && x.type === "screenshot");
-  if (screenshotFormat) {
-    flags.add(screenshotFormat.fullPage ? "screenshot@fullScreen" : "screenshot");
+  if (hasFormatOfType(options.formats, "screenshot")) {
+    if (hasFormatOfType(options.formats, "screenshot")?.fullPage) {
+      flags.add("screenshot@fullScreen");
+    } else {
+      flags.add("screenshot");
+    }
   }
 
   if (options.waitFor !== 0) {

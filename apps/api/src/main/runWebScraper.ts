@@ -32,7 +32,7 @@ export async function startWebScraperPipeline({
       ...job.data.scrapeOptions,
       ...(job.data.crawl_id
         ? {
-            formats: job.data.scrapeOptions.formats.concat(["rawHtml"]),
+            formats: job.data.scrapeOptions.formats.concat([{ type: "rawHtml" }]),
           }
         : {}),
     },

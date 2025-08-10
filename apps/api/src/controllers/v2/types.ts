@@ -209,6 +209,16 @@ export const screenshotFormatWithOptions = z.object({
 
 export type ScreenshotFormatWithOptions = z.output<typeof screenshotFormatWithOptions>;
 
+export type FormatObject = 
+  | { type: "markdown" }
+  | { type: "html" }
+  | { type: "rawHtml" }
+  | { type: "links" }
+  | { type: "summary" }
+  | JsonFormatWithOptions
+  | ChangeTrackingFormatWithOptions
+  | ScreenshotFormatWithOptions;
+
 export const parsersSchema = z.array(z.enum(["pdf"])).default(["pdf"]);
 
 export type Parsers = z.infer<typeof parsersSchema>;
@@ -222,40 +232,43 @@ function transformIframeSelector(selector: string): string {
 
 const baseScrapeOptions = z
   .object({
-    formats: z
-      .union([
-        z.enum([
-          "markdown",
-          "html",
-          "rawHtml",
-          "links",
-          "screenshot",
-          "screenshot@fullPage",
-          "extract",
-          "summary",
-          "changeTracking",
-        ]),
-        jsonFormatWithOptions,
-        changeTrackingFormatWithOptions,
-        screenshotFormatWithOptions,
-      ])
-      .array()
-      .optional()
-      .default(["markdown"])
+    formats: z.preprocess(
+      (val) => {
+        if (!Array.isArray(val)) return val;
+        return val.map(format => {
+          if (typeof format === 'string') {
+            return { type: format };
+          }
+          return format;
+        });
+      },
+      z
+        .union([
+          z.object({ type: z.literal("markdown") }),
+          z.object({ type: z.literal("html") }),
+          z.object({ type: z.literal("rawHtml") }),
+          z.object({ type: z.literal("links") }),
+          z.object({ type: z.literal("summary") }),
+          jsonFormatWithOptions,
+          changeTrackingFormatWithOptions,
+          screenshotFormatWithOptions,
+        ])
+        .array()
+        .optional()
+        .default([{ type: "markdown" }])
+    )
       .refine(
         (x) => {
-          const hasStringScreenshot = x.includes("screenshot") || x.includes("screenshot@fullPage");
-          const hasObjectScreenshot = x.find(f => typeof f === "object" && f.type === "screenshot");
-          return !(hasStringScreenshot && hasObjectScreenshot);
+          return x.filter(f => f.type === "screenshot").length <= 1;
         },
-        "You may only specify either string screenshot formats or object screenshot format, not both",
+        "You may only specify one screenshot format",
       )
       .refine(
-        (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
-        "You may only specify either screenshot or screenshot@fullPage",
-      )
-      .refine(
-        (x) => !x.includes("changeTracking") || x.includes("markdown"),
+        (x) => {
+          const hasChangeTracking = x.find(f => f.type === "changeTracking");
+          const hasMarkdown = x.find(f => f.type === "markdown");
+          return !hasChangeTracking || hasMarkdown;
+        },
         "The changeTracking format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
@@ -1068,7 +1081,7 @@ export function fromV0ScrapeOptions(
         (pageOptions.includeRawHtml ?? false) ? ("rawHtml" as const) : null,
         (pageOptions.screenshot ?? false) ? ("screenshot" as const) : null,
         (pageOptions.fullPageScreenshot ?? false)
-          ? ("screenshot@fullPage" as const)
+          ? ({ type: "screenshot" as const, fullPage: true })
           : null,
         extractorOptions !== undefined &&
           extractorOptions.mode.includes("llm-extraction")
@@ -1184,6 +1197,8 @@ export function fromV1ScrapeOptions(
             prompt: opts?.prompt,
           };
           return fmt;
+        } else if (x === "screenshot@fullPage") {
+          return { type: "screenshot" as const, fullPage: true };
         } else {
           return x;
         }
@@ -1309,20 +1324,36 @@ export const searchRequestSchema = z
     __searchPreviewToken: z.string().optional(),
     scrapeOptions: baseScrapeOptions
       .extend({
-        formats: z
-          .array(
-            z.enum([
-              "markdown",
-              "html",
-              "rawHtml",
-              "links",
-              "screenshot",
-              "screenshot@fullPage",
-              "extract",
-              "json",
-            ]),
-          )
-          .default([]),
+        formats: z.preprocess(
+          (val) => {
+            if (!Array.isArray(val)) return val;
+            return val.map(format => {
+              if (typeof format === 'string') {
+                return { type: format };
+              }
+              return format;
+            });
+          },
+          z
+            .union([
+              z.object({ type: z.literal("markdown") }),
+              z.object({ type: z.literal("html") }),
+              z.object({ type: z.literal("rawHtml") }),
+              z.object({ type: z.literal("links") }),
+              z.object({ type: z.literal("summary") }),
+              jsonFormatWithOptions,
+              screenshotFormatWithOptions,
+            ])
+            .array()
+            .optional()
+            .default([])
+        )
+          .refine(
+            (x) => {
+              return x.filter(f => f.type === "screenshot").length <= 1;
+            },
+            "You may only specify one screenshot format",
+          ),
       })
       .default({}),
   })

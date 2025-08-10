@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
+import { hasFormatOfType } from "../../lib/format-utils";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -124,7 +125,7 @@ export async function scrapeController(
 
   await getScrapeQueue().remove(jobId);
   
-  if (!req.body.formats.includes("rawHtml")) {
+  if (!hasFormatOfType(req.body.formats, "rawHtml")) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
     }

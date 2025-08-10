@@ -29,6 +29,7 @@ import {
 import { addScrapeJob, addScrapeJobs } from "../queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { Document, scrapeOptions, TeamFlags } from "../../controllers/v2/types";
+import { hasFormatOfType } from "../../lib/format-utils";
 import { getACUCTeam } from "../../controllers/auth";
 import { callWebhook } from "../webhook";
 import { CustomError } from "../../lib/custom-error";
@@ -185,7 +186,7 @@ async function processJob(job: Job & { id: string }) {
 
         const rawHtml = doc.rawHtml ?? "";
 
-        if (!job.data.scrapeOptions.formats.includes("rawHtml")) {
+        if (!hasFormatOfType(job.data.scrapeOptions.formats, "rawHtml")) {
             delete doc.rawHtml;
         }
 

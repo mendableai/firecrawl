@@ -28,6 +28,7 @@ import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
+import { hasFormatOfType, hasAnyFormatOfTypes } from "../../../../lib/format-utils";
 import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
 
 // This function does not take `Meta` on purpose. It may not access any
@@ -205,16 +206,13 @@ export async function scrapeURLWithFireEngineChromeCDP(
     ...(meta.options.actions ?? []),
 
     // Transform screenshot format into an action (unsupported by chrome-cdp)
-    ...(meta.options.formats.includes("screenshot") ||
-    meta.options.formats.includes("screenshot@fullPage") ||
-    meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")
+    ...(hasFormatOfType(meta.options.formats, "screenshot")
       ? [
           {
             type: "screenshot" as const,
-            fullPage: meta.options.formats.includes("screenshot@fullPage") || 
-                     meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.fullPage || false,
-            ...(meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.viewport ? 
-              { viewport: meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.viewport } : {}),
+            fullPage: hasFormatOfType(meta.options.formats, "screenshot")?.fullPage || false,
+            ...(hasFormatOfType(meta.options.formats, "screenshot")?.viewport ? 
+              { viewport: hasFormatOfType(meta.options.formats, "screenshot")!.viewport } : {}),
           },
         ]
       : []),
@@ -290,11 +288,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     true,
   );
 
-  if (
-    meta.options.formats.includes("screenshot") ||
-    meta.options.formats.includes("screenshot@fullPage") ||
-    meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")
-  ) {
+  if (hasFormatOfType(meta.options.formats, "screenshot")) {
     // meta.logger.debug(
     //   "Transforming screenshots from actions into screenshot field",
     //   { screenshots: response.screenshots },
@@ -358,10 +352,8 @@ export async function scrapeURLWithFireEnginePlaywright(
 
     headers: meta.options.headers,
     priority: meta.internalOptions.priority,
-    screenshot: meta.options.formats.includes("screenshot") || 
-               !!meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot"),
-    fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage") || 
-                       meta.options.formats.find(x => typeof x === "object" && x.type === "screenshot")?.fullPage,
+    screenshot: hasFormatOfType(meta.options.formats, "screenshot") !== undefined,
+    fullPageScreenshot: hasFormatOfType(meta.options.formats, "screenshot")?.fullPage,
     wait: meta.options.waitFor,
     geolocation: meta.options.location,
     blockAds: meta.options.blockAds,

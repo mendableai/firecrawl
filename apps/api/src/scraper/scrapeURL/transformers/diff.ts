@@ -5,9 +5,10 @@ import { getJob } from "../../../controllers/v1/crawl-status";
 import gitDiff from 'git-diff';
 import parseDiff from 'parse-diff';
 import { generateCompletions } from "./llmExtract";
+import { hasFormatOfType } from "../../../lib/format-utils";
 
 async function extractDataWithSchema(content: string, meta: Meta): Promise<{ extract: any } | null> {
-    const changeTrackingFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking")!;
+    const changeTrackingFormat = hasFormatOfType(meta.options.formats, "changeTracking")!;
 
     try {
         const { extract } = await generateCompletions({
@@ -15,7 +16,7 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<{ ext
                 method: "extractDataWithSchema/generateCompletions",
             }),
             options: {
-                schema: changeTrackingFormat.schema,
+                schema: changeTrackingFormat?.schema as any,
                 systemPrompt: "Extract the requested information from the content based on the provided schema.",
                 temperature: 0
             },
@@ -59,10 +60,9 @@ function compareExtractedData(previousData: any, currentData: any): any {
 }
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
-  const changeTrackingFormat = meta.options.formats.find(x => typeof x === "object" && x.type === "changeTracking");
-  const changeTrackingSimple = meta.options.formats.includes("changeTracking");
+  const changeTrackingFormat = hasFormatOfType(meta.options.formats, "changeTracking");
 
-  if (changeTrackingFormat || changeTrackingSimple) {
+  if (changeTrackingFormat) {
     if (meta.internalOptions.zeroDataRetention) {
         document.warning = "Change tracking is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
         return document;
@@ -70,7 +70,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
     
     const start = Date.now();
     const res = await supabase_service
-        .rpc("diff_get_last_scrape_4", {
+        .rpc("diff_get_last_scrape_5", {
             i_team_id: meta.internalOptions.teamId,
             i_url: document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url,
             i_tag: changeTrackingFormat?.tag ?? null,
@@ -157,10 +157,10 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
         
         if (changeTrackingFormat?.modes?.includes("json") && changeStatus === "changed") {
             try {
-                const previousData = changeTrackingFormat.schema ? 
+                const previousData = changeTrackingFormat?.schema ? 
                     await extractDataWithSchema(previousMarkdown, meta) : null;
                 
-                const currentData = changeTrackingFormat.schema ? 
+                const currentData = changeTrackingFormat?.schema ? 
                     await extractDataWithSchema(currentMarkdown, meta) : null;
                 
                 if (previousData && currentData) {
@@ -172,8 +172,8 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                         }),
                         options: {
                             systemPrompt: "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
-                            schema: changeTrackingFormat.schema,
-                            prompt: changeTrackingFormat.prompt,
+                            schema: changeTrackingFormat?.schema,
+                            prompt: changeTrackingFormat?.prompt,
                             temperature: 0
                         },
                         markdown: `Previous Content:\n${previousMarkdown}\n\nCurrent Content:\n${currentMarkdown}`,
