@@ -28,6 +28,11 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<{ ext
                     method: "extractDataWithSchema",
                 },
             },
+            metadata: {
+                teamId: meta.internalOptions.teamId,
+                functionId: "deriveDiff/extractDataWithSchema",
+                scrapeId: meta.id,
+            },
         });
         return { extract };
     } catch (error) {
@@ -184,6 +189,11 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                                 module: "diff",
                                 method: "deriveDiff",
                             },
+                        },
+                        metadata: {
+                            teamId: meta.internalOptions.teamId,
+                            functionId: "deriveDiff",
+                            scrapeId: meta.id,
                         },
                     });
 

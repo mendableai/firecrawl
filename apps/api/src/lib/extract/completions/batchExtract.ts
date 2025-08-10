@@ -25,6 +25,7 @@ type BatchExtractOptions = {
   extractId?: string;
   sessionId?: string;
   costTracking: CostTracking;
+  metadata: { teamId: string, functionId?: string, extractId?: string, scrapeId?: string };
 };
 
 /**
@@ -56,7 +57,9 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
     doc,
     useAgent,
     extractId,
-    sessionId } = options;
+    sessionId,
+    metadata,
+  } = options;
 
   const generationOptions: GenerateCompletionsOptions = {
     logger: logger.child({
@@ -82,6 +85,10 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
         method: "batchExtractPromise",
       },
     },
+    metadata: {
+      ...metadata,
+      functionId: metadata.functionId ? (metadata.functionId + "/batchExtractPromise") : "batchExtractPromise",
+    },
   };
 
   let extractedDataArray: any[] = [];
@@ -97,6 +104,10 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
       useAgent,
       extractId,
       sessionId,
+      metadata: {
+        ...metadata,
+        functionId: metadata.functionId ? (metadata.functionId + "/batchExtractPromise") : "batchExtractPromise",
+      },
     });
     extractedDataArray = e;
     warning = w;

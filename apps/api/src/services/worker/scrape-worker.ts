@@ -46,6 +46,9 @@ import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { getBillingQueue } from "../queue-service";
 import type { Logger } from "winston";
 import { finishCrawlIfNeeded } from "./crawl-logic";
+import { LangfuseExporter } from "langfuse-vercel";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 
 class RacedRedirectError extends Error {
     constructor() {
@@ -847,4 +850,26 @@ export const processJobInternal = async (job: Job & { id: string }) => {
     }
 };
 
+const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+    traceExporter: new LangfuseExporter(),
+    instrumentations: [getNodeAutoInstrumentations()],
+}) : null;
+    
+if (langfuseOtel) {   
+    langfuseOtel.start();
+}
+
 module.exports = processJobInternal;
+
+const exitHandler = () => {
+    if (langfuseOtel) {
+        langfuseOtel.shutdown().then(() => {
+            _logger.debug("Langfuse OTEL shutdown");
+            process.exit(0);
+        });
+    }
+}
+
+process.on("SIGINT", exitHandler);
+process.on("SIGTERM", exitHandler);
+process.on("exit", exitHandler);

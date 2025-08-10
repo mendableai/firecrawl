@@ -42,6 +42,9 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { redisEvictConnection } from "./redis";
 import path from "path";
 import { finishCrawlIfNeeded } from "./worker/crawl-logic";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { LangfuseExporter } from "langfuse-vercel";
 
 configDotenv();
 
@@ -63,6 +66,18 @@ const runningJobs: Set<string> = new Set();
 // Install cacheable lookup for all other requests
 cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
+
+const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
+  traceExporter: new LangfuseExporter(),
+  instrumentations: [getNodeAutoInstrumentations({
+    '@opentelemetry/instrumentation-undici': { enabled: false },
+    '@opentelemetry/instrumentation-http': { enabled: false },
+  })],
+}) : null;
+
+if (langfuseOtel) {
+  langfuseOtel.start();
+}
 
 const processExtractJobInternal = async (
   token: string,
@@ -330,14 +345,37 @@ process.on("SIGTERM", () => {
 
 let cantAcceptConnectionCount = 0;
 
-const separateWorkerFun = (queue: Queue, path: string): Worker => {
+const separateWorkerFun = (
+  queue: Queue,
+  path: string,
+): Worker => {
+  // Extract memory size from --max-old-space-size flag if present
+  const maxOldSpaceSize = process.env.SCRAPE_WORKER_MAX_OLD_SPACE_SIZE || process.execArgv
+    .find(arg => arg.startsWith('--max-old-space-size='))
+    ?.split('=')[1];
+  
+  // Filter out the invalid flag for worker threads
+  const filteredExecArgv = process.execArgv
+    .filter(arg => !arg.startsWith('--max-old-space-size'));
+
   const worker = new Worker(queue.name, path, {
     connection: createRedisConnection(),
-    lockDuration: 30 * 1000, // 30 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
+    lockDuration: 60 * 1000, // 60 seconds
+    stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
-    concurrency: 6, // from k8s setup
-    useWorkerThreads: true,
+    concurrency: 8,
+    useWorkerThreads: false,
+    workerForkOptions: {
+      execArgv: filteredExecArgv.concat(maxOldSpaceSize ? (
+        ['--max-old-space-size=' + maxOldSpaceSize]
+      ) : []),
+    },
+    workerThreadsOptions: {
+      execArgv: filteredExecArgv,
+      resourceLimits: maxOldSpaceSize ? {
+        maxOldGenerationSizeMb: parseInt(maxOldSpaceSize)
+      } : undefined
+    }
   });
 
   return worker;
@@ -351,8 +389,8 @@ const workerFun = async (
 
   const worker = new Worker(queue.name, null, {
     connection: redisConnection,
-    lockDuration: 30 * 1000, // 30 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
+    lockDuration: 60 * 1000, // 60 seconds
+    stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
   });
 
@@ -423,38 +461,33 @@ const app = Express();
 let currentLiveness: boolean = true;
 
 app.get("/liveness", (req, res) => {
-  // stalled check
-  if (isWorkerStalled) {
-    currentLiveness = false;
-    res.status(500).json({ ok: false });
+  _logger.info("Liveness endpoint hit");
+  if (process.env.USE_DB_AUTHENTICATION === "true") {
+    // networking check for Kubernetes environments
+    const host = process.env.FIRECRAWL_APP_HOST || "firecrawl-app-service";
+    const port = process.env.FIRECRAWL_APP_PORT || "3002";
+    const scheme = process.env.FIRECRAWL_APP_SCHEME || "http";
+    
+    robustFetch({
+      url: `${scheme}://${host}:${port}`,
+      method: "GET",
+      mock: null,
+      logger: _logger,
+      abort: AbortSignal.timeout(5000),
+      ignoreResponse: true,
+      useCacheableLookup: false,
+    })
+      .then(() => {
+        currentLiveness = true;
+        res.status(200).json({ ok: true });
+      }).catch(e => {
+        _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
+        currentLiveness = false;
+        res.status(500).json({ ok: false });
+      });
   } else {
-    if (process.env.USE_DB_AUTHENTICATION === "true") {
-      // networking check for Kubernetes environments
-      const host = process.env.FIRECRAWL_APP_HOST || "firecrawl-app-service";
-      const port = process.env.FIRECRAWL_APP_PORT || "3002";
-      const scheme = process.env.FIRECRAWL_APP_SCHEME || "http";
-
-      robustFetch({
-        url: `${scheme}://${host}:${port}`,
-        method: "GET",
-        mock: null,
-        logger: _logger,
-        abort: AbortSignal.timeout(5000),
-        ignoreResponse: true,
-      })
-        .then(() => {
-          currentLiveness = true;
-          res.status(200).json({ ok: true });
-        })
-        .catch((e) => {
-          _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
-          currentLiveness = false;
-          res.status(500).json({ ok: false });
-        });
-    } else {
-      currentLiveness = true;
-      res.status(200).json({ ok: true });
-    }
+    currentLiveness = true;
+    res.status(200).json({ ok: true });
   }
 });
 
@@ -557,5 +590,8 @@ app.listen(workerPort, () => {
 
   await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
+  if (langfuseOtel) {
+    await langfuseOtel.shutdown();
+  }
   process.exit(0);
 })();

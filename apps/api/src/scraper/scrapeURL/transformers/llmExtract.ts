@@ -15,8 +15,8 @@ import {
   generateText,
   LanguageModel,
   NoObjectGeneratedError,
+  jsonSchema,
 } from "ai";
-import { jsonSchema } from "ai";
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
 import fs from "fs/promises";
@@ -241,6 +241,7 @@ export type GenerateCompletionsOptions = {
     costTracking: CostTracking;
     metadata: Record<string, any>;
   };
+  metadata: { teamId: string, functionId?: string, extractId?: string, scrapeId?: string, deepResearchId?: string, llmsTxtId?: string };
 };
 export async function generateCompletions({
   logger,
@@ -253,6 +254,7 @@ export async function generateCompletions({
   providerOptions,
   retryModel = getModel("claude-3-5-sonnet-20240620", "anthropic"),
   costTrackingOptions,
+  metadata,
 }: GenerateCompletionsOptions): Promise<{
   extract: any;
   numTokens: number;
@@ -284,6 +286,27 @@ export async function generateCompletions({
           providerOptions: {
             anthropic: {
               thinking: { type: "enabled", budgetTokens: 12000 },
+            },
+            google: {
+              labels: {
+                teamId: metadata.teamId,
+                functionId: metadata.functionId ?? "unspecified",
+                extractId: metadata.extractId ?? "unspecified",
+                scrapeId: metadata.scrapeId ?? "unspecified",
+                deepResearchId: metadata.deepResearchId ?? "unspecified",
+                llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+              }
+            }
+          },
+          experimental_telemetry: {
+            isEnabled: true,
+            functionId: metadata.functionId ? (metadata.functionId + "/generateText") : "generateText",
+            metadata: {
+              teamId: metadata.teamId,
+              ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+              ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+              ...(metadata.deepResearchId ? { langfuseTraceId: "deepResearch:" + metadata.deepResearchId, deepResearchId: metadata.deepResearchId } : {}),
+              ...(metadata.llmsTxtId ? { langfuseTraceId: "llmsTxt:" + metadata.llmsTxtId, llmsTxtId: metadata.llmsTxtId } : {}),
             },
           },
         });
@@ -339,6 +362,27 @@ export async function generateCompletions({
                 anthropic: {
                   thinking: { type: "enabled", budgetTokens: 12000 },
                 },
+                google: {
+                  labels: {
+                    teamId: metadata.teamId,
+                    functionId: metadata.functionId ?? "unspecified",
+                    extractId: metadata.extractId ?? "unspecified",
+                    scrapeId: metadata.scrapeId ?? "unspecified",
+                    deepResearchId: metadata.deepResearchId ?? "unspecified",
+                    llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+                  }
+                }
+              },
+              experimental_telemetry: {
+                isEnabled: true,
+                functionId: metadata.functionId ? (metadata.functionId + "/generateText") : "generateText",
+                metadata: {
+                  teamId: metadata.teamId,
+                  ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+                  ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+                  ...(metadata.deepResearchId ? { langfuseTraceId: "deepResearch:" + metadata.deepResearchId, deepResearchId: metadata.deepResearchId } : {}),
+                  ...(metadata.llmsTxtId ? { langfuseTraceId: "llmsTxt:" + metadata.llmsTxtId, llmsTxtId: metadata.llmsTxtId } : {}),
+                }
               },
             });
 
@@ -455,6 +499,27 @@ export async function generateCompletions({
               anthropic: {
                 thinking: { type: "enabled", budgetTokens: 12000 },
               },
+              google: {
+                labels: {
+                  teamId: metadata.teamId,
+                  functionId: metadata.functionId ?? "unspecified",
+                  extractId: metadata.extractId ?? "unspecified",
+                  scrapeId: metadata.scrapeId ?? "unspecified",
+                  deepResearchId: metadata.deepResearchId ?? "unspecified",
+                  llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+                }
+              }
+            },
+            experimental_telemetry: {
+              isEnabled: true,
+              functionId: metadata.functionId ? (metadata.functionId + "/repairText") : "repairText",
+              metadata: {
+                teamId: metadata.teamId,
+                ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+                ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+                ...(metadata.deepResearchId ? { langfuseTraceId: "deepResearch:" + metadata.deepResearchId, deepResearchId: metadata.deepResearchId } : {}),
+                ...(metadata.llmsTxtId ? { langfuseTraceId: "llmsTxt:" + metadata.llmsTxtId, llmsTxtId: metadata.llmsTxtId } : {}),
+              },
             },
           });
 
@@ -488,7 +553,21 @@ export async function generateCompletions({
     const generateObjectConfig = {
       model: currentModel,
       prompt: prompt,
-      providerOptions: providerOptions || undefined,
+      providerOptions: {
+        ...(providerOptions || {}),
+        google: {
+          ...((providerOptions as any)?.vertex || {}),
+          labels: {
+            ...((providerOptions as any)?.vertex?.labels || {}),
+            teamId: metadata.teamId,
+            functionId: metadata.functionId ?? "unspecified",
+            extractId: metadata.extractId ?? "unspecified",
+            scrapeId: metadata.scrapeId ?? "unspecified",
+            deepResearchId: metadata.deepResearchId ?? "unspecified",
+            llmsTxtId: metadata.llmsTxtId ?? "unspecified",
+          }
+        }
+      },
       system: options.systemPrompt,
       ...(schema && {
         schema: schema instanceof z.ZodType ? schema : jsonSchema(schema),
@@ -501,6 +580,17 @@ export async function generateCompletions({
           console.error(error);
         },
       }),
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: metadata.functionId,
+        metadata: {
+          teamId: metadata.teamId,
+          ...(metadata.extractId ? { langfuseTraceId: "extract:" + metadata.extractId, extractId: metadata.extractId } : {}),
+          ...(metadata.scrapeId ? { langfuseTraceId: "scrape:" + metadata.scrapeId, scrapeId: metadata.scrapeId } : {}),
+          ...(metadata.deepResearchId ? { langfuseTraceId: "deepResearch:" + metadata.deepResearchId, deepResearchId: metadata.deepResearchId } : {}),
+          ...(metadata.llmsTxtId ? { langfuseTraceId: "llmsTxt:" + metadata.llmsTxtId, llmsTxtId: metadata.llmsTxtId } : {}),
+        }
+      }
     } satisfies Parameters<typeof generateObject>[0];
 
     // const now = new Date().getTime();
@@ -708,6 +798,11 @@ export async function performLLMExtract(
           method: "performLLMExtract",
         },
       },
+      metadata: {
+        teamId: meta.internalOptions.teamId,
+        functionId: "performLLMExtract",
+        scrapeId: meta.id,
+      },
     };
 
     const { extractedDataArray, warning, costLimitExceededTokenUsage } =
@@ -716,6 +811,10 @@ export async function performLLMExtract(
         urls: [meta.rewrittenUrl ?? meta.url],
         useAgent: isAgentExtractModelValid(meta.internalOptions.v1JSONAgent?.model),
         scrapeId: meta.id,
+        metadata: {
+          teamId: meta.internalOptions.teamId,
+          functionId: "performLLMExtract",
+        },
       });
 
     if (warning) {
@@ -934,6 +1033,7 @@ export async function generateSchemaFromPrompt(
   prompt: string,
   logger: Logger,
   costTracking: CostTracking,
+  metadata: { teamId: string, functionId?: string, extractId?: string, scrapeId?: string },
 ): Promise<{ extract: any }> {
   const model = getModel("gpt-4o", "openai");
   const retryModel = getModel("gpt-4o-mini", "openai");
@@ -984,6 +1084,10 @@ Return a valid JSON schema object with properties that would capture the informa
             module: "scrapeURL",
             method: "generateSchemaFromPrompt",
           },
+        },
+        metadata: {
+          ...metadata,
+          functionId: metadata.functionId ? (metadata.functionId + "/generateSchemaFromPrompt") : "generateSchemaFromPrompt",
         },
       });
 

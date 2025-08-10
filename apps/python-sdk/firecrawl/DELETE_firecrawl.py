@@ -479,6 +479,7 @@ class FirecrawlApp:
             max_age: Optional[int] = None,
             store_in_cache: Optional[bool] = None,
             zero_data_retention: Optional[bool] = None,
+            agent: Optional[AgentOptions] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
@@ -503,6 +504,7 @@ class FirecrawlApp:
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
           change_tracking_options (Optional[ChangeTrackingOptions]): Change tracking settings
           zero_data_retention (Optional[bool]): Whether to delete data after scrape is done
+          agent (Optional[AgentOptions]): Agent configuration for FIRE-1 model
 
 
         Returns:
@@ -575,6 +577,8 @@ class FirecrawlApp:
             scrape_params['storeInCache'] = store_in_cache
         if zero_data_retention is not None:
             scrape_params['zeroDataRetention'] = zero_data_retention
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
         
         scrape_params.update(kwargs)
 
@@ -2608,7 +2612,7 @@ class FirecrawlApp:
         method_params = {
             "scrape_url": {"formats", "include_tags", "exclude_tags", "only_main_content", "wait_for", 
                           "timeout", "location", "mobile", "skip_tls_verification", "remove_base64_images",
-                          "block_ads", "proxy", "extract", "json_options", "actions", "change_tracking_options", "max_age", "integration"},
+                          "block_ads", "proxy", "extract", "json_options", "actions", "change_tracking_options", "max_age", "agent", "integration"},
             "search": {"limit", "tbs", "filter", "lang", "country", "location", "timeout", "scrape_options", "integration"},
             "crawl_url": {"include_paths", "exclude_paths", "max_depth", "max_discovery_depth", "limit",
                          "allow_backward_links", "allow_external_links", "ignore_sitemap", "scrape_options",
@@ -2994,6 +2998,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
+            agent: Optional[AgentOptions] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape a single URL asynchronously.
@@ -3016,6 +3021,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
+          agent (Optional[AgentOptions]): Agent configuration for FIRE-1 model
           **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3085,6 +3091,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(by_alias=True, exclude_none=True)
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
         if 'extract' in scrape_params and scrape_params['extract'] and 'schema' in scrape_params['extract']:
             scrape_params['extract']['schema'] = self._ensure_schema_dict(scrape_params['extract']['schema'])
         if 'jsonOptions' in scrape_params and scrape_params['jsonOptions'] and 'schema' in scrape_params['jsonOptions']:

@@ -154,6 +154,7 @@ export class ResearchLLMService {
     topic: string,
     findings: DeepResearchFinding[] = [],
     costTracking: CostTracking,
+    metadata: { teamId: string, functionId?: string, deepResearchId?: string },
   ): Promise<{ query: string; researchGoal: string }[]> {
     const { extract } = await generateCompletions({
       logger: this.logger.child({
@@ -202,6 +203,10 @@ export class ResearchLLMService {
           method: "generateSearchQueries",
         },
       },
+      metadata: {
+        ...metadata,
+        functionId: metadata.functionId ? (metadata.functionId + "/generateSearchQueries") : "generateSearchQueries",
+      },
     });
 
     return extract.queries;
@@ -213,6 +218,7 @@ export class ResearchLLMService {
     timeRemaining: number,
     systemPrompt: string,
     costTracking: CostTracking,
+    metadata: { teamId: string, functionId?: string, deepResearchId?: string },
   ): Promise<AnalysisResult | null> {
     try {
       const timeRemainingMinutes =
@@ -261,6 +267,10 @@ export class ResearchLLMService {
             method: "analyzeAndPlan",
           },
         },
+        metadata: {
+          ...metadata,
+          functionId: metadata.functionId ? (metadata.functionId + "/analyzeAndPlan") : "analyzeAndPlan",
+        },
       });
 
       return extract.analysis;
@@ -276,6 +286,7 @@ export class ResearchLLMService {
     summaries: string[],
     analysisPrompt: string,
     costTracking: CostTracking,
+    metadata: { teamId: string, functionId?: string, deepResearchId?: string },
     formats?: string[],
     jsonOptions?: ExtractOptions,
   ): Promise<any> {
@@ -334,6 +345,10 @@ export class ResearchLLMService {
           module: "deep-research",
           method: "generateFinalAnalysis",
         },
+      },
+      metadata: {
+        ...metadata,
+        functionId: metadata.functionId ? (metadata.functionId + "/generateFinalAnalysis") : "generateFinalAnalysis",
       },
     });
 

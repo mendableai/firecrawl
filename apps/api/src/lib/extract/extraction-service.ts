@@ -38,6 +38,8 @@ import { search } from "../../search";
 import { buildRephraseToSerpPrompt } from "./build-prompts";
 import { getACUCTeam } from "../../controllers/auth";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
+import { langfuse } from "../../services/langfuse";
+
 interface ExtractServiceOptions {
   request: ExtractRequest;
   teamId: string;
@@ -149,6 +151,16 @@ export async function performExtraction(
     teamId,
   });
 
+  langfuse.trace({
+    id: "extract:" + extractId,
+    name: "performExtraction",
+    metadata: {
+      teamId,
+      extractId,
+      model: "fire-1",
+    },
+  });
+
   try {
 
     // If no URLs are provided, generate URLs from the prompt
@@ -159,6 +171,7 @@ export async function performExtraction(
       const rephrasedPrompt = await generateBasicCompletion(
         buildRephraseToSerpPrompt(request.prompt),
         costTracking,
+        { teamId, extractId },
       );
       let rptxt = rephrasedPrompt?.text.replace('"', "").replace("'", "") || "";
       const searchResults = await search({
@@ -244,7 +257,11 @@ export async function performExtraction(
 
     let reqSchema = request.schema;
     if (!reqSchema && request.prompt) {
-      const schemaGenRes = await generateSchemaFromPrompt(request.prompt, logger, costTracking);
+      const schemaGenRes = await generateSchemaFromPrompt(request.prompt, logger, costTracking, {
+        teamId,
+        functionId: "performExtraction/generateRequestSchema",
+        extractId,
+      });
       reqSchema = schemaGenRes.extract;
 
 
@@ -277,7 +294,11 @@ export async function performExtraction(
       reasoning,
       keyIndicators,
       tokenUsage: schemaAnalysisTokenUsage,
-    } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "", logger, costTracking);
+    } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "", logger, costTracking, {
+      teamId,
+      functionId: "performExtraction",
+      extractId,
+    });
 
     logger.debug("Analyzed schema.", {
       isMultiEntity,
@@ -310,6 +331,7 @@ export async function performExtraction(
           reasoning,
           multiEntityKeys,
           keyIndicators,
+          extractId,
         },
         urlTraces,
         (links: string[]) => {
@@ -510,6 +532,11 @@ export async function performExtraction(
               extractId,
               sessionId,
               costTracking,
+              metadata: {
+                teamId,
+                functionId: "performExtraction/multiEntity",
+                extractId,
+              },
             }, logger);
 
             // Race between timeout and completion
@@ -885,6 +912,11 @@ export async function performExtraction(
         extractId,
         sessionId: thisSessionId,
         costTracking,
+        metadata: {
+          teamId,
+          functionId: "performExtraction",
+          extractId,
+        },
       });
       logger.debug("Done generating singleAnswer completions.");
 

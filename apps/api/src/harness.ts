@@ -88,11 +88,11 @@ function execForward(fancyName: string, command: string): Promise<void> {
         })(),
     ]);
 
-    console.log("=== Starting API and Worker...");
+    console.log("=== Starting API, Worker, and Index Worker...");
 
     const api = execForward("api", "pnpm start:production:nobuild");
     const worker = execForward("worker", "pnpm worker:production");
-    const indexWorker = execForward("indexWorker", "pnpm index-worker:production");
+    const indexWorker = execForward("index-worker", "pnpm index-worker:production");
 
     try {
         await Promise.race([
@@ -111,7 +111,7 @@ function execForward(fancyName: string, command: string): Promise<void> {
             indexWorker,
         ]);
     } finally {
-        console.log("=== Tearing down API and Worker...");
+        console.log("=== Tearing down API, Worker, and Index Worker...");
         exec("pkill -f 'queue-worker.js'");
         exec("pkill -f 'index.js'");
         exec("pkill -f 'index-worker.js'");

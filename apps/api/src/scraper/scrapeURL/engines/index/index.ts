@@ -12,6 +12,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
         && !meta.internalOptions.zeroDataRetention
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
+        && !(meta.winnerEngine === "pdf" && meta.options.parsePDF === false)
         && (
             meta.internalOptions.teamId === "sitemap"
             || (
@@ -205,6 +206,25 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
     const doc = await getIndexFromGCS(id + ".json", meta.logger.child({ module: "index", method: "getIndexFromGCS" }));
     if (!doc) {
         throw new EngineError("Document not found in GCS");
+    }
+    
+    // Check if the cached content is a PDF base64 (starts with JVBERi)
+    const isCachedPdfBase64 = doc.html && doc.html.startsWith("JVBERi");
+    
+    // If the cached content is base64 PDF but we want parsed PDF (parsePDF:true or default)
+    if (isCachedPdfBase64 && meta.options.parsePDF !== false) {
+        // Cached content is unparsed PDF, but we want parsed - report cache miss
+        throw new IndexMissError();
+    }
+    
+    // If the cached content is NOT base64 PDF but we want unparsed PDF (parsePDF:false)
+    if (!isCachedPdfBase64 && meta.options.parsePDF === false) {
+        // Check if URL looks like a PDF
+        const isPdfUrl = meta.url.toLowerCase().endsWith(".pdf") || meta.url.includes(".pdf?");
+        if (isPdfUrl) {
+            // This is likely a parsed PDF cached, but we want unparsed - report cache miss
+            throw new IndexMissError();
+        }
     }
     
     return {

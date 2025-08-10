@@ -2,7 +2,6 @@ import type { Socket } from "net";
 import type { TLSSocket } from "tls";
 import * as undici from "undici";
 import { Address6 } from "ip-address";
-import { cacheableLookup } from "../../lib/cacheableLookup";
 import { CookieJar } from "tough-cookie";
 import { cookie } from "http-cookie-agent/undici";
 
@@ -43,13 +42,10 @@ function isIPv6Private(ipv6) {
 }
 
 export function makeSecureDispatcher(
-  url: string,
   skipTlsVerification: boolean = false,
-  options?: undici.Agent.Options,
 ) {
   const agentOpts: undici.Agent.Options = {
     maxRedirections: 5000,
-    ...options,
   };
 
   const baseAgent = process.env.PROXY_SERVER
@@ -95,3 +91,6 @@ export function makeSecureDispatcher(
 
   return agent;
 }
+
+export const secureDispatcher = makeSecureDispatcher(false);
+export const secureDispatcherSkipTlsVerification = makeSecureDispatcher(true);

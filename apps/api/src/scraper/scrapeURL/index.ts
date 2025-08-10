@@ -36,6 +36,7 @@ import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
+import { robustFetch } from "./lib/fetch";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 import { checkRobotsTxt } from "../../lib/robots-txt";
 
@@ -250,6 +251,7 @@ export type EngineResultsTracker = {
       }
     | {
         state: "timeout";
+        error: any;
       }
   ) & {
     startedAt: number;
@@ -390,6 +392,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           state: "timeout",
           startedAt,
           finishedAt: Date.now(),
+          error: safeguardCircularError(error),
         };
       } else if (
         error instanceof AddFeatureError ||
@@ -449,6 +452,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   }
 
   if (result === null) {
+    if (meta.results["pdf"]?.state === "timeout") {
+      throw meta.results["pdf"].error ?? new TimeoutSignal();
+    }
     if (Object.values(meta.results).every(x => x.state === "timeout")) {
       throw new TimeoutSignal();
     } else {
@@ -595,6 +601,49 @@ export async function scrapeURL(
       storeInCache: meta.options.storeInCache,
       zeroDataRetention: meta.internalOptions.zeroDataRetention,
     });
+  }
+
+  // Global A/B test: mirror request to staging /v1/scrape based on SCRAPEURL_AB_RATE
+  try {
+    const abRateEnv = process.env.SCRAPEURL_AB_RATE;
+    const abHostEnv = process.env.SCRAPEURL_AB_HOST;
+    const abRate = abRateEnv !== undefined ? Math.max(0, Math.min(1, Number(abRateEnv))) : 0;
+    const shouldABTest = !meta.internalOptions.zeroDataRetention
+      && abRate > 0
+      && Math.random() <= abRate
+      && abHostEnv
+      && meta.options.agent === undefined
+      && (meta.options.extract || meta.options.jsonOptions)?.agent === undefined;
+    if (shouldABTest) {
+      (async () => {
+        try {
+          const abLogger = meta.logger.child({ method: "scrapeURL/abTestToStaging" });
+          abLogger.info("A/B-testing scrapeURL to staging");
+          const abort = AbortSignal.timeout(Math.min(60000, (meta.options.timeout ?? 30000) + 10000));
+          await robustFetch({
+            url: `http://${abHostEnv}/v1/scrape`,
+            method: "POST",
+            body: {
+              url: meta.url,
+              ...meta.options,
+              origin: (meta.options as any).origin ?? "api",
+              timeout: meta.options.timeout ?? 30000,
+              maxAge: 1000000000,
+            },
+            logger: abLogger,
+            tryCount: 1,
+            ignoreResponse: true,
+            mock: null,
+            abort,
+          });
+          abLogger.info("A/B-testing scrapeURL (staging) request sent");
+        } catch (error) {
+          meta.logger.warn("A/B-testing scrapeURL (staging) failed", { error });
+        }
+      })();
+    }
+  } catch (error) {
+    meta.logger.warn("Failed to initiate A/B test to staging", { error });
   }
 
   try {

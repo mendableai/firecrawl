@@ -2,7 +2,7 @@ import { InternalOptions } from "../scraper/scrapeURL";
 import { ScrapeOptions, TeamFlags } from "../controllers/v2/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisEvictConnection } from "../services/redis";
-import { logger as _logger } from "./logger";
+import { logger as _logger, logger } from "./logger";
 import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
 import type { Logger } from "winston";
 
@@ -223,6 +223,19 @@ export function normalizeURL(url: string, sc: StoredCrawl): string {
   return urlO.href;
 }
 
+// For this function and the infrastructure surrounding it to work correctly, this function must:
+// 1. Return the a non-zero number of permutations for all valid URLs.
+//    generateURLPermutations(url).length > 0
+// 2. The generated permutations of the returned array's members must be the same as the original generated permutations.
+//    generateURLPermutations(url) == generateURLPermutations(generateURLPermutations(url)[n])
+//    Obviously this is not valid in JS, but you get the idea.
+// 3. Two generated permutations of signficantly different URLs may not have any overlap.
+//    In practice, this means that if there is a generated array of permutations, there must be no URL that is
+//     1. not included in that array, and
+//     2. has a permutation that is included in that array.
+//
+// Points 1 and 2 are proven in permu-refactor.test.ts, point 3 is not as proving a negative is hard and outside the scope of a web crawler.
+// - mogery
 export function generateURLPermutations(url: string | URL): URL[] {
   const urlO = new URL(url);
 
@@ -302,12 +315,9 @@ export async function lockURL(
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
     res = (await redisEvictConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
   } else {
-    const permutations = generateURLPermutations(url).map((x) => x.href);
-    const x = await redisEvictConnection.sadd(
-      "crawl:" + id + ":visited",
-      ...permutations,
-    );
-    res = x === permutations.length;
+    const permutation = generateURLPermutations(url)[0].href;
+    const x = await redisEvictConnection.sadd("crawl:" + id + ":visited", permutation);
+    res = x !== 0;
   }
 
   await redisEvictConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60);
@@ -353,9 +363,7 @@ export async function lockURLs(
     const x = await redisEvictConnection.sadd("crawl:" + id + ":visited", ...urls);
     res = x === urls.length;
   } else {
-    const allPermutations = urls.flatMap((url) =>
-      generateURLPermutations(url).map((x) => x.href),
-    );
+    const allPermutations = urls.map(url => generateURLPermutations(url)[0].href);
     logger.debug("Adding " + allPermutations.length + " URL permutations...");
     const x = await redisEvictConnection.sadd(
       "crawl:" + id + ":visited",

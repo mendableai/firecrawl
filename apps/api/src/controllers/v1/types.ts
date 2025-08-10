@@ -1445,5 +1445,6 @@ export type GenerateLLMsTextRequest = z.infer<
 export class TimeoutSignal extends Error {
   constructor() {
     super("Operation timed out");
+    this.name = "TimeoutSignal";
   }
 }
