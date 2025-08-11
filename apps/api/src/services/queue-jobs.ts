@@ -316,7 +316,7 @@ export async function addScrapeJobs(
 
 export async function waitForJob(
   _job: Job | string,
-  timeout: number,
+  timeout: number | null,
   logger: Logger = _logger,
 ): Promise<Document> {
     const start = Date.now();
@@ -326,18 +326,18 @@ export async function waitForJob(
       logger.debug("Waiting for job to be created");
       await new Promise(resolve => setTimeout(resolve, 500));
       job = await queue.getJob(_job as string);
-      if (Date.now() - start > timeout) {
+      if (Date.now() - start > (timeout ?? 180000)) {
         throw new Error("Job wait (concurrency limited)");
       }
     }
     let doc: Document = await Promise.race([
-      job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
-      new Promise((resolve, reject) => {
+      job.waitUntilFinished(getScrapeQueueEvents(), timeout ?? 180000),
+      timeout !== null ? new Promise((resolve, reject) => {
         setTimeout(() => {
           reject(new Error("Job wait " + (typeof _job == "string" ? "(was concurrency limited)" : "")));
         }, Math.max(0, timeout - (Date.now() - start)));
-      }),
-    ]);
+      }) : null,
+    ].filter(x => x !== null));
     logger.debug("Got job");
     
     if (!doc) {

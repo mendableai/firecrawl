@@ -1,7 +1,7 @@
 import * as undici from "undici";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { SSLError, TimeoutError } from "../../error";
+import { SSLError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import {
   InsecureConnectionError,
@@ -13,10 +13,7 @@ import { TextDecoder } from "util";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 300000;
-
   const mockOptions = {
     url: meta.rewrittenUrl ?? meta.url,
 
@@ -55,23 +52,12 @@ export async function scrapeURLWithFetch(
     };
   } else {
     try {
-      const x = await Promise.race([
-        undici.fetch(meta.rewrittenUrl ?? meta.url, {
-          dispatcher: meta.options.skipTlsVerification ? secureDispatcherSkipTlsVerification : secureDispatcher,
-          redirect: "follow",
-          headers: meta.options.headers,
-          signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-        }),
-        (async () => {
-          await new Promise((resolve) =>
-            setTimeout(() => resolve(null), timeout),
-          );
-          throw new TimeoutError(
-            "Fetch was unable to scrape the page before timing out",
-            { cause: { timeout } },
-          );
-        })(),
-      ]);
+      const x = await undici.fetch(meta.rewrittenUrl ?? meta.url, {
+        dispatcher: meta.options.skipTlsVerification ? secureDispatcherSkipTlsVerification : secureDispatcher,
+        redirect: "follow",
+        headers: meta.options.headers,
+        signal: meta.abort.asSignal(),
+      });
 
       const buf = Buffer.from(await x.arrayBuffer());
       let text = buf.toString("utf8");

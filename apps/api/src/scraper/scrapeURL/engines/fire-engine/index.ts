@@ -19,7 +19,6 @@ import {
   DNSResolutionError,
   SiteError,
   SSLError,
-  TimeoutError,
   UnsupportedFileError,
   FEPageLoadFailed,
 } from "../../error";
@@ -28,8 +27,9 @@ import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
-import { hasFormatOfType, hasAnyFormatOfTypes } from "../../../../lib/format-utils";
-import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
+import { hasFormatOfType } from "../../../../lib/format-utils";
+import { Action } from "../../../../controllers/v1/types";
+import { AbortManagerThrownError } from "../../lib/abortManager";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -43,7 +43,6 @@ async function performFireEngineScrape<
   meta: Meta,
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
-  timeout: number,
   mock: MockState | null,
   abort?: AbortSignal,
   production = true,
@@ -56,13 +55,11 @@ async function performFireEngineScrape<
     production,
   );
 
-  const startTime = Date.now();
   const errorLimit = 3;
   let errors: any[] = [];
   let status: FireEngineCheckStatusSuccess | undefined = undefined;
 
   while (status === undefined) {
-    abort?.throwIfAborted();
     if (errors.length >= errorLimit) {
       logger.error("Error limit hit.", { errors });
       fireEngineDelete(
@@ -80,16 +77,7 @@ async function performFireEngineScrape<
       });
     }
 
-    if (Date.now() - startTime > timeout) {
-      logger.info(
-        "Fire-engine was unable to scrape the page before timing out.",
-        { errors, timeout },
-      );
-      throw new TimeoutError(
-        "Fire-engine was unable to scrape the page before timing out",
-        { cause: { errors, timeout } },
-      );
-    }
+    meta.abort.throwIfAborted();
 
     try {
       status = await fireEngineCheckStatus(
@@ -127,7 +115,7 @@ async function performFireEngineScrape<
           jobId: scrape.jobId,
         });
         throw error;
-      } else if (error instanceof TimeoutSignal) {
+      } else if (error instanceof AbortManagerThrownError) {
         fireEngineDelete(
           logger.child({
             method: "performFireEngineScrape/fireEngineDelete",
@@ -138,7 +126,7 @@ async function performFireEngineScrape<
           undefined,
           production,
         );
-        throw new TimeoutError("Fire-engine timed out while checking status", { cause: { errors, timeout } });
+        throw error;
       } else {
         errors.push(error);
         logger.debug(
@@ -189,7 +177,6 @@ async function performFireEngineScrape<
 
 export async function scrapeURLWithFireEngineChromeCDP(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const actions: Action[] = [
     // Transform waitFor option into an action (unsupported by chrome-cdp)
@@ -223,8 +210,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     0,
   );
 
-  const timeout = (timeToRun ?? 300000) + totalWait;
-
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
     url: meta.rewrittenUrl ?? meta.url,
@@ -240,7 +225,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     priority: meta.internalOptions.priority,
     geolocation: meta.options.location,
     mobile: meta.options.mobile,
-    timeout, // TODO: better timeout logic
+    timeout: meta.abort.scrapeTimeout() ?? 300000,
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
@@ -254,9 +239,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
       request,
     }),
     request,
-    timeout,
     meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    meta.abort.asSignal(),
     true,
   );
 
@@ -311,10 +295,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
 export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const totalWait = meta.options.waitFor;
-  const timeout = (timeToRun ?? 300000) + totalWait;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
@@ -331,7 +313,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     blockAds: meta.options.blockAds,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
-    timeout,
+    timeout: meta.abort.scrapeTimeout() ?? 300000,
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
@@ -343,9 +325,8 @@ export async function scrapeURLWithFireEnginePlaywright(
       request,
     }),
     request,
-    timeout,
     meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    meta.abort.asSignal(),
   );
 
   if (!response.url) {
@@ -378,10 +359,7 @@ export async function scrapeURLWithFireEnginePlaywright(
 
 export async function scrapeURLWithFireEngineTLSClient(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 30000;
-
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {
     url: meta.rewrittenUrl ?? meta.url,
@@ -396,7 +374,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     disableJsDom: meta.internalOptions.v0DisableJsDom,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
-    timeout,
+    timeout: meta.abort.scrapeTimeout() ?? 300000,
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
@@ -408,9 +386,8 @@ export async function scrapeURLWithFireEngineTLSClient(
       request,
     }),
     request,
-    timeout,
     meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    meta.abort.asSignal(),
   );
 
   if (!response.url) {

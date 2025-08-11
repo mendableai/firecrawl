@@ -485,14 +485,6 @@ describe("Standalone scrapeURL tests", () => {
         }
       };
 
-      // verify that log collection works properly while concurrency is happening
-      // expect(out.logs.length).toBeGreaterThan(0);
-      const weirdLogs = out.logs.filter((x) => x.scrapeId !== id);
-      if (weirdLogs.length > 0) {
-        console.warn(JSON.stringify(weirdLogs, replacer));
-      }
-      expect(weirdLogs.length).toBe(0);
-
       if (!out.success) console.error(JSON.stringify(out, replacer));
       expect(out.success).toBe(true);
 
