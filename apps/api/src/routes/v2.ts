@@ -11,6 +11,8 @@ import { mapController } from "../controllers/v2/map";
 import { crawlErrorsController } from "../controllers/v2/crawl-errors";
 import { ongoingCrawlsController } from "../controllers/v2/crawl-ongoing";
 import { scrapeStatusController } from "../controllers/v2/scrape-status";
+import { creditUsageController } from "../controllers/v2/credit-usage";
+import { tokenUsageController } from "../controllers/v2/token-usage";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -95,4 +97,16 @@ v2Router.get(
   "/crawl/:jobId/errors",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(crawlErrorsController),
+);
+
+v2Router.get(
+  "/credit-usage",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(creditUsageController),
+);
+
+v2Router.get(
+  "/token-usage",
+  authMiddleware(RateLimiterMode.ExtractStatus),
+  wrap(tokenUsageController),
 );
