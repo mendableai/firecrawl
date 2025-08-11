@@ -361,14 +361,24 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   let result: EngineScrapeResultWithContext | null = null;
 
   while (remainingEngines.length > 0) {
-    const { engine, unsupportedFeatures } = remainingEngines.shift()!;
-
-    // REPLACE WITH Engine.maxReasonableTime
+    // TODO: REPLACE WITH Engine.maxReasonableTime TODOv2
     const waitUntilWaterfall = meta.options.timeout !== undefined
       ? Math.round(meta.options.timeout / Math.min(remainingEngines.length, 2))
       : (!meta.options.actions && !hasFormatOfType(meta.options.formats, "json"))
         ? Math.round(120000 / Math.min(remainingEngines.length, 2))
         : Math.round(300000 / Math.min(remainingEngines.length, 2));
+
+    const { engine, unsupportedFeatures } = remainingEngines.shift()!;
+    
+    if (!isFinite(waitUntilWaterfall) || isNaN(waitUntilWaterfall) || waitUntilWaterfall <= 0) {
+      meta.logger.warn("Invalid waitUntilWaterfall value", {
+        waitUntilWaterfall,
+        timeout: meta.options.timeout,
+        actions: !!meta.options.actions,
+        hasJson: !!meta.options.formats?.find(x => x.type === "json"),
+        remainingEngines: remainingEngines.length,
+      });
+    }
 
     meta.logger.info("Scraping via " + engine + "...", {
       waitUntilWaterfall,
@@ -437,7 +447,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
             meta.logger.warn("LLM refusal encountered", { error: error.error });
             throw error.error;
           } else if (error.error instanceof FEPageLoadFailed) {
-            // TODO: what to do about this?
+            meta.logger.warn("FEPageLoadFailed encountered!!", { error: error.error });
+            // TODO: what to do about this? TODOv2
           } else if (error.error instanceof AbortManagerThrownError) {
             if (error.error.tier === "engine") {
               meta.logger.warn("Engine " + error.engine + " timed out while scraping.", { error: error.error });
@@ -485,6 +496,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   snipeAbortController.abort();
 
   if (result === null) {
+    // TODO: rectify TODOv2
     // if (meta.results["pdf"]?.state === "timeout") {
     //   throw meta.results["pdf"].error ?? new TimeoutSignal();
     // }
