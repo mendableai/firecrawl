@@ -188,7 +188,6 @@ async function buildMetaObject(
     team_id: internalOptions.teamId,
     crawlId: internalOptions.crawlId,
   });
-  const logs: any[] = [];
 
   return {
     id,
@@ -199,9 +198,10 @@ async function buildMetaObject(
     logger,
     abort: new AbortManager(
       internalOptions.externalAbort,
-      options.timeout ? {
+      options.timeout !== undefined ? {
         signal: AbortSignal.timeout(options.timeout),
         tier: "scrape",
+        timesOutAt: new Date(Date.now() + options.timeout),
         throwable() {
           return new ScrapeTimeoutError();
         },

@@ -792,12 +792,24 @@ describe("Scrape tests", () => {
         const response = await scrapeWithFailure({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
           maxAge: 0,
+          timeout: 10000,
         }, identity);
 
         expect(response.error).toContain("Insufficient time to process PDF");
-      }, scrapeTimeout);
+      }, 12000);
 
       it.concurrent("scrapes long PDFs with sufficient timeout", async () => {
+        const response = await scrape({
+          url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
+          maxAge: 0,
+          timeout: scrapeTimeout * 5,
+        }, identity);
+
+        // text on the last page
+        expect(response.markdown).toContain("Redistribution and use in source and binary forms, with or without modification");
+      }, scrapeTimeout * 5);
+
+      it.concurrent("scrapes long PDFs with default timeout", async () => {
         const response = await scrape({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
           maxAge: 0,
