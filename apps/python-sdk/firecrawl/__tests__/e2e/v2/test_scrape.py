@@ -114,3 +114,38 @@ class TestScrapeE2E:
         
         with pytest.raises(ValueError, match="URL cannot be empty"):
             self.client.scrape("   ")
+
+    def test_scrape_with_all_params(self):
+        """Comprehensive scrape using multiple formats and options."""
+        json_schema = {
+            "type": "object",
+            "properties": {"title": {"type": "string"}},
+            "required": ["title"],
+        }
+        doc = self.client.scrape(
+            "https://docs.firecrawl.dev",
+            formats=[
+                "markdown",
+                "raw_html",
+                {"type": "screenshot", "full_page": False, "quality": 70},
+                {"type": "json", "prompt": "Extract title", "schema": json_schema},
+            ],
+            headers={"User-Agent": "E2E"},
+            include_tags=["main"],
+            exclude_tags=["nav"],
+            only_main_content=True,
+            timeout=20000,
+            wait_for=500,
+            mobile=False,
+            parsers=["pdf"],
+            actions=[],
+            skip_tls_verification=False,
+            remove_base64_images=False,
+            fast_mode=False,
+            use_mock=None,
+            block_ads=False,
+            proxy="basic",
+            max_age=0,
+            store_in_cache=False,
+        )
+        assert isinstance(doc, Document)

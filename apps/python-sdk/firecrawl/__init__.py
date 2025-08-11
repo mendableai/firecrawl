@@ -7,6 +7,8 @@ import logging
 import os
 
 from .client import Firecrawl, AsyncFirecrawl
+from .v2.watcher import Watcher
+from .v2.watcher_async import AsyncWatcher
 from .v1 import V1FirecrawlApp, AsyncV1FirecrawlApp, V1JsonConfig
 
 __version__ = "3.0.0"
@@ -67,6 +69,8 @@ logger.debug("Debugging logger setup")
 __all__ = [
     'Firecrawl',
     'AsyncFirecrawl',
+    'Watcher',
+    'AsyncWatcher',
     'V1FirecrawlApp',
     'AsyncV1FirecrawlApp',
     'V1JsonConfig',

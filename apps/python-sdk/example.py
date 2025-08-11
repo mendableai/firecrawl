@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Example demonstrating the v2 search functionality with individual parameters.
+Minimal examples for Firecrawl v2.
 """
 
 import os
-import time
 from dotenv import load_dotenv
 from firecrawl import Firecrawl
-from firecrawl.v2.types import ScrapeOptions, ScrapeFormats, WebhookConfig
+ 
 
 load_dotenv()
 
@@ -22,68 +21,28 @@ def main():
 
     firecrawl = Firecrawl(api_key=api_key, api_url=api_url)
 
-    # crawl
-    crawl_response = firecrawl.crawl("docs.firecrawl.dev", limit=5)
-    print(crawl_response)
+    # # Scrape
+    # doc = firecrawl.scrape("https://docs.firecrawl.dev", formats=["markdown"])
+    # print("scrape:", doc.markdown)
 
-    # start crawl
-    crawl_job = firecrawl.start_crawl('docs.firecrawl.dev', limit=5)
-    print(crawl_job)
+    # # Crawl (waits until terminal state)
+    # crawl_job = firecrawl.crawl("https://docs.firecrawl.dev", limit=3, poll_interval=1, timeout=120)
+    # print("crawl:", crawl_job.status, crawl_job.completed, "/", crawl_job.total)
 
-    crawl_response = firecrawl.get_crawl_status(crawl_job.id)
-    print(crawl_response)
+    # # Batch scrape
+    # batch = firecrawl.batch_scrape([
+    #     "https://docs.firecrawl.dev",
+    #     "https://firecrawl.dev",
+    # ], formats=["markdown"], poll_interval=1, wait_timeout=120)
+    # print("batch:", batch.status, batch.completed, "/", batch.total)
 
-    while (crawl_response.status != 'completed'):
-        print(f"Crawl status: {crawl_response.status}")
-        crawl_response = firecrawl.get_crawl_status(crawl_job.id)
-        time.sleep(2)
+    # # Search
+    # search_response = firecrawl.search(query="What is the capital of France?", limit=5)
+    # print("search web results:", len(getattr(search_response, "web", []) or []))
 
-    print(crawl_response)
-
-    # crawl params preview
-    params_data = firecrawl.crawl_params_preview(
-      url="https://docs.firecrawl.dev",
-      prompt="Extract all blog posts and documentation"
-    )
-    print(params_data)
-
-    # crawl with webhook example
-    webhook_job = firecrawl.start_crawl(
-        "docs.firecrawl.dev",
-        limit=3,
-        webhook="https://your-webhook-endpoint.com/firecrawl"
-    )
-    
-    # advanced webhook with configuration
-    webhook_config = WebhookConfig(
-        url="https://your-webhook-endpoint.com/firecrawl",
-        headers={"Authorization": "Bearer your-token"},
-        events=["completed", "failed"]
-    )
-    
-    webhook_job_advanced = firecrawl.start_crawl(
-        "docs.firecrawl.dev",
-        limit=2,
-        webhook=webhook_config
-    )
-
-    # Check crawl errors
-    errors = firecrawl.get_crawl_errors(crawl_job.id)
-    print(f"Crawl errors: {errors.errors}")
-    print(f"Robots blocked: {errors.robots_blocked}")
-
-    # search examples
-    search_response = firecrawl.search(
-      query="What is the capital of France?",
-      sources=["web", "news", "images"],
-      limit=10
-    )
-    
-    print(search_response)
-
-    # map example
+    # Map
     map_response = firecrawl.map("https://firecrawl.dev")
-    print(map_response)
+    print("map links:", len(getattr(map_response, "links", []) or []))
 
 if __name__ == "__main__":
     main() 

@@ -5,7 +5,7 @@ This module provides the main client class that orchestrates all v2 functionalit
 """
 
 import os
-from typing import Optional, List, Dict, Any, Callable, Union
+from typing import Optional, List, Dict, Any, Callable, Union, Literal
 from .types import (
     ClientConfig,
     ScrapeOptions,
@@ -22,7 +22,7 @@ from .types import (
     CrawlErrorsResponse,
     ActiveCrawlsResponse,
     MapOptions,
-    MapResponse,
+    MapData,
     FormatOption,
     WaitAction,
     ScreenshotAction,
@@ -42,6 +42,9 @@ from .methods import crawl as crawl_module
 from .methods import batch as batch_module
 from .methods import search as search_module
 from .methods import map as map_module
+from .methods import batch as batch_methods
+from .methods import usage as usage_methods
+from .watcher import Watcher
 
 class FirecrawlClient:
     """
@@ -401,9 +404,9 @@ class FirecrawlClient:
         search: Optional[str] = None,
         include_subdomains: Optional[bool] = None,
         limit: Optional[int] = None,
-        ignore_sitemap: Optional[bool] = None,
-        sitemap_only: Optional[bool] = None,
-    ) -> MapResponse:
+        sitemap: Optional[Literal["only", "include", "skip"]] = None,
+        timeout: Optional[int] = None,
+    ) -> MapData:
         """
         Map a URL and return discovered links (with optional titles/descriptions).
         """
@@ -411,9 +414,9 @@ class FirecrawlClient:
             search=search,
             include_subdomains=include_subdomains,
             limit=limit,
-            ignore_sitemap=ignore_sitemap,
-            sitemap_only=sitemap_only,
-        ) if any(v is not None for v in [search, include_subdomains, limit, ignore_sitemap, sitemap_only]) else None
+            sitemap=sitemap if sitemap is not None else "include",
+            timeout=timeout,
+        ) if any(v is not None for v in [search, include_subdomains, limit, sitemap, timeout]) else None
 
         return map_module.map(self.http_client, url, options)
     
@@ -435,4 +438,221 @@ class FirecrawlClient:
         """
         request = CrawlParamsRequest(url=url, prompt=prompt)
         return crawl_module.crawl_params_preview(self.http_client, request)
+
+    def extract(
+        self,
+        urls: Optional[List[str]] = None,
+        *,
+        prompt: Optional[str] = None,
+        schema: Optional[Any] = None,
+        system_prompt: Optional[str] = None,
+        allow_external_links: Optional[bool] = False,
+        enable_web_search: Optional[bool] = False,
+        show_sources: Optional[bool] = False,
+        agent: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """
+        Extract data from a list of URLs.
+        """
+        from ..v1.client import V1FirecrawlApp
+        v1 = V1FirecrawlApp(api_key=self.config.api_key, api_url=self.config.api_url)
+        return v1.extract(
+            urls,
+            prompt=prompt,
+            schema=schema,
+            system_prompt=system_prompt,
+            allow_external_links=allow_external_links,
+            enable_web_search=enable_web_search,
+            show_sources=show_sources,
+            agent=agent,
+            **kwargs,
+        )
+
+    def start_batch_scrape(
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List['FormatOption']] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        wait_for: Optional[int] = None,
+        mobile: Optional[bool] = None,
+        parsers: Optional[List[str]] = None,
+        actions: Optional[List[Union['WaitAction', 'ScreenshotAction', 'ClickAction', 'WriteAction', 'PressAction', 'ScrollAction', 'ScrapeAction', 'ExecuteJavascriptAction', 'PDFAction']]] = None,
+        location: Optional['Location'] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        fast_mode: Optional[bool] = None,
+        use_mock: Optional[str] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[str] = None,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        append_to_id: Optional[str] = None,
+        ignore_invalid_urls: Optional[bool] = None,
+        max_concurrency: Optional[int] = None,
+        zero_data_retention: Optional[bool] = None,
+        integration: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+    ):
+        """
+        Start a batch scrape job over multiple URLs.
+        """
+        options = ScrapeOptions(
+            **{k: v for k, v in dict(
+                formats=formats,
+                headers=headers,
+                include_tags=include_tags,
+                exclude_tags=exclude_tags,
+                only_main_content=only_main_content,
+                timeout=timeout,
+                wait_for=wait_for,
+                mobile=mobile,
+                parsers=parsers,
+                actions=actions,
+                location=location,
+                skip_tls_verification=skip_tls_verification,
+                remove_base64_images=remove_base64_images,
+                fast_mode=fast_mode,
+                use_mock=use_mock,
+                block_ads=block_ads,
+                proxy=proxy,
+                max_age=max_age,
+                store_in_cache=store_in_cache,
+            ).items() if v is not None}
+        ) if any(v is not None for v in [formats, headers, include_tags, exclude_tags, only_main_content, timeout, wait_for, mobile, parsers, actions, location, skip_tls_verification, remove_base64_images, fast_mode, use_mock, block_ads, proxy, max_age, store_in_cache]) else None
+
+        return batch_module.start_batch_scrape(
+            self.http_client,
+            urls,
+            options=options,
+            webhook=webhook,
+            append_to_id=append_to_id,
+            ignore_invalid_urls=ignore_invalid_urls,
+            max_concurrency=max_concurrency,
+            zero_data_retention=zero_data_retention,
+            integration=integration,
+            idempotency_key=idempotency_key,
+        )
+
+    def get_batch_scrape_status(self, job_id: str):
+        """Get current status and any scraped data for a batch scrape job."""
+        return batch_module.get_batch_scrape_status(self.http_client, job_id)
+
+    def cancel_batch_scrape(self, job_id: str) -> bool:
+        """Cancel a running batch scrape job."""
+        return batch_module.cancel_batch_scrape(self.http_client, job_id)
+
+    def get_batch_scrape_errors(self, job_id: str):
+        """Retrieve error details for a batch scrape job."""
+        return batch_methods.get_batch_scrape_errors(self.http_client, job_id)
+
+    def get_extract_status(self, job_id: str):
+        """Proxy to v1 get_extract_status while v2 extract is not implemented."""
+        from ..v1.client import V1FirecrawlApp
+        v1 = V1FirecrawlApp(api_key=self.config.api_key, api_url=self.config.api_url)
+        return v1.get_extract_status(job_id)
+
+    def get_concurrency(self):
+        """Get current concurrency and maximum allowed for this team/key (v2)."""
+        return usage_methods.get_concurrency(self.http_client)
+
+    def get_credit_usage(self):
+        """Get remaining credits for this team/key (v2)."""
+        return usage_methods.get_credit_usage(self.http_client)
+
+    def get_token_usage(self):
+        """Get recent token usage metrics (v2)."""
+        return usage_methods.get_token_usage(self.http_client)
+
+    def watcher(
+        self,
+        job_id: str,
+        *,
+        kind: Literal["crawl", "batch"] = "crawl",
+        poll_interval: int = 2,
+        timeout: Optional[int] = None,
+    ) -> Watcher:
+        """Create a polling-based watcher for crawl or batch jobs."""
+        return Watcher(self, job_id, kind=kind, poll_interval=poll_interval, timeout=timeout)
+
+    def batch_scrape(
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List['FormatOption']] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        wait_for: Optional[int] = None,
+        mobile: Optional[bool] = None,
+        parsers: Optional[List[str]] = None,
+        actions: Optional[List[Union['WaitAction', 'ScreenshotAction', 'ClickAction', 'WriteAction', 'PressAction', 'ScrollAction', 'ScrapeAction', 'ExecuteJavascriptAction', 'PDFAction']]] = None,
+        location: Optional['Location'] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        fast_mode: Optional[bool] = None,
+        use_mock: Optional[str] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[str] = None,
+        max_age: Optional[int] = None,
+        store_in_cache: Optional[bool] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        append_to_id: Optional[str] = None,
+        ignore_invalid_urls: Optional[bool] = None,
+        max_concurrency: Optional[int] = None,
+        zero_data_retention: Optional[bool] = None,
+        integration: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        poll_interval: int = 2,
+        wait_timeout: Optional[int] = None,
+    ):
+        """
+        Start a batch scrape job and wait until completion.
+        """
+        options = ScrapeOptions(
+            **{k: v for k, v in dict(
+                formats=formats,
+                headers=headers,
+                include_tags=include_tags,
+                exclude_tags=exclude_tags,
+                only_main_content=only_main_content,
+                timeout=timeout,
+                wait_for=wait_for,
+                mobile=mobile,
+                parsers=parsers,
+                actions=actions,
+                location=location,
+                skip_tls_verification=skip_tls_verification,
+                remove_base64_images=remove_base64_images,
+                fast_mode=fast_mode,
+                use_mock=use_mock,
+                block_ads=block_ads,
+                proxy=proxy,
+                max_age=max_age,
+                store_in_cache=store_in_cache,
+            ).items() if v is not None}
+        ) if any(v is not None for v in [formats, headers, include_tags, exclude_tags, only_main_content, timeout, wait_for, mobile, parsers, actions, location, skip_tls_verification, remove_base64_images, fast_mode, use_mock, block_ads, proxy, max_age, store_in_cache]) else None
+
+        return batch_module.batch_scrape(
+            self.http_client,
+            urls,
+            options=options,
+            webhook=webhook,
+            append_to_id=append_to_id,
+            ignore_invalid_urls=ignore_invalid_urls,
+            max_concurrency=max_concurrency,
+            zero_data_retention=zero_data_retention,
+            integration=integration,
+            idempotency_key=idempotency_key,
+            poll_interval=poll_interval,
+            timeout=wait_timeout,
+        )
     

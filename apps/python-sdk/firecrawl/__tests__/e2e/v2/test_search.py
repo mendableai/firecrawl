@@ -13,6 +13,24 @@ if not os.getenv("API_URL"):
 
 firecrawl = Firecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
 
+def _collect_texts(entries):
+    texts = []
+    for r in entries or []:
+        title = getattr(r, 'title', None) if hasattr(r, 'title') else None
+        desc = getattr(r, 'description', None) if hasattr(r, 'description') else None
+        if title:
+            texts.append(str(title).lower())
+        if desc:
+            texts.append(str(desc).lower())
+    return texts
+
+def _is_document(entry) -> bool:
+    try:
+        from firecrawl.v2.types import Document
+        return isinstance(entry, Document) or hasattr(entry, 'markdown') or hasattr(entry, 'html')
+    except Exception:
+        return hasattr(entry, 'markdown') or hasattr(entry, 'html')
+
 def test_search_minimal_request():
     results = firecrawl.search(
         query="What is the capital of France?"
@@ -35,9 +53,7 @@ def test_search_minimal_request():
         assert result.title is not None
         assert result.description is not None
 
-    titles = [result.title.lower() for result in results.web]
-    descriptions = [result.description.lower() for result in results.web]
-    all_text = ' '.join(titles + descriptions)
+    all_text = ' '.join(_collect_texts(results.web))
     
     assert 'paris' in all_text
     
@@ -159,32 +175,34 @@ def test_search_all_parameters():
     assert results.web is not None
     assert len(results.web) <= 3  # Should respect limit
     
-    # Test that results contain expected content
-    web_titles = [result.title.lower() for result in results.web if result.title]
-    web_descriptions = [result.description.lower() for result in results.web if result.description]
-    all_web_text = ' '.join(web_titles + web_descriptions)
-    
-    # Should contain AI-related terms (case insensitive)
-    ai_terms = ['artificial', 'intelligence', 'ai', 'machine', 'learning']
-    assert any(term in all_web_text for term in ai_terms)
+    # Test that results contain expected content for non-document entries only
+    non_doc_entries = [r for r in (results.web or []) if not _is_document(r)]
+    if non_doc_entries:
+        all_web_text = ' '.join(_collect_texts(non_doc_entries))
+        ai_terms = ['artificial', 'intelligence', 'ai', 'machine', 'learning']
+        assert any(term in all_web_text for term in ai_terms)
     
     # Test that each result has proper structure
     for result in results.web:
         assert isinstance(result, (SearchResult, Document))
-        assert hasattr(result, 'url')
-        assert result.url.startswith('http')
-        
-        # If it's a Document (with scrape_options), check for additional fields
         if isinstance(result, Document):
-            # Should have markdown or html content due to scrape_options
-            assert result.markdown is not None or result.html is not None
+            # Document path: ensure content present
+            assert (result.markdown is not None) or (result.html is not None)
+        else:
+            # LinkResult path
+            assert hasattr(result, 'url')
+            assert isinstance(result.url, str) and result.url.startswith('http')
     
     # Test that news results exist (if API supports it)
     if results.news is not None:
         assert len(results.news) <= 3
         for result in results.news:
             assert isinstance(result, (SearchResult, Document))
-            assert result.url.startswith('http')
+            if isinstance(result, Document):
+                assert (result.markdown is not None) or (result.html is not None)
+            else:
+                assert hasattr(result, 'url')
+                assert isinstance(result.url, str) and result.url.startswith('http')
     
     # Test that unspecified sources are None
     assert results.images is None

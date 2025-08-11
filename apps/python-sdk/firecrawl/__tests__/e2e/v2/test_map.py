@@ -25,44 +25,39 @@ class TestMapE2E:
         resp = self.client.map("https://docs.firecrawl.dev")
 
         assert hasattr(resp, "success") and resp.success is True
-        assert hasattr(resp, "data") and resp.data is not None
-        assert hasattr(resp.data, "links")
-        assert isinstance(resp.data.links, list)
+        assert hasattr(resp, "links") and resp.links is not None
+        assert isinstance(resp.links, list)
 
         # Basic sanity checks on at least one link
-        if len(resp.data.links) > 0:
-            first = resp.data.links[0]
+        if len(resp.links) > 0:
+            first = resp.links[0]
             assert hasattr(first, "url")
             assert isinstance(first.url, str) and first.url.startswith("http")
 
     @pytest.mark.parametrize(
-        "sitemap_only,ignore_sitemap",
+        "sitemap",
         [
-            (True, None),   # sitemap: only
-            (None, True),   # sitemap: skip
-            (None, None),   # sitemap: include (default)
+            "only",
+            "skip",
+            "include",
         ],
     )
-    def test_map_with_options(self, sitemap_only, ignore_sitemap):
-        kwargs = {
-            "search": "docs",
-            "include_subdomains": True,
-            "limit": 10,
-        }
-        if sitemap_only is not None:
-            kwargs["sitemap_only"] = sitemap_only
-        if ignore_sitemap is not None:
-            kwargs["ignore_sitemap"] = ignore_sitemap
-
-        resp = self.client.map("https://docs.firecrawl.dev", **kwargs)
+    def test_map_with_options(self, sitemap):
+        resp = self.client.map(
+            "https://docs.firecrawl.dev",
+            search="docs",
+            include_subdomains=True,
+            limit=10,
+            sitemap=sitemap,
+            timeout=15000,
+        )
 
         assert hasattr(resp, "success") and resp.success is True
-        assert hasattr(resp, "data") and resp.data is not None
-        assert isinstance(resp.data.links, list)
+        assert hasattr(resp, "links") and isinstance(resp.links, list)
 
         # Limit should be respected (server-side)
-        assert len(resp.data.links) <= 10
+        assert len(resp.links) <= 10
 
-        for link in resp.data.links:
+        for link in resp.links:
             assert hasattr(link, "url")
             assert isinstance(link.url, str) and link.url.startswith("http")

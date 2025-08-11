@@ -248,10 +248,16 @@ class TestCrawlE2E:
             exclude_paths=["/admin/*"],
             max_discovery_depth=3,
             ignore_sitemap=False,
+            ignore_query_parameters=True,
             limit=5,
             crawl_entire_domain=True,
             allow_external_links=False,
-            scrape_options=scrape_opts
+            allow_subdomains=True,
+            delay=1,
+            max_concurrency=2,
+            webhook="https://example.com/hook",
+            scrape_options=scrape_opts,
+            zero_data_retention=False
         )
         
         assert crawl_job.id is not None

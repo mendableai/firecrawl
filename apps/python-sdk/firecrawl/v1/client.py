@@ -2763,15 +2763,15 @@ class V1CrawlWatcher:
             self.data.append(msg['data'])
             self.dispatch_event('document', {'data': msg['data'], 'id': self.id})
 
-class AsyncV1FirecrawlApp:
+class AsyncV1FirecrawlApp(V1FirecrawlApp):
     """
     Asynchronous version of V1FirecrawlApp that implements async methods using aiohttp.
     Provides non-blocking alternatives to all V1FirecrawlApp operations.
     """
 
-    def __init__(self, api_key: str, api_url: str = "https://api.firecrawl.com"):
-        self.api_key = api_key
-        self.api_url = api_url
+    def __init__(self, api_key: str, api_url: str = "https://api.firecrawl.dev"):
+        # Reuse V1 helpers (_prepare_headers, _validate_kwargs, _ensure_schema_dict, _get_error_message)
+        super().__init__(api_key=api_key, api_url=api_url)
 
     async def _async_request(
             self,

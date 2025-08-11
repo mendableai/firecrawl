@@ -3,18 +3,31 @@ Batch scraping functionality for Firecrawl v2 API.
 """
 
 import time
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Dict, Any, Union
 from ..types import (
-    BatchScrapeRequest, BatchScrapeResponse,
-    BatchScrapeJob, BatchScrapeData, ScrapeOptions, Document
+    BatchScrapeRequest,
+    BatchScrapeResponse,
+    BatchScrapeJob,
+    ScrapeOptions,
+    Document,
+    WebhookConfig,
 )
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
+from ..types import CrawlErrorsResponse
 
 
 def start_batch_scrape(
     client: HttpClient,
     urls: List[str],
-    options: Optional[ScrapeOptions] = None
+    *,
+    options: Optional[ScrapeOptions] = None,
+    webhook: Optional[Union[str, WebhookConfig]] = None,
+    append_to_id: Optional[str] = None,
+    ignore_invalid_urls: Optional[bool] = None,
+    max_concurrency: Optional[int] = None,
+    zero_data_retention: Optional[bool] = None,
+    integration: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
 ) -> BatchScrapeResponse:
     """
     Start a batch scrape job for multiple URLs.
@@ -31,38 +44,40 @@ def start_batch_scrape(
         FirecrawlError: If the batch scrape operation fails to start
     """
     # Prepare request data
-    request_data = prepare_batch_request(urls, options)
+    request_data = prepare_batch_scrape_request(
+        urls,
+        options=options,
+        webhook=webhook,
+        append_to_id=append_to_id,
+        ignore_invalid_urls=ignore_invalid_urls,
+        max_concurrency=max_concurrency,
+        zero_data_retention=zero_data_retention,
+        integration=integration,
+    )
     
     # Make the API request
-    response = client.post("/v2/batch/scrape", request_data)
+    headers = client._prepare_headers(idempotency_key)  # type: ignore[attr-defined]
+    response = client.post("/v2/batch/scrape", request_data, headers=headers)
     
     # Handle errors
     if not response.ok:
         handle_response_error(response, "start batch scrape")
     
     # Parse response
-    response_data = response.json()
-    
-    if response_data.get("success"):
-        job_data = response_data.get("data", {})
-        job = BatchScrapeJob(**job_data)
-        
-        return BatchScrapeResponse(
-            success=True,
-            data=job,
-            warning=response_data.get("warning")
-        )
-    else:
-        return BatchScrapeResponse(
-            success=False,
-            error=response_data.get("error", "Unknown error occurred")
-        )
+    body = response.json()
+    if not body.get("success"):
+        raise Exception(body.get("error", "Unknown error occurred"))
+    return BatchScrapeResponse(
+        id=body.get("id"),
+        url=body.get("url"),
+        invalid_urls=body.get("invalidURLs") or None,
+    )
 
 
 def get_batch_scrape_status(
     client: HttpClient,
     job_id: str
-) -> BatchScrapeResponse:
+) -> BatchScrapeJob:
     """
     Get the status of a batch scrape job.
     
@@ -84,40 +99,36 @@ def get_batch_scrape_status(
         handle_response_error(response, "get batch scrape status")
     
     # Parse response
-    response_data = response.json()
-    
-    if response_data.get("success"):
-        status_data = response_data.get("data", {})
-        
-        # Convert documents
-        documents = []
-        if "data" in status_data:
-            for doc_data in status_data["data"]:
-                documents.append(Document(**doc_data))
-        
-        batch_data = BatchScrapeData(
-            status=status_data.get("status"),
-            current=status_data.get("current", 0),
-            total=status_data.get("total", 0),
-            data=documents
-        )
-        
-        return BatchScrapeResponse(
-            success=True,
-            data=batch_data,
-            warning=response_data.get("warning")
-        )
-    else:
-        return BatchScrapeResponse(
-            success=False,
-            error=response_data.get("error", "Unknown error occurred")
-        )
+    body = response.json()
+    if not body.get("success"):
+        raise Exception(body.get("error", "Unknown error occurred"))
+
+    # Convert documents
+    documents: List[Document] = []
+    for doc in body.get("data", []) or []:
+        if isinstance(doc, dict):
+            normalized = dict(doc)
+            if 'rawHtml' in normalized and 'raw_html' not in normalized:
+                normalized['raw_html'] = normalized.pop('rawHtml')
+            if 'changeTracking' in normalized and 'change_tracking' not in normalized:
+                normalized['change_tracking'] = normalized.pop('changeTracking')
+            documents.append(Document(**normalized))
+
+    return BatchScrapeJob(
+        status=body.get("status"),
+        completed=body.get("completed", 0),
+        total=body.get("total", 0),
+        credits_used=body.get("creditsUsed"),
+        expires_at=body.get("expiresAt"),
+        next=body.get("next"),
+        data=documents,
+    )
 
 
 def cancel_batch_scrape(
     client: HttpClient,
     job_id: str
-) -> BatchScrapeResponse:
+) -> bool:
     """
     Cancel a running batch scrape job.
     
@@ -139,28 +150,8 @@ def cancel_batch_scrape(
         handle_response_error(response, "cancel batch scrape")
     
     # Parse response
-    response_data = response.json()
-    
-    if response_data.get("success"):
-        status_data = response_data.get("data", {})
-        
-        batch_data = BatchScrapeData(
-            status=status_data.get("status", "cancelled"),
-            current=status_data.get("current", 0),
-            total=status_data.get("total", 0),
-            data=[]
-        )
-        
-        return BatchScrapeResponse(
-            success=True,
-            data=batch_data,
-            warning=response_data.get("warning")
-        )
-    else:
-        return BatchScrapeResponse(
-            success=False,
-            error=response_data.get("error", "Unknown error occurred")
-        )
+    body = response.json()
+    return body.get("status") == "cancelled"
 
 
 def wait_for_batch_completion(
@@ -168,7 +159,7 @@ def wait_for_batch_completion(
     job_id: str,
     poll_interval: int = 2,
     timeout: Optional[int] = None
-) -> BatchScrapeResponse:
+) -> BatchScrapeJob:
     """
     Wait for a batch scrape job to complete, polling for status updates.
     
@@ -188,16 +179,11 @@ def wait_for_batch_completion(
     start_time = time.time()
     
     while True:
-        status_response = get_batch_scrape_status(client, job_id)
-        
-        if not status_response.success:
-            return status_response
-        
-        status_data = status_response.data
+        status_job = get_batch_scrape_status(client, job_id)
         
         # Check if job is complete
-        if status_data and status_data.status in ["completed", "failed", "cancelled"]:
-            return status_response
+        if status_job.status in ["completed", "failed", "cancelled"]:
+            return status_job
         
         # Check timeout
         if timeout and (time.time() - start_time) > timeout:
@@ -207,13 +193,21 @@ def wait_for_batch_completion(
         time.sleep(poll_interval)
 
 
-def batch_scrape_and_wait(
+def batch_scrape(
     client: HttpClient,
     urls: List[str],
+    *,
     options: Optional[ScrapeOptions] = None,
+    webhook: Optional[Union[str, WebhookConfig]] = None,
+    append_to_id: Optional[str] = None,
+    ignore_invalid_urls: Optional[bool] = None,
+    max_concurrency: Optional[int] = None,
+    zero_data_retention: Optional[bool] = None,
+    integration: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
     poll_interval: int = 2,
     timeout: Optional[int] = None
-) -> BatchScrapeResponse:
+) -> BatchScrapeJob:
     """
     Start a batch scrape job and wait for it to complete.
     
@@ -232,16 +226,21 @@ def batch_scrape_and_wait(
         TimeoutError: If timeout is reached
     """
     # Start the batch scrape
-    batch_response = start_batch_scrape(client, urls, options)
-    
-    if not batch_response.success or not batch_response.data:
-        return BatchScrapeResponse(
-            success=False,
-            error=batch_response.error or "Failed to start batch scrape"
-        )
-    
-    job_id = batch_response.data.id
-    
+    start = start_batch_scrape(
+        client,
+        urls,
+        options=options,
+        webhook=webhook,
+        append_to_id=append_to_id,
+        ignore_invalid_urls=ignore_invalid_urls,
+        max_concurrency=max_concurrency,
+        zero_data_retention=zero_data_retention,
+        integration=integration,
+        idempotency_key=idempotency_key,
+    )
+
+    job_id = start.id
+
     # Wait for completion
     return wait_for_batch_completion(
         client, job_id, poll_interval, timeout
@@ -281,7 +280,17 @@ def validate_batch_urls(urls: List[str]) -> List[str]:
     return validated_urls
 
 
-def prepare_batch_request(urls: List[str], options: Optional[ScrapeOptions] = None) -> dict:
+def prepare_batch_scrape_request(
+    urls: List[str],
+    *,
+    options: Optional[ScrapeOptions] = None,
+    webhook: Optional[Union[str, WebhookConfig]] = None,
+    append_to_id: Optional[str] = None,
+    ignore_invalid_urls: Optional[bool] = None,
+    max_concurrency: Optional[int] = None,
+    zero_data_retention: Optional[bool] = None,
+    integration: Optional[str] = None,
+) -> dict:
     """
     Prepare a batch scrape request payload.
     
@@ -293,14 +302,31 @@ def prepare_batch_request(urls: List[str], options: Optional[ScrapeOptions] = No
         Request payload dictionary
     """
     validated_urls = validate_batch_urls(urls)
-    request_data = {"urls": validated_urls}
-    
+    request_data: Dict[str, Any] = {"urls": validated_urls}
+
+    # Flatten scrape options at the top level (v2 behavior)
     if options:
-        # Use shared function for ScrapeOptions preparation
         scrape_data = prepare_scrape_options(options)
         if scrape_data:
-            request_data["pageOptions"] = scrape_data
-    
+            request_data.update(scrape_data)
+
+    # Batch-specific fields
+    if webhook is not None:
+        if isinstance(webhook, str):
+            request_data["webhook"] = webhook
+        else:
+            request_data["webhook"] = webhook.model_dump(exclude_none=True)
+    if append_to_id is not None:
+        request_data["appendToId"] = append_to_id
+    if ignore_invalid_urls is not None:
+        request_data["ignoreInvalidURLs"] = ignore_invalid_urls
+    if max_concurrency is not None:
+        request_data["maxConcurrency"] = max_concurrency
+    if zero_data_retention is not None:
+        request_data["zeroDataRetention"] = zero_data_retention
+    if integration is not None:
+        request_data["integration"] = integration
+
     return request_data
 
 
@@ -352,17 +378,43 @@ def process_large_batch(
     
     for chunk in url_chunks:
         # Process this chunk
-        result = batch_scrape_and_wait(
-            client, chunk, options, poll_interval, timeout
+        result = batch_scrape(
+            client,
+            chunk,
+            options=options,
+            poll_interval=poll_interval,
+            timeout=timeout,
         )
-        
-        if not result.success or not result.data:
-            raise Exception(f"Failed to process chunk: {result.error}")
-        
+
         # Add documents from this chunk
-        if result.data.data:
-            all_documents.extend(result.data.data)
+        if result.data:
+            all_documents.extend(result.data)
         
         completed_chunks += 1
     
     return all_documents
+
+
+def get_batch_scrape_errors(client: HttpClient, job_id: str) -> CrawlErrorsResponse:
+    """
+    Get errors for a batch scrape job.
+
+    Args:
+        client: HTTP client instance
+        job_id: ID of the batch scrape job
+
+    Returns:
+        CrawlErrorsResponse with errors and robots-blocked URLs
+    """
+    response = client.get(f"/v2/batch/scrape/{job_id}/errors")
+
+    if not response.ok:
+        handle_response_error(response, "get batch scrape errors")
+
+    body = response.json()
+    payload = body.get("data", body)
+    normalized = {
+        "errors": payload.get("errors", []),
+        "robots_blocked": payload.get("robotsBlocked", payload.get("robots_blocked", [])),
+    }
+    return CrawlErrorsResponse(**normalized)

@@ -43,6 +43,34 @@ class DocumentMetadata(BaseModel):
     status_code: Optional[int] = None
     error: Optional[str] = None
 
+    @staticmethod
+    def _coerce_list_to_string(value: Any) -> Any:
+        if isinstance(value, list):
+            # Prefer first string if semantically a single-valued field, else join
+            if len(value) == 1:
+                return str(value[0])
+            return ', '.join(str(item) for item in value)
+        return value
+
+    @staticmethod
+    def _coerce_string_to_int(value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return value
+        return value
+
+    @field_validator('robots', 'og_title', 'og_description', 'og_url', 'og_image', 'language', mode='before')
+    @classmethod
+    def coerce_lists_to_string_fields(cls, v):
+        return cls._coerce_list_to_string(v)
+
+    @field_validator('status_code', mode='before')
+    @classmethod
+    def coerce_status_code_to_int(cls, v):
+        return cls._coerce_string_to_int(v)
+
 class Document(BaseModel):
     """A scraped document."""
     markdown: Optional[str] = None
@@ -223,12 +251,12 @@ class CrawlResponse(BaseModel):
 class CrawlJob(BaseModel):
     """Crawl job status and progress data."""
     status: Literal["scraping", "completed", "failed"]
-    total: int
-    completed: int
-    credits_used: int
-    expires_at: datetime
+    total: int = 0
+    completed: int = 0
+    credits_used: int = 0
+    expires_at: Optional[datetime] = None
     next: Optional[str] = None
-    data: List[Document]
+    data: List[Document] = []
 
 class SearchDocument(Document):
     """A document from a search operation with URL and description."""
@@ -271,38 +299,34 @@ class CrawlParamsResponse(BaseResponse[CrawlParamsData]):
 
 # Batch scrape types
 class BatchScrapeRequest(BaseModel):
-    """Request for batch scraping multiple URLs."""
+    """Request for batch scraping multiple URLs (internal helper only)."""
     urls: List[str]
     options: Optional[ScrapeOptions] = None
 
-class BatchScrapeJob(BaseModel):
-    """Information about a batch scrape job."""
+class BatchScrapeResponse(BaseModel):
+    """Response from starting a batch scrape job (mirrors CrawlResponse naming)."""
     id: str
-    status: Literal["scraping", "completed", "failed"]
-    current: Optional[int] = None
-    total: Optional[int] = None
-    created_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    url: str
+    invalid_urls: Optional[List[str]] = None
 
-class BatchScrapeData(BaseModel):
-    """Batch scrape results data."""
-    status: Literal["scraping", "completed", "failed"]
-    current: int
+class BatchScrapeJob(BaseModel):
+    """Batch scrape job status and results."""
+    status: Literal["scraping", "completed", "failed", "cancelled"]
+    completed: int
     total: int
-    data: List[Document]
-
-class BatchScrapeResponse(BaseResponse[BatchScrapeData]):
-    """Response for batch scrape operations."""
-    pass
+    credits_used: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    next: Optional[str] = None
+    data: List[Document] = []
 
 # Map types
 class MapOptions(BaseModel):
     """Options for mapping operations."""
     search: Optional[str] = None
-    ignore_sitemap: Optional[bool] = None
-    sitemap_only: Optional[bool] = None
+    sitemap: Literal["only", "include", "skip"] = "include"
     include_subdomains: Optional[bool] = None
     limit: Optional[int] = None
+    timeout: Optional[int] = None
 
 class MapRequest(BaseModel):
     """Request for mapping a website."""
@@ -316,6 +340,24 @@ class MapData(BaseModel):
 class MapResponse(BaseResponse[MapData]):
     """Response for map operations."""
     pass
+
+# Usage/limits types
+class ConcurrencyCheck(BaseModel):
+    """Current concurrency and limits for the team/API key."""
+    concurrency: int
+    max_concurrency: int
+
+class CreditUsage(BaseModel):
+    """Remaining credits for the team/API key."""
+    remaining_credits: int
+
+class TokenUsage(BaseModel):
+    """Recent token usage metrics (if available)."""
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    step: Optional[str] = None
+    model: Optional[str] = None
 
 # Action types
 class WaitAction(BaseModel):

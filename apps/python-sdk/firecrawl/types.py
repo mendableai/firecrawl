@@ -33,7 +33,6 @@ from .v2.types import (
     # Batch scrape types
     BatchScrapeRequest,
     BatchScrapeJob,
-    BatchScrapeData,
     BatchScrapeResponse,
     
     # Map types
@@ -110,7 +109,6 @@ __all__ = [
     # Batch scrape types
     'BatchScrapeRequest',
     'BatchScrapeJob',
-    'BatchScrapeData',
     'BatchScrapeResponse',
     
     # Map types
