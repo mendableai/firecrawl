@@ -7,6 +7,7 @@ import {
   redisConnection,
   getBillingQueue,
   getPrecrawlQueue,
+  precrawlQueueName,
 } from "../queue-service";
 import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing } from "../billing/batch_billing";
 import systemMonitor from "../system-monitor";
@@ -219,7 +220,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
     connection: redisConnection,
     lockDuration: workerLockDuration,
     stalledInterval: workerStalledCheckInterval,
-    maxStalledCount: 10,
+    maxStalledCount: queue.name === precrawlQueueName ? 0 : 10,
   });
 
   worker.startStalledCheckTimer();
