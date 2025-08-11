@@ -27,7 +27,6 @@ describe("V2 System Prompt Rejection", () => {
               systemPrompt: "Custom system prompt that should be rejected",
             },
           ],
-          timeout: scrapeTimeout + 30000,
         } as any,
         identity,
       );
@@ -51,7 +50,6 @@ describe("V2 System Prompt Rejection", () => {
               prompt: "Extract the title",
             },
           ],
-          timeout: scrapeTimeout + 30000,
         },
         identity,
       );

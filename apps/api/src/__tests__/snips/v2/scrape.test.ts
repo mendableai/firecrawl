@@ -17,7 +17,6 @@ beforeAll(async () => {
     await scrape({
       url: changeTrackingTestUrl,
       formats: ["markdown", "changeTracking"],
-      timeout: scrapeTimeout,
     }, identity);
   }
 }, 10000 + scrapeTimeout);
@@ -26,7 +25,6 @@ describe("Scrape tests", () => {
   it.concurrent("works", async () => {
     const response = await scrape({
       url: "http://firecrawl.dev",
-      timeout: scrapeTimeout,
     }, identity);
 
     expect(response.markdown).toContain("Firecrawl");
@@ -101,14 +99,12 @@ describe("Scrape tests", () => {
   // it.concurrent("works with Punycode domains", async () => {
   //   await scrape({
   //     url: "http://xn--1lqv92a901a.xn--ses554g/",
-  //     timeout: scrapeTimeout,
   //   }, identity);
   // }, scrapeTimeout);
 
   it.concurrent("handles non-UTF-8 encodings", async () => {
     const response = await scrape({
       url: "https://www.rtpro.yamaha.co.jp/RT/docs/misc/kanji-sjis.html",
-      timeout: scrapeTimeout,
     }, identity);
 
     expect(response.markdown).toContain("ぐ け げ こ ご さ ざ し じ す ず せ ぜ そ ぞ た");
@@ -118,7 +114,6 @@ describe("Scrape tests", () => {
     const response = await scrape({
       url: "https://firecrawl.dev",
       formats: ["links"],
-      timeout: scrapeTimeout,
     }, identity);
 
     expect(response.links).toBeDefined();
@@ -129,7 +124,6 @@ describe("Scrape tests", () => {
     it.concurrent("self-hosted proxy works", async () => {
       const response = await scrape({
         url: "https://icanhazip.com",
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown?.trim()).toContain(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
@@ -139,7 +133,6 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "https://icanhazip.com",
         waitFor: 100,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown?.trim()).toContain(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
@@ -151,7 +144,6 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "http://firecrawl.dev",
         waitFor: 2000,
-        timeout: scrapeTimeout,
       }, identity);
   
       expect(response.markdown).toContain("Firecrawl");
@@ -163,7 +155,6 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "https://jsonplaceholder.typicode.com/todos/1",
         formats: ["rawHtml"],
-        timeout: scrapeTimeout,
       }, identity);
 
       const obj = JSON.parse(response.rawHtml!);
@@ -175,7 +166,6 @@ describe("Scrape tests", () => {
     it.concurrent("scrape status works", async () => {
       const response = await scrape({
         url: "http://firecrawl.dev",
-        timeout: scrapeTimeout,
       }, identity);
   
       expect(response.markdown).toContain("Firecrawl");
@@ -192,7 +182,6 @@ describe("Scrape tests", () => {
         await scrape({
           url: "https://firecrawl.dev",
           blockAds: true,
-          timeout: scrapeTimeout,
         }, identity);
       }, scrapeTimeout);
 
@@ -200,7 +189,6 @@ describe("Scrape tests", () => {
         await scrape({
           url: "https://firecrawl.dev",
           blockAds: false,
-          timeout: scrapeTimeout,
         }, identity);
       }, scrapeTimeout);
     });
@@ -214,7 +202,6 @@ describe("Scrape tests", () => {
           url,
           maxAge: scrapeTimeout * 3,
           storeInCache: false,
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response1.metadata.cacheState).toBe("miss");
@@ -224,7 +211,6 @@ describe("Scrape tests", () => {
         const response2 = await scrape({
           url,
           maxAge: scrapeTimeout * 3,
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response2.metadata.cacheState).toBe("miss");
@@ -234,7 +220,6 @@ describe("Scrape tests", () => {
         const response3 = await scrape({
           url,
           maxAge: scrapeTimeout * 3,
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response3.metadata.cacheState).toBe("hit");
@@ -243,7 +228,6 @@ describe("Scrape tests", () => {
         const response4 = await scrape({
           url,
           maxAge: 1,
-          timeout: scrapeTimeout,
         }, identity);
         
         expect(response4.metadata.cacheState).toBe("miss");
@@ -255,7 +239,6 @@ describe("Scrape tests", () => {
         
         const response1 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
         
@@ -265,7 +248,6 @@ describe("Scrape tests", () => {
 
         const response2 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
 
@@ -279,7 +261,6 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           formats: ["screenshot"],
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -290,7 +271,6 @@ describe("Scrape tests", () => {
         const response2 = await scrape({
           url,
           formats: ["screenshot"],
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
 
@@ -299,7 +279,6 @@ describe("Scrape tests", () => {
         const response3 = await scrape({
           url,
           formats: [{ type: "screenshot", fullPage: true }],
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3,
         }, identity);
 
@@ -314,7 +293,6 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           formats: [{ type: "screenshot", fullPage: true }],
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -325,7 +303,6 @@ describe("Scrape tests", () => {
         const response2 = await scrape({ 
           url,
           formats: [{ type: "screenshot", fullPage: true }],
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
 
@@ -334,7 +311,6 @@ describe("Scrape tests", () => {
         const response3 = await scrape({
           url,
           formats: ["screenshot"],
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3,
         }, identity);
 
@@ -349,14 +325,12 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           formats: ["markdown", "changeTracking"],
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
         const response1 = await scrape({
           url,
           formats: ["markdown", "changeTracking"],
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
 
@@ -367,7 +341,6 @@ describe("Scrape tests", () => {
         const response2 = await scrape({
           url,
           formats: ["markdown"],
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3 + indexCooldown,
         }, identity);
 
@@ -383,7 +356,6 @@ describe("Scrape tests", () => {
           headers: {
             "X-Test": "test",
           },
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -391,7 +363,6 @@ describe("Scrape tests", () => {
 
         const response = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2 + indexCooldown,
         }, identity);
 
@@ -404,7 +375,6 @@ describe("Scrape tests", () => {
 
         await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -412,7 +382,6 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
           mobile: true,
         }, identity);
@@ -423,7 +392,6 @@ describe("Scrape tests", () => {
 
         const response2 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3,
           mobile: true,
         }, identity);
@@ -437,7 +405,6 @@ describe("Scrape tests", () => {
 
         const response1 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout,
           actions: [{
             "type": "wait",
@@ -451,7 +418,6 @@ describe("Scrape tests", () => {
 
         const response2 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
 
@@ -464,7 +430,6 @@ describe("Scrape tests", () => {
 
         await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -474,7 +439,6 @@ describe("Scrape tests", () => {
           url,
           location: { country: "DE" },
           maxAge: scrapeTimeout * 2,
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response1.metadata.cacheState).toBe("miss");
@@ -484,7 +448,6 @@ describe("Scrape tests", () => {
         const response2 = await scrape({
           url,
           location: { country: "DE" },
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3,
         }, identity);
 
@@ -498,7 +461,6 @@ describe("Scrape tests", () => {
         await scrape({
           url,
           blockAds: true,
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -507,7 +469,6 @@ describe("Scrape tests", () => {
         const response0 = await scrape({
           url,
           blockAds: true,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2 + indexCooldown,
         }, identity);
 
@@ -516,7 +477,6 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           blockAds: false,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3 + indexCooldown,
         }, identity);
 
@@ -527,7 +487,6 @@ describe("Scrape tests", () => {
         const response2 = await scrape({
           url,
           blockAds: false,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 4 + 2 * indexCooldown,
         }, identity);
 
@@ -541,7 +500,6 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           proxy: "stealth",
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout,
         }, identity);
 
@@ -552,7 +510,6 @@ describe("Scrape tests", () => {
 
         const response2 = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2 + indexCooldown,
         }, identity);
 
@@ -561,7 +518,6 @@ describe("Scrape tests", () => {
         const response3 = await scrape({
           url,
           proxy: "stealth",
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 3 + indexCooldown,
         }, identity);
 
@@ -574,7 +530,6 @@ describe("Scrape tests", () => {
 
         await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -582,7 +537,6 @@ describe("Scrape tests", () => {
 
         const response = await scrape({
           url,
-          timeout: scrapeTimeout,
           maxAge: scrapeTimeout * 2,
         }, identity);
 
@@ -595,7 +549,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: changeTrackingTestUrl,
           formats: ["markdown", "changeTracking"],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.changeTracking).toBeDefined();
@@ -606,7 +559,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", modes: ["git-diff"] }],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.changeTracking).toBeDefined();
@@ -624,7 +576,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", modes: ["json"], prompt: "Summarize the changes between the previous and current content" }],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.changeTracking).toBeDefined();
@@ -661,7 +612,6 @@ describe("Scrape tests", () => {
               }
             }
           ],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.changeTracking).toBeDefined();
@@ -691,7 +641,6 @@ describe("Scrape tests", () => {
               }
             }
           }],
-          timeout: scrapeTimeout * 2, // takes a while to run, LLM
         }, identity);
 
         expect(response.changeTracking).toBeDefined();
@@ -715,13 +664,11 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", tag: uuid1 }],
-          timeout: scrapeTimeout,
         }, identity);
 
         const response2 = await scrape({
           url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", tag: uuid2 }],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response1.changeTracking?.previousScrapeAt).toBeNull();
@@ -732,7 +679,6 @@ describe("Scrape tests", () => {
         const response3 = await scrape({
           url: changeTrackingTestUrl,
           formats: ["markdown", { type: "changeTracking", tag: uuid1 }],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response3.changeTracking?.previousScrapeAt).not.toBeNull();
@@ -744,7 +690,6 @@ describe("Scrape tests", () => {
       it.concurrent("works without specifying an explicit location", async () => {
         await scrape({
           url: "https://iplocation.com",
-          timeout: scrapeTimeout,
         }, identity);
       }, scrapeTimeout);
 
@@ -752,7 +697,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://iplocation.com",
           location: { country: "US" },
-          timeout: scrapeTimeout,
         }, identity);
     
         expect(response.markdown).toContain("| Country | United States |");
@@ -764,7 +708,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
           formats: ["screenshot"],
-          timeout: scrapeTimeout,
         }, identity);
     
         expect(typeof response.screenshot).toBe("string");
@@ -774,7 +717,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
           formats: [{ type: "screenshot", fullPage: true }],
-          timeout: scrapeTimeout,
         }, identity);
     
         expect(typeof response.screenshot).toBe("string");
@@ -785,7 +727,6 @@ describe("Scrape tests", () => {
       it.concurrent("works", async () => {
         const response = await scrape({
           url: "https://firecrawl.dev",
-          timeout: scrapeTimeout,
           actions: [{ type: "pdf" }],
         }, identity);
 
@@ -800,7 +741,6 @@ describe("Scrape tests", () => {
       it.concurrent("undefined works", async () => {
         await scrape({
           url: "http://firecrawl.dev",
-          timeout: scrapeTimeout,
         }, identity);
       }, scrapeTimeout);
 
@@ -808,7 +748,6 @@ describe("Scrape tests", () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "basic",
-          timeout: scrapeTimeout,
         }, identity);
       }, scrapeTimeout);
 
@@ -816,7 +755,6 @@ describe("Scrape tests", () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "stealth",
-          timeout: scrapeTimeout * 2,
         }, identity);
       }, scrapeTimeout * 2);
 
@@ -824,7 +762,6 @@ describe("Scrape tests", () => {
         const res = await scrape({
           url: "http://firecrawl.dev",
           proxy: "auto",
-          timeout: scrapeTimeout * 2,
         }, identity);
 
         expect(res.metadata.proxyUsed).toBe("basic");
@@ -835,7 +772,6 @@ describe("Scrape tests", () => {
       //   const res = await scrape({
       //     url: "https://eo16f6718vph4un.m.pipedream.net", // always returns 403
       //     proxy: "auto",
-      //     timeout: scrapeTimeout * 2,
       //   }, identity);
 
       //   expect(res.metadata.proxyUsed).toBe("stealth");
@@ -855,7 +791,6 @@ describe("Scrape tests", () => {
       it.concurrent("blocks long PDFs with insufficient timeout", async () => {
         const response = await scrapeWithFailure({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
-          timeout: scrapeTimeout,
           maxAge: 0,
         }, identity);
 
@@ -865,7 +800,6 @@ describe("Scrape tests", () => {
       it.concurrent("scrapes long PDFs with sufficient timeout", async () => {
         const response = await scrape({
           url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
-          timeout: scrapeTimeout * 5,
           maxAge: 0,
         }, identity);
 
@@ -876,7 +810,6 @@ describe("Scrape tests", () => {
       it.concurrent("scrapes Google Docs links as PDFs", async () => {
         const response = await scrape({
           url: "https://docs.google.com/document/d/1H-hOLYssS8xXl2o5hxj4ipE7yyhZAX1s7ADYM1Hdlzo/view",
-          timeout: scrapeTimeout * 5,
         }, identity);
 
         expect(response.markdown).toContain("This is a test to confirm Google Docs scraping abilities.");
@@ -885,7 +818,6 @@ describe("Scrape tests", () => {
       it.concurrent("scrapes Google Slides links as PDFs", async () => {
         const response = await scrape({
           url: "https://docs.google.com/presentation/d/1pDKL1UULpr6siq_eVWE1hjqt5MKCgSSuKS_MWahnHAQ/view",
-          timeout: scrapeTimeout * 5,
           maxAge: 0,
         }, identity);
 
@@ -914,7 +846,6 @@ describe("Scrape tests", () => {
               },
               required: ["company_mission", "supports_sso", "is_open_source"],
             } }],
-          timeout: scrapeTimeout,
         }, identity);
     
         expect(response).toHaveProperty("json");
@@ -934,7 +865,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://firecrawl.dev",
           formats: ["summary"],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.summary).toBeDefined();
@@ -946,7 +876,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://firecrawl.dev",
           formats: ["markdown", "summary"],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.summary).toBeDefined();
@@ -966,7 +895,6 @@ describe("Scrape tests", () => {
               }
             } }
           }],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.summary).toBeDefined();
@@ -978,7 +906,6 @@ describe("Scrape tests", () => {
         const response = await scrape({
           url: "https://firecrawl.dev",
           formats: ["markdown", "html", "summary"],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.summary).toBeDefined();
@@ -992,7 +919,6 @@ describe("Scrape tests", () => {
   it.concurrent("sourceURL stays unnormalized", async () => {
     const response = await scrape({
       url: "https://firecrawl.dev/?pagewanted=all&et_blog",
-      timeout: scrapeTimeout,
     }, identity);
 
     expect(response.metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
@@ -1002,7 +928,6 @@ describe("Scrape tests", () => {
     const response = await scrape({
       url: "https://jsonplaceholder.typicode.com/todos/1",
       formats: ["markdown"],
-      timeout: scrapeTimeout,
     }, identity);
 
     expect(response.markdown).toContain("```json");
@@ -1013,7 +938,6 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "https://httpbin.org/html",
         __experimental_omceDomain: "fake-domain.com",
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -1025,7 +949,6 @@ describe("Scrape tests", () => {
         url: "https://httpbin.org/html",
         __experimental_omceDomain: "test-domain.org",
         __experimental_omce: true,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
