@@ -41,6 +41,7 @@ from .methods.aio import crawl as async_crawl  # type: ignore[attr-defined]
 from .methods.aio import search as async_search  # type: ignore[attr-defined]
 from .methods.aio import map as async_map # type: ignore[attr-defined]
 from .methods.aio import usage as async_usage # type: ignore[attr-defined]
+from .methods.aio import extract as async_extract  # type: ignore[attr-defined]
 
 from .watcher_async import AsyncWatcher
 
@@ -169,17 +170,18 @@ class AsyncFirecrawlClient:
         urls: Optional[List[str]] = None,
         *,
         prompt: Optional[str] = None,
-        schema: Optional[Any] = None,
+        schema: Optional[Dict[str, Any]] = None,
         system_prompt: Optional[str] = None,
-        allow_external_links: Optional[bool] = False,
-        enable_web_search: Optional[bool] = False,
-        show_sources: Optional[bool] = False,
-        agent: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        allow_external_links: Optional[bool] = None,
+        enable_web_search: Optional[bool] = None,
+        show_sources: Optional[bool] = None,
+        scrape_options: Optional['ScrapeOptions'] = None,
+        ignore_invalid_urls: Optional[bool] = None,
+        poll_interval: int = 2,
+        timeout: Optional[int] = None,
     ):
-        from ..v1.client import AsyncV1FirecrawlApp
-        v1 = AsyncV1FirecrawlApp(api_key=self.http_client.api_key, api_url=self.http_client.api_url)
-        return await v1.extract(
+        return await async_extract.extract(
+            self.async_http_client,
             urls,
             prompt=prompt,
             schema=schema,
@@ -187,14 +189,40 @@ class AsyncFirecrawlClient:
             allow_external_links=allow_external_links,
             enable_web_search=enable_web_search,
             show_sources=show_sources,
-            agent=agent,
-            **kwargs,
+            scrape_options=scrape_options,
+            ignore_invalid_urls=ignore_invalid_urls,
+            poll_interval=poll_interval,
+            timeout=timeout,
         )
 
     async def get_extract_status(self, job_id: str):
-        from ..v1.client import AsyncV1FirecrawlApp
-        v1 = AsyncV1FirecrawlApp(api_key=self.http_client.api_key, api_url=self.http_client.api_url)
-        return await v1.get_extract_status(job_id)
+        return await async_extract.get_extract_status(self.async_http_client, job_id)
+
+    async def start_extract(
+        self,
+        urls: Optional[List[str]] = None,
+        *,
+        prompt: Optional[str] = None,
+        schema: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        allow_external_links: Optional[bool] = None,
+        enable_web_search: Optional[bool] = None,
+        show_sources: Optional[bool] = None,
+        scrape_options: Optional['ScrapeOptions'] = None,
+        ignore_invalid_urls: Optional[bool] = None,
+    ):
+        return await async_extract.start_extract(
+            self.async_http_client,
+            urls,
+            prompt=prompt,
+            schema=schema,
+            system_prompt=system_prompt,
+            allow_external_links=allow_external_links,
+            enable_web_search=enable_web_search,
+            show_sources=show_sources,
+            scrape_options=scrape_options,
+            ignore_invalid_urls=ignore_invalid_urls,
+        )
 
     # Usage endpoints
     async def get_concurrency(self):

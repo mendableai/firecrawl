@@ -44,6 +44,7 @@ from .methods import search as search_module
 from .methods import map as map_module
 from .methods import batch as batch_methods
 from .methods import usage as usage_methods
+from .methods import extract as extract_module
 from .watcher import Watcher
 
 class FirecrawlClient:
@@ -439,25 +440,24 @@ class FirecrawlClient:
         request = CrawlParamsRequest(url=url, prompt=prompt)
         return crawl_module.crawl_params_preview(self.http_client, request)
 
-    def extract(
+    def start_extract(
         self,
         urls: Optional[List[str]] = None,
         *,
         prompt: Optional[str] = None,
-        schema: Optional[Any] = None,
+        schema: Optional[Dict[str, Any]] = None,
         system_prompt: Optional[str] = None,
-        allow_external_links: Optional[bool] = False,
-        enable_web_search: Optional[bool] = False,
-        show_sources: Optional[bool] = False,
-        agent: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        allow_external_links: Optional[bool] = None,
+        enable_web_search: Optional[bool] = None,
+        show_sources: Optional[bool] = None,
+        scrape_options: Optional['ScrapeOptions'] = None,
+        ignore_invalid_urls: Optional[bool] = None,
     ):
         """
-        Extract data from a list of URLs.
+        Start an extract job (non-blocking). Use get_extract_status to poll.
         """
-        from ..v1.client import V1FirecrawlApp
-        v1 = V1FirecrawlApp(api_key=self.config.api_key, api_url=self.config.api_url)
-        return v1.extract(
+        return extract_module.start_extract(
+            self.http_client,
             urls,
             prompt=prompt,
             schema=schema,
@@ -465,8 +465,41 @@ class FirecrawlClient:
             allow_external_links=allow_external_links,
             enable_web_search=enable_web_search,
             show_sources=show_sources,
-            agent=agent,
-            **kwargs,
+            scrape_options=scrape_options,
+            ignore_invalid_urls=ignore_invalid_urls,
+        )
+
+    def extract(
+        self,
+        urls: Optional[List[str]] = None,
+        *,
+        prompt: Optional[str] = None,
+        schema: Optional[Dict[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+        allow_external_links: Optional[bool] = None,
+        enable_web_search: Optional[bool] = None,
+        show_sources: Optional[bool] = None,
+        scrape_options: Optional['ScrapeOptions'] = None,
+        ignore_invalid_urls: Optional[bool] = None,
+        poll_interval: int = 2,
+        timeout: Optional[int] = None,
+    ):
+        """
+        Extract structured data using the v2 client surface, waiting until completion.
+        """
+        return extract_module.extract(
+            self.http_client,
+            urls,
+            prompt=prompt,
+            schema=schema,
+            system_prompt=system_prompt,
+            allow_external_links=allow_external_links,
+            enable_web_search=enable_web_search,
+            show_sources=show_sources,
+            scrape_options=scrape_options,
+            ignore_invalid_urls=ignore_invalid_urls,
+            poll_interval=poll_interval,
+            timeout=timeout,
         )
 
     def start_batch_scrape(
@@ -553,10 +586,7 @@ class FirecrawlClient:
         return batch_methods.get_batch_scrape_errors(self.http_client, job_id)
 
     def get_extract_status(self, job_id: str):
-        """Proxy to v1 get_extract_status while v2 extract is not implemented."""
-        from ..v1.client import V1FirecrawlApp
-        v1 = V1FirecrawlApp(api_key=self.config.api_key, api_url=self.config.api_url)
-        return v1.get_extract_status(job_id)
+        return extract_module.get_extract_status(self.http_client, job_id)
 
     def get_concurrency(self):
         """Get current concurrency and maximum allowed for this team/key (v2)."""

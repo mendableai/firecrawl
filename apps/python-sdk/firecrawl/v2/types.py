@@ -341,6 +341,18 @@ class MapResponse(BaseResponse[MapData]):
     """Response for map operations."""
     pass
 
+# Extract types
+class ExtractResponse(BaseModel):
+    """Response for extract operations (start/status/final)."""
+    success: Optional[bool] = None
+    id: Optional[str] = None
+    status: Optional[Literal["processing", "completed", "failed", "cancelled"]] = None
+    data: Optional[Any] = None
+    error: Optional[str] = None
+    warning: Optional[str] = None
+    sources: Optional[Dict[str, Any]] = None
+    expires_at: Optional[datetime] = None
+
 # Usage/limits types
 class ConcurrencyCheck(BaseModel):
     """Current concurrency and limits for the team/API key."""

@@ -21,24 +21,24 @@ def main():
 
     firecrawl = Firecrawl(api_key=api_key, api_url=api_url)
 
-    # # Scrape
-    # doc = firecrawl.scrape("https://docs.firecrawl.dev", formats=["markdown"])
-    # print("scrape:", doc.markdown)
+    # Scrape
+    doc = firecrawl.scrape("https://docs.firecrawl.dev", formats=["markdown"])
+    print("scrape:", doc.markdown)
 
-    # # Crawl (waits until terminal state)
-    # crawl_job = firecrawl.crawl("https://docs.firecrawl.dev", limit=3, poll_interval=1, timeout=120)
-    # print("crawl:", crawl_job.status, crawl_job.completed, "/", crawl_job.total)
+    # Crawl (waits until terminal state)
+    crawl_job = firecrawl.crawl("https://docs.firecrawl.dev", limit=3, poll_interval=1, timeout=120)
+    print("crawl:", crawl_job.status, crawl_job.completed, "/", crawl_job.total)
 
-    # # Batch scrape
-    # batch = firecrawl.batch_scrape([
-    #     "https://docs.firecrawl.dev",
-    #     "https://firecrawl.dev",
-    # ], formats=["markdown"], poll_interval=1, wait_timeout=120)
-    # print("batch:", batch.status, batch.completed, "/", batch.total)
+    # Batch scrape
+    batch = firecrawl.batch_scrape([
+        "https://docs.firecrawl.dev",
+        "https://firecrawl.dev",
+    ], formats=["markdown"], poll_interval=1, wait_timeout=120)
+    print("batch:", batch.status, batch.completed, "/", batch.total)
 
-    # # Search
-    # search_response = firecrawl.search(query="What is the capital of France?", limit=5)
-    # print("search web results:", len(getattr(search_response, "web", []) or []))
+    # Search
+    search_response = firecrawl.search(query="What is the capital of France?", limit=5)
+    print("search web results:", len(getattr(search_response, "web", []) or []))
 
     # Map
     map_response = firecrawl.map("https://firecrawl.dev")
