@@ -127,7 +127,6 @@ export type EngineScrapeResult = {
 const engineHandlers: {
   [E in Engine]: (
     meta: Meta,
-    timeToRun: number | undefined,
   ) => Promise<EngineScrapeResult>;
 } = {
   index: scrapeURLWithIndex,
@@ -513,7 +512,6 @@ export function buildFallbackList(meta: Meta): {
 export async function scrapeURLWithEngine(
   meta: Meta,
   engine: Engine,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const fn = engineHandlers[engine];
   const logger = meta.logger.child({
@@ -525,5 +523,5 @@ export async function scrapeURLWithEngine(
     logger,
   };
 
-  return await fn(_meta, timeToRun);
+  return await fn(_meta);
 }

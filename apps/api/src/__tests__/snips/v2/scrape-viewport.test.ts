@@ -25,7 +25,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
             }
           }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data).toBeDefined();
@@ -46,7 +45,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
             }
           }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data).toBeDefined();
@@ -57,7 +55,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
       const data = await scrape({
         url: "https://example.com",
         formats: ["screenshot"],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data).toBeDefined();
@@ -73,7 +70,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
             fullPage: false
           }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data).toBeDefined();
@@ -92,7 +88,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
             }
           }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.status).toBe(400);
@@ -111,7 +106,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
             }
           }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.status).toBe(400);
@@ -130,7 +124,6 @@ describe("V2 Scrape Screenshot Viewport", () => {
             }
           }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.status).toBe(400);

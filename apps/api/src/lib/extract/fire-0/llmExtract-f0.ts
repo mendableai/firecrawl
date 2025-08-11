@@ -12,7 +12,6 @@ import { generateObject, generateText, LanguageModel } from 'ai';
 import { jsonSchema } from 'ai';
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
-import { EngineResultsTracker, Meta } from "../../../scraper/scrapeURL";
 
 // Get max tokens from model prices
 const getModelLimits_F0 = (model: string) => {
@@ -34,7 +33,6 @@ const getModelLimits_F0 = (model: string) => {
 
 export class LLMRefusalError extends Error {
   public refusal: string;
-  public results: EngineResultsTracker | undefined;
 
   constructor(refusal: string) {
     super("LLM refused to extract the website's content");

@@ -425,7 +425,7 @@ export const extractV1Options = z
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     urlTrace: z.boolean().default(false),
-    timeout: z.number().int().positive().finite().safe().default(60000),
+    timeout: z.number().int().positive().finite().safe().optional(),
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
     __experimental_showSources: z.boolean().default(false),
@@ -463,12 +463,10 @@ export type ExtractRequest = z.infer<typeof extractRequestSchema>;
 export type ExtractRequestInput = z.input<typeof extractRequestSchema>;
 
 export const scrapeRequestSchema = baseScrapeOptions
-  .omit({ timeout: true })
   .extend({
     url,
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
-    timeout: z.number().int().positive().finite().safe().default(30000),
     zeroDataRetention: z.boolean().optional(),
   })
   .strict(strictMessage)
@@ -603,14 +601,14 @@ export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions
+  .omit({ ignoreSitemap: true })
   .extend({
     url,
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     includeSubdomains: z.boolean().default(true),
     search: z.string().optional(),
-    ignoreSitemap: z.boolean().default(false),
-    sitemapOnly: z.boolean().default(false),
+    sitemap: z.enum(["only", "include", "skip"]).default("include"),
     limit: z.number().min(1).max(30000).default(5000),
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),

@@ -33,7 +33,7 @@ describe("Map tests", () => {
   it.concurrent("handles query parameters correctly", async () => {
     let response = await map({
       url: "https://www.hfea.gov.uk",
-      sitemapOnly: true,
+      sitemap: "only",
       useMock: "map-query-params",
     }, identity);
 

@@ -53,7 +53,13 @@ export async function getLinksFromSitemap(
             ...((mode === "fire-engine" && useFireEngine) ? ["fire-engine;tlsclient" as const] : []),
           ],
           v0DisableJsDom: true,
-          abort,
+          externalAbort: abort ? {
+            signal: abort,
+            tier: "external",
+            throwable() {
+              return new Error("Sitemap fetch aborted");
+            },
+          } : undefined,
           teamId: "sitemap",
           zeroDataRetention,
         },

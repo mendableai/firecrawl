@@ -97,7 +97,7 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob(jobId, timeout + totalWait);
+    doc = await waitForJob(jobId, (timeout !== undefined) ? timeout + totalWait : null);
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,

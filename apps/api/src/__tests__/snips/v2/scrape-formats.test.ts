@@ -16,7 +16,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -28,7 +27,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: ["markdown", "html", "links"],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -45,7 +43,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: ["screenshot"],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.screenshot).toBeDefined();
@@ -58,7 +55,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -74,7 +70,6 @@ describe("Scrape format variations", () => {
           { type: "html" },
           { type: "links" }
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -96,7 +91,6 @@ describe("Scrape format variations", () => {
           quality: 80,
           viewport: { width: 1920, height: 1080 }
         }],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.screenshot).toBeDefined();
@@ -113,7 +107,6 @@ describe("Scrape format variations", () => {
           { type: "html" },
           "links"
         ],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -134,7 +127,6 @@ describe("Scrape format variations", () => {
             },
             { type: "links" }
           ],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.markdown).toBeDefined();
@@ -160,7 +152,6 @@ describe("Scrape format variations", () => {
               }
             }
           }],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.json).toBeDefined();
@@ -180,7 +171,6 @@ describe("Scrape format variations", () => {
               tag: "test-tag"
             }
           ],
-          timeout: scrapeTimeout,
         }, identity);
 
         expect(response.markdown).toBeDefined();
@@ -193,7 +183,6 @@ describe("Scrape format variations", () => {
     it.concurrent("default format is markdown when formats not specified", async () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -204,7 +193,6 @@ describe("Scrape format variations", () => {
       const raw = await scrapeRaw({
         url: "https://firecrawl.dev",
         formats: [{ type: "invalid-format" } as any],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(raw.statusCode).toBe(400);
@@ -215,7 +203,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: ["markdown", "html", "rawHtml", "links"],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -230,7 +217,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: ["markdown", "html"],
-        timeout: scrapeTimeout,
       }, identity);
 
       const keys = Object.keys(response);
@@ -243,7 +229,6 @@ describe("Scrape format variations", () => {
       const response = await scrape({
         url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }, { type: "html" }],
-        timeout: scrapeTimeout,
       }, identity);
 
       const keys = Object.keys(response);
@@ -256,19 +241,16 @@ describe("Scrape format variations", () => {
       const response1 = await scrape({
         url: "https://firecrawl.dev",
         formats: ["markdown", "html"],
-        timeout: scrapeTimeout,
       }, identity);
 
       const response2 = await scrape({
         url: "https://firecrawl.dev",
         formats: [{ type: "markdown" }, { type: "html" }],
-        timeout: scrapeTimeout,
       }, identity);
 
       const response3 = await scrape({
         url: "https://firecrawl.dev",
         formats: ["markdown", { type: "html" }],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(Object.keys(response1).sort()).toEqual(Object.keys(response2).sort());

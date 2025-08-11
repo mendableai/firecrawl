@@ -19,7 +19,6 @@ describe("Parsers parameter tests", () => {
       const response = await scrape({
         url: pdfUrl,
         parsers: ["pdf"],
-        timeout: scrapeTimeout * 2,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -31,7 +30,6 @@ describe("Parsers parameter tests", () => {
       const response = await scrape({
         url: pdfUrl,
         parsers: [],
-        timeout: scrapeTimeout * 2,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -42,7 +40,6 @@ describe("Parsers parameter tests", () => {
       const response = await scrape({
         url: htmlUrl,
         parsers: ["pdf"],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -53,7 +50,6 @@ describe("Parsers parameter tests", () => {
       const response = await scrape({
         url: htmlUrl,
         parsers: [],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -66,7 +62,6 @@ describe("Parsers parameter tests", () => {
     it.concurrent("parses PDF by default when parsers not specified", async () => {
       const response = await scrape({
         url: pdfUrl,
-        timeout: scrapeTimeout * 2,
       }, identity);
 
       expect(response.markdown).toBeDefined();
@@ -80,7 +75,6 @@ describe("Parsers parameter tests", () => {
       const raw = await scrapeRaw({
         url: pdfUrl,
         parsers: ["invalid-parser" as any],
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(raw.statusCode).toBe(400);
@@ -92,7 +86,6 @@ describe("Parsers parameter tests", () => {
       const raw = await scrapeRaw({
         url: pdfUrl,
         parsers: "pdf" as any,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(raw.statusCode).toBe(400);
@@ -104,7 +97,6 @@ describe("Parsers parameter tests", () => {
       const raw = await scrapeRaw({
         url: pdfUrl,
         parsers: { pdf: true } as any,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(raw.statusCode).toBe(400);
@@ -118,7 +110,6 @@ describe("Parsers parameter tests", () => {
       const response = await scrape({
         url: pdfUrl,
         parsers: ["pdf"],
-        timeout: scrapeTimeout * 2,
       }, identity);
 
       // Should bill based on number of pages when PDF parsing is enabled
@@ -129,7 +120,6 @@ describe("Parsers parameter tests", () => {
       const response = await scrape({
         url: pdfUrl,
         parsers: [],
-        timeout: scrapeTimeout * 2,
       }, identity);
 
       // Should bill flat rate (1 credit) when PDF parsing is disabled

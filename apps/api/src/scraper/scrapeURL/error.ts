@@ -1,4 +1,4 @@
-import { EngineResultsTracker, Meta } from ".";
+import { Meta } from ".";
 import { Engine, FeatureFlag } from "./engines";
 
 export class EngineError extends Error {
@@ -7,22 +7,14 @@ export class EngineError extends Error {
   }
 }
 
-export class TimeoutError extends Error {
-  constructor(message?: string, options?: ErrorOptions) {
-    super(message, options);
-  }
-}
-
 export class NoEnginesLeftError extends Error {
   public fallbackList: Engine[];
-  public results: EngineResultsTracker;
 
-  constructor(fallbackList: Engine[], results: EngineResultsTracker) {
+  constructor(fallbackList: Engine[]) {
     super(
       "All scraping engines failed! -- Double check the URL to make sure it's not broken. If the issue persists, contact us at help@firecrawl.com.",
     );
     this.fallbackList = fallbackList;
-    this.results = results;
   }
 }
 
@@ -125,5 +117,43 @@ export class PDFPrefetchFailed extends Error {
 export class FEPageLoadFailed extends Error {
   constructor() {
     super("The page failed to load with the specified timeout. Please increase the timeout parameter in your request.");
+  }
+}
+
+export class ScrapeURLScopedTimeoutError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+  }
+}
+
+export class ScrapeTimeoutError extends ScrapeURLScopedTimeoutError {
+  name = "ScrapeTimeoutError";
+
+  constructor() {
+    super("Scrape timed out");
+  }
+}
+
+export class EngineSnipedError extends ScrapeURLScopedTimeoutError {
+  name = "EngineSnipedError";
+
+  constructor() {
+    super("Engine got sniped");
+  }
+}
+
+export class EngineUnsuccessfulError extends Error {
+  name = "EngineUnsuccessfulError";
+
+  constructor(engine: Engine) {
+    super(`Engine ${engine} was unsuccessful`);
+  }
+}
+
+export class WaterfallNextEngineSignal extends Error {
+  name = "WaterfallNextEngineSignal";
+
+  constructor() {
+    super("Waterfall next engine");
   }
 }

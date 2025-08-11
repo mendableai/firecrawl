@@ -2,7 +2,7 @@ import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits, addOMCEJob, addDomainFrequencyJob } from "../../../../services";
-import { EngineError, IndexMissError, TimeoutError } from "../../error";
+import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
@@ -136,7 +136,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
 
 const errorCountToRegister = 3;
 
-export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefined): Promise<EngineScrapeResult> {
+export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult> {
     const normalizedURL = normalizeURLForIndex(meta.url);
     const urlHash = hashURL(normalizedURL);
 
@@ -165,14 +165,9 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
         selector = selector.is("location_languages", null);
     }
 
-    const { data, error } = await Promise.race([
-        selector
-            .order("created_at", { ascending: false })
-            .limit(5),
-        new Promise<{ data: { id: any; created_at: any; status: any }[], error: any }>((resolve, reject) => {
-            setTimeout(() => reject(new TimeoutError()), timeToRun ?? 10000);
-        }),
-    ]);
+    const { data, error } = await selector
+        .order("created_at", { ascending: false })
+        .limit(5);
 
     if (error || !data) {
         throw new EngineError("Failed to retrieve URL from DB index", {

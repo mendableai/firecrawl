@@ -6,7 +6,7 @@ import {
   TokenUsage,
 } from "../../../controllers/v2/types";
 import { Logger } from "winston";
-import { EngineResultsTracker, Meta } from "..";
+import { Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
 import {
@@ -56,7 +56,6 @@ const getModelLimits = (model: string) => {
 
 export class LLMRefusalError extends Error {
   public refusal: string;
-  public results: EngineResultsTracker | undefined;
 
   constructor(refusal: string) {
     super("LLM refused to extract the website's content");

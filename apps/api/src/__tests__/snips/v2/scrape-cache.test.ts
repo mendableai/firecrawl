@@ -20,7 +20,6 @@ describe("V2 Scrape Default maxAge", () => {
       // First scrape to populate cache
       const data1 = await scrape({
         url,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data1).toBeDefined();
@@ -32,7 +31,6 @@ describe("V2 Scrape Default maxAge", () => {
       // Second scrape should hit cache with default maxAge
       const data2 = await scrape({
         url,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data2).toBeDefined();
@@ -47,7 +45,6 @@ describe("V2 Scrape Default maxAge", () => {
       // First scrape to populate cache
       const data1 = await scrape({
         url,
-        timeout: scrapeTimeout,
       }, identity);
 
       expect(data1).toBeDefined();
@@ -59,7 +56,6 @@ describe("V2 Scrape Default maxAge", () => {
       // Second scrape with maxAge=0 should miss cache
       const data2 = await scrape({
         url,
-        timeout: scrapeTimeout,
         maxAge: 0,
       }, identity);
 
@@ -74,7 +70,6 @@ describe("V2 Scrape Default maxAge", () => {
       // First scrape to populate cache
       const data1 = await scrape({
         url,
-        timeout: scrapeTimeout,
         maxAge: 3600000, // 1 hour in milliseconds
       }, identity);
 
@@ -87,7 +82,6 @@ describe("V2 Scrape Default maxAge", () => {
       // Second scrape with same maxAge should hit cache
       const data2 = await scrape({
         url,
-        timeout: scrapeTimeout,
         maxAge: 3600000, // 1 hour in milliseconds
       }, identity);
 
