@@ -190,6 +190,7 @@ const processPrecrawlJobInternal = async (token: string, job: Job) => {
       }
     }
 
+    await job.moveToCompleted({ success: true }, token, false);
   } catch (error) {
     logger.error("Error processing precrawl job", { error });
     await job.moveToFailed(error, token, false);
