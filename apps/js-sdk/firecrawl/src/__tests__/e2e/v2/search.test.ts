@@ -1,7 +1,7 @@
 /**
  * E2E tests for v2 search (translated from Python tests)
  */
-import Firecrawl from "../../../../index";
+import Firecrawl from "../../../index";
 import { config } from "dotenv";
 import { describe, test, expect } from "@jest/globals";
 
@@ -171,7 +171,12 @@ describe("v2.search e2e", () => {
       }
     }
 
-    expect(results.images == null).toBe(true);
+    expect(results.images).toBeTruthy();
+    expect((results.images || []).length).toBeLessThanOrEqual(3);
+    for (const result of results.images || []) {
+      expect(typeof result.url).toBe("string");
+      expect(result.url.startsWith("http")).toBe(true);
+    }
   }, 120_000);
 
   test("formats flexibility: list vs object", async () => {

@@ -48,8 +48,6 @@ export class HttpClient {
       origin: `js-sdk@${version}`,
     };
 
-    console.log("request", config);
-
     let lastError: any;
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {

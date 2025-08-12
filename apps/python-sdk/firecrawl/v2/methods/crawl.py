@@ -455,8 +455,7 @@ def get_active_crawls(client: HttpClient) -> ActiveCrawlsResponse:
     if not body.get("success"):
         raise Exception(body.get("error", "Unknown error occurred"))
 
-    data = body.get("data", {})
-    crawls_in = data.get("crawls", [])
+    crawls_in = body.get("crawls", [])
     normalized_crawls = []
     for c in crawls_in:
         if isinstance(c, dict):

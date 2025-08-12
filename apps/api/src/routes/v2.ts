@@ -14,6 +14,7 @@ import { scrapeStatusController } from "../controllers/v2/scrape-status";
 import { creditUsageController } from "../controllers/v2/credit-usage";
 import { tokenUsageController } from "../controllers/v2/token-usage";
 import { crawlCancelController } from "../controllers/v2/crawl-cancel";
+import { concurrencyCheckController } from "../controllers/v2/concurrency-check";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -128,4 +129,10 @@ v2Router.get(
   "/token-usage",
   authMiddleware(RateLimiterMode.ExtractStatus),
   wrap(tokenUsageController),
+);
+
+v2Router.get(
+  "/concurrency-check",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(concurrencyCheckController),
 );

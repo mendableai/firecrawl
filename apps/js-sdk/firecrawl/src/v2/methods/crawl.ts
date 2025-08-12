@@ -132,9 +132,9 @@ export async function getCrawlErrors(http: HttpClient, crawlId: string): Promise
 
 export async function getActiveCrawls(http: HttpClient): Promise<ActiveCrawlsResponse> {
   try {
-    const res = await http.get<{ success: boolean; data?: { crawls: Array<{ id: string; teamId?: string; team_id?: string; url: string; options?: any }> } }>(`/v2/crawl/active`);
+    const res = await http.get<{ success: boolean; crawls: Array<{ id: string; teamId?: string; team_id?: string; url: string; options?: any }> }>(`/v2/crawl/active`);
     if (res.status !== 200 || !res.data?.success) throwForBadResponse(res, "get active crawls");
-    const crawlsIn = res.data?.data?.crawls || [];
+    const crawlsIn = res.data?.crawls || [];
     const crawls = crawlsIn.map((c) => ({ id: c.id, teamId: (c as any).teamId ?? (c as any).team_id, url: c.url, options: c.options ?? null }));
     return { success: true, crawls };
   } catch (err: any) {

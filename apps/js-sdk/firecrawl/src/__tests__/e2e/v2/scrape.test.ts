@@ -1,7 +1,7 @@
 /**
  * E2E tests for v2 scrape
  */
-import Firecrawl from "../../../../index";
+import Firecrawl from "../../../index";
 import { z } from "zod";
 import { config } from "dotenv";
 import { describe, test, expect } from "@jest/globals";

@@ -2,11 +2,13 @@ import { type ExtractResponse, type ScrapeOptions } from "../types";
 import { HttpClient } from "../utils/httpClient";
 import { ensureValidScrapeOptions } from "../utils/validation";
 import { normalizeAxiosError, throwForBadResponse } from "../utils/errorHandler";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import type { ZodTypeAny } from "zod";
 
 function prepareExtractPayload(args: {
   urls?: string[];
   prompt?: string;
-  schema?: Record<string, unknown>;
+  schema?: Record<string, unknown> | ZodTypeAny;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
   enableWebSearch?: boolean;
@@ -17,7 +19,11 @@ function prepareExtractPayload(args: {
   const body: Record<string, unknown> = {};
   if (args.urls) body.urls = args.urls;
   if (args.prompt != null) body.prompt = args.prompt;
-  if (args.schema != null) body.schema = args.schema;
+  if (args.schema != null) {
+    const s: any = args.schema;
+    const isZod = s && (typeof s.safeParse === "function" || typeof s.parse === "function") && s._def;
+    body.schema = isZod ? zodToJsonSchema(s) : args.schema;
+  }
   if (args.systemPrompt != null) body.systemPrompt = args.systemPrompt;
   if (args.allowExternalLinks != null) body.allowExternalLinks = args.allowExternalLinks;
   if (args.enableWebSearch != null) body.enableWebSearch = args.enableWebSearch;

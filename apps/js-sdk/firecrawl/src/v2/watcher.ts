@@ -123,7 +123,10 @@ export class Watcher extends EventEmitter {
           data,
         };
     this.emit("snapshot", snap);
-    if (["completed", "failed", "cancelled"].includes(status)) this.emit("done", { status, data, id: this.jobId });
+    if (["completed", "failed", "cancelled"].includes(status)) {
+      this.emit("done", { status, data, id: this.jobId });
+      this.close();
+    }
   }
 
   private async pollLoop() {
@@ -131,10 +134,13 @@ export class Watcher extends EventEmitter {
     const timeoutMs = this.timeout ? this.timeout * 1000 : undefined;
     while (!this.closed) {
       try {
-        const snap = this.kind === "crawl" ? await getCrawlStatus(this as any as HttpClient, this.jobId) : await getBatchScrapeStatus(this as any as HttpClient, this.jobId);
+        const snap = this.kind === "crawl"
+          ? await getCrawlStatus(this.http as any, this.jobId)
+          : await getBatchScrapeStatus(this.http as any, this.jobId);
         this.emit("snapshot", snap);
         if (["completed", "failed", "cancelled"].includes(snap.status)) {
           this.emit("done", { status: snap.status, data: snap.data, id: this.jobId });
+          this.close();
           break;
         }
       } catch {

@@ -14,7 +14,7 @@ export async function tokenUsageController(
       res.json({
         success: true,
         data: {
-          remaining_tokens: req.acuc.remaining_credits,
+          remainingTokens: req.acuc.remaining_credits,
         },
       });
       return;
@@ -33,7 +33,7 @@ export async function tokenUsageController(
     res.json({
       success: true,
       data: {
-        remaining_tokens: chunk.remaining_credits,
+        remainingTokens: chunk.remaining_credits,
       },
     });
   } catch (error) {

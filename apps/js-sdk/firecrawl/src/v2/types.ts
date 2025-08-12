@@ -259,11 +259,7 @@ export interface CreditUsage {
 }
 
 export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  step?: string;
-  model?: string;
+  remainingTokens: number;
 }
 
 export interface CrawlErrorsResponse {
