@@ -2,12 +2,11 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import * as Sentry from "@sentry/node";
 import { MockState, saveMock } from "./mock";
-import { TimeoutSignal } from "../../../controllers/v1/types";
 import { fireEngineURL } from "../engines/fire-engine/scrape";
-import { fetch, RequestInit, Response, FormData, Agent } from "undici";
+import { fetch, Response, FormData, Agent } from "undici";
 import { cacheableLookup } from "./cacheableLookup";
-import { log } from "console";
 import dns from "dns";
+import { AbortManagerThrownError } from "./abortManager";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -125,8 +124,8 @@ export async function robustFetch<
             : {}),
       });
     } catch (error) {
-      if (error instanceof TimeoutSignal || (error instanceof Error && error.name === "TimeoutError") || (error instanceof Error && error.message === "Operation timed out")) {
-        throw new TimeoutSignal();
+      if (error instanceof AbortManagerThrownError) {
+        throw error;
       } else if (!ignoreFailure) {
         Sentry.captureException(error);
         if (tryCount > 1) {

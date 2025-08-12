@@ -118,7 +118,7 @@ describe("E2E Tests for Map V2 API Routes", () => {
 
       expect(response.statusCode).toBe(408);
       expect(response.body).toHaveProperty("success", false);
-      expect(response.body).toHaveProperty("error", "Request timed out");
+      expect(response.body).toHaveProperty("error", "Map timed out");
     },
     10000,
   );

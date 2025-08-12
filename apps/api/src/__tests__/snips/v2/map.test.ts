@@ -27,7 +27,7 @@ describe("Map tests", () => {
 
     expect(response.statusCode).toBe(408);
     expect(response.body.success).toBe(false);
-    expect(response.body.error).toBe("Request timed out");
+    expect(response.body.error).toBe("Map timed out");
   }, 10000);
 
   it.concurrent("handles query parameters correctly", async () => {
@@ -41,4 +41,16 @@ describe("Map tests", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.links.some(x => x.url.match(/^https:\/\/www\.hfea\.gov\.uk\/choose-a-clinic\/clinic-search\/results\/?\?options=\d+$/))).toBe(true);
   }, 60000);
+
+  it.concurrent("sitemap=only respects limit", async () => {
+    const response = await map({
+      url: "https://firecrawl.dev",
+      sitemap: "only",
+      limit: 10,
+    }, identity);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.links.length).toBe(10);
+  });
 });

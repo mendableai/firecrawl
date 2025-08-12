@@ -1,13 +1,10 @@
-import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../controllers/v1/types";
-import { logger } from "../logger";
+import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../controllers/v2/types";
 import { getScrapeQueue } from "../../services/queue-service";
 import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../job-priority";
 import type { Logger } from "winston";
-import { getJobFromGCS } from "../gcs-jobs";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { fromV1ScrapeOptions } from "../../controllers/v2/types";
 
 interface ScrapeDocumentOptions {
   url: string;
@@ -42,19 +39,16 @@ export async function scrapeDocument(
       from_extract: true,
     });
 
-    const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(scrapeOptionsSchema.parse({
-      ...internalScrapeOptions,
-      maxAge: 4 * 60 * 60 * 1000,
-    }), internalScrapeOptions.timeout, options.teamId)
-
     await addScrapeJob(
       {
         url: options.url,
         mode: "single_urls",
         team_id: options.teamId,
-        scrapeOptions: scrapeOptions,
+        scrapeOptions: scrapeOptionsSchema.parse({
+          ...internalScrapeOptions,
+          maxAge: 4 * 60 * 60 * 1000,
+        }),
         internalOptions: {
-          ...internalOptions,
           teamId: options.teamId,
           saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
           bypassBilling: true,

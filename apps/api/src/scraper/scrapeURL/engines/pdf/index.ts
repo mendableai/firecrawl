@@ -260,19 +260,6 @@ export async function scrapePDF(
         error instanceof AbortManagerThrownError
       ) {
         throw error;
-      // } else if (
-      //   (error instanceof Error && error.name === "TimeoutError") ||
-      //   (error instanceof Error &&
-      //     error.message === "Request failed" &&
-      //     error.cause &&
-      //     error.cause instanceof Error &&
-      //     error.cause.name === "TimeoutError") ||
-      //   (error instanceof Error && error.name === "TimeoutSignal")
-      // ) {
-      //   meta.logger.warn("RunPod MU timed out", { timeout: remainingTime });
-      //   throw new TimeoutError(
-      //     "PDF parsing timed out, please increase the timeout parameter in your scrape request",
-      //   );
       }
       meta.logger.warn(
         "RunPod MU failed to parse PDF (could be due to timeout) -- falling back to parse-pdf",

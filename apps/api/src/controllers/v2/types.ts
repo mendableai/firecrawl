@@ -9,8 +9,10 @@ import {
   Document as V0Document,
   WebSearchResult,
 } from "../../lib/entities";
-import { ScrapeOptions as V1ScrapeOptions } from "../v1/types";
+import { agentOptionsExtract, ScrapeOptions as V1ScrapeOptions } from "../v1/types";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import { ErrorCodes } from "../../lib/error";
+import Ajv from "ajv";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -386,12 +388,9 @@ export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
 export type ScrapeOptions = BaseScrapeOptions;
 
-import Ajv from "ajv";
-import type { CostTracking } from "../../lib/extract/extraction-service";
-
 const ajv = new Ajv();
 
-export const extractV1Options = z
+export const extractOptions = z
   .object({
     urls: url
       .array()
@@ -426,6 +425,7 @@ export const extractV1Options = z
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     urlTrace: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().optional(),
+    agent: agentOptionsExtract.optional(),
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
     __experimental_showSources: z.boolean().default(false),
@@ -457,8 +457,8 @@ export const extractV1Options = z
       : x.scrapeOptions,
   }));
 
-export type ExtractV1Options = z.infer<typeof extractV1Options>;
-export const extractRequestSchema = extractV1Options;
+export type ExtractOptions = z.infer<typeof extractOptions>;
+export const extractRequestSchema = extractOptions;
 export type ExtractRequest = z.infer<typeof extractRequestSchema>;
 export type ExtractRequestInput = z.input<typeof extractRequestSchema>;
 
@@ -726,6 +726,7 @@ export type Document = {
 
 export type ErrorResponse = {
   success: false;
+  code?: ErrorCodes;
   error: string;
   details?: any;
 };
@@ -1437,9 +1438,3 @@ export const generateLLMsTextRequestSchema = z.object({
 export type GenerateLLMsTextRequest = z.infer<
   typeof generateLLMsTextRequestSchema
 >;
-
-export class TimeoutSignal extends Error {
-  constructor() {
-    super("Operation timed out");
-  }
-}
