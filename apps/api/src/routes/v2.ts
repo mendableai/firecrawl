@@ -14,6 +14,7 @@ import { scrapeStatusController } from "../controllers/v2/scrape-status";
 import { creditUsageController } from "../controllers/v2/credit-usage";
 import { tokenUsageController } from "../controllers/v2/token-usage";
 import { crawlCancelController } from "../controllers/v2/crawl-cancel";
+import { crawlStatusWSController } from "../controllers/v2/crawl-status-ws";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -99,6 +100,8 @@ v2Router.delete(
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(crawlCancelController),
 );
+
+v2Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v2Router.get(
   "/batch/scrape/:jobId",
