@@ -20,7 +20,7 @@ spec:
           image: ghcr.io/mendableai/firecrawl:latest
           imagePullPolicy: Always
           command: [ "node" ]
-          args: [ "--max-old-space-size=3072", "dist/src/services/queue-worker.js" ]
+          args: [ "dist/src/services/queue-worker.js" ]
           env:
             - name: FLY_PROCESS_GROUP
               value: "worker"
