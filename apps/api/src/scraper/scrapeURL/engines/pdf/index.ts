@@ -51,9 +51,10 @@ async function scrapePDFWithRunPodMU(
 
   meta.abort.throwIfAborted();
 
+
   const podStart = await robustFetch({
     url:
-      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MUV2_POD_ID + "/runsync",
+      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,

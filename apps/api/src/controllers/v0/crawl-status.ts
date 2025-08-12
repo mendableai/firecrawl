@@ -87,6 +87,9 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     redisEvictConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
+    
+    redisEvictConnection.sadd("teams_using_v0:" + team_id, "crawl:" + req.params.jobId + ":status")
+      .catch(error => logger.error("Failed to add team to teams_using_v0 (2)", { error, team_id }));
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
