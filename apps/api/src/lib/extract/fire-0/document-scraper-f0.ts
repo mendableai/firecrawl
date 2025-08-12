@@ -1,12 +1,10 @@
-import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../../controllers/v1/types";
-import { logger } from "../../logger";
+import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../../controllers/v2/types";
 import { getScrapeQueue } from "../../../services/queue-service";
 import { waitForJob } from "../../../services/queue-jobs";
 import { addScrapeJob } from "../../../services/queue-jobs";
 import { getJobPriority } from "../../job-priority";
 import type { Logger } from "winston";
 import { isUrlBlocked } from "../../../scraper/WebScraper/utils/blocklist";
-import { fromV1ScrapeOptions } from "../../../controllers/v2/types";
 
 interface ScrapeDocumentOptions {
   url: string;
@@ -41,10 +39,10 @@ export async function scrapeDocument_F0(
       from_extract: true,
     });
 
-    const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(scrapeOptionsSchema.parse({
+    const scrapeOptions = scrapeOptionsSchema.parse({
       ...internalScrapeOptions,
       maxAge: 4 * 60 * 60 * 1000,
-    }), internalScrapeOptions.timeout, options.teamId);
+    });
 
     await addScrapeJob(
       {
@@ -53,7 +51,6 @@ export async function scrapeDocument_F0(
         team_id: options.teamId,
         scrapeOptions,
         internalOptions: {
-          ...internalOptions,
           teamId: options.teamId,
           bypassBilling: true,
         },
