@@ -38,11 +38,12 @@ def test_search_minimal_request():
     
     assert isinstance(results, SearchData)
     assert hasattr(results, 'web')
-    assert hasattr(results, 'news')
-    assert hasattr(results, 'images')
-    
     assert results.web is not None
     assert len(results.web) > 0
+    assert hasattr(results, 'news')
+    assert results.news is None
+    assert hasattr(results, 'images')
+    assert results.images is None
     
     for result in results.web:
         assert isinstance(result, SearchResult)
