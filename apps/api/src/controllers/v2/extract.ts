@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import {
   RequestWithAuth,
   ExtractRequest,
@@ -6,48 +6,11 @@ import {
   ExtractResponse,
 } from "./types";
 import { getExtractQueue } from "../../services/queue-service";
-import * as Sentry from "@sentry/node";
 import { saveExtract } from "../../lib/extract/extract-redis";
-import { getTeamIdSyncB } from "../../lib/extract/team-id-sync";
-import { performExtraction } from "../../lib/extract/extraction-service";
-import { performExtraction_F0 } from "../../lib/extract/fire-0/extraction-service-f0";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger as _logger } from "../../lib/logger";
-import { fromV1ScrapeOptions } from "../v2/types";
 
-export async function oldExtract(
-  req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
-  res: Response<ExtractResponse>,
-  extractId: string,
-) {
-  // Means that are in the non-queue system
-  // TODO: Remove this once all teams have transitioned to the new system
-  try {
-    let result;
-    const model = req.body.agent?.model
-    if (req.body.agent && model && model.toLowerCase().includes("fire-1")) {
-      result = await performExtraction(extractId, {
-        request: req.body,
-        teamId: req.auth.team_id,
-        subId: req.acuc?.sub_id ?? undefined,
-      });
-    } else {
-      result = await performExtraction_F0(extractId, {
-        request: req.body,
-        teamId: req.auth.team_id,
-        subId: req.acuc?.sub_id ?? undefined,
-      });
-    }
-
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: "Internal server error",
-    });
-  }
-}
 /**
  * Extracts data from the provided URLs based on the request parameters.
  * Currently in beta.
@@ -59,7 +22,6 @@ export async function extractController(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
   res: Response<ExtractResponse>,
 ) {
-  const selfHosted = process.env.USE_DB_AUTHENTICATION !== "true";
   const originalRequest = { ...req.body };
   req.body = extractRequestSchema.parse(req.body);
 
@@ -90,30 +52,13 @@ export async function extractController(
     zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
 
-  const scrapeOptions = req.body.scrapeOptions
-    ? fromV1ScrapeOptions(req.body.scrapeOptions, req.body.scrapeOptions.timeout, req.auth.team_id).scrapeOptions
-    : undefined;
-
   const jobData = {
-    request: {
-      ...req.body,
-      scrapeOptions,
-    },
+    request: req.body,
     teamId: req.auth.team_id,
     subId: req.acuc?.sub_id,
     extractId,
     agent: req.body.agent,
   };
-
-  if (
-    (await getTeamIdSyncB(req.auth.team_id)) &&
-    req.body.origin !== "api-sdk" &&
-    req.body.origin !== "website" &&
-    !req.body.origin.startsWith("python-sdk@") &&
-    !req.body.origin.startsWith("js-sdk@")
-  ) {
-    return await oldExtract(req, res, extractId);
-  }
 
   await saveExtract(extractId, {
     id: extractId,

@@ -3,7 +3,7 @@ import {
     ExtractRequest,
     TokenUsage,
     URLTrace,
-  } from "../../../controllers/v1/types";
+  } from "../../../controllers/v2/types";
   import { logger as _logger } from "../../logger";
   import { scrapeDocument_F0 } from "./document-scraper-f0";
   import { billTeam } from "../../../services/billing/credit_billing";
