@@ -174,9 +174,14 @@ export async function searchController(req: Request, res: Response) {
       return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
     }
 
+    const jobId = uuidv4();
+
     redisEvictConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
     
+    redisEvictConnection.sadd("teams_using_v0:" + team_id, "search:" + jobId)
+      .catch(error => logger.error("Failed to add team to teams_using_v0 (2)", { error, team_id }));
+
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
       includeHtml: req.body.pageOptions?.includeHtml ?? false,
@@ -188,8 +193,6 @@ export async function searchController(req: Request, res: Response) {
     const origin = req.body.origin ?? "api";
 
     const searchOptions = req.body.searchOptions ?? { limit: 5 };
-
-    const jobId = uuidv4();
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
