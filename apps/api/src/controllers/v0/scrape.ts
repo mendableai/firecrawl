@@ -33,6 +33,7 @@ import { Document as V0Document } from "./../../lib/entities";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
 import { fromV0Combo } from "../v2/types";
+import { ScrapeJobTimeoutError } from "../../lib/error";
 
 export async function scrapeHelper(
   jobId: string,
@@ -97,13 +98,10 @@ export async function scrapeHelper(
   try {
     doc = await waitForJob(jobId, timeout);
   } catch (e) {
-    if (
-      e instanceof Error &&
-      (e.message.startsWith("Job wait") || e.message === "timeout")
-    ) {
+    if (e instanceof ScrapeJobTimeoutError) {
       return {
         success: false,
-        error: "Request timed out",
+        error: e.message,
         returnCode: 408,
       };
     } else if (

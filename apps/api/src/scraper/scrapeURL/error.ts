@@ -1,3 +1,4 @@
+import { ErrorCodes, TransportableError } from "../../lib/error";
 import { Meta } from ".";
 import { Engine, FeatureFlag } from "./engines";
 
@@ -7,14 +8,28 @@ export class EngineError extends Error {
   }
 }
 
-export class NoEnginesLeftError extends Error {
+export class NoEnginesLeftError extends TransportableError {
   public fallbackList: Engine[];
 
   constructor(fallbackList: Engine[]) {
     super(
+      "SCRAPE_ALL_ENGINES_FAILED",
       "All scraping engines failed! -- Double check the URL to make sure it's not broken. If the issue persists, contact us at help@firecrawl.com.",
     );
     this.fallbackList = fallbackList;
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      fallbackList: this.fallbackList,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new NoEnginesLeftError(data.fallbackList);
+    x.stack = data.stack;
+    return x;
   }
 }
 
@@ -41,58 +56,143 @@ export class RemoveFeatureError extends Error {
   }
 }
 
-export class SSLError extends Error {
-  constructor(skipTlsVerification: boolean) {
+export class SSLError extends TransportableError {
+  constructor(public skipTlsVerification: boolean) {
     super(
+      "SCRAPE_SSL_ERROR",
       "An SSL error occurred while scraping the URL. "
       + (skipTlsVerification
         ? "Since you have `skipTlsVerification` enabled, this means that the TLS configuration of the target site is completely broken. Try scraping the plain HTTP version of the page."
         : "If you're not inputting any sensitive data, try scraping with `skipTlsVerification: true`.")
     );
   }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      skipTlsVerification: this.skipTlsVerification,
+    }
+  }
+  
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new SSLError(data.skipTlsVerification);
+    x.stack = data.stack;
+    return x;
+  }
 }
 
-export class SiteError extends Error {
-  public code: string;
-  constructor(code: string) {
+export class SiteError extends TransportableError {
+  constructor(public errorCode: string) {
     super(
-      "Specified URL is failing to load in the browser. Error code: " + code,
+      "SCRAPE_SITE_ERROR",
+      "Specified URL is failing to load in the browser. Error code: " + errorCode,
     );
-    this.code = code;
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      errorCode: this.errorCode,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new SiteError(data.errorCode);
+    x.stack = data.stack;
+    return x;
   }
 }
 
-export class ActionError extends Error {
-  public code: string;
-  constructor(code: string) {
-    super("Action(s) failed to complete. Error code: " + code);
-    this.code = code;
+export class ActionError extends TransportableError {
+  constructor(public errorCode: string) {
+    super("SCRAPE_ACTION_ERROR", "Action(s) failed to complete. Error code: " + errorCode);
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      errorCode: this.errorCode,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new ActionError(data.errorCode);
+    x.stack = data.stack;
+    return x;
   }
 }
 
-export class UnsupportedFileError extends Error {
-  public reason: string;
-  constructor(reason: string) {
-    super("Scrape resulted in unsupported file: " + reason);
-    this.reason = reason;
+export class UnsupportedFileError extends TransportableError {
+  constructor(public reason: string) {
+    super("SCRAPE_UNSUPPORTED_FILE_ERROR", "Scrape resulted in unsupported file: " + reason);
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      reason: this.reason,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new UnsupportedFileError(data.reason);
+    x.stack = data.stack;
+    return x;
   }
 }
 
-export class PDFAntibotError extends Error {
+export class PDFAntibotError extends TransportableError {
   constructor() {
-    super("PDF scrape was prevented by anti-bot")
+    super("SCRAPE_PDF_ANTIBOT_ERROR", "PDF scrape was prevented by anti-bot")
+  }
+
+  serialize() {
+    return super.serialize();
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new PDFAntibotError();
+    x.stack = data.stack;
+    return x;
   }
 }
 
-export class PDFInsufficientTimeError extends Error {
-  constructor(pageCount: number, minTimeout: number) {
-    super(`Insufficient time to process PDF of ${pageCount} pages. Please increase the timeout parameter in your scrape request to at least ${minTimeout}ms.`);
+export class PDFInsufficientTimeError extends TransportableError {
+  constructor(public pageCount: number, public minTimeout: number) {
+    super("SCRAPE_PDF_INSUFFICIENT_TIME_ERROR", `Insufficient time to process PDF of ${pageCount} pages. Please increase the timeout parameter in your scrape request to at least ${minTimeout}ms.`);
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      pageCount: this.pageCount,
+      minTimeout: this.minTimeout,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new PDFInsufficientTimeError(data.pageCount, data.minTimeout);
+    x.stack = data.stack;
+    return x;
   }
 }
 
-export class DNSResolutionError extends Error {
-  constructor(hostname: string) {
-    super(`DNS resolution failed for hostname: ${hostname}. Please check if the domain is valid and accessible.`);
+export class DNSResolutionError extends TransportableError {
+  constructor(public hostname: string) {
+    super("SCRAPE_DNS_RESOLUTION_ERROR", `DNS resolution failed for hostname: ${hostname}. Please check if the domain is valid and accessible.`);
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      hostname: this.hostname,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new DNSResolutionError(data.hostname);
+    x.stack = data.stack;
+    return x;
   }
 }
 
@@ -102,15 +202,38 @@ export class IndexMissError extends Error {
   }
 }
 
-export class ZDRViolationError extends Error {
-  constructor(feature: string) {
-    super(`${feature} is not supported when using zeroDataRetention. Please contact support@firecrawl.com to unblock this feature.`);
+export class ZDRViolationError extends TransportableError {
+  constructor(public feature: string) {
+    super("SCRAPE_ZDR_VIOLATION_ERROR", `${feature} is not supported when using zeroDataRetention. Please contact support@firecrawl.com to unblock this feature.`);
+  }
+
+  serialize() {
+    return {
+      ...super.serialize(),
+      feature: this.feature,
+    }
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new ZDRViolationError(data.feature);
+    x.stack = data.stack;
+    return x;
   }
 }
 
-export class PDFPrefetchFailed extends Error {
+export class PDFPrefetchFailed extends TransportableError {
   constructor() {
-    super("Failed to prefetch PDF that is protected by anti-bot. Please contact help@firecrawl.com");
+    super("SCRAPE_PDF_PREFETCH_FAILED", "Failed to prefetch PDF that is protected by anti-bot. Please contact help@firecrawl.com");
+  }
+
+  serialize() {
+    return super.serialize();
+  }
+
+  static deserialize(_: ErrorCodes, data: ReturnType<typeof this.prototype.serialize>) {
+    const x = new PDFPrefetchFailed();
+    x.stack = data.stack;
+    return x;
   }
 }
 
@@ -120,21 +243,7 @@ export class FEPageLoadFailed extends Error {
   }
 }
 
-export class ScrapeURLScopedTimeoutError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-  }
-}
-
-export class ScrapeTimeoutError extends ScrapeURLScopedTimeoutError {
-  name = "ScrapeTimeoutError";
-
-  constructor() {
-    super("Scrape timed out");
-  }
-}
-
-export class EngineSnipedError extends ScrapeURLScopedTimeoutError {
+export class EngineSnipedError extends Error {
   name = "EngineSnipedError";
 
   constructor() {

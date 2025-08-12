@@ -12,6 +12,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
 import { hasFormatOfType } from "../../lib/format-utils";
+import { TransportableError } from "../../lib/error";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -101,19 +102,18 @@ export async function scrapeController(
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,
+      error: e,
     });
 
     if (zeroDataRetention) {
       await getScrapeQueue().remove(jobId);
     }
 
-    if (
-      e instanceof Error &&
-      (e.message.startsWith("Job wait") || e.message === "timeout")
-    ) {
-      return res.status(408).json({
+    if (e instanceof TransportableError) {
+      return res.status(e.code === "SCRAPE_TIMEOUT" ? 408 : 500).json({
         success: false,
-        error: "Request timed out",
+        code: e.code,
+        error: e.message,
       });
     } else {
       return res.status(500).json({

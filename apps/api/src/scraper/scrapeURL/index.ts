@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions, TimeoutSignal, TeamFlags } from "../../controllers/v2/types";
+import { Document, ScrapeOptions, TeamFlags } from "../../controllers/v2/types";
 import { ScrapeOptions as ScrapeOptionsV1 } from "../../controllers/v1/types";
 import { logger as _logger } from "../../lib/logger";
 import {
@@ -29,7 +29,6 @@ import {
   ZDRViolationError,
   PDFPrefetchFailed,
   FEPageLoadFailed,
-  ScrapeTimeoutError,
   EngineSnipedError,
   WaterfallNextEngineSignal,
   EngineUnsuccessfulError,
@@ -43,6 +42,7 @@ import { robustFetch } from "./lib/fetch";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 import { checkRobotsTxt } from "../../lib/robots-txt";
 import { AbortInstance, AbortManager, AbortManagerThrownError } from "./lib/abortManager";
+import { ScrapeJobTimeoutError } from "../../lib/error";
 
 export type ScrapeUrlResponse = (
   | {
@@ -203,7 +203,7 @@ async function buildMetaObject(
         tier: "scrape",
         timesOutAt: new Date(Date.now() + options.timeout),
         throwable() {
-          return new ScrapeTimeoutError();
+          return new ScrapeJobTimeoutError("Scrape timed out");
         },
       } : undefined,
     ),
@@ -413,7 +413,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
             setTimeout(() => {
               try {
                 meta.abort.throwIfAborted();
-                meta.logger.warn("throwIfAborted did not throw");
+
+                // Fallback error if above doesn't throw
+                throw new ScrapeJobTimeoutError("Scrape timed out due to maximum length of 5 minutes");
               } catch (error) {
                 reject(error);
               }
@@ -496,18 +498,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   snipeAbortController.abort();
 
   if (result === null) {
-    // TODO: rectify TODOv2
-    // if (meta.results["pdf"]?.state === "timeout") {
-    //   throw meta.results["pdf"].error ?? new TimeoutSignal();
-    // }
-    // if (Object.values(meta.results).every(x => x.state === "timeout")) {
-    //   throw new TimeoutSignal();
-    // } else {
-      throw new NoEnginesLeftError(
-        fallbackList.map((x) => x.engine),
-        // meta.results,
-      );
-    // }
+    throw new NoEnginesLeftError(
+      fallbackList.map((x) => x.engine),
+    );
   }
 
   let document: Document = {
@@ -769,8 +762,6 @@ export async function scrapeURL(
       meta.logger.warn("scrapeURL: Insufficient time to process PDF", { error });
     } else if (error instanceof PDFPrefetchFailed) {
       meta.logger.warn("scrapeURL: Failed to prefetch PDF that is protected by anti-bot", { error });
-    } else if (error instanceof TimeoutSignal) {
-      throw error;
     } else if (error instanceof AbortManagerThrownError) {
       throw error.inner;
     } else {

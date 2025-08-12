@@ -5,7 +5,6 @@ import {
   RequestWithAuth,
   scrapeOptions,
   TeamFlags,
-  TimeoutSignal,
   MapRequest,
   MapDocument,
   MapResponse,
@@ -24,6 +23,7 @@ import { logger } from "../../lib/logger";
 import { generateURLSplits, queryIndexAtDomainSplitLevelWithMeta, queryIndexAtSplitLevelWithMeta } from "../../services/index";
 import { redisEvictConnection } from "../../services/redis";
 import { performCosineSimilarityV2 } from "../../lib/map-cosine";
+import { MapTimeoutError } from "../../lib/error";
 
 configDotenv();
 
@@ -340,16 +340,17 @@ export async function mapController(
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {
-          abort.abort(new TimeoutSignal());
-          reject(new TimeoutSignal());
+          abort.abort(new MapTimeoutError());
+          reject(new MapTimeoutError());
         }, req.body.timeout))
       ] : []),
     ]) as any;
   } catch (error) {
-    if (error instanceof TimeoutSignal || error === "timeout") {
+    if (error instanceof MapTimeoutError) {
       return res.status(408).json({
         success: false,
-        error: "Request timed out",
+        code: error.code,
+        error: error.message,
       });
     } else {
       throw error;

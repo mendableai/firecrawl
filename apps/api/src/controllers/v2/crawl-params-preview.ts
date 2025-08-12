@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { z } from "zod";
 import {
+  ErrorResponse,
   RequestWithAuth,
   crawlRequestSchema,
 } from "./types";
@@ -18,7 +19,7 @@ const crawlParamsPreviewRequestSchema = z.object({
 type CrawlParamsPreviewRequest = z.infer<typeof crawlParamsPreviewRequestSchema>;
 
 type CrawlParamsPreviewResponse = {
-  success: boolean;
+  success: true;
   data?: {
     url: string;
     includePaths?: string[];
@@ -34,8 +35,7 @@ type CrawlParamsPreviewResponse = {
     delay?: number;
     limit?: number;
   };
-  error?: string;
-};
+} | ErrorResponse;
 
 export async function crawlParamsPreviewController(
   req: RequestWithAuth<{}, CrawlParamsPreviewResponse, CrawlParamsPreviewRequest>,
@@ -94,6 +94,7 @@ export async function crawlParamsPreviewController(
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
+        code: "BAD_REQUEST",
         error: "Invalid request parameters: " + error.errors.map(e => e.message).join(", "),
       });
     }

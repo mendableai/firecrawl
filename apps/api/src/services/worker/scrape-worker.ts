@@ -49,6 +49,8 @@ import { finishCrawlIfNeeded } from "./crawl-logic";
 import { LangfuseExporter } from "langfuse-vercel";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { NodeSDK } from "@opentelemetry/sdk-node";
+import { ScrapeJobTimeoutError, TransportableError, UnknownError } from "../../lib/error";
+import { serializeTransportableError } from "../../lib/error-serde";
 
 class RacedRedirectError extends Error {
     constructor() {
@@ -145,7 +147,7 @@ async function processJob(job: Job & { id: string }) {
         });
 
         if (remainingTime !== undefined && remainingTime < 0) {
-            throw new Error("timeout");
+            throw new ScrapeJobTimeoutError("Scrape timed out");
         }
         const signal = remainingTime ? AbortSignal.timeout(remainingTime) : undefined;
 
@@ -166,7 +168,7 @@ async function processJob(job: Job & { id: string }) {
                 ? [
                     (async () => {
                         await sleep(remainingTime);
-                        throw new Error("timeout");
+                        throw new ScrapeJobTimeoutError("Scrape timed out");
                     })(),
                 ]
                 : []),
@@ -175,7 +177,7 @@ async function processJob(job: Job & { id: string }) {
         try {
             signal?.throwIfAborted();
         } catch (e) {
-            throw new Error("timeout");
+            throw new ScrapeJobTimeoutError("Scrape timed out");
         }
 
         if (!pipeline.success) {
@@ -370,7 +372,7 @@ async function processJob(job: Job & { id: string }) {
             try {
                 signal?.throwIfAborted();
             } catch (e) {
-                throw new Error("timeout");
+                throw new ScrapeJobTimeoutError("Scrape timed out");
             }
 
             const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
@@ -426,7 +428,7 @@ async function processJob(job: Job & { id: string }) {
             try {
                 signal?.throwIfAborted();
             } catch (e) {
-                throw new Error("timeout");
+                throw new ScrapeJobTimeoutError("Scrape timed out");
             }
 
             const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
@@ -472,7 +474,7 @@ async function processJob(job: Job & { id: string }) {
         }
 
         const isEarlyTimeout =
-            error instanceof Error && error.message === "timeout";
+            error instanceof ScrapeJobTimeoutError;
         const isCancelled =
             error instanceof Error &&
             error.message === "Parent crawl/batch scrape was cancelled";
@@ -846,7 +848,11 @@ export const processJobInternal = async (job: Job & { id: string }) => {
     } catch (error) {
         logger.debug("Job failed", { error });
         Sentry.captureException(error);
-        throw error;
+        if (error instanceof TransportableError) {
+            throw new Error(serializeTransportableError(error));
+        } else {
+            throw new Error(serializeTransportableError(new UnknownError(error)));
+        }
     }
 };
 
