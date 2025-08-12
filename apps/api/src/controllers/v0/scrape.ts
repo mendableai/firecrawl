@@ -180,8 +180,13 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(400).json({ error: "Your team has zero data retention enabled. This is not supported on the v0 API. Please update your code to use the v1 API." });
     }
 
+    const jobId = uuidv4();
+
     redisEvictConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
+
+    redisEvictConnection.sadd("teams_using_v0:" + team_id, "scrape:" + jobId)
+      .catch(error => logger.error("Failed to add team to teams_using_v0 (2)", { error, team_id }));
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
@@ -226,8 +231,6 @@ export async function scrapeController(req: Request, res: Response) {
           "Error checking team credits. Please contact help@firecrawl.com for help.",
       });
     }
-
-    const jobId = uuidv4();
 
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
