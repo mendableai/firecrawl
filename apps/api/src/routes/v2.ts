@@ -13,6 +13,7 @@ import { ongoingCrawlsController } from "../controllers/v2/crawl-ongoing";
 import { scrapeStatusController } from "../controllers/v2/scrape-status";
 import { creditUsageController } from "../controllers/v2/credit-usage";
 import { tokenUsageController } from "../controllers/v2/token-usage";
+import { crawlCancelController } from "../controllers/v2/crawl-cancel";
 import {
   authMiddleware,
   checkCreditsMiddleware,
@@ -82,15 +83,33 @@ v2Router.get(
 );
 
 v2Router.get(
+  "/crawl/active",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(ongoingCrawlsController),
+);
+
+v2Router.get(
   "/crawl/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(crawlStatusController),
+);
+
+v2Router.delete(
+  "/crawl/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlCancelController),
 );
 
 v2Router.get(
   "/batch/scrape/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap((req: any, res: any) => crawlStatusController(req, res, true)),
+);
+
+v2Router.delete(
+  "/batch/scrape/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlCancelController),
 );
 
 v2Router.get(
