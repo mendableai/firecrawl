@@ -90,7 +90,7 @@ async function scrapePDFWithRunPodMU(
     }),
     mock: meta.mock,
     abort,
-  });
+  }).catch(()=>{});
 
   const podStart = await robustFetch({
     url:
