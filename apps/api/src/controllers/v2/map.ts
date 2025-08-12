@@ -291,9 +291,7 @@ export async function getMapResults({
     mapResults = dedupeMapDocumentArray(mapResults);
   }
 
-  mapResults = crawlerOptions.sitemapOnly
-    ? mapResults
-    : mapResults.slice(0, limit);
+  mapResults = mapResults.slice(0, limit);
 
   return {
     success: true,
