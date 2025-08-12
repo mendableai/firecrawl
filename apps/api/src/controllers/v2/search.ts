@@ -25,6 +25,7 @@ import { CostTracking } from "../../lib/extract/extraction-service";
 import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
 import { SearchResult, SearchV2Response } from "../../lib/entities";
+import { ScrapeJobTimeoutError } from "../../lib/error";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -425,13 +426,11 @@ export async function searchController(
       data: searchResponse,
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.startsWith("Job wait") || error.message === "timeout")
-    ) {
+    if (error instanceof ScrapeJobTimeoutError) {
       return res.status(408).json({
         success: false,
-        error: "Request timed out",
+        code: error.code,
+        error: error.message,
       });
     }
 

@@ -230,7 +230,7 @@ app.use(
 
       res
         .status(400)
-        .json({ success: false, error: "Bad Request", details: err.errors });
+        .json({ success: false, code: "BAD_REQUEST", error: "Bad Request", details: err.errors });
     } else {
       next(err);
     }
@@ -254,7 +254,7 @@ app.use(
     ) {
       return res
         .status(400)
-        .json({ success: false, error: "Bad request, malformed JSON" });
+        .json({ success: false, code: "BAD_REQUEST_INVALID_JSON", error: "Bad request, malformed JSON" });
     }
 
     const id = res.sentry ?? uuidv4();
@@ -268,6 +268,7 @@ app.use(
     { error: err, errorId: id, path: req.path, teamId: req.acuc?.team_id, team_id: req.acuc?.team_id });
     res.status(500).json({
       success: false,
+      code: "UNKNOWN_ERROR",
       error:
         "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
         id,

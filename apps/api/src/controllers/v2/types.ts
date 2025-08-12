@@ -11,6 +11,8 @@ import {
 } from "../../lib/entities";
 import { agentOptionsExtract, ScrapeOptions as V1ScrapeOptions } from "../v1/types";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import { ErrorCodes } from "../../lib/error";
+import Ajv from "ajv";
 
 export enum IntegrationEnum {
   DIFY = "dify",
@@ -386,9 +388,6 @@ export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
 export type ScrapeOptions = BaseScrapeOptions;
 
-import Ajv from "ajv";
-import type { CostTracking } from "../../lib/extract/extraction-service";
-
 const ajv = new Ajv();
 
 export const extractOptions = z
@@ -727,6 +726,7 @@ export type Document = {
 
 export type ErrorResponse = {
   success: false;
+  code?: ErrorCodes;
   error: string;
   details?: any;
 };
@@ -1438,9 +1438,3 @@ export const generateLLMsTextRequestSchema = z.object({
 export type GenerateLLMsTextRequest = z.infer<
   typeof generateLLMsTextRequestSchema
 >;
-
-export class TimeoutSignal extends Error {
-  constructor() {
-    super("Operation timed out");
-  }
-}
