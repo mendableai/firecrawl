@@ -30,7 +30,6 @@ export function deserializeTransportableError(data: string): InstanceType<typeof
     const [code, ...serialized] = data.split("|");
     const x = errorMap[code];
     if (!x) {
-        console.error("Unknown error code: " + code, errorMap);
         return null;
     }
     return x.deserialize(code, JSON.parse(serialized.join("|")));

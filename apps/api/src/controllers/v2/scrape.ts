@@ -110,7 +110,7 @@ export async function scrapeController(
     }
 
     if (e instanceof TransportableError) {
-      return res.status(408).json({
+      return res.status(e.code === "SCRAPE_TIMEOUT" ? 408 : 500).json({
         success: false,
         code: e.code,
         error: e.message,
