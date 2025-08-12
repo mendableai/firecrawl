@@ -5,12 +5,6 @@ from firecrawl.types import SearchData, SearchResult, Document, ScrapeFormats, S
 
 load_dotenv()
 
-if not os.getenv("API_KEY"):
-    raise ValueError("API_KEY is not set")
-
-if not os.getenv("API_URL"):
-    raise ValueError("API_URL is not set")
-
 firecrawl = Firecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
 
 def _collect_texts(entries):

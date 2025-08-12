@@ -3,19 +3,20 @@
  */
 import Firecrawl from "../../../index";
 import { config } from "dotenv";
-import { describe, test, expect } from "@jest/globals";
+import { getIdentity, getApiUrl } from "./utils/idmux";
+import { describe, test, expect, beforeAll } from "@jest/globals";
 
 config();
 
-const API_KEY = process.env.FIRECRAWL_API_KEY ?? "";
-const API_URL = process.env.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev";
+const API_URL = getApiUrl();
+let client: Firecrawl;
 
-const client = API_KEY ? new Firecrawl({ apiKey: API_KEY, apiUrl: API_URL }) : null as any;
+beforeAll(async () => {
+  const { apiKey } = await getIdentity({ name: "js-e2e-map" });
+  client = new Firecrawl({ apiKey, apiUrl: API_URL });
+});
 
 describe("v2.map e2e", () => {
-  if (!client) {
-    console.warn("Skipping v2.map e2e: FIRECRAWL_API_KEY not set");
-  }
 
   test("minimal request", async () => {
     if (!client) throw new Error();

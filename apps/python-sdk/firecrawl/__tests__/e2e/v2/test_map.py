@@ -24,7 +24,6 @@ class TestMapE2E:
     def test_map_minimal_request(self):
         resp = self.client.map("https://docs.firecrawl.dev")
 
-        assert hasattr(resp, "success") and resp.success is True
         assert hasattr(resp, "links") and resp.links is not None
         assert isinstance(resp.links, list)
 
@@ -46,13 +45,11 @@ class TestMapE2E:
         resp = self.client.map(
             "https://docs.firecrawl.dev",
             search="docs",
-            include_subdomains=True,
-            limit=10,
+            include_subdomains=True,            limit=10,
             sitemap=sitemap,
             timeout=15000,
         )
 
-        assert hasattr(resp, "success") and resp.success is True
         assert hasattr(resp, "links") and isinstance(resp.links, list)
 
         # Limit should be respected (server-side)

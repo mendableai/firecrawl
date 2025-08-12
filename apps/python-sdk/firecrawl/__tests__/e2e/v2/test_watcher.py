@@ -14,6 +14,7 @@ if not os.getenv("API_URL"):
 
 class TestWatcherE2E:
     def setup_method(self):
+        from firecrawl import Firecrawl
         self.client = Firecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
 
     def test_crawl_watcher(self):

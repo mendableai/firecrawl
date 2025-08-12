@@ -179,9 +179,9 @@ export interface SearchResult {
 }
 
 export interface SearchData {
-  web?: Array<SearchResult>;
-  news?: Array<SearchResult>;
-  images?: Array<SearchResult>;
+  web?: Array<SearchResult | Document>;
+  news?: Array<SearchResult | Document>;
+  images?: Array<SearchResult | Document>;
 }
 
 export interface SearchRequest {

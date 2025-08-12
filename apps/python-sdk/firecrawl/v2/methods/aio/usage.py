@@ -18,7 +18,7 @@ async def get_concurrency(client: AsyncHttpClient) -> ConcurrencyCheck:
 
 
 async def get_credit_usage(client: AsyncHttpClient) -> CreditUsage:
-    resp = await client.get("/v2/team/credit-usage")
+    resp = await client.get("/v2/credit-usage")
     if resp.status_code >= 400:
         handle_response_error(resp, "get credit usage")
     body = resp.json()
@@ -29,7 +29,7 @@ async def get_credit_usage(client: AsyncHttpClient) -> CreditUsage:
 
 
 async def get_token_usage(client: AsyncHttpClient) -> TokenUsage:
-    resp = await client.get("/v2/team/token-usage")
+    resp = await client.get("/v2/token-usage")
     if resp.status_code >= 400:
         handle_response_error(resp, "get token usage")
     body = resp.json()

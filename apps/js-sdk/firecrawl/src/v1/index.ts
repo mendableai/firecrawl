@@ -582,10 +582,21 @@ export default class FirecrawlApp {
 
   private async getVersion(): Promise<string> {
     try {
+      // Prefer env-provided version when available (works well in test runners)
+      if (typeof process !== 'undefined' && process.env && process.env.npm_package_version) {
+        return process.env.npm_package_version as string;
+      }
       const packageJson = await import('../../package.json', { assert: { type: 'json' } });
       return packageJson.default.version;
     } catch (error) {
-      console.error("Error getting version:", error);
+      // Suppress noisy logs under test environments
+      const isTest = typeof process !== 'undefined' && (
+        process.env.JEST_WORKER_ID != null || process.env.NODE_ENV === 'test'
+      );
+      if (!isTest) {
+        // eslint-disable-next-line no-console
+        console.error("Error getting version:", error);
+      }
       return  "1.25.1";
     }
   }

@@ -408,8 +408,18 @@ class FirecrawlClient:
         sitemap: Optional[Literal["only", "include", "skip"]] = None,
         timeout: Optional[int] = None,
     ) -> MapData:
-        """
-        Map a URL and return discovered links (with optional titles/descriptions).
+        """Map a URL and return discovered links.
+
+        Args:
+            url: Root URL to explore
+            search: Optional substring filter for discovered links
+            include_subdomains: Whether to include subdomains
+            limit: Maximum number of links to return
+            sitemap: Sitemap usage mode ("only" | "include" | "skip")
+            timeout: Request timeout in milliseconds
+
+        Returns:
+            MapData containing the discovered links
         """
         options = MapOptions(
             search=search,
@@ -434,8 +444,14 @@ class FirecrawlClient:
         return crawl_module.cancel_crawl(self.http_client, crawl_id)
 
     def crawl_params_preview(self, url: str, prompt: str) -> CrawlParamsData:
-        """
-        Get crawl parameters from LLM based on URL and prompt.
+        """Derive crawl parameters from natural-language prompt.
+
+        Args:
+            url: Root URL
+            prompt: Instruction describing how to crawl
+
+        Returns:
+            CrawlParamsData with normalized crawl configuration
         """
         request = CrawlParamsRequest(url=url, prompt=prompt)
         return crawl_module.crawl_params_preview(self.http_client, request)
@@ -453,8 +469,21 @@ class FirecrawlClient:
         scrape_options: Optional['ScrapeOptions'] = None,
         ignore_invalid_urls: Optional[bool] = None,
     ):
-        """
-        Start an extract job (non-blocking). Use get_extract_status to poll.
+        """Start an extract job (non-blocking).
+
+        Args:
+            urls: URLs to extract from (optional)
+            prompt: Natural-language instruction for extraction
+            schema: Target JSON schema for the output
+            system_prompt: Optional system instruction
+            allow_external_links: Allow hyperlinks in output
+            enable_web_search: Whether to augment with web search
+            show_sources: Include per-field/source mapping when available
+            scrape_options: Scrape options applied prior to extraction
+            ignore_invalid_urls: Skip invalid URLs instead of failing
+
+        Returns:
+            Response payload with job id/status (poll with get_extract_status)
         """
         return extract_module.start_extract(
             self.http_client,
@@ -484,8 +513,23 @@ class FirecrawlClient:
         poll_interval: int = 2,
         timeout: Optional[int] = None,
     ):
-        """
-        Extract structured data using the v2 client surface, waiting until completion.
+        """Extract structured data and wait until completion.
+
+        Args:
+            urls: URLs to extract from (optional)
+            prompt: Natural-language instruction for extraction
+            schema: Target JSON schema for the output
+            system_prompt: Optional system instruction
+            allow_external_links: Allow hyperlinks in output
+            enable_web_search: Whether to augment with web search
+            show_sources: Include per-field/source mapping when available
+            scrape_options: Scrape options applied prior to extraction
+            ignore_invalid_urls: Skip invalid URLs instead of failing
+            poll_interval: Seconds between status checks
+            timeout: Maximum seconds to wait (None for no timeout)
+
+        Returns:
+            Final extract response when completed
         """
         return extract_module.extract(
             self.http_client,
@@ -533,8 +577,39 @@ class FirecrawlClient:
         integration: Optional[str] = None,
         idempotency_key: Optional[str] = None,
     ):
-        """
-        Start a batch scrape job over multiple URLs.
+        """Start a batch scrape job over multiple URLs (non-blocking).
+
+        Args:
+            urls: List of URLs to scrape
+            formats: Output formats to collect per URL
+            headers: HTTP headers
+            include_tags: HTML tags to include
+            exclude_tags: HTML tags to exclude
+            only_main_content: Restrict scraping to main content
+            timeout: Per-request timeout in milliseconds
+            wait_for: Wait condition in milliseconds
+            mobile: Emulate mobile viewport
+            parsers: Parser list (e.g., ["pdf"]) 
+            actions: Browser actions to perform
+            location: Location settings
+            skip_tls_verification: Skip TLS verification
+            remove_base64_images: Remove base64 images from output
+            fast_mode: Prefer faster scraping modes
+            use_mock: Use a mock data source (internal/testing)
+            block_ads: Block ads during scraping
+            proxy: Proxy setting
+            max_age: Cache max age
+            store_in_cache: Whether to store results in cache
+            webhook: Webhook configuration
+            append_to_id: Append to an existing batch job
+            ignore_invalid_urls: Skip invalid URLs without failing
+            max_concurrency: Max concurrent scrapes
+            zero_data_retention: Delete data after 24 hours
+            integration: Integration tag/name
+            idempotency_key: Header used to deduplicate starts
+
+        Returns:
+            Response payload with job id (poll with get_batch_scrape_status)
         """
         options = ScrapeOptions(
             **{k: v for k, v in dict(
@@ -574,18 +649,47 @@ class FirecrawlClient:
         )
 
     def get_batch_scrape_status(self, job_id: str):
-        """Get current status and any scraped data for a batch scrape job."""
+        """Get current status and any scraped data for a batch job.
+
+        Args:
+            job_id: Batch job ID
+
+        Returns:
+            Status payload including counts and partial data
+        """
         return batch_module.get_batch_scrape_status(self.http_client, job_id)
 
     def cancel_batch_scrape(self, job_id: str) -> bool:
-        """Cancel a running batch scrape job."""
+        """Cancel a running batch scrape job.
+
+        Args:
+            job_id: Batch job ID
+
+        Returns:
+            True if the job was cancelled
+        """
         return batch_module.cancel_batch_scrape(self.http_client, job_id)
 
     def get_batch_scrape_errors(self, job_id: str):
-        """Retrieve error details for a batch scrape job."""
+        """Retrieve error details for a batch scrape job.
+
+        Args:
+            job_id: Batch job ID
+
+        Returns:
+            Errors and robots-blocked URLs for the job
+        """
         return batch_methods.get_batch_scrape_errors(self.http_client, job_id)
 
     def get_extract_status(self, job_id: str):
+        """Get the current status (and data if completed) of an extract job.
+
+        Args:
+            job_id: Extract job ID
+
+        Returns:
+            Extract response payload with status and optional data
+        """
         return extract_module.get_extract_status(self.http_client, job_id)
 
     def get_concurrency(self):
@@ -608,7 +712,17 @@ class FirecrawlClient:
         poll_interval: int = 2,
         timeout: Optional[int] = None,
     ) -> Watcher:
-        """Create a polling-based watcher for crawl or batch jobs."""
+        """Create a watcher for crawl or batch jobs.
+
+        Args:
+            job_id: Job ID to watch
+            kind: Job kind ("crawl" or "batch")
+            poll_interval: Seconds between status checks
+            timeout: Maximum seconds to watch (None for no timeout)
+
+        Returns:
+            Watcher instance
+        """
         return Watcher(self, job_id, kind=kind, poll_interval=poll_interval, timeout=timeout)
 
     def batch_scrape(

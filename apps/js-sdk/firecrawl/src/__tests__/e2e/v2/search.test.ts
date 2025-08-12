@@ -2,15 +2,20 @@
  * E2E tests for v2 search (translated from Python tests)
  */
 import Firecrawl from "../../../index";
+import type { Document, SearchResult } from "../../../index";
 import { config } from "dotenv";
-import { describe, test, expect } from "@jest/globals";
+import { getIdentity, getApiUrl } from "./utils/idmux";
+import { describe, test, expect, beforeAll } from "@jest/globals";
 
 config();
 
-const API_KEY = process.env.FIRECRAWL_API_KEY ?? "";
-const API_URL = process.env.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev";
+const API_URL = getApiUrl();
+let client: Firecrawl;
 
-const client = API_KEY ? new Firecrawl({ apiKey: API_KEY, apiUrl: API_URL }) : null as any;
+beforeAll(async () => {
+  const { apiKey } = await getIdentity({ name: "js-e2e-search" });
+  client = new Firecrawl({ apiKey, apiUrl: API_URL });
+});
 
 function collectTexts(entries: any[] | undefined): string[] {
   const texts: string[] = [];
@@ -23,14 +28,13 @@ function collectTexts(entries: any[] | undefined): string[] {
   return texts;
 }
 
-function isDocument(entry: any): boolean {
-  return !!entry && (typeof entry.markdown === 'string' || typeof entry.html === 'string');
+function isDocument(entry: Document | SearchResult | undefined | null): entry is Document {
+  if (!entry) return false;
+  const d = entry as Document;
+  return typeof d.markdown === 'string' || typeof d.html === 'string';
 }
 
 describe("v2.search e2e", () => {
-  if (!client) {
-    console.warn("Skipping v2.search e2e: FIRECRAWL_API_KEY not set");
-  }
 
   test("minimal request", async () => {
     if (!client) throw new Error();
@@ -72,8 +76,12 @@ describe("v2.search e2e", () => {
     }
     expect(results.images == null).toBe(true);
 
-    const webTitles = (results.web || []).map(r => (r?.title || "").toString().toLowerCase());
-    const webDescriptions = (results.web || []).map(r => (r?.description || "").toString().toLowerCase());
+    const webTitles = (results.web || [])
+      .filter((r): r is SearchResult => !isDocument(r))
+      .map(r => (r.title || "").toString().toLowerCase());
+    const webDescriptions = (results.web || [])
+      .filter((r): r is SearchResult => !isDocument(r))
+      .map(r => (r.description || "").toString().toLowerCase());
     const allWebText = (webTitles.concat(webDescriptions)).join(" ");
     expect(allWebText.includes("firecrawl")).toBe(true);
   }, 90_000);
@@ -174,8 +182,10 @@ describe("v2.search e2e", () => {
     expect(results.images).toBeTruthy();
     expect((results.images || []).length).toBeLessThanOrEqual(3);
     for (const result of results.images || []) {
-      expect(typeof result.url).toBe("string");
-      expect(result.url.startsWith("http")).toBe(true);
+      if (!isDocument(result)) {
+        expect(typeof result.url).toBe("string");
+        expect(result.url.startsWith("http")).toBe(true);
+      }
     }
   }, 120_000);
 
@@ -187,7 +197,7 @@ describe("v2.search e2e", () => {
     });
     const results2 = await client.search("python programming", {
       limit: 1,
-      scrapeOptions: { formats: [{ type: "markdown" as any }] },
+      scrapeOptions: { formats: ["markdown"] },
     });
     expect(results1).toBeTruthy();
     expect(results2).toBeTruthy();

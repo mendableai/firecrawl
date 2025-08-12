@@ -3,15 +3,19 @@
  */
 import Firecrawl from "../../../index";
 import { config } from "dotenv";
-import { describe, test, expect } from "@jest/globals";
+import { getIdentity, getApiUrl } from "./utils/idmux";
+import { describe, test, expect, beforeAll } from "@jest/globals";
 import { z } from "zod";
 
 config();
 
-const API_KEY = process.env.FIRECRAWL_API_KEY ?? "";
-const API_URL = process.env.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev";
+const API_URL = getApiUrl();
+let client: Firecrawl;
 
-const client = new Firecrawl({ apiKey: API_KEY, apiUrl: API_URL });
+beforeAll(async () => {
+  const { apiKey } = await getIdentity({ name: "js-e2e-extract" });
+  client = new Firecrawl({ apiKey, apiUrl: API_URL });
+});
 
 describe("v2.extract e2e", () => {
   test("extract minimal with prompt", async () => {

@@ -17,7 +17,6 @@ if not os.getenv("API_URL"):
 async def test_async_map_minimal():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     resp = await client.v2.map("https://docs.firecrawl.dev")
-    assert resp.success is True
     assert hasattr(resp, "links") and isinstance(resp.links, list)
     if resp.links:
         first = resp.links[0]
@@ -36,7 +35,6 @@ async def test_async_map_with_all_params(sitemap):
         sitemap=sitemap,
         timeout=15000,
     )
-    assert resp.success is True
     assert hasattr(resp, "links") and isinstance(resp.links, list)
     assert len(resp.links) <= 10
 

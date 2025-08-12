@@ -1,23 +1,37 @@
-// Unified entrypoint for Firecrawl JS SDK
-// - Default export: unified Firecrawl (v2 by default, v1 under .v1)
-// - Named export FirecrawlClient: direct v2 client
-// - Named export FirecrawlAppV1: legacy v1 class
-// - Re-export v2 types
+/**
+ * Firecrawl JS/TS SDK — unified entrypoint.
+ * - v2 by default on the top‑level client
+ * - v1 available under `.v1` (feature‑frozen)
+ * - Exports: `Firecrawl` (default), `FirecrawlClient` (v2), `FirecrawlAppV1` (v1), and v2 types
+ */
 
+/** Direct v2 client. */
 export { FirecrawlClient } from "./v2/client";
+/** Public v2 request/response types. */
 export * from "./v2/types";
+/** Legacy v1 client (feature‑frozen). */
 export { default as FirecrawlAppV1 } from "./v1";
 
 import V1 from "./v1";
 import { FirecrawlClient as V2 } from "./v2/client";
 import type { FirecrawlAppConfig } from "./v1";
 
+/** Unified client: extends v2 and adds `.v1` for backward compatibility. */
 export class Firecrawl extends V2 {
-  public v1: V1;
+  /** Feature‑frozen v1 client (lazy). */
+  private _v1?: V1;
+  private _v1Opts: FirecrawlAppConfig;
 
+  /** @param opts API credentials and base URL. */
   constructor(opts: FirecrawlAppConfig = {}) {
     super(opts as any);
-    this.v1 = new V1(opts);
+    this._v1Opts = opts;
+  }
+
+  /** Access the legacy v1 client (instantiated on first access). */
+  get v1(): V1 {
+    if (!this._v1) this._v1 = new V1(this._v1Opts);
+    return this._v1;
   }
 }
 

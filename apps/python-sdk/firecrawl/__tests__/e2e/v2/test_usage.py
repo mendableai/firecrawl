@@ -4,15 +4,10 @@ from firecrawl import Firecrawl
 
 load_dotenv()
 
-if not os.getenv("API_KEY"):
-    raise ValueError("API_KEY is not set")
-
-if not os.getenv("API_URL"):
-    raise ValueError("API_URL is not set")
-
 
 class TestUsageE2E:
     def setup_method(self):
+        # Environment is exported by conftest at import time
         self.client = Firecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
 
     def test_get_concurrency(self):

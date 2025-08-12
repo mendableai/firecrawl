@@ -113,20 +113,18 @@ class AsyncV2Proxy:
 
 class Firecrawl:
     """
-    Unified Firecrawl client with version-specific access patterns.
-    
-    This class provides a unified interface that allows users to access
-    different API versions through version-specific attributes (v1, v2)
-    while defaulting to v2 for direct method calls.
+    Unified Firecrawl client (v2 by default, v1 under ``.v1``).
+
+    Provides a single entrypoint that exposes the latest API directly while
+    keeping a feature-frozen v1 available for incremental migration.
     """
     
     def __init__(self, api_key: str = None, api_url: str = "https://api.firecrawl.dev"):
-        """
-        Initialize the unified Firecrawl client.
-        
+        """Initialize the unified client.
+
         Args:
-            api_key: Your Firecrawl API key
-            api_url: The Firecrawl API URL (defaults to production)
+            api_key: Firecrawl API key (or set ``FIRECRAWL_API_KEY``)
+            api_url: Base API URL (defaults to production)
         """
         self.api_key = api_key
         self.api_url = api_url
@@ -164,13 +162,7 @@ class Firecrawl:
         self.watcher = self._v2_client.watcher
         
 class AsyncFirecrawl:
-    """
-    Unified Firecrawl client with version-specific access patterns.
-    
-    This class provides a unified interface that allows users to access
-    different API versions through version-specific attributes (v1, v2)
-    while defaulting to v2 for direct method calls.
-    """
+    """Async unified Firecrawl client (v2 by default, v1 under ``.v1``)."""
 
     def __init__(self, api_key: str = None, api_url: str = "https://api.firecrawl.dev"):
         self.api_key = api_key
@@ -184,6 +176,36 @@ class AsyncFirecrawl:
         # Create version-specific proxies
         self.v1 = AsyncV1Proxy(self._v1_client) if self._v1_client else None
         self.v2 = AsyncV2Proxy(self._v2_client)
+
+        # Expose v2 async surface directly on the top-level client for ergonomic access
+        # Keep method names aligned with the sync client
+        self.scrape = self._v2_client.scrape
+        self.search = self._v2_client.search
+        self.map = self._v2_client.map
+
+        self.start_crawl = self._v2_client.start_crawl
+        self.get_crawl_status = self._v2_client.get_crawl_status
+        self.cancel_crawl = self._v2_client.cancel_crawl
+        self.crawl = self._v2_client.crawl
+        self.get_crawl_errors = self._v2_client.get_crawl_errors
+        self.active_crawls = self._v2_client.active_crawls
+        self.crawl_params_preview = self._v2_client.crawl_params_preview
+
+        self.start_batch_scrape = self._v2_client.start_batch_scrape
+        self.get_batch_scrape_status = self._v2_client.get_batch_scrape_status
+        self.cancel_batch_scrape = self._v2_client.cancel_batch_scrape
+        self.batch_scrape = self._v2_client.batch_scrape
+        self.get_batch_scrape_errors = self._v2_client.get_batch_scrape_errors
+
+        self.start_extract = self._v2_client.start_extract
+        self.get_extract_status = self._v2_client.get_extract_status
+        self.extract = self._v2_client.extract
+
+        self.get_concurrency = self._v2_client.get_concurrency
+        self.get_credit_usage = self._v2_client.get_credit_usage
+        self.get_token_usage = self._v2_client.get_token_usage
+
+        self.watcher = self._v2_client.watcher
 
 # Export Firecrawl as an alias for FirecrawlApp
 FirecrawlApp = Firecrawl

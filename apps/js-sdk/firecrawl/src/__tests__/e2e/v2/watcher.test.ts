@@ -1,15 +1,21 @@
 import Firecrawl from "../../../index";
 import { config } from "dotenv";
-import { describe, test, expect } from "@jest/globals";
+import { describe, test, expect, beforeAll } from "@jest/globals";
+import { getIdentity } from "./utils/idmux";
 
 config();
 
-const API_KEY = process.env.FIRECRAWL_API_KEY ?? "";
 const API_URL = process.env.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev";
+let client: Firecrawl;
+
+beforeAll(async () => {
+  const { apiKey } = await getIdentity({ name: "js-e2e-watcher" });
+  client = new Firecrawl({ apiKey, apiUrl: API_URL });
+});
 
 describe("v2.watcher e2e", () => {
   test("crawl watcher minimal", async () => {
-    const client = new Firecrawl({ apiKey: API_KEY, apiUrl: API_URL });
+    // client is initialized in beforeAll
     const start = await client.startCrawl("https://docs.firecrawl.dev", { limit: 3 });
 
     expect(typeof start.id).toBe("string");
@@ -49,7 +55,7 @@ describe("v2.watcher e2e", () => {
   }, 240_000);
 
   test("batch watcher with options (kind, pollInterval, timeout)", async () => {
-    const client = new Firecrawl({ apiKey: API_KEY, apiUrl: API_URL });
+    // client is initialized in beforeAll
     const urls = [
       "https://docs.firecrawl.dev",
       "https://firecrawl.dev",
