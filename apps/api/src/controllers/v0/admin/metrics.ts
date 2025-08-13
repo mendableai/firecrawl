@@ -5,15 +5,20 @@ export async function metricsController(_: Request, res: Response) {
     let cursor: string = "0";
     const metrics: Record<string, number> = {};
     do {
-        const res = await redisEvictConnection.scan(cursor, "MATCH", "concurrency-limit-queue:*");
+        const res = await redisEvictConnection.sscan("concurrency-limit-queues", cursor);
         cursor = res[0];
 
         const keys = res[1];
 
         for (const key of keys) {
-            const teamId = key.split(":")[1];
             const jobCount = await redisEvictConnection.zcard(key);
-            metrics[teamId] = jobCount;
+
+            if (jobCount === 0) {
+                await redisEvictConnection.srem("concurrency-limit-queues", key);
+            } else {
+                const teamId = key.split(":")[1];
+                metrics[teamId] = jobCount;
+            }
         }
     } while (cursor !== "0");
 
