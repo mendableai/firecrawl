@@ -17,7 +17,7 @@ def get_concurrency(client: HttpClient) -> ConcurrencyCheck:
 
 
 def get_credit_usage(client: HttpClient) -> CreditUsage:
-    resp = client.get("/v2/credit-usage")
+    resp = client.get("/v2/team/credit-usage")
     if not resp.ok:
         handle_response_error(resp, "get credit usage")
     body = resp.json()
@@ -28,7 +28,7 @@ def get_credit_usage(client: HttpClient) -> CreditUsage:
 
 
 def get_token_usage(client: HttpClient) -> TokenUsage:
-    resp = client.get("/v2/token-usage")
+    resp = client.get("/v2/team/token-usage")
     if not resp.ok:
         handle_response_error(resp, "get token usage")
     body = resp.json()
