@@ -34,6 +34,7 @@ v2Router.post(
   "/search",
   authMiddleware(RateLimiterMode.Search),
   checkCreditsMiddleware(),
+  blocklistMiddleware,
   wrap(searchController),
 );
 
@@ -41,6 +42,7 @@ v2Router.post(
   "/scrape",
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
+  blocklistMiddleware,
   wrap(scrapeController),
 );
 
@@ -54,6 +56,7 @@ v2Router.post(
   "/batch/scrape",
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
+  blocklistMiddleware,
   wrap(batchScrapeController),
 );
 
@@ -61,6 +64,7 @@ v2Router.post(
   "/map",
   authMiddleware(RateLimiterMode.Map),
   checkCreditsMiddleware(),
+  blocklistMiddleware,
   wrap(mapController),
 );
 
@@ -128,6 +132,7 @@ v2Router.post(
   "/extract",
   authMiddleware(RateLimiterMode.Extract),
   checkCreditsMiddleware(),
+  blocklistMiddleware,
   wrap(extractController),
 );
 
