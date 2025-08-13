@@ -138,7 +138,7 @@ Generate a JSON object with crawler configuration options. Available options:
 - allowExternalLinks: boolean - Whether to follow external links
 - allowSubdomains: boolean - Whether to crawl subdomains
 - ignoreRobotsTxt: boolean - Whether to ignore robots.txt
-- ignoreSitemap: boolean - Whether to ignore sitemap
+- sitemap: "skip" | "include" - Whether to ignore sitemap
 - deduplicateSimilarURLs: boolean - Whether to deduplicate similar URLs
 - ignoreQueryParameters: boolean - Whether to ignore query parameters
 - regexOnFullURL: boolean - Whether regex patterns apply to full URL

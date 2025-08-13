@@ -540,7 +540,7 @@ const crawlerOptions = z
     allowExternalLinks: z.boolean().default(false),
     allowSubdomains: z.boolean().default(false),
     ignoreRobotsTxt: z.boolean().default(false),
-    ignoreSitemap: z.boolean().default(false),
+    sitemap: z.enum(["skip", "include"]).default("include"),
     deduplicateSimilarURLs: z.boolean().default(true),
     ignoreQueryParameters: z.boolean().default(false),
     regexOnFullURL: z.boolean().default(false),
@@ -601,7 +601,7 @@ export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions
-  .omit({ ignoreSitemap: true })
+  .omit({ sitemap: true })
   .extend({
     url,
     origin: z.string().optional().default("api"),
@@ -991,7 +991,7 @@ export function toV0CrawlerOptions(x: CrawlerOptions) {
     allowExternalContentLinks: x.allowExternalLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
-    ignoreSitemap: x.ignoreSitemap,
+    ignoreSitemap: x.sitemap === "skip",
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
     regexOnFullURL: x.regexOnFullURL,
@@ -1011,7 +1011,7 @@ export function toV2CrawlerOptions(x: any): CrawlerOptions {
     allowExternalLinks: x.allowExternalContentLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
-    ignoreSitemap: x.ignoreSitemap,
+    sitemap: x.ignoreSitemap ? "skip" : "include",
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
     regexOnFullURL: x.regexOnFullURL,
@@ -1034,7 +1034,7 @@ export function fromV0CrawlerOptions(x: any, teamId: string): {
       allowExternalLinks: x.allowExternalContentLinks,
       allowSubdomains: x.allowSubdomains,
       ignoreRobotsTxt: x.ignoreRobotsTxt,
-      ignoreSitemap: x.ignoreSitemap,
+      sitemap: x.ignoreSitemap ? "skip" : "include",
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,

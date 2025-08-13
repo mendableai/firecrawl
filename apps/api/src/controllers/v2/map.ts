@@ -90,7 +90,6 @@ export async function getMapResults({
   url: string;
   search?: string;
   limit?: number;
-  ignoreSitemap?: boolean;
   includeSubdomains?: boolean;
   crawlerOptions?: any;
   teamId: string;
@@ -129,7 +128,7 @@ export async function getMapResults({
   } catch (_) {}
 
   // If sitemapOnly is true, only get links from sitemap
-  if (crawlerOptions.sitemapOnly) {
+  if (crawlerOptions.sitemap === "only") {
     const sitemap = await crawler.tryGetSitemap(
       (urls) => {
         urls.forEach((x) => {
@@ -210,7 +209,7 @@ export async function getMapResults({
 
     // If sitemap is not ignored, fetch sitemap
     // This will attempt to find it in the index at first, or fetch a fresh one if it's older than 2 days
-    if (!crawlerOptions.ignoreSitemap) {
+    if (crawlerOptions.sitemap === "include") {
       try {
         await crawler.tryGetSitemap(
           (urls) => {
@@ -322,11 +321,10 @@ export async function mapController(
         url: req.body.url,
         search: req.body.search,
         limit: req.body.limit,
-        ignoreSitemap: req.body.sitemap === "skip",
         includeSubdomains: req.body.includeSubdomains,
         crawlerOptions: {
           ...req.body,
-          sitemapOnly: req.body.sitemap === "only",
+          sitemap: req.body.sitemap,
         },
         origin: req.body.origin,
         teamId: req.auth.team_id,

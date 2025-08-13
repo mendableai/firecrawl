@@ -146,7 +146,7 @@ describe("v2.crawl e2e", () => {
       includePaths: ["/blog/*", "/docs/*"],
       excludePaths: ["/admin/*"],
       maxDiscoveryDepth: 3,
-      ignoreSitemap: false,
+      sitemap: "skip",
       ignoreQueryParameters: true,
       limit: 5,
       crawlEntireDomain: true,

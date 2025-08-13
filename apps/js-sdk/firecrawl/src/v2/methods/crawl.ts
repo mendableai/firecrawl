@@ -17,7 +17,7 @@ export interface CrawlRequest {
   excludePaths?: string[] | null;
   includePaths?: string[] | null;
   maxDiscoveryDepth?: number | null;
-  ignoreSitemap?: boolean;
+  sitemap?: "skip" | "include";
   ignoreQueryParameters?: boolean;
   limit?: number | null;
   crawlEntireDomain?: boolean;
@@ -37,7 +37,7 @@ function prepareCrawlPayload(request: CrawlRequest): Record<string, unknown> {
   if (request.excludePaths) data.excludePaths = request.excludePaths;
   if (request.includePaths) data.includePaths = request.includePaths;
   if (request.maxDiscoveryDepth != null) data.maxDiscoveryDepth = request.maxDiscoveryDepth;
-  if (request.ignoreSitemap != null) data.ignoreSitemap = request.ignoreSitemap;
+  if (request.sitemap != null) data.sitemap = request.sitemap;
   if (request.ignoreQueryParameters != null) data.ignoreQueryParameters = request.ignoreQueryParameters;
   if (request.limit != null) data.limit = request.limit;
   if (request.crawlEntireDomain != null) data.crawlEntireDomain = request.crawlEntireDomain;

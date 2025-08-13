@@ -1140,7 +1140,7 @@ Available crawler options:
 - crawlEntireDomain: boolean - Allows the crawler to follow internal links to sibling or parent URLs, not just child paths. false: Only crawls deeper (child) URLs. → e.g. /features/feature-1 → /features/feature-1/tips ✅ → Won't follow /pricing or / ❌. true: Crawls any internal links, including siblings and parents. → e.g. /features/feature-1 → /pricing, /, etc. ✅. Use true for broader internal coverage beyond nested paths. Default: false
 - allowExternalLinks: boolean - Allows the crawler to follow links to external websites. Default: false
 - allowSubdomains: boolean - Allows the crawler to follow links to subdomains of the main domain. Default: false
-- ignoreSitemap: boolean - Ignore the website sitemap when crawling. Default: false
+- sitemap: "skip" | "include" - Whether to ignore sitemap. Default: "include"
 - ignoreQueryParameters: boolean - Do not re-scrape the same path with different (or none) query parameters. Default: false
 - deduplicateSimilarURLs: boolean - Whether to deduplicate similar URLs
 - delay: number - Delay in seconds between scrapes. This helps respect website rate limits.
