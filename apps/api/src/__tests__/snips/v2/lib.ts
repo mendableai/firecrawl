@@ -291,7 +291,7 @@ export async function search(body: SearchRequestInput, identity: Identity): Prom
 
 export async function creditUsage(identity: Identity): Promise<{ remaining_credits: number }> {
     const req = (await request(TEST_URL)
-    .get("/v1/team/credit-usage")
+    .get("/v2/team/credit-usage")
     .set("Authorization", `Bearer ${identity.apiKey}`)
     .set("Content-Type", "application/json"));
 
@@ -308,7 +308,7 @@ export async function creditUsage(identity: Identity): Promise<{ remaining_credi
 
 export async function concurrencyCheck(identity: Identity): Promise<{ concurrency: number, maxConcurrency: number }> {
     const x = (await request(TEST_URL)
-        .get("/v1/concurrency-check")
+        .get("/v2/concurrency-check")
         .set("Authorization", `Bearer ${identity.apiKey}`)
         .set("Content-Type", "application/json"));
     

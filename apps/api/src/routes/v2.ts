@@ -139,13 +139,13 @@ v2Router.get(
 
 
 v2Router.get(
-  "/credit-usage",
+  "/team/credit-usage",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(creditUsageController),
 );
 
 v2Router.get(
-  "/token-usage",
+  "/team/token-usage",
   authMiddleware(RateLimiterMode.ExtractStatus),
   wrap(tokenUsageController),
 );
