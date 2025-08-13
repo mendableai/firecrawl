@@ -228,7 +228,14 @@ async function getNextConcurrentJob(teamId: string, i = 0): Promise<{
 
       return await new Promise((resolve, reject) => setTimeout(() => {
         getNextConcurrentJob(teamId, i + 1).then(resolve).catch(reject);
-      }, 10));
+      }, 250));
+    } else {
+      logger.debug("Removed job from concurrency limit queue", {
+        teamId,
+        jobId: finalJob.job.id,
+        zeroDataRetention: finalJob.job.data?.zeroDataRetention,
+        i
+      });
     }
   }
 
