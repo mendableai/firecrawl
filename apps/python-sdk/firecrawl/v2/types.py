@@ -231,7 +231,7 @@ class CrawlRequest(BaseModel):
     exclude_paths: Optional[List[str]] = None
     include_paths: Optional[List[str]] = None
     max_discovery_depth: Optional[int] = None
-    ignore_sitemap: bool = False
+    sitemap: Literal["skip", "include"] = "include"
     ignore_query_parameters: bool = False
     limit: Optional[int] = None
     crawl_entire_domain: bool = False
