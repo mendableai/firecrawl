@@ -8,7 +8,6 @@ import {
   toV0CrawlerOptions,
 } from "./types";
 import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
-import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
 import { generateCrawlerOptionsFromPrompt } from "../../scraper/scrapeURL/transformers/llmExtract";
@@ -44,8 +43,6 @@ export async function crawlController(
     originalRequest: preNormalizedBody,
     account: req.account,
   });
-
-  await logCrawl(id, req.auth.team_id);
 
   let { remainingCredits } = req.account!;
   const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
