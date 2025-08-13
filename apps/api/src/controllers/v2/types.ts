@@ -867,6 +867,7 @@ export type CrawlErrorsResponse =
       id: string;
       timestamp?: string;
       url: string;
+      code?: ErrorCodes;
       error: string;
     }[];
     robotsBlocked: string[];

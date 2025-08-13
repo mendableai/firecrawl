@@ -14,6 +14,8 @@ import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
 import { supabase_rr_service } from "../../services/supabase";
 import { logger } from "../../lib/logger";
+import { deserializeTransportableError } from "../../lib/error-serde";
+import { TransportableError } from "../../lib/error";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -57,15 +59,23 @@ export async function crawlErrorsController(
     }
 
     res.status(200).json({
-      errors: (await getJobs(failedJobIDs)).map((x) => ({
-        id: x.id,
-        timestamp:
-          x.finishedOn !== undefined
-            ? new Date(x.finishedOn).toISOString()
-            : undefined,
-        url: x.data.url,
-        error: x.failedReason,
-      })),
+      errors: (await getJobs(failedJobIDs)).map((x) => {
+        const error = deserializeTransportableError(x.failedReason) as TransportableError | null;
+        return {
+          id: x.id,
+          timestamp:
+            x.finishedOn !== undefined
+              ? new Date(x.finishedOn).toISOString()
+              : undefined,
+          url: x.data.url,
+          ...(error ? {
+            code: error.code,
+            error: error.message,
+          } : {
+            error: x.failedReason,
+          }),
+        };
+      }),
       robotsBlocked: await redisEvictConnection.smembers(
         "crawl:" + req.params.jobId + ":robots_blocked",
       ),
@@ -117,12 +127,23 @@ export async function crawlErrorsController(
     }
 
     res.status(200).json({
-      errors: (failedJobs || []).map((job) => ({
-        id: job.job_id,
-        timestamp: new Date(job.date_added).toISOString(),
-        url: job.page_options?.url || job.page_options?.urls?.[0] || "Unknown URL",
-        error: job.message || "Unknown error",
-      })),
+      errors: (failedJobs || []).map((job) => {
+        const error = deserializeTransportableError(job.message) as TransportableError | null;
+        return {
+          id: job.job_id,
+          timestamp:
+            job.finishedOn !== undefined
+              ? new Date(job.finishedOn).toISOString()
+              : undefined,
+          url: job.url,
+          ...(error ? {
+            code: error.code,
+            error: error.message,
+          } : {
+            error: job.message,
+          }),
+        };
+      }),
       robotsBlocked: await redisEvictConnection.smembers(
         "crawl:" + req.params.jobId + ":robots_blocked",
       ),
