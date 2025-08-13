@@ -4,7 +4,6 @@ import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
-import { logCrawl } from "../../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import {
@@ -158,8 +157,6 @@ export async function crawlController(req: Request, res: Response) {
     //     return res.status(500).json({ error: error.message });
     //   }
     // }
-
-    await logCrawl(id, team_id);
 
     const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
       pageOptions,

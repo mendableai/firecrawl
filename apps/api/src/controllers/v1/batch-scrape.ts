@@ -17,7 +17,6 @@ import {
   saveCrawl,
   StoredCrawl,
 } from "../../lib/crawl-redis";
-import { logCrawl } from "../../services/logging/crawl_log";
 import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
@@ -95,10 +94,6 @@ export async function batchScrapeController(
     appendToId: req.body.appendToId,
     account: req.account,
   });
-
-  if (!req.body.appendToId) {
-    await logCrawl(id, req.auth.team_id);
-  }
 
   const sc: StoredCrawl = req.body.appendToId
     ? ((await getCrawl(req.body.appendToId)) as StoredCrawl)
