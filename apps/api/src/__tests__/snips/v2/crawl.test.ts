@@ -22,11 +22,11 @@ describe("Crawl tests", () => {
         expect(results.completed).toBe(10);
     }, 10 * scrapeTimeout);
 
-    it.concurrent("works with ignoreSitemap: true", async () => {
+    it.concurrent("works with sitemap: skip", async () => {
         const results = await crawl({
             url: "https://firecrawl.dev",
             limit: 10,
-            ignoreSitemap: true,
+            sitemap: "skip",
         }, identity);
 
         expect(results.completed).toBe(10);
