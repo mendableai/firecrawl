@@ -248,7 +248,7 @@ export async function getMapResults({
         try {
           return {
             ...x,
-            url: checkAndUpdateURLForMap(x.url).url.trim(),
+            url: checkAndUpdateURLForMap(x.url, crawlerOptions.ignoreQueryParameters ?? true).url.trim(),
           };
         } catch (_) {
           return null;

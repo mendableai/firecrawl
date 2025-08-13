@@ -35,6 +35,7 @@ describe("Map tests", () => {
       url: "https://www.hfea.gov.uk",
       sitemap: "only",
       useMock: "map-query-params",
+      ignoreQueryParameters: false,
     }, identity);
 
     expect(response.statusCode).toBe(200);
