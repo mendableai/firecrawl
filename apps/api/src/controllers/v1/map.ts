@@ -258,7 +258,7 @@ export async function getMapResults({
     links = links
       .map((x) => {
         try {
-          return checkAndUpdateURLForMap(x).url.trim();
+          return checkAndUpdateURLForMap(x, crawlerOptions.ignoreQueryParameters ?? true).url.trim();
         } catch (_) {
           return null;
         }

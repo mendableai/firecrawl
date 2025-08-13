@@ -75,11 +75,9 @@ export async function pushConcurrencyLimitedJob(
   timeout: number,
   now: number = Date.now(),
 ) {
-  await redisEvictConnection.zadd(
-    constructQueueKey(team_id),
-    now + timeout,
-    JSON.stringify(job),
-  );
+  const queueKey = constructQueueKey(team_id);
+  await redisEvictConnection.zadd(queueKey, now + timeout, JSON.stringify(job));
+  await redisEvictConnection.sadd("concurrency-limit-queues", queueKey);
 }
 
 export async function getConcurrencyLimitedJobs(

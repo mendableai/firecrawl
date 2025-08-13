@@ -795,12 +795,14 @@ export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
 // Note: Map types have been transitioned to v2/types.ts while maintaining backwards compatibility
 export const mapRequestSchema = crawlerOptions
+  .omit({ ignoreQueryParameters: true })
   .extend({
     url,
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     includeSubdomains: z.boolean().default(true),
     search: z.string().optional(),
+    ignoreQueryParameters: z.boolean().default(true),
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
     limit: z.number().min(1).max(30000).default(5000),
