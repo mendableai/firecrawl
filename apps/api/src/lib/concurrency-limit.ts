@@ -228,7 +228,7 @@ async function getNextConcurrentJob(teamId: string, i = 0): Promise<{
 
       return await new Promise((resolve, reject) => setTimeout(() => {
         getNextConcurrentJob(teamId, i + 1).then(resolve).catch(reject);
-      }, 250));
+      }, Math.floor(Math.random() * 300))); // Stagger the workers off to break up the clump that causes the race condition
     } else {
       logger.debug("Removed job from concurrency limit queue", {
         teamId,
