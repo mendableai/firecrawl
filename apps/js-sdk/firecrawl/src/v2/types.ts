@@ -263,7 +263,13 @@ export interface TokenUsage {
 }
 
 export interface CrawlErrorsResponse {
-  errors: Array<Record<string, string>>;
+  errors: {
+    id: string;
+    timestamp?: string;
+    url: string;
+    code?: string;
+    error: string;
+  }[];
   robotsBlocked: string[];
 }
 

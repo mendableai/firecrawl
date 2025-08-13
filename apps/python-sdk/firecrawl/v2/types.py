@@ -502,9 +502,17 @@ class JobStatus(BaseModel):
     completed_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
 
+class CrawlError(BaseModel):
+    """A crawl error."""
+    id: str
+    timestamp: Optional[datetime] = None
+    url: str
+    code: Optional[str] = None
+    error: str
+
 class CrawlErrorsResponse(BaseModel):
     """Response from crawl error monitoring."""
-    errors: List[Dict[str, str]]
+    errors: List[CrawlError]
     robots_blocked: List[str]
 
 class ActiveCrawl(BaseModel):

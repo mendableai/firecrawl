@@ -287,9 +287,17 @@ class V1CrawlStatusResponse(pydantic.BaseModel):
     next: Optional[str] = None
     data: List[V1FirecrawlDocument]
 
+class V1CrawlError(pydantic.BaseModel):
+    """A crawl error."""
+    id: str
+    timestamp: Optional[datetime] = None
+    url: str
+    code: Optional[str] = None
+    error: str
+
 class V1CrawlErrorsResponse(pydantic.BaseModel):
     """Response from crawl/batch scrape error monitoring."""
-    errors: List[Dict[str, str]]  # {id: str, timestamp: str, url: str, error: str}
+    errors: List[V1CrawlError]
     robotsBlocked: List[str]
 
 class V1MapParams(pydantic.BaseModel):

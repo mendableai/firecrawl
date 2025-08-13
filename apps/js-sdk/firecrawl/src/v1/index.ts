@@ -417,6 +417,7 @@ export interface CrawlErrorsResponse {
     id: string,
     timestamp?: string,
     url: string,
+    code?: string,
     error: string,
   }[];
 
