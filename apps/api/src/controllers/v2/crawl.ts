@@ -86,10 +86,18 @@ export async function crawlController(
     }
   }
 
-  const finalCrawlerOptions = {
-    ...promptGeneratedOptions,
-    ...crawlerOptions,
-  };
+  // Merge behavior:
+  // - Start with parsed crawlerOptions (which contains schema defaults)
+  // - Overlay promptGeneratedOptions ONLY for fields the user did not explicitly provide
+  //   in the original request (preNormalizedBody) or provided as null/undefined.
+  // This prevents empty defaults like [] from overwriting meaningful prompt-generated values.
+  const finalCrawlerOptions: any = { ...crawlerOptions };
+  for (const [key, value] of Object.entries(promptGeneratedOptions)) {
+    const userProvided = Object.prototype.hasOwnProperty.call(preNormalizedBody, key);
+    if (!userProvided || preNormalizedBody[key] === undefined || preNormalizedBody[key] === null) {
+      finalCrawlerOptions[key] = value;
+    }
+  }
 
   if (Array.isArray(finalCrawlerOptions.includePaths)) {
     for (const x of finalCrawlerOptions.includePaths) {
