@@ -400,7 +400,7 @@ const baseScrapeOptions = z
     fastMode: z.boolean().default(false),
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
-    proxy: z.enum(["basic", "stealth", "auto"]).optional(),
+    proxy: z.enum(["basic", "stealth", "auto"]).default("basic"),
     maxAge: z.number().int().gte(0).safe().default(0),
     storeInCache: z.boolean().default(true),
     // @deprecated
