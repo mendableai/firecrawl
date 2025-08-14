@@ -436,7 +436,7 @@ export const extractOptions = z
       .default("direct")
       .optional(),
     __experimental_showCostTracking: z.boolean().default(false),
-    ignoreInvalidURLs: z.boolean().default(false),
+    ignoreInvalidURLs: z.boolean().default(true),
   })
   .strict(strictMessage)
   .refine((obj) => obj.urls || obj.prompt, {
