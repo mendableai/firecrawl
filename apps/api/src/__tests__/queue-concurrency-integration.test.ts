@@ -51,6 +51,7 @@ describe("Queue Concurrency Integration", () => {
     blockAds: true,
     maxAge: 0,
     storeInCache: true,
+    proxy: "basic",
   };
 
   beforeEach(() => {
