@@ -16,7 +16,7 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_extract_minimal():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    res = await client.v2.extract(urls=["https://docs.firecrawl.dev"], prompt="Extract title")
+    res = await client.extract(urls=["https://docs.firecrawl.dev"], prompt="Extract title")
     assert res is not None
 
 
@@ -24,7 +24,7 @@ async def test_async_extract_minimal():
 async def test_async_extract_with_schema_and_options():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     schema = {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
-    res = await client.v2.extract(
+    res = await client.extract(
         urls=["https://docs.firecrawl.dev"],
         prompt="Extract title",
         schema=schema,

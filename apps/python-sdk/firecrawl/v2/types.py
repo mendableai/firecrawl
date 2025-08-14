@@ -77,6 +77,7 @@ class Document(BaseModel):
     html: Optional[str] = None
     raw_html: Optional[str] = None
     json: Optional[Any] = None
+    summary: Optional[str] = None
     metadata: Optional[DocumentMetadata] = None
     links: Optional[List[str]] = None
     screenshot: Optional[str] = None
@@ -151,6 +152,7 @@ class ScrapeFormats(BaseModel):
     markdown: bool = True
     html: bool = False
     raw_html: bool = False
+    summary: bool = False
     links: bool = False
     screenshot: bool = False
     change_tracking: bool = False
@@ -365,11 +367,7 @@ class CreditUsage(BaseModel):
 
 class TokenUsage(BaseModel):
     """Recent token usage metrics (if available)."""
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-    step: Optional[str] = None
-    model: Optional[str] = None
+    remaining_tokens: int
 
 # Action types
 class WaitAction(BaseModel):

@@ -92,6 +92,13 @@ describe("v2.scrape e2e", () => {
     expect(doc).toBeTruthy();
   }, 90_000);
 
+  test("summary format returns summary string", async () => {
+    if (!client) throw new Error();
+    const doc = await client.scrape("https://firecrawl.dev", { formats: ["summary"] });
+    expect(typeof doc.summary).toBe("string");
+    expect((doc.summary || "").length).toBeGreaterThan(10);
+  }, 90_000);
+
   test.each([
     ["markdown", "markdown"],
     ["html", "html"],

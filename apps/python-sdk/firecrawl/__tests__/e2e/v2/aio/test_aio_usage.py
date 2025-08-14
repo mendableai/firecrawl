@@ -16,20 +16,20 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_get_concurrency():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    conc = await client.v2.get_concurrency()
+    conc = await client.get_concurrency()
     assert hasattr(conc, "concurrency") and hasattr(conc, "max_concurrency")
 
 
 @pytest.mark.asyncio
 async def test_async_get_credit_usage():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    credits = await client.v2.get_credit_usage()
+    credits = await client.get_credit_usage()
     assert hasattr(credits, "remaining_credits")
 
 
 @pytest.mark.asyncio
 async def test_async_get_token_usage():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    tokens = await client.v2.get_token_usage()
-    assert hasattr(tokens, "total_tokens")
+    tokens = await client.get_token_usage()
+    assert hasattr(tokens, "remaining_tokens")
 

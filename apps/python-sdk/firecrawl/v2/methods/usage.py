@@ -24,7 +24,7 @@ def get_credit_usage(client: HttpClient) -> CreditUsage:
     if not body.get("success"):
         raise Exception(body.get("error", "Unknown error"))
     data = body.get("data", body)
-    return CreditUsage(remaining_credits=data.get("remaining_credits"))
+    return CreditUsage(remaining_credits=data.get("remainingCredits", data.get("remaining_credits", 0)))
 
 
 def get_token_usage(client: HttpClient) -> TokenUsage:
@@ -36,10 +36,6 @@ def get_token_usage(client: HttpClient) -> TokenUsage:
         raise Exception(body.get("error", "Unknown error"))
     data = body.get("data", body)
     return TokenUsage(
-        prompt_tokens=data.get("promptTokens", data.get("prompt_tokens", 0)),
-        completion_tokens=data.get("completionTokens", data.get("completion_tokens", 0)),
-        total_tokens=data.get("totalTokens", data.get("total_tokens", 0)),
-        step=data.get("step"),
-        model=data.get("model"),
+        remaining_tokens=data.get("remainingTokens", 0)
     )
 

@@ -48,7 +48,7 @@ def search(
                 if isinstance(doc_data, dict):
                     # If page scraping options were provided, API returns full Document objects
                     if request.scrape_options is not None and any(
-                        key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'screenshot', 'changeTracking']
+                        key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'summary', 'screenshot', 'changeTracking']
                     ):
                         # Normalize keys for Document (no Pydantic aliases)
                         normalized = dict(doc_data)

@@ -191,6 +191,8 @@ def prepare_scrape_options(options: Optional[ScrapeOptions]) -> Optional[Dict[st
                         converted_formats.append("html")
                     if original_formats.raw_html:
                         converted_formats.append("rawHtml")
+                    if original_formats.summary:
+                        converted_formats.append("summary")
                     if original_formats.links:
                         converted_formats.append("links")
                     if original_formats.screenshot:

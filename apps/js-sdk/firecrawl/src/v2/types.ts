@@ -164,6 +164,7 @@ export interface Document {
   html?: string;
   rawHtml?: string;
   json?: unknown;
+  summary?: string;
   metadata?: DocumentMetadata;
   links?: string[];
   screenshot?: string;
@@ -255,7 +256,7 @@ export interface ConcurrencyCheck {
 }
 
 export interface CreditUsage {
-  remaining_credits: number;
+  remainingCredits: number;
 }
 
 export interface TokenUsage {

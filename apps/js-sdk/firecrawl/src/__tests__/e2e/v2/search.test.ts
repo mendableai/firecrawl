@@ -31,7 +31,16 @@ function collectTexts(entries: any[] | undefined): string[] {
 function isDocument(entry: Document | SearchResult | undefined | null): entry is Document {
   if (!entry) return false;
   const d = entry as Document;
-  return typeof d.markdown === 'string' || typeof d.html === 'string';
+  return (
+    typeof d.markdown === 'string' ||
+    typeof d.rawHtml === 'string' ||
+    typeof d.html === 'string' ||
+    typeof d.links === 'object' ||
+    typeof d.screenshot === 'string' ||
+    typeof d.changeTracking === 'object' ||
+    typeof d.summary === 'string' ||
+    typeof d.json === 'object'
+  );
 }
 
 describe("v2.search e2e", () => {
@@ -220,6 +229,19 @@ describe("v2.search e2e", () => {
     });
     expect(results).toBeTruthy();
     expect(Array.isArray(results.web) || results.web == null).toBe(true);
+  }, 90_000);
+
+  test("with summary format, documents include summary when present", async () => {
+    if (!client) throw new Error();
+    const results = await client.search("site:firecrawl.dev", {
+      limit: 1,
+      scrapeOptions: { formats: ["summary"] },
+    });
+    const docs = (results.web || []).filter(r => isDocument(r)) as Document[];
+    if (docs.length > 0) {
+      expect(typeof docs[0].summary).toBe("string");
+      expect((docs[0].summary || "").length).toBeGreaterThan(5);
+    }
   }, 90_000);
 });
 

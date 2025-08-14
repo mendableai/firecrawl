@@ -13,10 +13,6 @@ class TestUsageTypes:
         assert cu.remaining_credits == 123
 
     def test_token_usage_model(self):
-        tu = TokenUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30, step="search", model="gpt")
-        assert tu.prompt_tokens == 10
-        assert tu.completion_tokens == 20
-        assert tu.total_tokens == 30
-        assert tu.step == "search"
-        assert tu.model == "gpt"
+        tu = TokenUsage(remaining_tokens=10)
+        assert tu.remaining_tokens == 10
 

@@ -18,18 +18,18 @@ async def get_concurrency(client: AsyncHttpClient) -> ConcurrencyCheck:
 
 
 async def get_credit_usage(client: AsyncHttpClient) -> CreditUsage:
-    resp = await client.get("/v2/credit-usage")
+    resp = await client.get("/v2/team/credit-usage")
     if resp.status_code >= 400:
         handle_response_error(resp, "get credit usage")
     body = resp.json()
     if not body.get("success"):
         raise Exception(body.get("error", "Unknown error"))
     data = body.get("data", body)
-    return CreditUsage(remaining_credits=data.get("remaining_credits"))
+    return CreditUsage(remaining_credits=data.get("remainingCredits", data.get("remaining_credits", 0)))
 
 
 async def get_token_usage(client: AsyncHttpClient) -> TokenUsage:
-    resp = await client.get("/v2/token-usage")
+    resp = await client.get("/v2/team/token-usage")
     if resp.status_code >= 400:
         handle_response_error(resp, "get token usage")
     body = resp.json()
@@ -37,10 +37,6 @@ async def get_token_usage(client: AsyncHttpClient) -> TokenUsage:
         raise Exception(body.get("error", "Unknown error"))
     data = body.get("data", body)
     return TokenUsage(
-        prompt_tokens=data.get("promptTokens", data.get("prompt_tokens", 0)),
-        completion_tokens=data.get("completionTokens", data.get("completion_tokens", 0)),
-        total_tokens=data.get("totalTokens", data.get("total_tokens", 0)),
-        step=data.get("step"),
-        model=data.get("model"),
+        remaining_tokens=data.get("remainingTokens", 0)
     )
 

@@ -16,7 +16,7 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_map_minimal():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    resp = await client.v2.map("https://docs.firecrawl.dev")
+    resp = await client.map("https://docs.firecrawl.dev")
     assert hasattr(resp, "links") and isinstance(resp.links, list)
     if resp.links:
         first = resp.links[0]
@@ -27,7 +27,7 @@ async def test_async_map_minimal():
 @pytest.mark.parametrize("sitemap", ["only", "include", "skip"])
 async def test_async_map_with_all_params(sitemap):
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    resp = await client.v2.map(
+    resp = await client.map(
         "https://docs.firecrawl.dev",
         search="docs",
         include_subdomains=True,

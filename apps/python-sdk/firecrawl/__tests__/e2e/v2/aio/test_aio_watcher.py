@@ -18,7 +18,7 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_watcher_crawl_progresses():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    start = await client.v2.start_crawl("https://docs.firecrawl.dev", limit=2)
+    start = await client.start_crawl("https://docs.firecrawl.dev", limit=2)
     statuses = []
     async for snapshot in AsyncWatcher(client, start.id, kind="crawl", timeout=180):
         statuses.append(snapshot.status)
@@ -30,7 +30,7 @@ async def test_async_watcher_crawl_progresses():
 @pytest.mark.asyncio
 async def test_async_watcher_batch_progresses():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    start = await client.v2.start_batch_scrape([
+    start = await client.start_batch_scrape([
         "https://docs.firecrawl.dev",
         "https://firecrawl.dev",
     ], formats=["markdown"], max_concurrency=1)

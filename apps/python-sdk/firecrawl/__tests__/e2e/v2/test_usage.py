@@ -22,7 +22,5 @@ class TestUsageE2E:
 
     def test_get_token_usage(self):
         resp = self.client.get_token_usage()
-        assert hasattr(resp, "prompt_tokens")
-        assert hasattr(resp, "completion_tokens")
-        assert hasattr(resp, "total_tokens")
+        assert hasattr(resp, "remaining_tokens")
 

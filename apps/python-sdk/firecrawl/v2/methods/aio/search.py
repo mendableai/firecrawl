@@ -36,7 +36,7 @@ async def search(client: AsyncHttpClient, request: SearchRequest) -> SearchData:
             for doc_data in source_documents:
                 if isinstance(doc_data, dict):
                     if request.scrape_options is not None and any(
-                        key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'screenshot', 'changeTracking']
+                        key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'summary', 'screenshot', 'changeTracking']
                     ):
                         normalized = dict(doc_data)
                         if 'rawHtml' in normalized and 'raw_html' not in normalized:

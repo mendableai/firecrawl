@@ -25,7 +25,7 @@ describe("v2.usage e2e", () => {
 
   test("get_credit_usage", async () => {
     const resp = await client.getCreditUsage();
-    expect(typeof resp.remaining_credits).toBe("number");
+    expect(typeof resp.remainingCredits).toBe("number");
   }, 60_000);
 
   test("get_token_usage", async () => {

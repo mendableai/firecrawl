@@ -16,10 +16,10 @@ export async function getConcurrency(http: HttpClient): Promise<ConcurrencyCheck
 
 export async function getCreditUsage(http: HttpClient): Promise<CreditUsage> {
   try {
-    const res = await http.get<{ success: boolean; data?: { remaining_credits: number } }>("/v2/team/credit-usage");
+    const res = await http.get<{ success: boolean; data?: { remainingCredits?: number; remaining_credits?: number } }>("/v2/team/credit-usage");
     if (res.status !== 200 || !res.data?.success) throwForBadResponse(res, "get credit usage");
     const d = res.data.data || (res.data as any);
-    return { remaining_credits: d.remaining_credits };
+    return { remainingCredits: d.remainingCredits ?? d.remaining_credits ?? 0 };
   } catch (err: any) {
     if (err?.isAxiosError) return normalizeAxiosError(err, "get credit usage");
     throw err;

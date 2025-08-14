@@ -21,9 +21,22 @@ def _collect_texts(entries):
 def _is_document(entry) -> bool:
     try:
         from firecrawl.v2.types import Document
-        return isinstance(entry, Document) or hasattr(entry, 'markdown') or hasattr(entry, 'html')
+        return isinstance(entry, Document) or \
+               hasattr(entry, 'markdown') or \
+               hasattr(entry, 'html') or \
+               hasattr(entry, 'raw_html') or \
+               hasattr(entry, 'json') or \
+               hasattr(entry, 'screenshot') or \
+               hasattr(entry, 'change_tracking') or \
+               hasattr(entry, 'summary')
     except Exception:
-        return hasattr(entry, 'markdown') or hasattr(entry, 'html')
+        return hasattr(entry, 'markdown') or \
+               hasattr(entry, 'html') or \
+               hasattr(entry, 'raw_html') or \
+               hasattr(entry, 'json') or \
+               hasattr(entry, 'screenshot') or \
+               hasattr(entry, 'change_tracking') or \
+               hasattr(entry, 'summary')
 
 def test_search_minimal_request():
     results = firecrawl.search(
@@ -135,7 +148,8 @@ def test_search_all_parameters():
                     "type": "json",
                     "prompt": "Extract the title and description from the page",
                     "schema": schema
-                }
+                },
+                {"type": "summary"}
             ],
             headers={"User-Agent": "Firecrawl-Test/1.0"},
             include_tags=["h1", "h2", "p"],

@@ -24,6 +24,7 @@ import logging
 
 from .v1 import V1FirecrawlApp, AsyncV1FirecrawlApp
 from .v2 import FirecrawlClient as V2FirecrawlClient
+from .v2.client_async import AsyncFirecrawlClient
 
 logger = logging.getLogger("firecrawl")
 
@@ -99,11 +100,40 @@ class AsyncV1Proxy:
 class AsyncV2Proxy:
     """Proxy class that forwards method calls to the appropriate version client."""
     _client: Optional[Any] = None
-    
+
     def __init__(self, client_instance: Optional[Any] = None):
-        from .v2.client_async import AsyncFirecrawlClient
-        self._client = client_instance or AsyncFirecrawlClient()
-    
+        self._client = client_instance
+
+        if client_instance:
+            self.scrape = client_instance.scrape
+            self.search = client_instance.search
+            self.crawl = client_instance.crawl
+            self.start_crawl = client_instance.start_crawl
+            self.wait_crawl = client_instance.wait_crawl
+            self.get_crawl_status = client_instance.get_crawl_status
+            self.cancel_crawl = client_instance.cancel_crawl
+            self.get_crawl_errors = client_instance.get_crawl_errors
+            self.get_active_crawls = client_instance.get_active_crawls
+            self.active_crawls = client_instance.active_crawls
+            self.crawl_params_preview = client_instance.crawl_params_preview
+
+            self.extract = client_instance.extract
+            self.start_extract = client_instance.start_extract
+            self.get_extract_status = client_instance.get_extract_status
+
+            self.start_batch_scrape = client_instance.start_batch_scrape
+            self.get_batch_scrape_status = client_instance.get_batch_scrape_status
+            self.cancel_batch_scrape = client_instance.cancel_batch_scrape
+            self.wait_batch_scrape = client_instance.wait_batch_scrape
+            self.batch_scrape = client_instance.batch_scrape
+            self.get_batch_scrape_errors = client_instance.get_batch_scrape_errors
+
+            self.map = client_instance.map
+            self.get_concurrency = client_instance.get_concurrency
+            self.get_credit_usage = client_instance.get_credit_usage
+            self.get_token_usage = client_instance.get_token_usage
+            self.watcher = client_instance.watcher
+
     def __getattr__(self, name):
         """Forward attribute access to the underlying client."""
         if self._client:
@@ -170,8 +200,7 @@ class AsyncFirecrawl:
         
         # Initialize version-specific clients
         self._v1_client = AsyncV1FirecrawlApp(api_key=api_key, api_url=api_url) if AsyncV1FirecrawlApp else None
-        from .v2.client_async import AsyncFirecrawlClient
-        self._v2_client = AsyncFirecrawlClient(api_key=api_key, api_url=api_url)
+        self._v2_client = AsyncFirecrawlClient(api_key=api_key, api_url=api_url) if AsyncFirecrawlClient else None
         
         # Create version-specific proxies
         self.v1 = AsyncV1Proxy(self._v1_client) if self._v1_client else None

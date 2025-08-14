@@ -19,9 +19,22 @@ def _collect_texts(entries):
 def _is_document(entry) -> bool:
     try:
         from firecrawl.v2.types import Document
-        return isinstance(entry, Document) or hasattr(entry, 'markdown') or hasattr(entry, 'html')
+        return isinstance(entry, Document) or \
+               hasattr(entry, 'markdown') or \
+               hasattr(entry, 'html') or \
+               hasattr(entry, 'raw_html') or \
+               hasattr(entry, 'json') or \
+               hasattr(entry, 'screenshot') or \
+               hasattr(entry, 'change_tracking') or \
+               hasattr(entry, 'summary')
     except Exception:
-        return hasattr(entry, 'markdown') or hasattr(entry, 'html')
+        return hasattr(entry, 'markdown') or \
+               hasattr(entry, 'html') or \
+               hasattr(entry, 'raw_html') or \
+               hasattr(entry, 'json') or \
+               hasattr(entry, 'screenshot') or \
+               hasattr(entry, 'change_tracking') or \
+               hasattr(entry, 'summary')
 
 
 load_dotenv()
@@ -36,7 +49,7 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_search_minimal():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.v2.search("What is the capital of France?")
+    data = await client.search("What is the capital of France?")
     # Assert sections like sync tests
     assert hasattr(data, "web")
     assert hasattr(data, "news")
@@ -54,7 +67,7 @@ async def test_async_search_minimal():
 @pytest.mark.asyncio
 async def test_async_search_with_sources_and_limit():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.v2.search("firecrawl", sources=["web", "news"], limit=3)
+    data = await client.search("firecrawl", sources=["web", "news"], limit=3)
     # Sections present
     assert hasattr(data, "web") and hasattr(data, "news") and hasattr(data, "images")
     # Web present, images absent, news optional but if present respects limit
@@ -68,7 +81,7 @@ async def test_async_search_with_sources_and_limit():
 @pytest.mark.asyncio
 async def test_async_search_with_all_params():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.v2.search(
+    data = await client.search(
         "artificial intelligence",
         sources=["web", "news"],
         limit=3,
@@ -121,7 +134,7 @@ async def test_async_search_with_all_params():
 async def test_async_search_minimal_content_check():
     """Stronger assertion similar to sync: content check on a known query."""
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.v2.search("What is the capital of France?")
+    data = await client.search("What is the capital of France?")
     assert hasattr(data, "web") and data.web is not None
     non_doc = [r for r in (data.web or []) if not _is_document(r)]
     if non_doc:
@@ -132,7 +145,7 @@ async def test_async_search_minimal_content_check():
 @pytest.mark.asyncio
 async def test_async_search_result_structure():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.v2.search("test query", limit=1)
+    data = await client.search("test query", limit=1)
     if data.web and len(data.web) > 0:
         result = data.web[0]
         assert hasattr(result, "url")
@@ -147,11 +160,11 @@ async def test_async_search_result_structure():
 async def test_async_search_formats_flexibility():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     # list string
-    res1 = await client.v2.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=["markdown"]))
+    res1 = await client.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=["markdown"]))
     # list objects
-    res2 = await client.v2.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=[{"type": "markdown"}]))
+    res2 = await client.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=[{"type": "markdown"}]))
     # ScrapeFormats object
-    res3 = await client.v2.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=ScrapeFormats(markdown=True)))
+    res3 = await client.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=ScrapeFormats(markdown=True)))
     assert isinstance(res1, SearchData) and hasattr(res1, "web")
     assert isinstance(res2, SearchData) and hasattr(res2, "web")
     assert isinstance(res3, SearchData) and hasattr(res3, "web")
@@ -161,7 +174,7 @@ async def test_async_search_formats_flexibility():
 async def test_async_search_json_format_object():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     json_schema = {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
-    data = await client.v2.search(
+    data = await client.search(
         "site:docs.firecrawl.dev",
         limit=1,
         scrape_options={"formats": [{"type": "json", "prompt": "Extract page title", "schema": json_schema}]},

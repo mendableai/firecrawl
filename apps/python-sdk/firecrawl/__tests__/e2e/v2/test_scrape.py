@@ -28,6 +28,7 @@ class TestScrapeE2E:
             (doc.markdown is not None and len(doc.markdown) > 0)
             or (doc.html is not None and len(doc.html) > 0)
             or (doc.raw_html is not None and len(doc.raw_html) > 0)
+            or (doc.summary is not None and len(doc.summary) > 0)
         )
         # Metadata should exist with a source URL or title when available
         assert doc.metadata is not None
@@ -64,6 +65,7 @@ class TestScrapeE2E:
         ("raw_html", "raw_html"),
         ("links", "links"),
         ("screenshot", "screenshot"),
+        ("summary", "summary"),
     ])
     def test_scrape_basic_formats(self, fmt, expect_field):
         """Verify basic formats request succeeds and expected fields are present when applicable."""
@@ -129,6 +131,7 @@ class TestScrapeE2E:
                 "raw_html",
                 {"type": "screenshot", "full_page": False, "quality": 70},
                 {"type": "json", "prompt": "Extract title", "schema": json_schema},
+                {"type": "summary" },
             ],
             headers={"User-Agent": "E2E"},
             include_tags=["main"],

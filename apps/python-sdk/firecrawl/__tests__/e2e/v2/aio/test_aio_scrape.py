@@ -17,7 +17,7 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_scrape_minimal():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    doc = await client.v2.scrape("https://docs.firecrawl.dev")
+    doc = await client.scrape("https://docs.firecrawl.dev")
     assert isinstance(doc, Document)
     assert (
         (doc.markdown and len(doc.markdown) > 0)
@@ -26,6 +26,7 @@ async def test_async_scrape_minimal():
         or (doc.links is not None)
         or (doc.screenshot is not None)
         or (doc.json is not None)
+        or (doc.summary is not None)
     )
 
 
@@ -38,7 +39,7 @@ async def test_async_scrape_with_all_params():
         "properties": {"title": {"type": "string"}},
         "required": ["title"],
     }
-    doc = await client.v2.scrape(
+    doc = await client.scrape(
         "https://docs.firecrawl.dev",
         formats=[
             "markdown",
@@ -70,7 +71,7 @@ async def test_async_scrape_with_all_params():
 @pytest.mark.asyncio
 async def test_async_scrape_with_options_markdown():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    doc = await client.v2.scrape(
+    doc = await client.scrape(
         "https://docs.firecrawl.dev",
         formats=["markdown"],
         only_main_content=False,
@@ -82,7 +83,7 @@ async def test_async_scrape_with_options_markdown():
 @pytest.mark.asyncio
 async def test_async_scrape_with_screenshot_action_viewport():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    doc = await client.v2.scrape(
+    doc = await client.scrape(
         "https://docs.firecrawl.dev",
         formats=[{"type": "screenshot", "full_page": False, "quality": 80, "viewport": {"width": 800, "height": 600}}],
     )
@@ -96,10 +97,11 @@ async def test_async_scrape_with_screenshot_action_viewport():
     ("raw_html", "raw_html"),
     ("links", "links"),
     ("screenshot", "screenshot"),
+    ("summary", "summary"),
 ])
 async def test_async_scrape_basic_formats(fmt, expect_field):
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    doc = await client.v2.scrape("https://docs.firecrawl.dev", formats=[fmt])
+    doc = await client.scrape("https://docs.firecrawl.dev", formats=[fmt])
     assert isinstance(doc, Document)
     if expect_field == "markdown":
         assert doc.markdown is not None
@@ -111,13 +113,15 @@ async def test_async_scrape_basic_formats(fmt, expect_field):
         assert isinstance(doc.links, list)
     elif expect_field == "screenshot":
         assert doc.screenshot is not None
+    elif expect_field == "summary":
+        assert doc.summary is not None
 
 
 @pytest.mark.asyncio
 async def test_async_scrape_with_json_format_object():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     json_schema = {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
-    doc = await client.v2.scrape(
+    doc = await client.scrape(
         "https://docs.firecrawl.dev",
         formats=[{"type": "json", "prompt": "Extract page title", "schema": json_schema}],
         only_main_content=True,
@@ -129,5 +133,5 @@ async def test_async_scrape_with_json_format_object():
 async def test_async_scrape_invalid_url():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     with pytest.raises(ValueError):
-        await client.v2.scrape("")
+        await client.scrape("")
 

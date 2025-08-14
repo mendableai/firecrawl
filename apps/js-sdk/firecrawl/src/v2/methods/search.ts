@@ -39,7 +39,16 @@ export async function search(http: HttpClient, request: SearchRequest): Promise<
         for (const item of arr) {
           if (item && typeof item === "object") {
             // If scraped page fields present, treat as Document; otherwise SearchResult
-            if ("markdown" in item || "html" in item || "rawHtml" in item || "links" in item || "screenshot" in item || "changeTracking" in item) {
+            if (
+              "markdown" in item ||
+              "html" in item ||
+              "rawHtml" in item ||
+              "links" in item ||
+              "screenshot" in item ||
+              "changeTracking" in item ||
+              "summary" in item ||
+              "json" in item
+            ) {
               results.push(item as Document);
             } else {
               results.push({ url: item.url, title: item.title, description: item.description } as SearchResult);

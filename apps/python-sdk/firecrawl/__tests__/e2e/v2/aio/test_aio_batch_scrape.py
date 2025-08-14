@@ -17,17 +17,17 @@ if not os.getenv("API_URL"):
 @pytest.mark.asyncio
 async def test_async_batch_start_and_status():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    start = await client.v2.start_batch_scrape([
+    start = await client.start_batch_scrape([
         "https://docs.firecrawl.dev",
         "https://firecrawl.dev",
     ], formats=["markdown"], max_concurrency=1)
     job_id = start.id
 
     deadline = asyncio.get_event_loop().time() + 240
-    status = await client.v2.get_batch_scrape_status(job_id)
+    status = await client.get_batch_scrape_status(job_id)
     while status.status not in ("completed", "failed", "cancelled") and asyncio.get_event_loop().time() < deadline:
         await asyncio.sleep(2)
-        status = await client.v2.get_batch_scrape_status(job_id)
+        status = await client.get_batch_scrape_status(job_id)
 
     assert status.status in ("completed", "failed", "cancelled")
 
@@ -35,7 +35,7 @@ async def test_async_batch_start_and_status():
 @pytest.mark.asyncio
 async def test_async_batch_wait_minimal():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    job = await client.v2.batch_scrape([
+    job = await client.batch_scrape([
         "https://docs.firecrawl.dev",
         "https://firecrawl.dev",
     ], formats=["markdown"], poll_interval=1, timeout=120)
@@ -46,7 +46,7 @@ async def test_async_batch_wait_minimal():
 async def test_async_batch_wait_with_all_params():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
     json_schema = {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
-    job = await client.v2.batch_scrape(
+    job = await client.batch_scrape(
         [
             "https://docs.firecrawl.dev",
             "https://firecrawl.dev",
@@ -70,10 +70,10 @@ async def test_async_batch_wait_with_all_params():
 @pytest.mark.asyncio
 async def test_async_cancel_batch():
     client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    start = await client.v2.start_batch_scrape([
+    start = await client.start_batch_scrape([
         "https://docs.firecrawl.dev",
         "https://firecrawl.dev",
     ], formats=["markdown"], max_concurrency=1)
-    ok = await client.v2.cancel_batch_scrape(start.id)
+    ok = await client.cancel_batch_scrape(start.id)
     assert ok is True
 
