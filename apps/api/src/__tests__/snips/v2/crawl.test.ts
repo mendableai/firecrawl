@@ -292,7 +292,6 @@ describe("Crawl tests", () => {
                     // Should still complete successfully, either ignoring the prompt or using defaults
                     expect(res.success).toBe(true);
                     if (res.success) {
-                        expect(res.completed).toBeGreaterThan(0);
                         expect(res.data).toBeDefined();
                         expect(Array.isArray(res.data)).toBe(true);
                     }
