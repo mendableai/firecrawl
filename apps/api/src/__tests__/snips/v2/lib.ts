@@ -154,7 +154,7 @@ export async function crawlErrors(id: string, identity: Identity): Promise<Exclu
     return res.body;
 }
 
-export async function crawl(body: CrawlRequestInput, identity: Identity): Promise<Exclude<CrawlStatusResponse & { id: string }, ErrorResponse>> {
+export async function crawl(body: CrawlRequestInput, identity: Identity, shouldSucceed: boolean = true): Promise<Exclude<CrawlStatusResponse & { id: string }, ErrorResponse>> {
     const cs = await crawlStart(body, identity);
     expectCrawlStartToSucceed(cs);
 
@@ -171,7 +171,10 @@ export async function crawl(body: CrawlRequestInput, identity: Identity): Promis
         console.warn("Crawl ", cs.body.id, " had errors:", errors.errors);
     }
 
-    expectCrawlToSucceed(x);
+    if (shouldSucceed) {
+        expectCrawlToSucceed(x);
+    }
+
     return {
         ...x.body,
         id: cs.body.id,

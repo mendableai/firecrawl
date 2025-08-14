@@ -287,7 +287,7 @@ describe("Crawl tests", () => {
                         url: "https://firecrawl.dev",
                         prompt: invalidPrompt,
                         limit: 1,
-                    }, identity);
+                    }, identity, false);
 
                     // Should still complete successfully, either ignoring the prompt or using defaults
                     expect(res.success).toBe(true);
