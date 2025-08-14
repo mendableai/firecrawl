@@ -5,10 +5,9 @@ import {
   getScrapeQueue,
   getExtractQueue,
   getDeepResearchQueue,
-  redisConnection,
   getGenerateLlmsTxtQueue,
   scrapeQueueName,
-  createRedisConnection,
+  getRedisConnection,
 } from "./queue-service";
 import { Job, Queue, QueueEvents } from "bullmq";
 import { logger as _logger } from "../lib/logger";
@@ -357,7 +356,7 @@ const separateWorkerFun = (
     .filter(arg => !arg.startsWith('--max-old-space-size'));
 
   const worker = new Worker(queue.name, path, {
-    connection: createRedisConnection(),
+    connection: getRedisConnection(),
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
@@ -386,7 +385,7 @@ const workerFun = async (
   const logger = _logger.child({ module: "queue-worker", method: "workerFun" });
 
   const worker = new Worker(queue.name, null, {
-    connection: redisConnection,
+    connection: getRedisConnection(),
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
@@ -534,7 +533,7 @@ app.listen(workerPort, () => {
     }
   }
 
-  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: getRedisConnection() });
   scrapeQueueEvents.on("failed", failedListener);
 
   const results = await Promise.all([

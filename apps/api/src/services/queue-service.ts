@@ -13,19 +13,20 @@ let deepResearchQueue: Queue;
 let generateLlmsTxtQueue: Queue;
 let billingQueue: Queue;
 let precrawlQueue: Queue;
+let redisConnection: IORedis;
 
-export function createRedisConnection() {
-  const connection = new IORedis(process.env.REDIS_URL!, {
-    maxRetriesPerRequest: null,
-  });
+export function getRedisConnection(): IORedis {
+  if (!redisConnection) {
+    redisConnection = new IORedis(process.env.REDIS_URL!, {
+      maxRetriesPerRequest: null,
+    });
+    redisConnection.on("connect", () => logger.info("Redis connected"));
+    redisConnection.on("reconnecting", () => logger.warn("Redis reconnecting"));
+    redisConnection.on("error", (err) => logger.warn("Redis error", { err }));
 
-  connection.on("reconnecting", () => logger.warn("Redis reconnecting"));
-  connection.on("error", (err) => logger.warn("Redis error", { err }));
-
-  return connection;
+  }
+  return redisConnection;
 }
-
-export const redisConnection = createRedisConnection();
 
 export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
@@ -39,7 +40,7 @@ export const precrawlQueueName = "{precrawlQueue}";
 export function getScrapeQueue() {
   if (!scrapeQueue) {
     scrapeQueue = new Queue(scrapeQueueName, {
-      connection: createRedisConnection(),
+      connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 3600, // 1 hour
@@ -56,7 +57,7 @@ export function getScrapeQueue() {
 export function getScrapeQueueEvents() {
   if (!scrapeQueueEvents) {
     scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
-      connection: createRedisConnection(),
+      connection: getRedisConnection(),
     });
   }
 
@@ -66,7 +67,7 @@ export function getScrapeQueueEvents() {
 export function getExtractQueue() {
   if (!extractQueue) {
     extractQueue = new Queue(extractQueueName, {
-      connection: redisConnection,
+      connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 90000, // 25 hours
@@ -83,7 +84,7 @@ export function getExtractQueue() {
 export function getGenerateLlmsTxtQueue() {
   if (!generateLlmsTxtQueue) {
     generateLlmsTxtQueue = new Queue(generateLlmsTxtQueueName, {
-      connection: redisConnection,
+      connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 90000, // 25 hours
@@ -100,7 +101,7 @@ export function getGenerateLlmsTxtQueue() {
 export function getDeepResearchQueue() {
   if (!deepResearchQueue) {
     deepResearchQueue = new Queue(deepResearchQueueName, {
-      connection: redisConnection,
+      connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 90000, // 25 hours
@@ -117,7 +118,7 @@ export function getDeepResearchQueue() {
 export function getBillingQueue() {
   if (!billingQueue) {
     billingQueue = new Queue(billingQueueName, {
-      connection: redisConnection,
+      connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 60, // 1 minute
@@ -134,7 +135,7 @@ export function getBillingQueue() {
 export function getPrecrawlQueue() {
   if (!precrawlQueue) {
     precrawlQueue = new Queue(precrawlQueueName, {
-      connection: redisConnection,
+      connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
           age: 24 * 60 * 60, // 1 day
