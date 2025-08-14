@@ -18,3 +18,7 @@ export async function scrapeDOCX(meta: Meta): Promise<EngineScrapeResult> {
     proxyUsed: "basic",
   };
 }
+
+export function docxMaxReasonableTime(meta: Meta): number {
+  return 15000;
+}

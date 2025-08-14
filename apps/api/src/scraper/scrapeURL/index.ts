@@ -9,6 +9,7 @@ import {
   Engine,
   EngineScrapeResult,
   FeatureFlag,
+  getEngineMaxReasonableTime,
   scrapeURLWithEngine,
 } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
@@ -361,14 +362,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   let result: EngineScrapeResultWithContext | null = null;
 
   while (remainingEngines.length > 0) {
-    // TODO: REPLACE WITH Engine.maxReasonableTime TODOv2
-    const waitUntilWaterfall = meta.options.timeout !== undefined
-      ? Math.round(meta.options.timeout / Math.min(remainingEngines.length, 2))
-      : (!meta.options.actions && !hasFormatOfType(meta.options.formats, "json"))
-        ? Math.round(120000 / Math.min(remainingEngines.length, 2))
-        : Math.round(300000 / Math.min(remainingEngines.length, 2));
-
     const { engine, unsupportedFeatures } = remainingEngines.shift()!;
+
+    const waitUntilWaterfall = getEngineMaxReasonableTime(meta, engine);
     
     if (!isFinite(waitUntilWaterfall) || isNaN(waitUntilWaterfall) || waitUntilWaterfall <= 0) {
       meta.logger.warn("Invalid waitUntilWaterfall value", {
@@ -404,11 +400,11 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       try {
         result = await Promise.race([
           ...enginePromises.map(x => x.promise),
-          new Promise<EngineScrapeResultWithContext>((_, reject) => {
+          ...(remainingEngines.length > 0 ? [new Promise<EngineScrapeResultWithContext>((_, reject) => {
             setTimeout(() => {
               reject(new WaterfallNextEngineSignal());
             }, waitUntilWaterfall);
-          }),
+          })] : []),
           new Promise<EngineScrapeResultWithContext>((_, reject) => {
             setTimeout(() => {
               try {
@@ -449,8 +445,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
             meta.logger.warn("LLM refusal encountered", { error: error.error });
             throw error.error;
           } else if (error.error instanceof FEPageLoadFailed) {
-            meta.logger.warn("FEPageLoadFailed encountered!!", { error: error.error });
-            // TODO: what to do about this? TODOv2
+            // This is the internal timeout bug on f-e and should be treated as an EngineError.
+            meta.logger.warn("FEPageLoadFailed encountered", { error: error.error });
           } else if (error.error instanceof AbortManagerThrownError) {
             if (error.error.tier === "engine") {
               meta.logger.warn("Engine " + error.engine + " timed out while scraping.", { error: error.error });

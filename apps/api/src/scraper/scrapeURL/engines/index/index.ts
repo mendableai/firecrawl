@@ -237,3 +237,7 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
         proxyUsed: doc.proxyUsed ?? "basic",
     };
 }
+
+export function indexMaxReasonableTime(meta: Meta): number {
+  return 1500;
+}

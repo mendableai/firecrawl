@@ -113,3 +113,7 @@ export async function scrapeURLWithFetch(
     proxyUsed: "basic",
   };
 }
+
+export function fetchMaxReasonableTime(meta: Meta): number {
+  return 15000;
+}

@@ -296,3 +296,7 @@ export async function scrapePDF(
     proxyUsed: "basic",
   };
 }
+
+export function pdfMaxReasonableTime(meta: Meta): number {
+  return 120000; // Infinity, really
+}

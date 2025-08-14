@@ -411,3 +411,18 @@ export async function scrapeURLWithFireEngineTLSClient(
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
 }
+
+export function fireEngineMaxReasonableTime(meta: Meta, engine: "chrome-cdp" | "playwright" | "tlsclient"): number {
+  if (engine === "tlsclient") {
+    return 15000;
+  } else if (engine === "playwright") {
+    return (meta.options.waitFor ?? 0) + 30000;
+  } else {
+    return (meta.options.waitFor ?? 0)
+      + (meta.options.actions?.reduce(
+          (a, x) => (x.type === "wait" ? (x.milliseconds ?? 2500) + a : 250 + a),
+          0
+        ) ?? 0)
+      + 30000;
+  }
+}

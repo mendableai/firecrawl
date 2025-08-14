@@ -45,3 +45,7 @@ export async function scrapeURLWithPlaywright(
     proxyUsed: "basic",
   };
 }
+
+export function playwrightMaxReasonableTime(meta: Meta): number {
+  return (meta.options.waitFor ?? 0) + 30000;
+}

@@ -1,15 +1,16 @@
 import { ScrapeActionContent } from "../../../lib/entities";
 import { Meta } from "..";
-import { scrapeDOCX } from "./docx";
+import { docxMaxReasonableTime, scrapeDOCX } from "./docx";
 import {
+  fireEngineMaxReasonableTime,
   scrapeURLWithFireEngineChromeCDP,
   scrapeURLWithFireEnginePlaywright,
   scrapeURLWithFireEngineTLSClient,
 } from "./fire-engine";
-import { scrapePDF } from "./pdf";
-import { scrapeURLWithFetch } from "./fetch";
-import { scrapeURLWithPlaywright } from "./playwright";
-import { scrapeURLWithIndex } from "./index/index";
+import { pdfMaxReasonableTime, scrapePDF } from "./pdf";
+import { fetchMaxReasonableTime, scrapeURLWithFetch } from "./fetch";
+import { playwrightMaxReasonableTime, scrapeURLWithPlaywright } from "./playwright";
+import { indexMaxReasonableTime, scrapeURLWithIndex } from "./index/index";
 import { useIndex } from "../../../services";
 import { hasFormatOfType } from "../../../lib/format-utils";
 
@@ -143,6 +144,25 @@ const engineHandlers: {
   fetch: scrapeURLWithFetch,
   pdf: scrapePDF,
   docx: scrapeDOCX,
+};
+
+const engineMRTs: {
+  [E in Engine]: (meta: Meta) => number;
+} = {
+  "index": indexMaxReasonableTime,
+  "index;documents": indexMaxReasonableTime,
+  "fire-engine;chrome-cdp": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine(retry);chrome-cdp": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine;chrome-cdp;stealth": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine(retry);chrome-cdp;stealth": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine;playwright": (meta) => fireEngineMaxReasonableTime(meta, "playwright"),
+  "fire-engine;playwright;stealth": (meta) => fireEngineMaxReasonableTime(meta, "playwright"),
+  "fire-engine;tlsclient": (meta) => fireEngineMaxReasonableTime(meta, "tlsclient"),
+  "fire-engine;tlsclient;stealth": (meta) => fireEngineMaxReasonableTime(meta, "tlsclient"),
+  playwright: playwrightMaxReasonableTime,
+  fetch: fetchMaxReasonableTime,
+  pdf: pdfMaxReasonableTime,
+  docx: docxMaxReasonableTime,
 };
 
 export const engineOptions: {
@@ -524,4 +544,14 @@ export async function scrapeURLWithEngine(
   };
 
   return await fn(_meta);
+}
+
+export function getEngineMaxReasonableTime(meta: Meta, engine: Engine): number {
+  const mrt = engineMRTs[engine];
+  // shan't happen - mogery
+  if (mrt === undefined) {
+    meta.logger.warn("No MRT for engine", { engine });
+    return 30000;
+  }
+  return mrt(meta);
 }
