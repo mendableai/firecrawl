@@ -155,33 +155,6 @@ describe("Crawl tests", () => {
         }
     }, 5 * scrapeTimeout);
 
-    it.concurrent("crawlEntireDomain takes precedence over allowBackwardLinks", async () => {
-        const res = await crawl({
-            url: "https://firecrawl.dev",
-            allowBackwardLinks: false,
-            crawlEntireDomain: true,
-            limit: 5,
-        }, identity);
-
-        expect(res.success).toBe(true);
-        if (res.success) {
-            expect(res.completed).toBeGreaterThan(0);
-        }
-    }, 5 * scrapeTimeout);
-
-    it.concurrent("backward compatibility - allowBackwardLinks still works", async () => {
-        const res = await crawl({
-            url: "https://firecrawl.dev",
-            allowBackwardLinks: true,
-            limit: 5,
-        }, identity);
-
-        expect(res.success).toBe(true);
-        if (res.success) {
-            expect(res.completed).toBeGreaterThan(0);
-        }
-    }, 5 * scrapeTimeout);
-
     it.concurrent("allowSubdomains parameter works", async () => {
         const res = await crawl({
             url: "https://firecrawl.dev",

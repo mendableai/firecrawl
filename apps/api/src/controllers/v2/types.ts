@@ -535,7 +535,6 @@ const crawlerOptions = z
     excludePaths: z.string().array().default([]),
     maxDiscoveryDepth: z.number().optional(),
     limit: z.number().default(10000), // default?
-    allowBackwardLinks: z.boolean().default(false), // DEPRECATED: use crawlEntireDomain
     crawlEntireDomain: z.boolean().optional(),
     allowExternalLinks: z.boolean().default(false),
     allowSubdomains: z.boolean().default(false),
@@ -553,7 +552,6 @@ const crawlerOptions = z
 //   excludePaths?: string[];
 //   maxDepth?: number;
 //   limit?: number;
-//   allowBackwardLinks?: boolean; // DEPRECATED: use crawlEntireDomain
 //   crawlEntireDomain?: boolean;
 //   allowExternalLinks?: boolean;
 //   ignoreSitemap?: boolean;
@@ -576,9 +574,6 @@ export const crawlRequestSchema = crawlerOptions
   .strict(strictMessage)
   .refine((x) => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform((x) => {
-    if (x.crawlEntireDomain !== undefined) {
-      x.allowBackwardLinks = x.crawlEntireDomain;
-    }
     return {
       ...x,
       scrapeOptions: extractTransform(x.scrapeOptions),
@@ -987,7 +982,7 @@ export function toV0CrawlerOptions(x: CrawlerOptions) {
     maxDepth: 9999,
     limit: x.limit,
     generateImgAltText: false,
-    allowBackwardCrawling: x.crawlEntireDomain ?? x.allowBackwardLinks,
+    allowBackwardCrawling: x.crawlEntireDomain,
     allowExternalContentLinks: x.allowExternalLinks,
     allowSubdomains: x.allowSubdomains,
     ignoreRobotsTxt: x.ignoreRobotsTxt,
@@ -1006,7 +1001,6 @@ export function toV2CrawlerOptions(x: any): CrawlerOptions {
     includePaths: x.includes,
     excludePaths: x.excludes,
     limit: x.limit,
-    allowBackwardLinks: x.allowBackwardCrawling,
     crawlEntireDomain: x.allowBackwardCrawling,
     allowExternalLinks: x.allowExternalContentLinks,
     allowSubdomains: x.allowSubdomains,
@@ -1029,7 +1023,6 @@ export function fromV0CrawlerOptions(x: any, teamId: string): {
       includePaths: x.includes,
       excludePaths: x.excludes,
       limit: x.maxCrawledLinks ?? x.limit,
-      allowBackwardLinks: x.allowBackwardCrawling,
       crawlEntireDomain: x.allowBackwardCrawling,
       allowExternalLinks: x.allowExternalContentLinks,
       allowSubdomains: x.allowSubdomains,
