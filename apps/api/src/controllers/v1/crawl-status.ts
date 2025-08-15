@@ -185,6 +185,7 @@ export async function crawlStatusController(
 
   if (sc) {
     // Local mode (easier, low-pressure)
+    const kickoffFinished = await isCrawlKickoffFinished(req.params.jobId);
     let total = await getCrawlQualifiedJobCount(req.params.jobId);
 
     let completed = await getDoneJobsOrderedLength(req.params.jobId);
@@ -198,7 +199,7 @@ export async function crawlStatusController(
 
       creditsUsed = creditsRpc.data?.[0]?.credits_billed ?? creditsUsed;
 
-      if (total === 0 && completed === 0) {
+      if (total === 0 && completed === 0 && Date.now() - sc.createdAt > 1000 * 60) {
         const x = await supabase_service
           .rpc('crawl_status_job_count_1', {
             i_team_id: req.auth.team_id,
@@ -211,7 +212,7 @@ export async function crawlStatusController(
     }
 
     outputBulkA = {
-      status: sc.cancelled ? "cancelled" : (completed === total && await isCrawlKickoffFinished(req.params.jobId)) ? "completed" : "scraping",
+      status: sc.cancelled ? "cancelled" : (completed === total && kickoffFinished) ? "completed" : "scraping",
       total,
       completed,
       creditsUsed,
