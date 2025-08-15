@@ -577,7 +577,7 @@ class FirecrawlApp:
         if zero_data_retention is not None:
             scrape_params['zeroDataRetention'] = zero_data_retention
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
         
         scrape_params.update(kwargs)
 
@@ -1376,7 +1376,7 @@ class FirecrawlApp:
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
         if max_concurrency is not None:
             scrape_params['maxConcurrency'] = max_concurrency
         if zero_data_retention is not None:
@@ -1517,7 +1517,7 @@ class FirecrawlApp:
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
         if max_concurrency is not None:
             scrape_params['maxConcurrency'] = max_concurrency
         if zero_data_retention is not None:
@@ -1653,7 +1653,7 @@ class FirecrawlApp:
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
         if max_concurrency is not None:
             scrape_params['maxConcurrency'] = max_concurrency
         if zero_data_retention is not None:
@@ -3090,7 +3090,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
         if 'extract' in scrape_params and scrape_params['extract'] and 'schema' in scrape_params['extract']:
             scrape_params['extract']['schema'] = self._ensure_schema_dict(scrape_params['extract']['schema'])
         if 'jsonOptions' in scrape_params and scrape_params['jsonOptions'] and 'schema' in scrape_params['jsonOptions']:
@@ -3218,7 +3218,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if actions is not None:
             scrape_params['actions'] = [action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
 
         # Add any additional kwargs
         scrape_params.update(kwargs)
@@ -3358,7 +3358,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if actions:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
-            scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+            scrape_params['agent'] = agent if isinstance(agent, dict) else agent.model_dump(by_alias=True, exclude_none=True)
         if zero_data_retention is not None:
             scrape_params['zeroDataRetention'] = zero_data_retention
         
