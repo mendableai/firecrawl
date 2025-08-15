@@ -17,6 +17,7 @@ import { processWebhookInsertJobs } from "../webhook";
 import { scrapeOptions as scrapeOptionsSchema, crawlRequestSchema, toLegacyCrawlerOptions } from "../../controllers/v1/types";
 import { StoredCrawl, crawlToCrawler, saveCrawl } from "../../lib/crawl-redis";
 import { _addScrapeJobToBullMQ } from "../queue-jobs";
+import { BullMQOtel } from "bullmq-otel";
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
 const workerStalledCheckInterval =
@@ -222,6 +223,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
     lockDuration: workerLockDuration,
     stalledInterval: workerStalledCheckInterval,
     maxStalledCount: queue.name === precrawlQueueName ? 0 : 10,
+    telemetry: new BullMQOtel("firecrawl-bullmq"),
   });
 
   worker.startStalledCheckTimer();

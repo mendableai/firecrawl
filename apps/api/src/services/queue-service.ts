@@ -1,6 +1,7 @@
 import { Queue, QueueEvents } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
+import { BullMQOtel } from "bullmq-otel";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
@@ -49,6 +50,7 @@ export function getScrapeQueue() {
           age: 3600, // 1 hour
         },
       },
+      telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
   return scrapeQueue;
@@ -76,6 +78,7 @@ export function getExtractQueue() {
           age: 90000, // 25 hours
         },
       },
+      telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
   return extractQueue;
@@ -93,6 +96,7 @@ export function getGenerateLlmsTxtQueue() {
           age: 90000, // 25 hours
         },
       },
+      telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
   return generateLlmsTxtQueue;
@@ -110,6 +114,7 @@ export function getDeepResearchQueue() {
           age: 90000, // 25 hours
         },
       },
+      telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
   return deepResearchQueue;
@@ -127,6 +132,7 @@ export function getBillingQueue() {
           age: 3600, // 1 hour
         },
       },
+      telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
   return billingQueue;
@@ -144,6 +150,7 @@ export function getPrecrawlQueue() {
           age: 24 * 60 * 60, // 1 day
         },
       },
+      telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
   return precrawlQueue;

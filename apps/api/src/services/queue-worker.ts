@@ -46,6 +46,11 @@ import { finishCrawlIfNeeded } from "./worker/crawl-logic";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { LangfuseExporter } from "langfuse-vercel";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { BullMQOtel } from "bullmq-otel";
 
 configDotenv();
 
@@ -68,16 +73,22 @@ const runningJobs: Set<string> = new Set();
 cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
 
-const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
-  traceExporter: new LangfuseExporter(),
-  instrumentations: [getNodeAutoInstrumentations({
-    '@opentelemetry/instrumentation-undici': { enabled: false },
-    '@opentelemetry/instrumentation-http': { enabled: false },
-  })],
+const shouldOtel = process.env.LANGFUSE_PUBLIC_KEY || process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+const otelSdk = shouldOtel ? new NodeSDK({
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: "firecrawl-worker",
+  }),
+  spanProcessors: [
+    ...(process.env.LANGFUSE_PUBLIC_KEY ? [new BatchSpanProcessor(new LangfuseExporter())] : []),
+    ...(process.env.OTEL_EXPORTER_OTLP_ENDPOINT ? [new BatchSpanProcessor(new OTLPTraceExporter({
+      url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    }))] : []),
+  ],
+  instrumentations: [getNodeAutoInstrumentations()],
 }) : null;
-
-if (langfuseOtel) {
-  langfuseOtel.start();
+    
+if (otelSdk) {   
+  otelSdk.start();
 }
 
 const processExtractJobInternal = async (
@@ -372,7 +383,8 @@ const separateWorkerFun = (
       resourceLimits: maxOldSpaceSize ? {
         maxOldGenerationSizeMb: parseInt(maxOldSpaceSize)
       } : undefined
-    }
+    },
+    telemetry: new BullMQOtel("firecrawl-bullmq"),
   });
 
   return worker;
@@ -389,6 +401,7 @@ const workerFun = async (
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
+    telemetry: new BullMQOtel("firecrawl-bullmq"),
   });
 
   worker.startStalledCheckTimer();
@@ -562,8 +575,8 @@ app.listen(workerPort, () => {
 
   await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
-  if (langfuseOtel) {
-    await langfuseOtel.shutdown();
+  if (otelSdk) {
+    await otelSdk.shutdown();
   }
   process.exit(0);
 })();
