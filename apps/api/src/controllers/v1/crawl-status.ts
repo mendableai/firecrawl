@@ -8,10 +8,10 @@ import {
 import {
   getCrawl,
   getCrawlExpiry,
-  getDoneJobsOrdered,
   getDoneJobsOrderedLength,
   isCrawlKickoffFinished,
   getCrawlQualifiedJobCount,
+  getDoneJobsOrderedUntil,
 } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import {
@@ -143,6 +143,8 @@ export async function crawlStatusController(
   
   const sc = await getCrawl(req.params.jobId);
 
+  const djoCutoff = Date.now() - 250;
+
   if (sc) {
     if (sc.team_id !== req.auth.team_id) {
       return res.status(404).json({ success: false, error: "Job not found" });
@@ -188,7 +190,7 @@ export async function crawlStatusController(
     const kickoffFinished = await isCrawlKickoffFinished(req.params.jobId);
     let total = await getCrawlQualifiedJobCount(req.params.jobId);
 
-    let completed = await getDoneJobsOrderedLength(req.params.jobId);
+    let completed = await getDoneJobsOrderedLength(req.params.jobId, djoCutoff);
     let creditsUsed = completed * (sc.scrapeOptions?.extract ? 5 : 1);
 
     if (process.env.USE_DB_AUTHENTICATION === "true") {
@@ -305,7 +307,7 @@ export async function crawlStatusController(
     };
   } else {
     // old BullMQ-based path
-    const doneJobs = await getDoneJobsOrdered(req.params.jobId, start, end ?? (start + 100));
+    const doneJobs = await getDoneJobsOrderedUntil(req.params.jobId, djoCutoff, start, end !== undefined ? end - start : 100);
 
     let scrapes: Document[] = [];
     let iteratedOver = 0;
@@ -326,7 +328,7 @@ export async function crawlStatusController(
         } else {
           logger.warn(
             "Job was considered done, but returnvalue is undefined!",
-            { jobId, returnvalue: job?.returnvalue },
+            { scrapeId: jobId, crawlId: req.params.jobId, state, returnvalue: job?.returnvalue },
           );
         }
 

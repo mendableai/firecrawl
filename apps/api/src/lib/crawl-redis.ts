@@ -105,25 +105,24 @@ export async function addCrawlJobDone(
   );
 
   if (success) {
-    await redisEvictConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
+    await redisEvictConnection.zadd("crawl:" + id + ":jobs_donez_ordered", Date.now(), job_id);
   } else {
     // in case it's already been pushed, make sure it's removed
-    await redisEvictConnection.lrem(
-      "crawl:" + id + ":jobs_done_ordered",
-      -1,
+    await redisEvictConnection.zrem(
+      "crawl:" + id + ":jobs_donez_ordered",
       job_id,
     );
   }
 
   await redisEvictConnection.expire(
-    "crawl:" + id + ":jobs_done_ordered",
+    "crawl:" + id + ":jobs_donez_ordered",
     24 * 60 * 60,
   );
 }
 
-export async function getDoneJobsOrderedLength(id: string): Promise<number> {
-  await redisEvictConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60);
-  return await redisEvictConnection.llen("crawl:" + id + ":jobs_done_ordered");
+export async function getDoneJobsOrderedLength(id: string, until: number = Infinity): Promise<number> {
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_donez_ordered", 24 * 60 * 60);
+  return await redisEvictConnection.zcount("crawl:" + id + ":jobs_donez_ordered", -Infinity, until);
 }
 
 export async function getDoneJobsOrdered(
@@ -131,11 +130,20 @@ export async function getDoneJobsOrdered(
   start = 0,
   end = -1,
 ): Promise<string[]> {
-  await redisEvictConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60);
-  return await redisEvictConnection.lrange(
-    "crawl:" + id + ":jobs_done_ordered",
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_donez_ordered", 24 * 60 * 60);
+  return await redisEvictConnection.zrange(
+    "crawl:" + id + ":jobs_donez_ordered",
     start,
     end,
+  );
+}
+
+export async function getDoneJobsOrderedUntil(id: string, until: number = Infinity, start = 0, count = -1): Promise<string[]> {
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_donez_ordered", 24 * 60 * 60);
+  return await redisEvictConnection.zrangebyscore(
+    "crawl:" + id + ":jobs_donez_ordered",
+    -Infinity,
+    until,
   );
 }
 
