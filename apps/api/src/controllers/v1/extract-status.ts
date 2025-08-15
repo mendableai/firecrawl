@@ -18,7 +18,7 @@ export async function getExtractJob(id: string): Promise<PseudoJob<ExtractResult
 
   const job: PseudoJob<any> = {
     id,
-    getState: bullJob ? bullJob.getState.bind(bullJob) : (() => dbJob!.success ? "completed" : "failed"),
+    getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : bullJob!.getState,
     returnvalue: data,
     data: {
       scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
