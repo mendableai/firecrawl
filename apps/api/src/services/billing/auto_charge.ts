@@ -193,21 +193,26 @@ export async function autoCharge(
                   const weeklyAutoRechargeKey = `auto-recharge-weekly:${chunk.team_id}`;
                   const weeklyRecharges = await redisRateLimitClient.incr(weeklyAutoRechargeKey);
                   // Set expiry for 7 days if not already set
-                await redisRateLimitClient.expire(weeklyAutoRechargeKey, 7 * 24 * 60 * 60);
+                  await redisRateLimitClient.expire(weeklyAutoRechargeKey, 7 * 24 * 60 * 60);
 
-                // If this is the second auto-recharge in a week, send notification
-                if (weeklyRecharges >= 2) {
-                  await sendNotificationWithCustomDays(
-                    chunk.team_id,
-                    NotificationType.AUTO_RECHARGE_FREQUENT,
-                    7, // Send at most once per week
-                    false
-                  );
-                }
+                  // If this is the second auto-recharge in a week, send notification
+
+                  // TODO: send event to -> autoRechargeFrequent
+                  // https://linear.app/firecrawl/issue/ENG-2603/notification-preferences-updates#comment-d4cc6226
+                  if (weeklyRecharges >= 2) {
+                    await sendNotificationWithCustomDays(
+                      chunk.team_id,
+                      NotificationType.AUTO_RECHARGE_FREQUENT,
+                      7, // Send at most once per week
+                      false
+                    );
+                  }
                 } catch (error) {
                   logger.error(`Error sending frequent auto-recharge notification`, { error });
                 }
 
+                // TODO: send event to -> autoRechargeSuccess
+                // https://linear.app/firecrawl/issue/ENG-2603/notification-preferences-updates#comment-a8578b1c
                 await sendNotification(
                   chunk.team_id,
                   NotificationType.AUTO_RECHARGE_SUCCESS,
