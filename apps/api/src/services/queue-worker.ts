@@ -508,13 +508,18 @@ app.listen(workerPort, () => {
 
 (async () => {
   async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
+    const job = await getScrapeQueue().getJob(args.jobId);
+
+    if (job && job.data.crawl_id) {
+      await redisEvictConnection.srem("crawl:" + job.data.crawl_id + ":jobs_qualified", args.jobId);
+      await redisEvictConnection.expire("crawl:" + job.data.crawl_id + ":jobs_qualified", 24 * 60 * 60);
+    }
+
     if (args.failedReason === "job stalled more than allowable limit") {
       const set = await redisEvictConnection.set("stalled-job-cleaner:" + args.jobId, "1", "EX", 60 * 60 * 24, "NX");
       if (!set) {
         return;
       }
-
-      const job = await getScrapeQueue().getJob(args.jobId);
 
       let logger = _logger.child({ jobId: args.jobId, scrapeId: args.jobId, module: "queue-worker", method: "failedListener", zeroDataRetention: job?.data.zeroDataRetention });
       if (job && job.data.crawl_id) {

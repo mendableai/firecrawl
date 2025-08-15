@@ -470,6 +470,8 @@ async function processJob(job: Job & { id: string }) {
                 "crawl:" + job.data.crawl_id + ":visited_unique",
                 normalizeURL(job.data.url, sc),
             );
+            
+            await redisEvictConnection.srem("crawl:" + job.data.crawl_id + ":jobs_qualified", job.id);
 
             await finishCrawlIfNeeded(job, sc);
         }
