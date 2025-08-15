@@ -103,6 +103,8 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
                 }, identity);
 
+                await new Promise(resolve => setTimeout(resolve, 2500));
+
                 const postServerLogs = (await getServerLogs()).slice(preServerLogs.length);
                 const postWorkerLogs = (await getWorkerLogs()).slice(preWorkerLogs.length);
 
@@ -181,6 +183,8 @@ if (process.env.TEST_SUITE_SELF_HOSTED) {
                     urls: ["https://firecrawl.dev", "https://mendable.ai"],
                     zeroDataRetention: scope === "Request-scoped" ? true : undefined,
                 }, identity);
+
+                await new Promise(resolve => setTimeout(resolve, 2500));
 
                 const postServerLogs = (await getServerLogs()).slice(preServerLogs.length);
                 const postWorkerLogs = (await getWorkerLogs()).slice(preWorkerLogs.length);
