@@ -1,0 +1,57 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mendableai/firecrawl
+  tag: "latest"
+  pullPolicy: Always
+  dockerSecretEnabled: true
+
+playwright:
+  repository: ghcr.io/mendableai/playwright-service
+  tag: "latest"
+  pullPolicy: Always
+
+redis:
+  image: redis:alpine
+  replicaCount: 1
+
+service:
+  api:
+    type: ClusterIP
+    port: 3002
+  playwright:
+    type: ClusterIP
+    port: 3000
+  redis:
+    type: ClusterIP
+    port: 6379
+
+config:
+  NUM_WORKERS_PER_QUEUE: "8"
+  PORT: "3002"
+  HOST: "0.0.0.0"
+  REDIS_URL: "redis://redis:6379"
+  REDIS_RATE_LIMIT_URL: "redis://redis:6379"
+  PLAYWRIGHT_MICROSERVICE_URL: "http://playwright-service:3000"
+  USE_DB_AUTHENTICATION: "false"
+  HDX_NODE_BETA_MODE: "1"
+
+playwrightConfig:
+  PORT: "3000"
+
+secret:
+  OPENAI_API_KEY: ""
+  SLACK_WEBHOOK_URL: ""
+  LLAMAPARSE_API_KEY: ""
+  BULL_AUTH_KEY: ""
+  TEST_API_KEY: ""
+  POSTHOG_API_KEY: ""
+  POSTHOG_HOST: ""
+  SCRAPING_BEE_API_KEY: ""
+  STRIPE_PRICE_ID_STANDARD: ""
+  STRIPE_PRICE_ID_SCALE: ""
+  FIRE_ENGINE_BETA_URL: ""
+  REDIS_PASSWORD: ""
+
+imagePullSecrets:
+  - name: docker-registry-secret
