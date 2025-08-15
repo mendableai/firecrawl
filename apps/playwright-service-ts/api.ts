@@ -60,11 +60,9 @@ const initializeBrowser = async () => {
     ]
   });
 
-  const userAgent = new UserAgent().toString();
   const viewport = { width: 1280, height: 800 };
 
   const contextOptions: any = {
-    userAgent,
     viewport,
   };
 
@@ -201,10 +199,32 @@ app.post('/scrape', async (req: Request, res: Response) => {
 
   const page = await context.newPage();
 
-  // Set headers if provided
+  // Handle User-Agent: prioritize user-provided, otherwise generate random
+  const userProvidedUserAgent = headers && (
+    headers['User-Agent'] || 
+    headers['user-agent'] || 
+    headers['USER-AGENT']
+  );
+  
+  const finalUserAgent = userProvidedUserAgent || new UserAgent().toString();
+  console.log(`Using User-Agent: ${finalUserAgent}`);
+
+  // Prepare all headers including User-Agent
+  const allHeaders: { [key: string]: string } = {
+    'User-Agent': finalUserAgent
+  };
+
+  // Add other headers if provided (excluding User-Agent variants to avoid duplication)
   if (headers) {
-    await page.setExtraHTTPHeaders(headers);
+    Object.entries(headers).forEach(([key, value]) => {
+      if (key.toLowerCase() !== 'user-agent') {
+        allHeaders[key] = value;
+      }
+    });
   }
+
+  // Set all headers at once
+  await page.setExtraHTTPHeaders(allHeaders);
 
   let result: Awaited<ReturnType<typeof scrapePage>>;
   try {
