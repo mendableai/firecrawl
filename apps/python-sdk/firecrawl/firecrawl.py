@@ -1285,6 +1285,8 @@ class FirecrawlApp:
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        parse_pdf: Optional[bool] = None,
+        max_age: Optional[int] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
@@ -1313,6 +1315,8 @@ class FirecrawlApp:
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
+            parse_pdf (Optional[bool]): Whether to parse PDFs when encountered
+            max_age (Optional[int]): Maximum cache age in milliseconds
             extract (Optional[JsonConfig]): Content extraction config
             json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
@@ -1363,6 +1367,10 @@ class FirecrawlApp:
             scrape_params['blockAds'] = block_ads
         if proxy is not None:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
@@ -1426,6 +1434,8 @@ class FirecrawlApp:
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        parse_pdf: Optional[bool] = None,
+        max_age: Optional[int] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
@@ -1453,6 +1463,8 @@ class FirecrawlApp:
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
+            parse_pdf (Optional[bool]): Whether to parse PDFs when encountered
+            max_age (Optional[int]): Maximum cache age in milliseconds
             extract (Optional[JsonConfig]): Content extraction config
             json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
@@ -1504,6 +1516,10 @@ class FirecrawlApp:
             scrape_params['blockAds'] = block_ads
         if proxy is not None:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
@@ -1566,6 +1582,8 @@ class FirecrawlApp:
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        parse_pdf: Optional[bool] = None,
+        max_age: Optional[int] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
@@ -1593,6 +1611,8 @@ class FirecrawlApp:
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
+            parse_pdf (Optional[bool]): Whether to parse PDFs when encountered
+            max_age (Optional[int]): Maximum cache age in milliseconds
             extract (Optional[JsonConfig]): Content extraction config
             json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
@@ -1640,6 +1660,10 @@ class FirecrawlApp:
             scrape_params['blockAds'] = block_ads
         if proxy is not None:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
@@ -2619,15 +2643,15 @@ class FirecrawlApp:
             "extract": {"prompt", "schema", "system_prompt", "allow_external_links", "enable_web_search", "show_sources", "agent", "integration"},
             "batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                  "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
-                                 "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
+                                 "remove_base64_images", "block_ads", "proxy", "parse_pdf", "max_age", "extract", "json_options",
                                  "actions", "agent", "webhook"},
             "async_batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                        "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
-                                       "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
+                                       "remove_base64_images", "block_ads", "proxy", "parse_pdf", "max_age", "extract", "json_options",
                                        "actions", "agent", "webhook"},
             "batch_scrape_urls_and_watch": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                            "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
-                                           "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
+                                           "remove_base64_images", "block_ads", "proxy", "parse_pdf", "max_age", "extract", "json_options",
                                            "actions", "agent", "webhook"}
         }
 
@@ -3130,6 +3154,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        parse_pdf: Optional[bool] = None,
+        max_age: Optional[int] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
@@ -3156,6 +3182,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
+            parse_pdf (Optional[bool]): Whether to parse PDFs when encountered
+            max_age (Optional[int]): Maximum cache age in milliseconds
             extract (Optional[JsonConfig]): Content extraction config
             json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
@@ -3205,6 +3233,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['blockAds'] = block_ads
         if proxy is not None:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
@@ -3269,6 +3301,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
+        parse_pdf: Optional[bool] = None,
+        max_age: Optional[int] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]] = None,
@@ -3295,6 +3329,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
+            parse_pdf (Optional[bool]): Whether to parse PDFs when encountered
+            max_age (Optional[int]): Maximum cache age in milliseconds
             extract (Optional[JsonConfig]): Content extraction config
             json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
@@ -3345,6 +3381,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['blockAds'] = block_ads
         if proxy is not None:
             scrape_params['proxy'] = proxy
+        if parse_pdf is not None:
+            scrape_params['parsePDF'] = parse_pdf
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
         if extract is not None:
             extract = self._ensure_schema_dict(extract)
             if isinstance(extract, dict) and "schema" in extract:
