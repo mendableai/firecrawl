@@ -67,6 +67,8 @@ export async function addCrawlJob(id: string, job_id: string, __logger: Logger =
   });
   await redisEvictConnection.sadd("crawl:" + id + ":jobs", job_id);
   await redisEvictConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60);
+  await redisEvictConnection.sadd("crawl:" + id + ":jobs_qualified", job_id);
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_qualified", 24 * 60 * 60);
 }
 
 export async function addCrawlJobs(id: string, job_ids: string[], __logger: Logger = _logger) {
@@ -80,6 +82,8 @@ export async function addCrawlJobs(id: string, job_ids: string[], __logger: Logg
   });
   await redisEvictConnection.sadd("crawl:" + id + ":jobs", ...job_ids);
   await redisEvictConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60);
+  await redisEvictConnection.sadd("crawl:" + id + ":jobs_qualified", ...job_ids);
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_qualified", 24 * 60 * 60);
 }
 
 export async function addCrawlJobDone(
@@ -101,25 +105,24 @@ export async function addCrawlJobDone(
   );
 
   if (success) {
-    await redisEvictConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
+    await redisEvictConnection.zadd("crawl:" + id + ":jobs_donez_ordered", Date.now(), job_id);
   } else {
     // in case it's already been pushed, make sure it's removed
-    await redisEvictConnection.lrem(
-      "crawl:" + id + ":jobs_done_ordered",
-      -1,
+    await redisEvictConnection.zrem(
+      "crawl:" + id + ":jobs_donez_ordered",
       job_id,
     );
   }
 
   await redisEvictConnection.expire(
-    "crawl:" + id + ":jobs_done_ordered",
+    "crawl:" + id + ":jobs_donez_ordered",
     24 * 60 * 60,
   );
 }
 
-export async function getDoneJobsOrderedLength(id: string): Promise<number> {
-  await redisEvictConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60);
-  return await redisEvictConnection.llen("crawl:" + id + ":jobs_done_ordered");
+export async function getDoneJobsOrderedLength(id: string, until: number = Infinity): Promise<number> {
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_donez_ordered", 24 * 60 * 60);
+  return await redisEvictConnection.zcount("crawl:" + id + ":jobs_donez_ordered", -Infinity, until);
 }
 
 export async function getDoneJobsOrdered(
@@ -127,11 +130,20 @@ export async function getDoneJobsOrdered(
   start = 0,
   end = -1,
 ): Promise<string[]> {
-  await redisEvictConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60);
-  return await redisEvictConnection.lrange(
-    "crawl:" + id + ":jobs_done_ordered",
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_donez_ordered", 24 * 60 * 60);
+  return await redisEvictConnection.zrange(
+    "crawl:" + id + ":jobs_donez_ordered",
     start,
     end,
+  );
+}
+
+export async function getDoneJobsOrderedUntil(id: string, until: number = Infinity, start = 0, count = -1): Promise<string[]> {
+  await redisEvictConnection.expire("crawl:" + id + ":jobs_donez_ordered", 24 * 60 * 60);
+  return await redisEvictConnection.zrangebyscore(
+    "crawl:" + id + ":jobs_donez_ordered",
+    -Infinity,
+    until,
   );
 }
 
@@ -212,6 +224,10 @@ export async function getCrawlJobs(id: string): Promise<string[]> {
 
 export async function getCrawlJobCount(id: string): Promise<number> {
   return await redisEvictConnection.scard("crawl:" + id + ":jobs");
+}
+
+export async function getCrawlQualifiedJobCount(id: string): Promise<number> {
+  return await redisEvictConnection.scard("crawl:" + id + ":jobs_qualified");
 }
 
 export function normalizeURL(url: string, sc: StoredCrawl): string {
