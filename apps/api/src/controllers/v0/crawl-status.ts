@@ -55,7 +55,7 @@ export async function getJobs(crawlId: string, ids: string[]): Promise<PseudoJob
   
       const job: PseudoJob<any> = {
         id,
-        getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : bullJob!.getState,
+        getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : (() => bullJob!.getState()),
         returnvalue: Array.isArray(data)
           ? data[0]
           : data,
