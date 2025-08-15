@@ -5,10 +5,9 @@ import {
   getScrapeQueue,
   getExtractQueue,
   getDeepResearchQueue,
-  redisConnection,
   getGenerateLlmsTxtQueue,
   scrapeQueueName,
-  createRedisConnection,
+  getRedisConnection,
 } from "./queue-service";
 import { Job, Queue, QueueEvents } from "bullmq";
 import { logger as _logger } from "../lib/logger";
@@ -45,6 +44,11 @@ import { finishCrawlIfNeeded } from "./worker/crawl-logic";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { LangfuseExporter } from "langfuse-vercel";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { BullMQOtel } from "bullmq-otel";
 
 configDotenv();
 
@@ -67,16 +71,22 @@ const runningJobs: Set<string> = new Set();
 cacheableLookup.install(http.globalAgent);
 cacheableLookup.install(https.globalAgent);
 
-const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
-  traceExporter: new LangfuseExporter(),
-  instrumentations: [getNodeAutoInstrumentations({
-    '@opentelemetry/instrumentation-undici': { enabled: false },
-    '@opentelemetry/instrumentation-http': { enabled: false },
-  })],
+const shouldOtel = process.env.LANGFUSE_PUBLIC_KEY || process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+const otelSdk = shouldOtel ? new NodeSDK({
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: "firecrawl-worker",
+  }),
+  spanProcessors: [
+    ...(process.env.LANGFUSE_PUBLIC_KEY ? [new BatchSpanProcessor(new LangfuseExporter())] : []),
+    ...(process.env.OTEL_EXPORTER_OTLP_ENDPOINT ? [new BatchSpanProcessor(new OTLPTraceExporter({
+      url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    }))] : []),
+  ],
+  instrumentations: [getNodeAutoInstrumentations()],
 }) : null;
 
-if (langfuseOtel) {
-  langfuseOtel.start();
+if (otelSdk) {
+  otelSdk.start();
 }
 
 const processExtractJobInternal = async (
@@ -353,13 +363,13 @@ const separateWorkerFun = (
   const maxOldSpaceSize = process.env.SCRAPE_WORKER_MAX_OLD_SPACE_SIZE || process.execArgv
     .find(arg => arg.startsWith('--max-old-space-size='))
     ?.split('=')[1];
-  
+
   // Filter out the invalid flag for worker threads
   const filteredExecArgv = process.execArgv
     .filter(arg => !arg.startsWith('--max-old-space-size'));
 
   const worker = new Worker(queue.name, path, {
-    connection: createRedisConnection(),
+    connection: getRedisConnection(),
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
@@ -375,7 +385,8 @@ const separateWorkerFun = (
       resourceLimits: maxOldSpaceSize ? {
         maxOldGenerationSizeMb: parseInt(maxOldSpaceSize)
       } : undefined
-    }
+    },
+    telemetry: new BullMQOtel("firecrawl-bullmq"),
   });
 
   return worker;
@@ -388,10 +399,11 @@ const workerFun = async (
   const logger = _logger.child({ module: "queue-worker", method: "workerFun" });
 
   const worker = new Worker(queue.name, null, {
-    connection: redisConnection,
+    connection: getRedisConnection(),
     lockDuration: 60 * 1000, // 60 seconds
     stalledInterval: 60 * 1000, // 60 seconds
     maxStalledCount: 10, // 10 times
+    telemetry: new BullMQOtel("firecrawl-bullmq"),
   });
 
   worker.startStalledCheckTimer();
@@ -467,7 +479,7 @@ app.get("/liveness", (req, res) => {
     const host = process.env.FIRECRAWL_APP_HOST || "firecrawl-app-service";
     const port = process.env.FIRECRAWL_APP_PORT || "3002";
     const scheme = process.env.FIRECRAWL_APP_SCHEME || "http";
-    
+
     robustFetch({
       url: `${scheme}://${host}:${port}`,
       method: "GET",
@@ -552,9 +564,7 @@ app.listen(workerPort, () => {
     }
   }
 
-  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
-    connection: redisConnection,
-  });
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: getRedisConnection() });
   scrapeQueueEvents.on("failed", failedListener);
 
   const results = await Promise.all([
@@ -590,8 +600,8 @@ app.listen(workerPort, () => {
 
   await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
-  if (langfuseOtel) {
-    await langfuseOtel.shutdown();
+  if (otelSdk) {
+    await otelSdk.shutdown();
   }
   process.exit(0);
 })();

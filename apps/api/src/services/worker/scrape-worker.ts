@@ -51,6 +51,10 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ScrapeJobTimeoutError, TransportableError, UnknownError } from "../../lib/error";
 import { serializeTransportableError } from "../../lib/error-serde";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 
 class RacedRedirectError extends Error {
     constructor() {
@@ -796,7 +800,7 @@ export const processJobInternal = async (job: Job & { id: string }) => {
         crawlId: job.data?.crawl_id ?? undefined,
         zeroDataRetention: job.data?.zeroDataRetention ?? false,
     });
-    
+
     try {
         try {
             let extendLockInterval: NodeJS.Timeout | null = null;
@@ -856,21 +860,30 @@ export const processJobInternal = async (job: Job & { id: string }) => {
     }
 };
 
-const langfuseOtel = process.env.LANGFUSE_PUBLIC_KEY ? new NodeSDK({
-    traceExporter: new LangfuseExporter(),
+const shouldOtel = process.env.LANGFUSE_PUBLIC_KEY || process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+const otelSdk = shouldOtel ? new NodeSDK({
+    resource: resourceFromAttributes({
+        [ATTR_SERVICE_NAME]: "firecrawl-worker-scrape",
+    }),
+    spanProcessors: [
+        ...(process.env.LANGFUSE_PUBLIC_KEY ? [new BatchSpanProcessor(new LangfuseExporter())] : []),
+        ...(process.env.OTEL_EXPORTER_OTLP_ENDPOINT ? [new BatchSpanProcessor(new OTLPTraceExporter({
+            url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+        }))] : []),
+    ],
     instrumentations: [getNodeAutoInstrumentations()],
 }) : null;
-    
-if (langfuseOtel) {   
-    langfuseOtel.start();
+
+if (otelSdk) {
+    otelSdk.start();
 }
 
 module.exports = processJobInternal;
 
 const exitHandler = () => {
-    if (langfuseOtel) {
-        langfuseOtel.shutdown().then(() => {
-            _logger.debug("Langfuse OTEL shutdown");
+    if (otelSdk) {
+        otelSdk.shutdown().then(() => {
+            _logger.debug("OTEL shutdown");
             process.exit(0);
         });
     }

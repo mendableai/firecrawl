@@ -4,7 +4,7 @@ import * as Sentry from "@sentry/node";
 import { Job, Queue, Worker } from "bullmq";
 import { logger as _logger, logger } from "../../lib/logger";
 import {
-  redisConnection,
+  getRedisConnection,
   getBillingQueue,
   getPrecrawlQueue,
   precrawlQueueName,
@@ -17,6 +17,7 @@ import { processWebhookInsertJobs } from "../webhook";
 import { scrapeOptions as scrapeOptionsSchema, crawlRequestSchema, toV0CrawlerOptions } from "../../controllers/v2/types";
 import { StoredCrawl, crawlToCrawler, saveCrawl } from "../../lib/crawl-redis";
 import { _addScrapeJobToBullMQ } from "../queue-jobs";
+import { BullMQOtel } from "bullmq-otel";
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
 const workerStalledCheckInterval =
@@ -218,10 +219,11 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
   const logger = _logger.child({ module: "index-worker", method: "workerFun" });
 
   const worker = new Worker(queue.name, null, {
-    connection: redisConnection,
+    connection: getRedisConnection(),
     lockDuration: workerLockDuration,
     stalledInterval: workerStalledCheckInterval,
     maxStalledCount: queue.name === precrawlQueueName ? 0 : 10,
+    telemetry: new BullMQOtel("firecrawl-bullmq"),
   });
 
   worker.startStalledCheckTimer();

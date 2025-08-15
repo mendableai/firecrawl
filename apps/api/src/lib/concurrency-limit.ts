@@ -216,8 +216,26 @@ async function getNextConcurrentJob(teamId: string, i = 0): Promise<{
           zeroDataRetention: finalJob.job.data?.zeroDataRetention,
           i
         });
+      } else if (i > 100) {
+        logger.error("Failed to remove job from concurrency limit queue, hard bailing", {
+          teamId,
+          jobId: finalJob.job.id,
+          zeroDataRetention: finalJob.job.data?.zeroDataRetention,
+          i
+        });
+        return null;
       }
-      return await getNextConcurrentJob(teamId, i + 1);
+
+      return await new Promise((resolve, reject) => setTimeout(() => {
+        getNextConcurrentJob(teamId, i + 1).then(resolve).catch(reject);
+      }, Math.floor(Math.random() * 300))); // Stagger the workers off to break up the clump that causes the race condition
+    } else {
+      logger.debug("Removed job from concurrency limit queue", {
+        teamId,
+        jobId: finalJob.job.id,
+        zeroDataRetention: finalJob.job.data?.zeroDataRetention,
+        i
+      });
     }
   }
 

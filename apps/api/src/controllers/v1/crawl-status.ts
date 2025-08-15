@@ -58,7 +58,7 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
   const job: PseudoJob<any> = {
     id,
-    getState: bullJob ? bullJob.getState : (() => dbJob!.success ? "completed" : "failed"),
+    getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : bullJob!.getState,
     returnvalue: Array.isArray(data)
       ? data[0]
       : data,
@@ -111,10 +111,9 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
       });
     }
 
-    const state = await bullJob?.getState();
     const job: PseudoJob<any> = {
       id,
-      getState: bullJob ? (() => state!) : (() => dbJob!.success ? "completed" : "failed"),
+      getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : (() => bullJob!.getState()),
       returnvalue: Array.isArray(data)
         ? data[0]
         : data,
