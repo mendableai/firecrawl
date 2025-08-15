@@ -14,6 +14,7 @@ import { performExtraction_F0 } from "../../lib/extract/fire-0/extraction-servic
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger as _logger } from "../../lib/logger";
+import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function oldExtract(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
@@ -89,8 +90,15 @@ export async function extractController(
     zeroDataRetention: req.acuc?.flags?.forceZDR,
   });
 
+  const scrapeOptions = req.body.scrapeOptions
+    ? fromV1ScrapeOptions(req.body.scrapeOptions, req.body.scrapeOptions.timeout, req.auth.team_id).scrapeOptions
+    : undefined;
+
   const jobData = {
-    request: req.body,
+    request: {
+      ...req.body,
+      scrapeOptions,
+    },
     teamId: req.auth.team_id,
     subId: req.acuc?.sub_id,
     extractId,

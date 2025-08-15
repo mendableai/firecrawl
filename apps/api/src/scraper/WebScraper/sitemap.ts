@@ -1,10 +1,11 @@
 import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
-import { scrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
+import { scrapeOptions } from "../../controllers/v2/types";
 import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { parseSitemapXml, processSitemap } from "../../lib/crawler";
+import { ScrapeJobTimeoutError } from "../../lib/error";
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
   process.env.FIRE_ENGINE_BETA_URL !== undefined;
@@ -53,7 +54,13 @@ export async function getLinksFromSitemap(
             ...((mode === "fire-engine" && useFireEngine) ? ["fire-engine;tlsclient" as const] : []),
           ],
           v0DisableJsDom: true,
-          abort,
+          externalAbort: abort ? {
+            signal: abort,
+            tier: "external",
+            throwable() {
+              return new Error("Sitemap fetch aborted");
+            },
+          } : undefined,
           teamId: "sitemap",
           zeroDataRetention,
         },
@@ -74,14 +81,14 @@ export async function getLinksFromSitemap(
             mode,
             sitemapUrl,
             error: response.success
-              ? response.document
+              ? response.document.metadata.statusCode
               : response.error,
           },
         );
         return 0;
       }
     } catch (error) {
-      if (error instanceof TimeoutSignal) {
+      if (error instanceof ScrapeJobTimeoutError) {
         throw error;
       } else {
         logger.error(`Request failed for sitemap fetch`, {

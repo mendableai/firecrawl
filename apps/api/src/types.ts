@@ -3,10 +3,10 @@ import {
   AuthCreditUsageChunk,
   BaseScrapeOptions,
   ScrapeOptions,
-  Document as V1Document,
+  Document as V2Document,
   webhookSchema,
   TeamFlags,
-} from "./controllers/v1/types";
+} from "./controllers/v2/types";
 import { ExtractorOptions, Document } from "./lib/entities";
 import { InternalOptions } from "./scraper/scrapeURL";
 import type { CostTracking } from "./lib/extract/extraction-service";
@@ -83,7 +83,7 @@ export type RunWebScraperResult =
     }
   | {
       success: true;
-      document: V1Document;
+      document: V2Document;
     };
 
 export interface FirecrawlJob {

@@ -138,6 +138,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             blockAds: true,
             maxAge: 4 * 60 * 60 * 1000,
             storeInCache: true,
+            proxy: "basic",
           },
         }, logger, acuc?.flags ?? null);
         return response.length > 0 ? response : [];

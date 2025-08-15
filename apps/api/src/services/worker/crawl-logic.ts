@@ -12,6 +12,7 @@ import { addScrapeJobs } from "../queue-jobs";
 import { getJobs } from "../../controllers/v1/crawl-status";
 import { logJob } from "../logging/log_job";
 import { callWebhook } from "../webhook";
+import { hasFormatOfType } from "../../lib/format-utils";
 
 export async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     const logger = _logger.child({
@@ -52,7 +53,7 @@ export async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredC
 
             let lastUrls: string[] = [];
             const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
-            if (useDbAuthentication && sc.scrapeOptions.formats.includes("changeTracking")) {
+            if (useDbAuthentication && hasFormatOfType(sc.scrapeOptions.formats, "changeTracking")) {
                 lastUrls = (
                     (
                         await supabase_service.rpc("diff_get_last_crawl_urls", {

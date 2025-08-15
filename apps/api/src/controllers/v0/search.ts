@@ -25,6 +25,8 @@ import {
   toLegacyDocument,
 } from "../v1/types";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { fromV0Combo } from "../v2/types";
+import { ScrapeJobTimeoutError } from "../../lib/error";
 
 export async function searchHelper(
   jobId: string,
@@ -70,7 +72,7 @@ export async function searchHelper(
 
   let justSearch = pageOptions.fetchPageContent === false;
 
-  const { scrapeOptions, internalOptions } = fromLegacyCombo(
+  const { scrapeOptions, internalOptions } = fromV0Combo(
     pageOptions,
     undefined,
     60000,
@@ -236,11 +238,8 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.startsWith("Job wait") || error.message === "timeout")
-    ) {
-      return res.status(408).json({ error: "Request timed out" });
+    if (error instanceof ScrapeJobTimeoutError) {
+      return res.status(408).json({ error: error.message });
     }
 
     Sentry.captureException(error);

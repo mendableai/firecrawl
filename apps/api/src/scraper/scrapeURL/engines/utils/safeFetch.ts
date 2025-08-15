@@ -2,7 +2,6 @@ import type { Socket } from "net";
 import type { TLSSocket } from "tls";
 import * as undici from "undici";
 import { Address6 } from "ip-address";
-import { cacheableLookup } from "../../lib/cacheableLookup";
 import { CookieJar } from "tough-cookie";
 import { cookie } from "http-cookie-agent/undici";
 
@@ -42,12 +41,10 @@ function isIPv6Private(ipv6) {
   return new Address6(ipv6).getScope() !== "Global";
 }
 
-function makeSecureDispatcher() {
+export function makeSecureDispatcher(
+  skipTlsVerification: boolean = false,
+) {
   const agentOpts: undici.Agent.Options = {
-    connect: {
-      rejectUnauthorized: false, // bypass SSL failures -- this is fine
-      lookup: cacheableLookup.lookup,
-    },
     maxRedirections: 5000,
   };
 
@@ -57,9 +54,17 @@ function makeSecureDispatcher() {
       token: process.env.PROXY_USERNAME
         ? `Basic ${Buffer.from(process.env.PROXY_USERNAME + ":" + (process.env.PROXY_PASSWORD ?? "")).toString("base64")}`
         : undefined,
+      requestTls: {
+        rejectUnauthorized: !skipTlsVerification, // Only bypass SSL verification if explicitly requested
+      },
       ...agentOpts,
     })
-    : new undici.Agent(agentOpts);
+    : new undici.Agent({
+      connect: {
+        rejectUnauthorized: !skipTlsVerification, // Only bypass SSL verification if explicitly requested
+      },
+      ...agentOpts,
+    });
 
   const cookieJar = new CookieJar();
 
@@ -87,4 +92,5 @@ function makeSecureDispatcher() {
   return agent;
 }
 
-export const secureDispatcher = makeSecureDispatcher();
+export const secureDispatcher = makeSecureDispatcher(false);
+export const secureDispatcherSkipTlsVerification = makeSecureDispatcher(true);

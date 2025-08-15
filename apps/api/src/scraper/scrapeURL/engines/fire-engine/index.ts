@@ -19,7 +19,6 @@ import {
   DNSResolutionError,
   SiteError,
   SSLError,
-  TimeoutError,
   UnsupportedFileError,
   FEPageLoadFailed,
 } from "../../error";
@@ -28,7 +27,9 @@ import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
-import { Action, TimeoutSignal } from "../../../../controllers/v1/types";
+import { hasFormatOfType } from "../../../../lib/format-utils";
+import { Action } from "../../../../controllers/v1/types";
+import { AbortManagerThrownError } from "../../lib/abortManager";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -42,7 +43,6 @@ async function performFireEngineScrape<
   meta: Meta,
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
-  timeout: number,
   mock: MockState | null,
   abort?: AbortSignal,
   production = true,
@@ -55,13 +55,11 @@ async function performFireEngineScrape<
     production,
   );
 
-  const startTime = Date.now();
   const errorLimit = 3;
   let errors: any[] = [];
   let status: FireEngineCheckStatusSuccess | undefined = undefined;
 
   while (status === undefined) {
-    abort?.throwIfAborted();
     if (errors.length >= errorLimit) {
       logger.error("Error limit hit.", { errors });
       fireEngineDelete(
@@ -79,16 +77,7 @@ async function performFireEngineScrape<
       });
     }
 
-    if (Date.now() - startTime > timeout) {
-      logger.info(
-        "Fire-engine was unable to scrape the page before timing out.",
-        { errors, timeout },
-      );
-      throw new TimeoutError(
-        "Fire-engine was unable to scrape the page before timing out",
-        { cause: { errors, timeout } },
-      );
-    }
+    meta.abort.throwIfAborted();
 
     try {
       status = await fireEngineCheckStatus(
@@ -126,7 +115,7 @@ async function performFireEngineScrape<
           jobId: scrape.jobId,
         });
         throw error;
-      } else if (error instanceof TimeoutSignal) {
+      } else if (error instanceof AbortManagerThrownError) {
         fireEngineDelete(
           logger.child({
             method: "performFireEngineScrape/fireEngineDelete",
@@ -137,7 +126,7 @@ async function performFireEngineScrape<
           undefined,
           production,
         );
-        throw new TimeoutError("Fire-engine timed out while checking status", { cause: { errors, timeout } });
+        throw error;
       } else {
         errors.push(error);
         logger.debug(
@@ -188,7 +177,6 @@ async function performFireEngineScrape<
 
 export async function scrapeURLWithFireEngineChromeCDP(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const actions: Action[] = [
     // Transform waitFor option into an action (unsupported by chrome-cdp)
@@ -205,12 +193,13 @@ export async function scrapeURLWithFireEngineChromeCDP(
     ...(meta.options.actions ?? []),
 
     // Transform screenshot format into an action (unsupported by chrome-cdp)
-    ...(meta.options.formats.includes("screenshot") ||
-    meta.options.formats.includes("screenshot@fullPage")
+    ...(hasFormatOfType(meta.options.formats, "screenshot")
       ? [
           {
             type: "screenshot" as const,
-            fullPage: meta.options.formats.includes("screenshot@fullPage"),
+            fullPage: hasFormatOfType(meta.options.formats, "screenshot")?.fullPage || false,
+            ...(hasFormatOfType(meta.options.formats, "screenshot")?.viewport ? 
+              { viewport: hasFormatOfType(meta.options.formats, "screenshot")!.viewport } : {}),
           },
         ]
       : []),
@@ -220,8 +209,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
     0,
   );
-
-  const timeout = (timeToRun ?? 300000) + totalWait;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
@@ -236,9 +223,9 @@ export async function scrapeURLWithFireEngineChromeCDP(
         }
       : {}),
     priority: meta.internalOptions.priority,
-    geolocation: meta.options.geolocation ?? meta.options.location,
+    geolocation: meta.options.location,
     mobile: meta.options.mobile,
-    timeout, // TODO: better timeout logic
+    timeout: meta.abort.scrapeTimeout() ?? 300000,
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
@@ -252,16 +239,12 @@ export async function scrapeURLWithFireEngineChromeCDP(
       request,
     }),
     request,
-    timeout,
     meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    meta.abort.asSignal(),
     true,
   );
 
-  if (
-    meta.options.formats.includes("screenshot") ||
-    meta.options.formats.includes("screenshot@fullPage")
-  ) {
+  if (hasFormatOfType(meta.options.formats, "screenshot")) {
     // meta.logger.debug(
     //   "Transforming screenshots from actions into screenshot field",
     //   { screenshots: response.screenshots },
@@ -312,10 +295,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
 export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const totalWait = meta.options.waitFor;
-  const timeout = (timeToRun ?? 300000) + totalWait;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
@@ -325,14 +306,14 @@ export async function scrapeURLWithFireEnginePlaywright(
 
     headers: meta.options.headers,
     priority: meta.internalOptions.priority,
-    screenshot: meta.options.formats.includes("screenshot"),
-    fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
+    screenshot: hasFormatOfType(meta.options.formats, "screenshot") !== undefined,
+    fullPageScreenshot: hasFormatOfType(meta.options.formats, "screenshot")?.fullPage,
     wait: meta.options.waitFor,
-    geolocation: meta.options.geolocation ?? meta.options.location,
+    geolocation: meta.options.location,
     blockAds: meta.options.blockAds,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
-    timeout,
+    timeout: meta.abort.scrapeTimeout() ?? 300000,
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
@@ -344,9 +325,8 @@ export async function scrapeURLWithFireEnginePlaywright(
       request,
     }),
     request,
-    timeout,
     meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    meta.abort.asSignal(),
   );
 
   if (!response.url) {
@@ -379,10 +359,7 @@ export async function scrapeURLWithFireEnginePlaywright(
 
 export async function scrapeURLWithFireEngineTLSClient(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 30000;
-
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {
     url: meta.rewrittenUrl ?? meta.url,
@@ -393,11 +370,11 @@ export async function scrapeURLWithFireEngineTLSClient(
     priority: meta.internalOptions.priority,
 
     atsv: meta.internalOptions.atsv,
-    geolocation: meta.options.geolocation ?? meta.options.location,
+    geolocation: meta.options.location,
     disableJsDom: meta.internalOptions.v0DisableJsDom,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
 
-    timeout,
+    timeout: meta.abort.scrapeTimeout() ?? 300000,
     saveScrapeResultToGCS: !meta.internalOptions.zeroDataRetention && meta.internalOptions.saveScrapeResultToGCS,
     zeroDataRetention: meta.internalOptions.zeroDataRetention,
   };
@@ -409,9 +386,8 @@ export async function scrapeURLWithFireEngineTLSClient(
       request,
     }),
     request,
-    timeout,
     meta.mock,
-    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
+    meta.abort.asSignal(),
   );
 
   if (!response.url) {
@@ -434,4 +410,19 @@ export async function scrapeURLWithFireEngineTLSClient(
 
     proxyUsed: response.usedMobileProxy ? "stealth" : "basic",
   };
+}
+
+export function fireEngineMaxReasonableTime(meta: Meta, engine: "chrome-cdp" | "playwright" | "tlsclient"): number {
+  if (engine === "tlsclient") {
+    return 15000;
+  } else if (engine === "playwright") {
+    return (meta.options.waitFor ?? 0) + 30000;
+  } else {
+    return (meta.options.waitFor ?? 0)
+      + (meta.options.actions?.reduce(
+          (a, x) => (x.type === "wait" ? (x.milliseconds ?? 2500) + a : 250 + a),
+          0
+        ) ?? 0)
+      + 30000;
+  }
 }

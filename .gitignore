@@ -43,3 +43,5 @@ mapped-links.txt
 gke-key.json
 
 CLAUDE.local.md
+
+*.egg-info/

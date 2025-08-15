@@ -161,7 +161,6 @@ export class ResearchLLMService {
         method: "generateSearchQueries",
       }),
       options: {
-        mode: "llm",
         systemPrompt:
           "You are an expert research agent that generates search queries (SERP) to explore topics deeply and thoroughly. Do not generate repeated queries. Today's date is " +
           new Date().toISOString().split("T")[0],
@@ -230,7 +229,6 @@ export class ResearchLLMService {
           method: "analyzeAndPlan",
         }),
         options: {
-          mode: "llm",
           systemPrompt:
             systemPrompt +
             "You are an expert research agent that is analyzing findings. Your goal is to synthesize information and identify gaps for further research. Today's date is " +

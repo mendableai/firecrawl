@@ -1,21 +1,19 @@
 import * as undici from "undici";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { TimeoutError } from "../../error";
+import { SSLError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import {
   InsecureConnectionError,
   secureDispatcher,
+  secureDispatcherSkipTlsVerification,
 } from "../utils/safeFetch";
 import { MockState, saveMock } from "../../lib/mock";
 import { TextDecoder } from "util";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 300000;
-
   const mockOptions = {
     url: meta.rewrittenUrl ?? meta.url,
 
@@ -54,23 +52,12 @@ export async function scrapeURLWithFetch(
     };
   } else {
     try {
-      const x = await Promise.race([
-        undici.fetch(meta.rewrittenUrl ?? meta.url, {
-          dispatcher: secureDispatcher,
-          redirect: "follow",
-          headers: meta.options.headers,
-          signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
-        }),
-        (async () => {
-          await new Promise((resolve) =>
-            setTimeout(() => resolve(null), timeout),
-          );
-          throw new TimeoutError(
-            "Fetch was unable to scrape the page before timing out",
-            { cause: { timeout } },
-          );
-        })(),
-      ]);
+      const x = await undici.fetch(meta.rewrittenUrl ?? meta.url, {
+        dispatcher: meta.options.skipTlsVerification ? secureDispatcherSkipTlsVerification : secureDispatcher,
+        redirect: "follow",
+        headers: meta.options.headers,
+        signal: meta.abort.asSignal(),
+      });
 
       const buf = Buffer.from(await x.arrayBuffer());
       let text = buf.toString("utf8");
@@ -102,6 +89,8 @@ export async function scrapeURLWithFetch(
         error.cause instanceof InsecureConnectionError
       ) {
         throw error.cause;
+      } else if (error instanceof Error && error.message === "fetch failed" && error.cause && (error.cause as any).code === "CERT_HAS_EXPIRED") {
+        throw new SSLError(meta.options.skipTlsVerification);
       } else {
         throw error;
       }
@@ -123,4 +112,8 @@ export async function scrapeURLWithFetch(
 
     proxyUsed: "basic",
   };
+}
+
+export function fetchMaxReasonableTime(meta: Meta): number {
+  return 15000;
 }

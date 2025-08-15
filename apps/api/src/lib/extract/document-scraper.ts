@@ -1,11 +1,9 @@
-import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions } from "../../controllers/v1/types";
-import { logger } from "../logger";
+import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../controllers/v2/types";
 import { getScrapeQueue } from "../../services/queue-service";
 import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../job-priority";
 import type { Logger } from "winston";
-import { getJobFromGCS } from "../gcs-jobs";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 
 interface ScrapeDocumentOptions {
@@ -46,7 +44,7 @@ export async function scrapeDocument(
         url: options.url,
         mode: "single_urls",
         team_id: options.teamId,
-        scrapeOptions: scrapeOptions.parse({
+        scrapeOptions: scrapeOptionsSchema.parse({
           ...internalScrapeOptions,
           maxAge: 4 * 60 * 60 * 1000,
         }),
