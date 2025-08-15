@@ -25,6 +25,8 @@ import type { Logger } from "winston";
 import { CostTracking } from "../../lib/extract/extraction-service";
 import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
+import { fromV1ScrapeOptions } from "../v2/types";
+import { ScrapeJobTimeoutError } from "../../lib/error";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -104,16 +106,19 @@ async function scrapeSearchResult(
       origin: options.origin,
       zeroDataRetention,
     });
+    
+    const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(options.scrapeOptions, options.timeout, options.teamId);
+
     await addScrapeJob(
       {
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: {
-          ...options.scrapeOptions,
-          maxAge: options.scrapeOptions.maxAge === 0 ? 3 * 24 * 60 * 60 * 1000 : options.scrapeOptions.maxAge,
+          ...scrapeOptions,
+          maxAge: scrapeOptions.maxAge === 0 ? 3 * 24 * 60 * 60 * 1000 : scrapeOptions.maxAge,
         },
-        internalOptions: { teamId: options.teamId, bypassBilling: true, zeroDataRetention },
+        internalOptions: { ...internalOptions, teamId: options.teamId, bypassBilling: true, zeroDataRetention },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
@@ -322,9 +327,10 @@ export async function searchController(
         );
         
         if (matchingDocWithCost) {
+          const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body.scrapeOptions, req.body.timeout, req.auth.team_id);
           return await calculateCreditsToBeBilled(
-            req.body.scrapeOptions,
-            { teamId: req.auth.team_id, bypassBilling: true, zeroDataRetention: false },
+            scrapeOptions,
+            { ...internalOptions, teamId: req.auth.team_id, bypassBilling: true, zeroDataRetention: false },
             matchingDocWithCost.document, 
             matchingDocWithCost.costTracking,
             req.acuc?.flags ?? null,
@@ -393,13 +399,11 @@ export async function searchController(
 
     return res.status(200).json(responseData);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.startsWith("Job wait") || error.message === "timeout")
-    ) {
+    if (error instanceof ScrapeJobTimeoutError) {
       return res.status(408).json({
         success: false,
-        error: "Request timed out",
+        code: error.code,
+        error: error.message,
       });
     }
 

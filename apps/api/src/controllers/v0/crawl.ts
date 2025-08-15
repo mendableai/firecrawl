@@ -30,6 +30,7 @@ import { getJobPriority } from "../../lib/job-priority";
 import { fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
 import { ZodError } from "zod";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { fromV0ScrapeOptions } from "../v2/types";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -158,7 +159,7 @@ export async function crawlController(req: Request, res: Response) {
     //   }
     // }
 
-    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
+    const { scrapeOptions, internalOptions } = fromV0ScrapeOptions(
       pageOptions,
       undefined,
       undefined,

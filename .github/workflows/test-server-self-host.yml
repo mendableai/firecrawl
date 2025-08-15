@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - nsc/v2
 
 env:
   REDIS_URL: redis://localhost:6379

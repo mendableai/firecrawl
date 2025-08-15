@@ -191,7 +191,7 @@ export async function crawlStatusController(
     let total = await getCrawlQualifiedJobCount(req.params.jobId);
 
     let completed = await getDoneJobsOrderedLength(req.params.jobId, djoCutoff);
-    let creditsUsed = completed * (sc.scrapeOptions?.extract ? 5 : 1);
+    let creditsUsed = completed * (sc.scrapeOptions?.formats?.find(x => typeof x === "object" && x.type === "json") ? 5 : 1);
 
     if (process.env.USE_DB_AUTHENTICATION === "true") {
       const creditsRpc = await supabase_service

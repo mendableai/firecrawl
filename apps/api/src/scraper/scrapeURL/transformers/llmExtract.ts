@@ -2,12 +2,11 @@ import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
 import {
   Document,
-  ExtractOptions,
-  isAgentExtractModelValid,
+  JsonFormatWithOptions,
   TokenUsage,
-} from "../../../controllers/v1/types";
+} from "../../../controllers/v2/types";
 import { Logger } from "winston";
-import { EngineResultsTracker, Meta } from "..";
+import { Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
 import {
@@ -24,6 +23,8 @@ import fs from "fs/promises";
 import Ajv from "ajv";
 import { extractData } from "../lib/extractSmartScrape";
 import { CostTracking } from "../../../lib/extract/extraction-service";
+import { isAgentExtractModelValid } from "../../../controllers/v1/types";
+import { hasFormatOfType } from "../../../lib/format-utils";
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
   anthropic?: {
@@ -55,7 +56,6 @@ const getModelLimits = (model: string) => {
 
 export class LLMRefusalError extends Error {
   public refusal: string;
-  public results: EngineResultsTracker | undefined;
 
   constructor(refusal: string) {
     super("LLM refused to extract the website's content");
@@ -197,6 +197,7 @@ export function calculateCost(
       input_cost: 0.55,
       output_cost: 2.19,
     },
+    "google/gemini-2.5-flash-lite": { input_cost: 0.1, output_cost: 0.4 },
   };
   let modelCost = modelCosts[model] || { input_cost: 0, output_cost: 0 };
   //gemini-2.5-pro-exp-03-25 pricing
@@ -225,7 +226,10 @@ export function calculateCost(
 export type GenerateCompletionsOptions = {
   model?: LanguageModel;
   logger: Logger;
-  options: ExtractOptions;
+  options: Omit<JsonFormatWithOptions, "type"> & {
+    systemPrompt?: string;
+    temperature?: number;
+  };
   markdown?: string;
   previousWarning?: string;
   isExtractEndpoint?: boolean;
@@ -743,7 +747,18 @@ export async function performLLMExtract(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
-  if (meta.options.formats.includes("extract")) {
+  const jsonFormat = hasFormatOfType(meta.options.formats, "json");
+  
+  // Debug logging for v1 format investigation
+  if (meta.internalOptions.v1OriginalFormat) {
+    meta.logger.debug("performLLMExtract v1 format debug", {
+      v1OriginalFormat: meta.internalOptions.v1OriginalFormat,
+      hasJsonFormat: !!jsonFormat,
+      formats: meta.options.formats.map(f => typeof f === "object" ? f.type : f)
+    });
+  }
+  
+  if (jsonFormat) {
     if (meta.internalOptions.zeroDataRetention) {
       document.warning = "JSON mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
       return document;
@@ -757,7 +772,7 @@ export async function performLLMExtract(
       logger: meta.logger.child({
         method: "performLLMExtract/generateCompletions",
       }),
-      options: meta.options.extract!,
+      options: jsonFormat,
       markdown: document.markdown,
       previousWarning: document.warning,
       // ... existing model and provider options ...
@@ -766,8 +781,15 @@ export async function performLLMExtract(
       // model: getModel("qwen-qwq-32b", "groq"),
       // model: getModel("gemini-2.0-flash", "google"),
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      model: getModel("gpt-4o-mini", "openai"),
-      retryModel: getModel("gpt-4o", "openai"),
+      // model: getModel("gpt-4o-mini", "openai"),
+      // retryModel: getModel("gpt-4o", "openai"),
+      ...(process.env.VERTEX_CREDENTIALS ? ({
+        model: getModel("gemini-2.5-flash-lite", "vertex"),
+        retryModel: getModel("gpt-4o-mini", "openai")
+      }) : ({
+        model: getModel("gpt-4o-mini", "openai"),
+        retryModel: getModel("gpt-4o", "openai"),
+      })),
       costTrackingOptions: {
         costTracking: meta.costTracking,
         metadata: {
@@ -786,7 +808,7 @@ export async function performLLMExtract(
       await extractData({
         extractOptions: generationOptions,
         urls: [meta.rewrittenUrl ?? meta.url],
-        useAgent: false,
+        useAgent: isAgentExtractModelValid(meta.internalOptions.v1JSONAgent?.model),
         scrapeId: meta.id,
         metadata: {
           teamId: meta.internalOptions.teamId,
@@ -874,12 +896,92 @@ export async function performLLMExtract(
     // }
 
     // Assign the final extracted data
-    if (meta.options.formats.includes("json")) {
+    // For v1 API backward compatibility, check the original format
+    meta.logger.debug("Assigning extracted data", {
+      v1OriginalFormat: meta.internalOptions.v1OriginalFormat,
+      hasExtractedData: !!extractedData,
+      assigningTo: meta.internalOptions.v1OriginalFormat === "extract" ? "extract" : 
+                   meta.internalOptions.v1OriginalFormat === "json" ? "json" : "json (default)"
+    });
+    
+    if (meta.internalOptions.v1OriginalFormat === "extract") {
+      document.extract = extractedData;
+    } else if (meta.internalOptions.v1OriginalFormat === "json") {
       document.json = extractedData;
     } else {
-      document.extract = extractedData;
+      // v2 API or no v1OriginalFormat - use json field
+      document.json = extractedData;
     }
     // document.warning = warning;
+  }
+
+  return document;
+}
+
+export async function performSummary(
+  meta: Meta,
+  document: Document,
+): Promise<Document> {
+  if (hasFormatOfType(meta.options.formats, "summary")) {
+    if (meta.internalOptions.zeroDataRetention) {
+      document.warning = "Summary mode is not supported with zero data retention." + (document.warning ? " " + document.warning : "")
+      return document;
+    }
+
+    const generationOptions: GenerateCompletionsOptions = {
+      logger: meta.logger.child({
+        method: "performSummary/generateCompletions",
+      }),
+      options: {
+        systemPrompt: "You are a content summarization expert. Analyze the provided content and create a concise, informative summary that captures the key points, main ideas, and essential information. Focus on clarity and brevity while maintaining accuracy.",
+        prompt: "Summarize the main content and key points from this page.",
+        schema: {
+          type: "object",
+          properties: {
+            summary: {
+              type: "string",
+            },
+          },
+          required: ["summary"],
+        }
+      },
+      markdown: document.markdown,
+      previousWarning: document.warning,
+      model: getModel("gpt-4o-mini", "openai"),
+      retryModel: getModel("gpt-4o", "openai"),
+      costTrackingOptions: {
+        costTracking: meta.costTracking,
+        metadata: {
+          module: "scrapeURL",
+          method: "performSummary",
+        },
+      },
+      metadata: {
+        teamId: meta.internalOptions.teamId,
+        functionId: "performSummary",
+        scrapeId: meta.id,
+      }
+    };
+
+    const {
+      extract,
+      warning,
+      totalUsage,
+      model,
+    } = await generateCompletions(generationOptions);
+
+    if (warning) {
+      document.warning = warning + (document.warning ? " " + document.warning : "");
+    }
+
+    meta.logger.info("LLM summary generation token usage", {
+      model: model,
+      promptTokens: totalUsage.promptTokens,
+      completionTokens: totalUsage.completionTokens,
+      totalTokens: totalUsage.totalTokens,
+    });
+
+    document.summary = extract.summary;
   }
 
   return document;
@@ -952,7 +1054,6 @@ export async function generateSchemaFromPrompt(
         retryModel,
         markdown: "",
         options: {
-          mode: "llm",
           systemPrompt: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
 Consider:
 1. The type of data being requested
@@ -1005,5 +1106,71 @@ Return a valid JSON schema object with properties that would capture the informa
   // If we get here, all attempts failed
   throw new Error(
     `Failed to generate schema after all attempts. Last error: ${lastError?.message}`,
+  );
+}
+
+export async function generateCrawlerOptionsFromPrompt(
+  prompt: string,
+  logger: Logger,
+  costTracking: CostTracking,
+  metadata: { teamId: string, crawlId?: string },
+): Promise<{ extract: any }> {
+  const model = getModel("gpt-4o", "openai");
+  const retryModel = getModel("gpt-4o-mini", "openai");
+  const temperatures = [0, 0.1, 0.3];
+  let lastError: Error | null = null;
+
+  for (const temp of temperatures) {
+    try {
+      const { extract } = await generateCompletions({
+        logger: logger.child({
+          method: "generateCrawlerOptionsFromPrompt/generateCompletions",
+        }),
+        model,
+        retryModel,
+        markdown: "",
+        options: {
+          systemPrompt: `You are a web crawler configuration expert. Generate crawler options based on natural language instructions.
+
+Available crawler options:
+- includePaths: string[] - URL pathname regex patterns that include matching URLs in the crawl. Only the paths that match the specified patterns will be included in the response. For example, if you set "includePaths": ["blog/.*"] for the base URL firecrawl.dev, only results matching that pattern will be included, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap.
+- excludePaths: string[] - URL pathname regex patterns that exclude matching URLs from the crawl. For example, if you set "excludePaths": ["blog/.*"] for the base URL firecrawl.dev, any results matching that pattern will be excluded, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap.
+- maxDepth: number - Maximum absolute depth to crawl from the base of the entered URL. Basically, the max number of slashes the pathname of a scraped URL may contain. Default: 10
+- maxDiscoveryDepth: number - Maximum depth to crawl based on discovery order. The root site and sitemapped pages has a discovery depth of 0. For example, if you set it to 1, and you set ignoreSitemap, you will only crawl the entered URL and all URLs that are linked on that page.
+- crawlEntireDomain: boolean - Allows the crawler to follow internal links to sibling or parent URLs, not just child paths. false: Only crawls deeper (child) URLs. → e.g. /features/feature-1 → /features/feature-1/tips ✅ → Won't follow /pricing or / ❌. true: Crawls any internal links, including siblings and parents. → e.g. /features/feature-1 → /pricing, /, etc. ✅. Use true for broader internal coverage beyond nested paths. Default: false
+- allowExternalLinks: boolean - Allows the crawler to follow links to external websites. Default: false
+- allowSubdomains: boolean - Allows the crawler to follow links to subdomains of the main domain. Default: false
+- sitemap: "skip" | "include" - Whether to ignore sitemap. Default: "include"
+- ignoreQueryParameters: boolean - Do not re-scrape the same path with different (or none) query parameters. Default: false
+- deduplicateSimilarURLs: boolean - Whether to deduplicate similar URLs
+- delay: number - Delay in seconds between scrapes. This helps respect website rate limits.
+- limit: number - Maximum number of pages to crawl. Default limit is 10000.
+
+Return a JSON object with only the relevant options for the user's request. Don't include options that aren't relevant to the instruction. Focus on the most important options that directly address the user's intent.`,
+          prompt: `Generate crawler options for: ${prompt}`,
+        },
+        costTrackingOptions: {
+          costTracking,
+          metadata: {
+            module: "crawl",
+            method: "generateCrawlerOptionsFromPrompt",
+          },
+        },
+        metadata: {
+          ...metadata,
+          functionId: "generateCrawlerOptionsFromPrompt",
+        }
+      });
+
+      return { extract };
+    } catch (error) {
+      lastError = error as Error;
+      logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);
+      continue;
+    }
+  }
+
+  throw new Error(
+    `Failed to generate crawler options after all attempts. Last error: ${lastError?.message}`,
   );
 }

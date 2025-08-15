@@ -1,16 +1,18 @@
 import { ScrapeActionContent } from "../../../lib/entities";
 import { Meta } from "..";
-import { scrapeDOCX } from "./docx";
+import { docxMaxReasonableTime, scrapeDOCX } from "./docx";
 import {
+  fireEngineMaxReasonableTime,
   scrapeURLWithFireEngineChromeCDP,
   scrapeURLWithFireEnginePlaywright,
   scrapeURLWithFireEngineTLSClient,
 } from "./fire-engine";
-import { scrapePDF } from "./pdf";
-import { scrapeURLWithFetch } from "./fetch";
-import { scrapeURLWithPlaywright } from "./playwright";
-import { scrapeURLWithIndex } from "./index/index";
+import { pdfMaxReasonableTime, scrapePDF } from "./pdf";
+import { fetchMaxReasonableTime, scrapeURLWithFetch } from "./fetch";
+import { playwrightMaxReasonableTime, scrapeURLWithPlaywright } from "./playwright";
+import { indexMaxReasonableTime, scrapeURLWithIndex } from "./index/index";
 import { useIndex } from "../../../services";
+import { hasFormatOfType } from "../../../lib/format-utils";
 
 export type Engine =
   | "fire-engine;chrome-cdp"
@@ -126,7 +128,6 @@ export type EngineScrapeResult = {
 const engineHandlers: {
   [E in Engine]: (
     meta: Meta,
-    timeToRun: number | undefined,
   ) => Promise<EngineScrapeResult>;
 } = {
   index: scrapeURLWithIndex,
@@ -143,6 +144,25 @@ const engineHandlers: {
   fetch: scrapeURLWithFetch,
   pdf: scrapePDF,
   docx: scrapeDOCX,
+};
+
+const engineMRTs: {
+  [E in Engine]: (meta: Meta) => number;
+} = {
+  "index": indexMaxReasonableTime,
+  "index;documents": indexMaxReasonableTime,
+  "fire-engine;chrome-cdp": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine(retry);chrome-cdp": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine;chrome-cdp;stealth": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine(retry);chrome-cdp;stealth": (meta) => fireEngineMaxReasonableTime(meta, "chrome-cdp"),
+  "fire-engine;playwright": (meta) => fireEngineMaxReasonableTime(meta, "playwright"),
+  "fire-engine;playwright;stealth": (meta) => fireEngineMaxReasonableTime(meta, "playwright"),
+  "fire-engine;tlsclient": (meta) => fireEngineMaxReasonableTime(meta, "tlsclient"),
+  "fire-engine;tlsclient;stealth": (meta) => fireEngineMaxReasonableTime(meta, "tlsclient"),
+  playwright: playwrightMaxReasonableTime,
+  fetch: fetchMaxReasonableTime,
+  pdf: pdfMaxReasonableTime,
+  docx: docxMaxReasonableTime,
 };
 
 export const engineOptions: {
@@ -310,7 +330,7 @@ export const engineOptions: {
       atsv: false,
       location: false,
       mobile: false,
-      skipTlsVerification: false,
+      skipTlsVerification: true,
       useFastMode: false,
       stealthProxy: false,
       disableAdblock: false,
@@ -364,7 +384,7 @@ export const engineOptions: {
       atsv: false,
       location: false,
       mobile: false,
-      skipTlsVerification: false,
+      skipTlsVerification: true,
       useFastMode: true,
       stealthProxy: false,
       disableAdblock: false,
@@ -424,7 +444,7 @@ export function buildFallbackList(meta: Meta): {
     useIndex
     && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true"
     && meta.options.waitFor === 0
-    && !meta.options.formats.includes("changeTracking")
+    && !hasFormatOfType(meta.options.formats, "changeTracking")
     && meta.options.maxAge !== 0
     && (
       meta.options.headers === undefined
@@ -512,7 +532,6 @@ export function buildFallbackList(meta: Meta): {
 export async function scrapeURLWithEngine(
   meta: Meta,
   engine: Engine,
-  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const fn = engineHandlers[engine];
   const logger = meta.logger.child({
@@ -524,5 +543,15 @@ export async function scrapeURLWithEngine(
     logger,
   };
 
-  return await fn(_meta, timeToRun);
+  return await fn(_meta);
+}
+
+export function getEngineMaxReasonableTime(meta: Meta, engine: Engine): number {
+  const mrt = engineMRTs[engine];
+  // shan't happen - mogery
+  if (mrt === undefined) {
+    meta.logger.warn("No MRT for engine", { engine });
+    return 30000;
+  }
+  return mrt(meta);
 }

@@ -28,7 +28,8 @@ import {
 } from "../../lib/crawl-redis";
 import { addScrapeJob, addScrapeJobs } from "../queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
-import { Document, scrapeOptions, TeamFlags } from "../../controllers/v1/types";
+import { Document, scrapeOptions, TeamFlags } from "../../controllers/v2/types";
+import { hasFormatOfType } from "../../lib/format-utils";
 import { getACUCTeam } from "../../controllers/auth";
 import { callWebhook } from "../webhook";
 import { CustomError } from "../../lib/custom-error";
@@ -48,6 +49,8 @@ import { finishCrawlIfNeeded } from "./crawl-logic";
 import { LangfuseExporter } from "langfuse-vercel";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { NodeSDK } from "@opentelemetry/sdk-node";
+import { ScrapeJobTimeoutError, TransportableError, UnknownError } from "../../lib/error";
+import { serializeTransportableError } from "../../lib/error-serde";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { resourceFromAttributes } from "@opentelemetry/resources";
@@ -148,7 +151,7 @@ async function processJob(job: Job & { id: string }) {
         });
 
         if (remainingTime !== undefined && remainingTime < 0) {
-            throw new Error("timeout");
+            throw new ScrapeJobTimeoutError("Scrape timed out");
         }
         const signal = remainingTime ? AbortSignal.timeout(remainingTime) : undefined;
 
@@ -169,7 +172,7 @@ async function processJob(job: Job & { id: string }) {
                 ? [
                     (async () => {
                         await sleep(remainingTime);
-                        throw new Error("timeout");
+                        throw new ScrapeJobTimeoutError("Scrape timed out");
                     })(),
                 ]
                 : []),
@@ -178,7 +181,7 @@ async function processJob(job: Job & { id: string }) {
         try {
             signal?.throwIfAborted();
         } catch (e) {
-            throw new Error("timeout");
+            throw new ScrapeJobTimeoutError("Scrape timed out");
         }
 
         if (!pipeline.success) {
@@ -192,7 +195,7 @@ async function processJob(job: Job & { id: string }) {
 
         const rawHtml = doc.rawHtml ?? "";
 
-        if (!job.data.scrapeOptions.formats.includes("rawHtml")) {
+        if (!hasFormatOfType(job.data.scrapeOptions.formats, "rawHtml")) {
             delete doc.rawHtml;
         }
 
@@ -373,7 +376,7 @@ async function processJob(job: Job & { id: string }) {
             try {
                 signal?.throwIfAborted();
             } catch (e) {
-                throw new Error("timeout");
+                throw new ScrapeJobTimeoutError("Scrape timed out");
             }
 
             const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
@@ -399,7 +402,7 @@ async function processJob(job: Job & { id: string }) {
                     cost_tracking: costTracking,
                     pdf_num_pages: doc.metadata.numPages,
                     credits_billed,
-                    change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+                    change_tracking_tag: hasFormatOfType(job.data.scrapeOptions.formats, "changeTracking")?.tag ?? null,
                     zeroDataRetention: job.data.zeroDataRetention,
                 },
                 true,
@@ -429,7 +432,7 @@ async function processJob(job: Job & { id: string }) {
             try {
                 signal?.throwIfAborted();
             } catch (e) {
-                throw new Error("timeout");
+                throw new ScrapeJobTimeoutError("Scrape timed out");
             }
 
             const credits_billed = await billScrapeJob(job, doc, logger, costTracking, (await getACUCTeam(job.data.team_id))?.flags ?? null);
@@ -453,7 +456,7 @@ async function processJob(job: Job & { id: string }) {
                 cost_tracking: costTracking,
                 pdf_num_pages: doc.metadata.numPages,
                 credits_billed,
-                change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
+                change_tracking_tag: hasFormatOfType(job.data.scrapeOptions.formats, "changeTracking")?.tag ?? null,
                 zeroDataRetention: job.data.zeroDataRetention,
             }, false, job.data.internalOptions?.bypassBilling ?? false);
         }
@@ -477,7 +480,7 @@ async function processJob(job: Job & { id: string }) {
         }
 
         const isEarlyTimeout =
-            error instanceof Error && error.message === "timeout";
+            error instanceof ScrapeJobTimeoutError;
         const isCancelled =
             error instanceof Error &&
             error.message === "Parent crawl/batch scrape was cancelled";
@@ -799,7 +802,7 @@ export const processJobInternal = async (job: Job & { id: string }) => {
         crawlId: job.data?.crawl_id ?? undefined,
         zeroDataRetention: job.data?.zeroDataRetention ?? false,
     });
-    
+
     try {
         try {
             let extendLockInterval: NodeJS.Timeout | null = null;
@@ -851,7 +854,11 @@ export const processJobInternal = async (job: Job & { id: string }) => {
     } catch (error) {
         logger.debug("Job failed", { error });
         Sentry.captureException(error);
-        throw error;
+        if (error instanceof TransportableError) {
+            throw new Error(serializeTransportableError(error));
+        } else {
+            throw new Error(serializeTransportableError(new UnknownError(error)));
+        }
     }
 };
 
@@ -868,8 +875,8 @@ const otelSdk = shouldOtel ? new NodeSDK({
     ],
     instrumentations: [getNodeAutoInstrumentations()],
 }) : null;
-    
-if (otelSdk) {   
+
+if (otelSdk) {
     otelSdk.start();
 }
 

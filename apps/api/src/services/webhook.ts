@@ -283,7 +283,7 @@ export const callWebhook = async ({
         });
     }
   } catch (error) {
-    logger.debug(
+    logger.warn(
       `Error sending webhook`,
       {
         error,

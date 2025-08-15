@@ -20,6 +20,8 @@ import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
 import { Logger } from "winston";
 import { Job } from "bullmq";
+import { ScrapeJobTimeoutError, TransportableError } from "../lib/error";
+import { deserializeTransportableError } from "../lib/error-serde";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -316,7 +318,7 @@ export async function addScrapeJobs(
 
 export async function waitForJob(
   _job: Job | string,
-  timeout: number,
+  timeout: number | null,
   logger: Logger = _logger,
 ): Promise<Document> {
     const start = Date.now();
@@ -326,18 +328,34 @@ export async function waitForJob(
       logger.debug("Waiting for job to be created");
       await new Promise(resolve => setTimeout(resolve, 500));
       job = await queue.getJob(_job as string);
-      if (Date.now() - start > timeout) {
-        throw new Error("Job wait (concurrency limited)");
+      if (Date.now() - start > (timeout ?? 180000)) {
+        throw new ScrapeJobTimeoutError("Scrape timed out while waiting in the concurrency limit queue");
       }
     }
-    let doc: Document = await Promise.race([
-      job.waitUntilFinished(getScrapeQueueEvents(), timeout - (Date.now() - start)),
-      new Promise((resolve, reject) => {
-        setTimeout(() => {
-          reject(new Error("Job wait " + (typeof _job == "string" ? "(was concurrency limited)" : "")));
-        }, Math.max(0, timeout - (Date.now() - start)));
-      }),
-    ]);
+    let doc: Document;
+    try {
+      doc = await Promise.race([
+        job.waitUntilFinished(getScrapeQueueEvents(), timeout ?? 180000),
+        timeout !== null ? new Promise((resolve, reject) => {
+          setTimeout(() => {
+            reject(new ScrapeJobTimeoutError("Scrape timed out" + (typeof _job === "string" ? " after waiting in the concurrency limit queue" : "")));
+          }, Math.max(0, timeout - (Date.now() - start)));
+        }) : null,
+      ].filter(x => x !== null));
+    } catch (e) {
+      if (e instanceof TransportableError) {
+        throw e;
+      } else if (e instanceof Error) {
+        const x = deserializeTransportableError(e.message);
+        if (x) {
+          throw x;
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
     logger.debug("Got job");
     
     if (!doc) {

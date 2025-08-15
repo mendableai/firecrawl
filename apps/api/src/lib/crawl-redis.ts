@@ -1,5 +1,5 @@
 import { InternalOptions } from "../scraper/scrapeURL";
-import { ScrapeOptions, TeamFlags } from "../controllers/v1/types";
+import { ScrapeOptions, TeamFlags } from "../controllers/v2/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisEvictConnection } from "../services/redis";
 import { logger as _logger, logger } from "./logger";
