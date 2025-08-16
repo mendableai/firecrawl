@@ -350,6 +350,52 @@ class SearchResponse(pydantic.BaseModel):
     warning: Optional[str] = None
     error: Optional[str] = None
 
+class AsyncSearchResponse(SearchResponse):
+    """
+    Backward-compatible response for async search operations.
+    Supports dict-like access to maintain compatibility with existing code.
+    """
+    
+    def __getitem__(self, key: str) -> Any:
+        """Dict-style access for backward compatibility"""
+        import warnings
+        warnings.warn(
+            f"Dictionary-style access (response['{key}']) is deprecated and will be removed in a future version. "
+            f"Use attribute access instead (e.g., response.{key})",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict.get() method for backward compatibility"""
+        import warnings
+        warnings.warn(
+            f"The .get() method is deprecated and will be removed in a future version. "
+            f"Use attribute access instead (e.g., response.{key})",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return getattr(self, key, default)
+    
+    def __contains__(self, key: str) -> bool:
+        """Support 'in' operator for backward compatibility"""
+        return hasattr(self, key)
+    
+    def keys(self):
+        """Dict.keys() method for backward compatibility"""
+        import warnings
+        warnings.warn(
+            "The .keys() method is deprecated and will be removed in a future version. "
+            "Use standard attribute access instead",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.model_fields.keys()
+
 class GenerateLLMsTextParams(pydantic.BaseModel):
     """
     Parameters for the LLMs.txt generation operation.
@@ -410,15 +456,6 @@ class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
     status: Literal["processing", "completed", "failed"]
     error: Optional[str] = None
     expiresAt: str
-    
-class SearchResponse(pydantic.BaseModel):
-    """
-    Response from the search operation.
-    """
-    success: bool
-    data: List[Dict[str, Any]]
-    warning: Optional[str] = None
-    error: Optional[str] = None
 
 class ExtractParams(pydantic.BaseModel):
     """
@@ -4484,7 +4521,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             timeout: Optional[int] = None,
             scrape_options: Optional[ScrapeOptions] = None,
             params: Optional[Union[Dict[str, Any], SearchParams]] = None,
-            **kwargs) -> SearchResponse:
+            **kwargs) -> AsyncSearchResponse:
         """
         Asynchronously search for content using Firecrawl.
 
@@ -4502,7 +4539,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **kwargs: Additional keyword arguments for future compatibility
 
         Returns:
-            SearchResponse: Response containing:
+            AsyncSearchResponse: Response containing:
                 * success (bool): Whether request succeeded
                 * data (List[FirecrawlDocument]): Search results
                 * warning (Optional[str]): Warning message if any
@@ -4545,11 +4582,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
         params_dict = final_params.dict(by_alias=True, exclude_none=True)
         params_dict['origin'] = f"python-sdk@{version}"
 
-        return await self._async_post_request(
+        response = await self._async_post_request(
             f"{self.api_url}/v1/search",
             params_dict,
             {"Authorization": f"Bearer {self.api_key}"}
         )
+        return AsyncSearchResponse(**response)
 
 class AsyncCrawlWatcher(CrawlWatcher):
     """
