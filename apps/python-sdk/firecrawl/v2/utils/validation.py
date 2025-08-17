@@ -24,6 +24,39 @@ def _convert_format_string(format_str: str) -> str:
     return format_mapping.get(format_str, format_str)
 
 
+def _normalize_schema(schema: Any) -> Optional[Dict[str, Any]]:
+    """
+    Normalize a schema object which may be a dict, Pydantic BaseModel subclass,
+    or a Pydantic model instance into a plain dict.
+    """
+    try:
+        # Pydantic v2 BaseModel subclass: has "model_json_schema"
+        if hasattr(schema, "model_json_schema") and callable(schema.model_json_schema):
+            return schema.model_json_schema()
+        # Pydantic v2 BaseModel instance: has "model_dump" or "model_json_schema"
+        if hasattr(schema, "model_dump") and callable(schema.model_dump):
+            # Try to get JSON schema if available on the class
+            mjs = getattr(schema.__class__, "model_json_schema", None)
+            if callable(mjs):
+                return schema.__class__.model_json_schema()
+            # Fallback to data shape (not ideal, but better than dropping)
+            return schema.model_dump()
+        # Pydantic v1 BaseModel subclass: has "schema"
+        if hasattr(schema, "schema") and callable(schema.schema):
+            return schema.schema()
+        # Pydantic v1 BaseModel instance
+        if hasattr(schema, "dict") and callable(schema.dict):
+            # Prefer class-level schema if present
+            sch = getattr(schema.__class__, "schema", None)
+            if callable(sch):
+                return schema.__class__.schema()
+            return schema.dict()
+    except Exception:
+        pass
+    # Already a dict or unsupported type
+    return schema if isinstance(schema, dict) else None
+
+
 def _validate_json_format(format_obj: Any) -> Dict[str, Any]:
     """
     Validate and prepare json format object.
@@ -43,13 +76,15 @@ def _validate_json_format(format_obj: Any) -> Dict[str, Any]:
     if format_obj.get('type') != 'json':
         raise ValueError("json format must have type='json'")
     
-    if 'prompt' not in format_obj:
-        raise ValueError("json format requires 'prompt' field")
-    
-    if 'schema' not in format_obj:
-        raise ValueError("json format requires 'schema' field")
-    
-    return format_obj
+    # prompt is optional in v2; only normalize when present
+    # schema is recommended; if provided, normalize Pydantic forms
+    schema = format_obj.get('schema')
+    normalized = dict(format_obj)
+    if schema is not None:
+        normalized_schema = _normalize_schema(schema)
+        if normalized_schema is not None:
+            normalized['schema'] = normalized_schema
+    return normalized
 
 
 def validate_scrape_options(options: Optional[ScrapeOptions]) -> Optional[ScrapeOptions]:
@@ -178,7 +213,7 @@ def prepare_scrape_options(options: Optional[ScrapeOptions]) -> Optional[Dict[st
                                     converted_formats.append(fmt)
                             elif hasattr(fmt, 'type'):
                                 if fmt.type == 'json':
-                                    converted_formats.append(fmt.model_dump())
+                                    converted_formats.append(_validate_json_format(fmt.model_dump()))
                                 else:
                                     converted_formats.append(_convert_format_string(fmt.type))
                             else:
@@ -227,7 +262,7 @@ def prepare_scrape_options(options: Optional[ScrapeOptions]) -> Optional[Dict[st
                                 converted_formats.append(fmt)
                         elif hasattr(fmt, 'type'):
                             if fmt.type == 'json':
-                                converted_formats.append(fmt.model_dump())
+                                converted_formats.append(_validate_json_format(fmt.model_dump()))
                             elif fmt.type == 'screenshot':
                                 normalized = {'type': 'screenshot'}
                                 if getattr(fmt, 'full_page', None) is not None:

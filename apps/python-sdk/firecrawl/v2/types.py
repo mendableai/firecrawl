@@ -127,7 +127,7 @@ class Format(BaseModel):
 class JsonFormat(Format):
     """Configuration for JSON extraction."""
     prompt: Optional[str] = None
-    schema: Optional[Dict[str, Any]] = None
+    schema: Optional[Any] = None
 
 class ChangeTrackingFormat(Format):
     """Configuration for change tracking."""
@@ -143,7 +143,7 @@ class ScreenshotFormat(BaseModel):
     quality: Optional[int] = None
     viewport: Optional[Union[Dict[str, int], Viewport]] = None
 
-FormatOption = Union[FormatString, Format, JsonFormat, ChangeTrackingFormat, ScreenshotFormat]
+FormatOption = Union[Dict[str, Any], FormatString, JsonFormat, ChangeTrackingFormat, ScreenshotFormat, Format]
 
 # Scrape types
 class ScrapeFormats(BaseModel):
@@ -170,7 +170,8 @@ class ScrapeFormats(BaseModel):
             if isinstance(format_item, str):
                 normalized_formats.append(Format(type=format_item))
             elif isinstance(format_item, dict):
-                normalized_formats.append(Format(**format_item))
+                # Preserve dicts as-is to avoid dropping custom fields like 'schema'
+                normalized_formats.append(format_item)
             elif isinstance(format_item, Format):
                 normalized_formats.append(format_item)
             else:
