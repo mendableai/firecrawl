@@ -6,10 +6,16 @@ Firecrawl Python SDK
 import logging
 import os
 
-from .client import Firecrawl, AsyncFirecrawl
+from .client import Firecrawl, AsyncFirecrawl, FirecrawlApp, AsyncFirecrawlApp
 from .v2.watcher import Watcher
 from .v2.watcher_async import AsyncWatcher
-from .v1 import V1FirecrawlApp, AsyncV1FirecrawlApp, V1JsonConfig
+from .v1 import (
+    V1FirecrawlApp,
+    AsyncV1FirecrawlApp,
+    V1JsonConfig,
+    V1ScrapeOptions,
+    V1ChangeTrackingOptions,
+)
 
 __version__ = "3.0.0"
 
@@ -69,6 +75,8 @@ logger.debug("Debugging logger setup")
 __all__ = [
     'Firecrawl',
     'AsyncFirecrawl',
+    'FirecrawlApp',
+    'AsyncFirecrawlApp',
     'Watcher',
     'AsyncWatcher',
     'V1FirecrawlApp',
