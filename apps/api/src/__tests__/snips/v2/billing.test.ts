@@ -15,7 +15,7 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run all scrape operations in parallel with Promise.all
             const [scrape1, scrape2, scrape3] = await Promise.all([
@@ -52,7 +52,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(7);
         }, 120000);
@@ -63,7 +63,7 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run both scrape operations in parallel with Promise.all
             const [scrape1, scrape2] = await Promise.all([
@@ -105,7 +105,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(12);
         }, 600000);
@@ -116,7 +116,7 @@ describe("Billing tests", () => {
                 credits: 200,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run both crawl operations in parallel with Promise.all
             const [crawl1, crawl2] = await Promise.all([
@@ -151,7 +151,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             if (crawl1.success && crawl2.success) {
                 expect(rc1 - rc2).toBe(crawl1.completed + crawl2.completed * 5);
@@ -164,10 +164,10 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             await map({ url: "https://firecrawl.dev" }, identity);
             await sleepForBatchBilling();
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
             expect(rc1 - rc2).toBe(1);
         }, 60000);
 
@@ -177,7 +177,7 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
 
             const results = await search({
                 query: "firecrawl"
@@ -185,7 +185,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(results.web?.length ?? 0);
         }, 60000);
@@ -196,7 +196,7 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
 
             const results = await search({
                 query: "firecrawl",
@@ -207,7 +207,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(results.web?.length ?? 0);
         }, 600000);
@@ -218,7 +218,7 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
 
             const results = await search({
                 query: "firecrawl filetype:pdf",
@@ -230,7 +230,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             const shouldUse = results.web?.reduce((sum, doc) => sum + (doc.metadata?.numPages || 1), 0) ?? 0;
 
@@ -243,7 +243,7 @@ describe("Billing tests", () => {
                 credits: 100,
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
 
             const results = await search({
                 query: "firecrawl filetype:pdf",
@@ -255,7 +255,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             const expectedCredits = results.web?.length ?? 0;
 
@@ -271,7 +271,7 @@ describe("Billing tests", () => {
                 }
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run all scrape operations in parallel with Promise.all
             const [scrape1, scrape2, scrape3] = await Promise.all([
@@ -311,7 +311,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(10);
         }, 120000);
@@ -325,7 +325,7 @@ describe("Billing tests", () => {
                 }
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run both scrape operations in parallel with Promise.all
             const [scrape1, scrape2] = await Promise.all([
@@ -369,7 +369,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(16);
         }, 600000);
@@ -383,7 +383,7 @@ describe("Billing tests", () => {
                 }
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run both crawl operations in parallel with Promise.all
             const [crawl1, crawl2] = await Promise.all([
@@ -420,7 +420,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             if (crawl1.success && crawl2.success) {
                 expect(rc1 - rc2).toBe(crawl1.completed * 2 + crawl2.completed * 6);
@@ -437,7 +437,7 @@ describe("Billing tests", () => {
                 }
             });
 
-            const rc1 = (await creditUsage(identity)).remaining_credits;
+            const rc1 = (await creditUsage(identity)).remainingCredits;
             
             // Run all scrape operations in parallel with Promise.all
             const [scrape1, scrape2, scrape3] = await Promise.all([
@@ -477,7 +477,7 @@ describe("Billing tests", () => {
 
             await sleepForBatchBilling();
 
-            const rc2 = (await creditUsage(identity)).remaining_credits;
+            const rc2 = (await creditUsage(identity)).remainingCredits;
 
             expect(rc1 - rc2).toBe(7);
         }, 120000);

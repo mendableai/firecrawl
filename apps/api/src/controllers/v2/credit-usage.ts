@@ -14,7 +14,7 @@ export async function creditUsageController(
       res.json({
         success: true,
         data: {
-          remaining_credits: req.acuc.remaining_credits,
+          remainingCredits: req.acuc.remaining_credits,
         },
       });
       return;
@@ -33,7 +33,7 @@ export async function creditUsageController(
     res.json({
       success: true,
       data: {
-        remaining_credits: chunk.remaining_credits,
+        remainingCredits: chunk.remaining_credits,
       },
     });
   } catch (error) {

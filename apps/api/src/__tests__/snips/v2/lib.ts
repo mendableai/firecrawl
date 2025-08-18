@@ -292,7 +292,7 @@ export async function search(body: SearchRequestInput, identity: Identity): Prom
 // Billing API
 // =========================================
 
-export async function creditUsage(identity: Identity): Promise<{ remaining_credits: number }> {
+export async function creditUsage(identity: Identity): Promise<{ remainingCredits: number }> {
     const req = (await request(TEST_URL)
     .get("/v2/team/credit-usage")
     .set("Authorization", `Bearer ${identity.apiKey}`)
