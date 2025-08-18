@@ -30,5 +30,5 @@ jobs:
 
           - name: 'Build Inventory Image'
             run: |
-              docker build . --tag ghcr.io/mendableai/firecrawl-redis:latest
-              docker push ghcr.io/mendableai/firecrawl-redis:latest
+              docker build . --tag ghcr.io/firecrawl/firecrawl-redis:latest
+              docker push ghcr.io/firecrawl/firecrawl-redis:latest

@@ -1,19 +1,19 @@
 <h3 align="center">
   <a name="readme-top"></a>
   <img
-    src="https://raw.githubusercontent.com/mendableai/firecrawl/main/img/firecrawl_logo.png"
+    src="https://raw.githubusercontent.com/firecrawl/firecrawl/main/img/firecrawl_logo.png"
     height="200"
   >
 </h3>
 <div align="center">
-    <a href="https://github.com/mendableai/firecrawl/blob/main/LICENSE">
-  <img src="https://img.shields.io/github/license/mendableai/firecrawl" alt="License">
+    <a href="https://github.com/firecrawl/firecrawl/blob/main/LICENSE">
+  <img src="https://img.shields.io/github/license/firecrawl/firecrawl" alt="License">
 </a>
     <a href="https://pepy.tech/project/firecrawl-py">
   <img src="https://static.pepy.tech/badge/firecrawl-py" alt="Downloads">
 </a>
-<a href="https://GitHub.com/mendableai/firecrawl/graphs/contributors">
-  <img src="https://img.shields.io/github/contributors/mendableai/firecrawl.svg" alt="GitHub Contributors">
+<a href="https://GitHub.com/firecrawl/firecrawl/graphs/contributors">
+  <img src="https://img.shields.io/github/contributors/firecrawl/firecrawl.svg" alt="GitHub Contributors">
 </a>
 <a href="https://firecrawl.dev">
   <img src="https://img.shields.io/badge/Visit-firecrawl.dev-orange" alt="Visit firecrawl.dev">
@@ -45,8 +45,8 @@ _This repository is in development, and we’re still integrating custom modules
 
 _Pst. hey, you, join our stargazers :)_
 
-<a href="https://github.com/mendableai/firecrawl">
-  <img src="https://img.shields.io/github/stars/mendableai/firecrawl.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
+<a href="https://github.com/firecrawl/firecrawl">
+  <img src="https://img.shields.io/github/stars/firecrawl/firecrawl.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
 </a>
 
 ## How to use it?
@@ -62,7 +62,7 @@ Check out the following resources to get started:
 - [x] **Others**: [Zapier](https://zapier.com/apps/firecrawl/integrations), [Pabbly Connect](https://www.pabbly.com/connect/integrations/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
-To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
+To run locally, refer to guide [here](https://github.com/firecrawl/firecrawl/blob/main/CONTRIBUTING.md).
 
 ### API Key
 
@@ -620,7 +620,7 @@ To deliver the best possible product, we offer a hosted version of Firecrawl alo
 
 Firecrawl Cloud is available at [firecrawl.dev](https://firecrawl.dev) and offers a range of features that are not available in the open source version:
 
-![Open Source vs Cloud Offering](https://raw.githubusercontent.com/mendableai/firecrawl/main/img/open-source-cloud.png)
+![Open Source vs Cloud Offering](https://raw.githubusercontent.com/firecrawl/firecrawl/main/img/open-source-cloud.png)
 
 
 ## Contributing
@@ -631,8 +631,8 @@ _It is the sole responsibility of the end users to respect websites' policies wh
 
 ## Contributors
 
-<a href="https://github.com/mendableai/firecrawl/graphs/contributors">
-  <img alt="contributors" src="https://contrib.rocks/image?repo=mendableai/firecrawl"/>
+<a href="https://github.com/firecrawl/firecrawl/graphs/contributors">
+  <img alt="contributors" src="https://contrib.rocks/image?repo=firecrawl/firecrawl"/>
 </a>
 
 ## License Disclaimer

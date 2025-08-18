@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mendableai/firecrawl.git"
+    "url": "git+https://github.com/firecrawl/firecrawl.git"
   },
   "author": "Mendable.ai",
   "license": "MIT",
@@ -32,9 +32,9 @@
     "zod-to-json-schema": "^3.23.0"
   },
   "bugs": {
-    "url": "https://github.com/mendableai/firecrawl/issues"
+    "url": "https://github.com/firecrawl/firecrawl/issues"
   },
-  "homepage": "https://github.com/mendableai/firecrawl#readme",
+  "homepage": "https://github.com/firecrawl/firecrawl#readme",
   "devDependencies": {
     "@jest/globals": "^30.0.5",
     "@types/dotenv": "^8.2.0",
