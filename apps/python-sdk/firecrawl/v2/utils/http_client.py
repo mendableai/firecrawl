@@ -84,8 +84,6 @@ class HttpClient:
         if headers is None:
             headers = self._prepare_headers()
 
-        headers['origin'] = f'python-sdk@{version}'
-
         url = f"{self.api_url}{endpoint}"
         
         last_exception = None
@@ -125,8 +123,6 @@ class HttpClient:
         """Make a DELETE request with retry logic."""
         if headers is None:
             headers = self._prepare_headers()
-
-        headers['origin'] = f'python-sdk@{version}'
             
         url = f"{self.api_url}{endpoint}"
         

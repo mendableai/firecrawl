@@ -95,7 +95,7 @@ describe("v2.crawl e2e", () => {
   test("get active crawls with running crawl", async () => {
     if (!client) throw new Error();
     const start = await client.startCrawl("https://docs.firecrawl.dev", { limit: 5 });
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 300));
     const active = await client.getActiveCrawls();
     expect(Array.isArray(active.crawls)).toBe(true);
     const ids = active.crawls.map(c => c.id);
