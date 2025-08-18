@@ -37,6 +37,18 @@ import type {
 } from "./types";
 import { Watcher } from "./watcher";
 import type { WatcherOptions } from "./watcher";
+import type { ZodTypeAny, infer as ZodInfer } from "zod";
+
+// Helper types to infer the `json` field from a Zod schema included in `formats`
+type ExtractJsonSchemaFromFormats<Formats> = Formats extends readonly any[]
+  ? Extract<Formats[number], { type: "json"; schema?: unknown }>["schema"]
+  : never;
+
+type InferredJsonFromOptions<Opts> = Opts extends { formats?: infer Fmts }
+  ? ExtractJsonSchemaFromFormats<Fmts> extends ZodTypeAny
+    ? ZodInfer<ExtractJsonSchemaFromFormats<Fmts>>
+    : unknown
+  : unknown;
 
 /**
  * Configuration for the v2 client transport.
@@ -86,6 +98,11 @@ export class FirecrawlClient {
    * @param options Optional scrape options (formats, headers, etc.).
    * @returns Resolved document with requested formats.
    */
+  async scrape<Opts extends ScrapeOptions>(
+    url: string,
+    options: Opts
+  ): Promise<Omit<Document, "json"> & { json?: InferredJsonFromOptions<Opts> }>;
+  async scrape(url: string, options?: ScrapeOptions): Promise<Document>;
   async scrape(url: string, options?: ScrapeOptions): Promise<Document> {
     return scrape(this.http, url, options);
   }
