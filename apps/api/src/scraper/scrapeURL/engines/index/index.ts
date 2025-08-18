@@ -140,11 +140,51 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
     const normalizedURL = normalizeURLForIndex(meta.url);
     const urlHash = hashURL(normalizedURL);
 
+    let maxAge: number;
+    if (meta.options.maxAge !== undefined) {
+        maxAge = meta.options.maxAge;
+    } else {
+        const domainSplitsHash = generateDomainSplits(new URL(meta.url).hostname).map(x => hashURL(x));
+        const level = domainSplitsHash.length - 1;
+
+        if (domainSplitsHash.length === 0 || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || process.env.USE_DB_AUTHENTICATION !== "true") {
+            maxAge = 2 * 24 * 60 * 60 * 1000; // 2 days
+        } else {
+            try {
+                maxAge = await Promise.race([
+                    (async () => {
+                        const { data, error } = await index_supabase_service
+                            .rpc("query_max_age", {
+                                i_domain_hash: domainSplitsHash[level],
+                            });
+                        
+                        if (error || !data || data.length === 0) {
+                            meta.logger.warn("Failed to get max age from DB", {
+                                error,
+                            });
+                            return 2 * 24 * 60 * 60 * 1000; // 2 days
+                        }
+
+                        return data[0].max_age ?? 2 * 24 * 60 * 60 * 1000; // 2 days
+                    })(),
+                    new Promise(resolve => setTimeout(() => {
+                        resolve(2 * 24 * 60 * 60 * 1000); // 2 days
+                    }, 200)),
+                ]);
+            } catch (e) {
+                meta.logger.warn("Failed to get max age from DB", {
+                    error: e,
+                });
+                maxAge = 2 * 24 * 60 * 60 * 1000; // 2 days
+            }
+        }
+    }
+
     let selector = index_supabase_service
         .from("index")
         .select("id, created_at, status")
         .eq("url_hash", urlHash)
-        .gte("created_at", new Date(Date.now() - meta.options.maxAge).toISOString())
+        .gte("created_at", new Date(Date.now() - maxAge).toISOString())
         .eq("is_mobile", meta.options.mobile)
         .eq("block_ads", meta.options.blockAds);
     
