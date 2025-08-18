@@ -12,8 +12,8 @@ export function ensureValidFormats(formats?: FormatOption[]): void {
     }
     if ((fmt as JsonFormat).type === "json") {
       const j = fmt as JsonFormat;
-      if (!j.prompt || !j.schema) {
-        throw new Error("json format requires 'prompt' and 'schema'");
+      if (!j.prompt && !j.schema) {
+        throw new Error("json format requires either 'prompt' or 'schema' (or both)");
       }
       // Flexibility: allow passing a Zod schema. Convert to JSON schema internally.
       const maybeSchema: any = j.schema as any;

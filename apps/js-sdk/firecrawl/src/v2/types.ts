@@ -22,8 +22,8 @@ export interface Format {
 
 export interface JsonFormat extends Format {
   type: "json";
-  prompt: string;
-  schema: Record<string, unknown> | ZodTypeAny;
+  prompt?: string;
+  schema?: Record<string, unknown> | ZodTypeAny;
 }
 
 export interface ScreenshotFormat {
