@@ -1,5 +1,4 @@
-import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions } from "../../../controllers/v1/types";
-import { logger } from "../../logger";
+import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../../controllers/v2/types";
 import { getScrapeQueue } from "../../../services/queue-service";
 import { waitForJob } from "../../../services/queue-jobs";
 import { addScrapeJob } from "../../../services/queue-jobs";
@@ -40,15 +39,17 @@ export async function scrapeDocument_F0(
       from_extract: true,
     });
 
+    const scrapeOptions = scrapeOptionsSchema.parse({
+      ...internalScrapeOptions,
+      maxAge: 4 * 60 * 60 * 1000,
+    });
+
     await addScrapeJob(
       {
         url: options.url,
         mode: "single_urls",
         team_id: options.teamId,
-        scrapeOptions: scrapeOptions.parse({
-          ...internalScrapeOptions,
-          maxAge: 4 * 60 * 60 * 1000,
-        }),
+        scrapeOptions,
         internalOptions: {
           teamId: options.teamId,
           bypassBilling: true,

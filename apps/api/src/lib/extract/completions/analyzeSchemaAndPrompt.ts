@@ -53,7 +53,6 @@ export async function analyzeSchemaAndPrompt(
     const { extract: result, totalUsage } = await generateCompletions({
       logger,
       options: {
-        mode: "llm",
         schema: checkSchema,
         prompt: buildAnalyzeSchemaUserPrompt(schemaString, prompt, urls),
         systemPrompt: buildAnalyzeSchemaPrompt(),

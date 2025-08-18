@@ -6,7 +6,7 @@ import {
   cleanBefore24hCompleteJobsController,
   queuesController,
 } from "../controllers/v0/admin/queue";
-import { wrap } from "./v1";
+import { wrap } from "./shared";
 import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
 import { checkFireEngine } from "../controllers/v0/admin/check-fire-engine";
 import { cclogController } from "../controllers/v0/admin/cclog";

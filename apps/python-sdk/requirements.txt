@@ -1,5 +1,7 @@
 requests
+httpx
 pytest
+pytest-asyncio
 python-dotenv
 websockets
 nest-asyncio

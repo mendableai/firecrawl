@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
+import { v2Router } from "./routes/v2";
 import domainFrequencyRouter from "./routes/domain-frequency";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { LangfuseExporter } from "langfuse-vercel";
@@ -112,6 +113,7 @@ app.get("/test", async (req, res) => {
 // register router
 app.use(v0Router);
 app.use("/v1", v1Router);
+app.use("/v2", v2Router);
 app.use(adminRouter);
 app.use(domainFrequencyRouter);
 
@@ -247,7 +249,7 @@ app.use(
 
       res
         .status(400)
-        .json({ success: false, error: "Bad Request", details: err.errors });
+        .json({ success: false, code: "BAD_REQUEST", error: "Bad Request", details: err.errors });
     } else {
       next(err);
     }
@@ -271,7 +273,7 @@ app.use(
     ) {
       return res
         .status(400)
-        .json({ success: false, error: "Bad request, malformed JSON" });
+        .json({ success: false, code: "BAD_REQUEST_INVALID_JSON", error: "Bad request, malformed JSON" });
     }
 
     const id = res.sentry ?? uuidv4();
@@ -285,6 +287,7 @@ app.use(
     { error: err, errorId: id, path: req.path, teamId: req.acuc?.team_id, team_id: req.acuc?.team_id });
     res.status(500).json({
       success: false,
+      code: "UNKNOWN_ERROR",
       error:
         "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
         id,

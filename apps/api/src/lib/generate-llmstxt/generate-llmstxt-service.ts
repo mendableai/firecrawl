@@ -168,7 +168,6 @@ export async function performGenerateLlmsTxt(
               model: getModel("gpt-4o-mini", "openai"),
               options: {
                 systemPrompt: "",
-                mode: "llm",
                 schema: descriptionSchema,
                 prompt: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${document.metadata?.url}. This will help in a user finding the page for its intended purpose.`,
               },

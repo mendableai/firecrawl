@@ -2,17 +2,15 @@ import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob, generateDomainSplits, addOMCEJob, addDomainFrequencyJob } from "../../../../services";
-import { EngineError, IndexMissError, TimeoutError } from "../../error";
+import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
-   
-
     const shouldCache = meta.options.storeInCache
         && !meta.internalOptions.zeroDataRetention
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
-        && !(meta.winnerEngine === "pdf" && meta.options.parsePDF === false)
+        && !(meta.winnerEngine === "pdf" && meta.options.parsers?.includes("pdf") === false)
         && (
             meta.internalOptions.teamId === "sitemap"
             || (
@@ -56,6 +54,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                     error: document.metadata.error,
                     screenshot: document.screenshot,
                     numPages: document.metadata.numPages,
+                    contentType: document.metadata.contentType,
                 });
             } catch (error) {
                 meta.logger.error("Failed to save document to index", {
@@ -137,15 +136,55 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
 
 const errorCountToRegister = 3;
 
-export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefined): Promise<EngineScrapeResult> {
+export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult> {
     const normalizedURL = normalizeURLForIndex(meta.url);
     const urlHash = hashURL(normalizedURL);
+
+    let maxAge: number;
+    if (meta.options.maxAge !== undefined) {
+        maxAge = meta.options.maxAge;
+    } else {
+        const domainSplitsHash = generateDomainSplits(new URL(meta.url).hostname).map(x => hashURL(x));
+        const level = domainSplitsHash.length - 1;
+
+        if (domainSplitsHash.length === 0 || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || process.env.USE_DB_AUTHENTICATION !== "true") {
+            maxAge = 2 * 24 * 60 * 60 * 1000; // 2 days
+        } else {
+            try {
+                maxAge = await Promise.race([
+                    (async () => {
+                        const { data, error } = await index_supabase_service
+                            .rpc("query_max_age", {
+                                i_domain_hash: domainSplitsHash[level],
+                            });
+                        
+                        if (error || !data || data.length === 0) {
+                            meta.logger.warn("Failed to get max age from DB", {
+                                error,
+                            });
+                            return 2 * 24 * 60 * 60 * 1000; // 2 days
+                        }
+
+                        return data[0].max_age ?? 2 * 24 * 60 * 60 * 1000; // 2 days
+                    })(),
+                    new Promise(resolve => setTimeout(() => {
+                        resolve(2 * 24 * 60 * 60 * 1000); // 2 days
+                    }, 200)),
+                ]);
+            } catch (e) {
+                meta.logger.warn("Failed to get max age from DB", {
+                    error: e,
+                });
+                maxAge = 2 * 24 * 60 * 60 * 1000; // 2 days
+            }
+        }
+    }
 
     let selector = index_supabase_service
         .from("index")
         .select("id, created_at, status")
         .eq("url_hash", urlHash)
-        .gte("created_at", new Date(Date.now() - meta.options.maxAge).toISOString())
+        .gte("created_at", new Date(Date.now() - maxAge).toISOString())
         .eq("is_mobile", meta.options.mobile)
         .eq("block_ads", meta.options.blockAds);
     
@@ -166,14 +205,9 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
         selector = selector.is("location_languages", null);
     }
 
-    const { data, error } = await Promise.race([
-        selector
-            .order("created_at", { ascending: false })
-            .limit(5),
-        new Promise<{ data: { id: any; created_at: any; status: any }[], error: any }>((resolve, reject) => {
-            setTimeout(() => reject(new TimeoutError()), timeToRun ?? 10000);
-        }),
-    ]);
+    const { data, error } = await selector
+        .order("created_at", { ascending: false })
+        .limit(5);
 
     if (error || !data) {
         throw new EngineError("Failed to retrieve URL from DB index", {
@@ -212,13 +246,13 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
     const isCachedPdfBase64 = doc.html && doc.html.startsWith("JVBERi");
     
     // If the cached content is base64 PDF but we want parsed PDF (parsePDF:true or default)
-    if (isCachedPdfBase64 && meta.options.parsePDF !== false) {
+    if (isCachedPdfBase64 && meta.options.parsers?.includes("pdf") !== false) {
         // Cached content is unparsed PDF, but we want parsed - report cache miss
         throw new IndexMissError();
     }
     
     // If the cached content is NOT base64 PDF but we want unparsed PDF (parsePDF:false)
-    if (!isCachedPdfBase64 && meta.options.parsePDF === false) {
+    if (!isCachedPdfBase64 && meta.options.parsers?.includes("pdf") === false) {
         // Check if URL looks like a PDF
         const isPdfUrl = meta.url.toLowerCase().endsWith(".pdf") || meta.url.includes(".pdf?");
         if (isPdfUrl) {
@@ -234,11 +268,16 @@ export async function scrapeURLWithIndex(meta: Meta, timeToRun: number | undefin
         error: doc.error,
         screenshot: doc.screenshot,
         numPages: doc.numPages,
-
+        contentType: doc.contentType,
+        
         cacheInfo: {
             created_at: new Date(data[0].created_at),
         },
 
         proxyUsed: doc.proxyUsed ?? "basic",
     };
+}
+
+export function indexMaxReasonableTime(meta: Meta): number {
+  return 1500;
 }

@@ -10,6 +10,7 @@ import {
 import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
+import { fromV1ScrapeOptions } from "../v2/types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -53,7 +54,7 @@ export async function crawlController(
     url: undefined,
     scrapeOptions: undefined,
   };
-  const scrapeOptions = req.body.scrapeOptions;
+  const { scrapeOptions, internalOptions } = fromV1ScrapeOptions(req.body.scrapeOptions, req.body.scrapeOptions.timeout, req.auth.team_id);
 
   // TODO: @rafa, is this right? copied from v0
   if (Array.isArray(crawlerOptions.includePaths)) {
@@ -89,6 +90,7 @@ export async function crawlController(
     crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
     scrapeOptions,
     internalOptions: {
+      ...internalOptions,
       disableSmartWaitCache: true,
       teamId: req.auth.team_id,
       saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,

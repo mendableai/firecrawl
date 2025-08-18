@@ -232,7 +232,6 @@ export async function rerankLinksWithLLM_F0(options: RerankerOptions, costTracki
               retry,
             }),
             options: {
-              mode: "llm",
               systemPrompt: buildRerankerSystemPrompt_F0(),
               prompt: buildRerankerUserPrompt_F0(searchQuery),
               schema: schema,
