@@ -57,3 +57,38 @@ export async function createPaymentIntent(
     return { return_status: "failed", charge_id: "" };
   }
 }
+
+export async function createInvoiceForAutoRecharge(
+  team_id: string,
+  customer_id: string,
+): Promise<{ return_status: ReturnStatus; invoice_id: string }> {
+  try {
+    await stripe.invoiceItems.create({
+      customer: customer_id,
+      amount: 1100,
+      currency: "usd",
+      description: "Firecrawl: Auto re-charge of 1000 credits",
+    });
+    
+    const invoice = await stripe.invoices.create({
+      customer: customer_id,
+      auto_advance: true, // auto-finalize & attempt payment
+      description: `Firecrawl Auto-Recharge: Team ${team_id}`,
+    });
+    
+    if (invoice.status === "paid") {
+      logger.info(`Invoice payment succeeded for team: ${team_id}`);
+      return { return_status: "succeeded", invoice_id: invoice.id };
+    } else if (invoice.status === "open") {
+      logger.warn(`Invoice payment requires further action for team: ${team_id}`);
+      return { return_status: "requires_action", invoice_id: invoice.id };
+    } else {
+      logger.error(`Invoice payment failed for team: ${team_id}`);
+      return { return_status: "failed", invoice_id: invoice.id };
+    }
+  } catch (error) {
+    logger.error(`Failed to create invoice for team: ${team_id}`);
+    console.error(error);
+    return { return_status: "failed", invoice_id: "" };
+  }
+}
