@@ -227,11 +227,19 @@ export async function getMapResults({
       }
     }
 
-    mapResults = mapResults.concat(searchResults.flat().map(x => ({
-      url: x.url,
-      title: x.title,
-      description: x.description,
-    })));
+    if (search) {
+      mapResults = searchResults.flat().map<MapDocument>(x => ({
+        url: x.url,
+        title: x.title,
+        description: x.description,
+      }) satisfies MapDocument).concat(mapResults);
+    } else {
+      mapResults = mapResults.concat(searchResults.flat().map(x => ({
+        url: x.url,
+        title: x.title,
+        description: x.description,
+      })));
+    }
 
     const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
     if (mapResults.length > minumumCutoff) {
