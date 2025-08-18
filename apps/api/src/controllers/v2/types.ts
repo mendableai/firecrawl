@@ -596,12 +596,13 @@ export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions
-  .omit({ sitemap: true })
+  .omit({ sitemap: true, ignoreQueryParameters: true })
   .extend({
     url,
     origin: z.string().optional().default("api"),
     integration: z.nativeEnum(IntegrationEnum).optional().transform(val => val || null),
     includeSubdomains: z.boolean().default(true),
+    ignoreQueryParameters: z.boolean().default(true),
     search: z.string().optional(),
     sitemap: z.enum(["only", "include", "skip"]).default("include"),
     limit: z.number().min(1).max(30000).default(5000),
