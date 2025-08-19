@@ -4,31 +4,15 @@ import {
   type CrawlJob,
   type CrawlResponse,
   type Document,
-  type ScrapeOptions,
-  type WebhookConfig,
+  type CrawlOptions,
 } from "../types";
 import { HttpClient } from "../utils/httpClient";
 import { ensureValidScrapeOptions } from "../utils/validation";
 import { normalizeAxiosError, throwForBadResponse } from "../utils/errorHandler";
 
-export interface CrawlRequest {
+export type CrawlRequest = CrawlOptions & {
   url: string;
-  prompt?: string | null;
-  excludePaths?: string[] | null;
-  includePaths?: string[] | null;
-  maxDiscoveryDepth?: number | null;
-  sitemap?: "skip" | "include";
-  ignoreQueryParameters?: boolean;
-  limit?: number | null;
-  crawlEntireDomain?: boolean;
-  allowExternalLinks?: boolean;
-  allowSubdomains?: boolean;
-  delay?: number | null;
-  maxConcurrency?: number | null;
-  webhook?: string | WebhookConfig | null;
-  scrapeOptions?: ScrapeOptions | null;
-  zeroDataRetention?: boolean;
-}
+};
 
 function prepareCrawlPayload(request: CrawlRequest): Record<string, unknown> {
   if (!request.url || !request.url.trim()) throw new Error("URL cannot be empty");

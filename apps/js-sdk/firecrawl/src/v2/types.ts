@@ -196,6 +196,24 @@ export interface SearchRequest {
   scrapeOptions?: ScrapeOptions;
 }
 
+export interface CrawlOptions {
+  prompt?: string | null;
+  excludePaths?: string[] | null;
+  includePaths?: string[] | null;
+  maxDiscoveryDepth?: number | null;
+  sitemap?: "skip" | "include";
+  ignoreQueryParameters?: boolean;
+  limit?: number | null;
+  crawlEntireDomain?: boolean;
+  allowExternalLinks?: boolean;
+  allowSubdomains?: boolean;
+  delay?: number | null;
+  maxConcurrency?: number | null;
+  webhook?: string | WebhookConfig | null;
+  scrapeOptions?: ScrapeOptions | null;
+  zeroDataRetention?: boolean;
+}
+
 export interface CrawlResponse {
   id: string;
   url: string;
@@ -209,6 +227,17 @@ export interface CrawlJob {
   expiresAt?: string;
   next?: string | null;
   data: Document[];
+}
+
+export interface BatchScrapeOptions {
+  options?: ScrapeOptions;
+  webhook?: string | WebhookConfig;
+  appendToId?: string;
+  ignoreInvalidURLs?: boolean;
+  maxConcurrency?: number;
+  zeroDataRetention?: boolean;
+  integration?: string;
+  idempotencyKey?: string;
 }
 
 export interface BatchScrapeResponse {
