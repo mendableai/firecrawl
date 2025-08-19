@@ -1119,6 +1119,8 @@ export function fromV1ScrapeOptions(
   delete (spreadScrapeOptions as any).webhook;
   delete (spreadScrapeOptions as any).zeroDataRetention;
   delete (spreadScrapeOptions as any).maxConcurrency;
+  // v2 scrapeOptions schema is strict and does not include `agent`. We carry it via internalOptions below.
+  delete (spreadScrapeOptions as any).agent;
   
   delete spreadScrapeOptions.__experimental_cache;
   delete spreadScrapeOptions.jsonOptions;
