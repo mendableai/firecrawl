@@ -252,7 +252,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
     CString::new(metadata_out).unwrap().into_raw()
 }
 
-const EXCLUDE_NON_MAIN_TAGS: [&str; 41] = [
+const EXCLUDE_NON_MAIN_TAGS: [&str; 42] = [
     "header",
     "footer",
     "nav",
@@ -294,6 +294,7 @@ const EXCLUDE_NON_MAIN_TAGS: [&str; 41] = [
     "#widget",
     ".cookie",
     "#cookie",
+    ".fc-decoration",
 ];
 
 const FORCE_INCLUDE_MAIN_TAGS: [&str; 13] = [
