@@ -2331,30 +2331,40 @@ class FirecrawlApp:
             action (str): Description of the action that was being performed.
 
         Raises:
-            Exception: An exception with a message containing the status code and error details from the response.
+            requests.exceptions.HTTPError: A detailed error with message containing the status code, action, and error details.
         """
+        error_message = "Unknown error occurred"
+        error_details = "No additional details available"
+        
+        # First try to parse JSON response
         try:
             response_json = response.json()
-            error_message = response_json.get('error', 'No error message provided.')
-            error_details = response_json.get('details', 'No additional error details provided.')
-        except:
-            # If we can't parse JSON, provide a helpful error message with response content
+            if isinstance(response_json, dict):
+                error_message = response_json.get('error', error_message)
+                if 'details' in response_json:
+                    error_details = json.dumps(response_json['details']) if isinstance(response_json['details'], (dict, list)) else str(response_json['details'])
+        except (json.JSONDecodeError, ValueError):
+            # If JSON parsing fails, try to get raw response text
             try:
-                response_text = response.text[:500]  # Limit to first 500 chars
-                if response_text.strip():
+                response_text = response.text[:500].strip()  # Limit to first 500 chars
+                if response_text:
                     error_message = f"Server returned non-JSON response: {response_text}"
                     error_details = f"Full response status: {response.status_code}"
                 else:
                     error_message = f"Server returned empty response with status {response.status_code}"
-                    error_details = "No additional details available"
-            except ValueError:
+            except Exception:
                 error_message = f"Server returned unreadable response with status {response.status_code}"
-                error_details = "No additional details available"
-        
-        message = self._get_error_message(response.status_code, action, error_message, error_details)
 
-        # Raise an HTTPError with the custom message and attach the response
-        raise requests.exceptions.HTTPError(message, response=response)
+        # Get formatted error message
+        message = self._get_error_message(response.status_code, action, error_message, error_details)
+        
+        # Create HTTPError with detailed message
+        error = requests.exceptions.HTTPError(message, response=response)
+        error.status_code = response.status_code
+        error.error_message = error_message
+        error.error_details = error_details
+        
+        raise error
 
     def _get_error_message(self, status_code: int, action: str, error_message: str, error_details: str) -> str:
         """
@@ -2369,18 +2379,30 @@ class FirecrawlApp:
         Returns:
             str: A formatted error message
         """
-        if status_code == 402:
-            return f"Payment Required: Failed to {action}. {error_message} - {error_details}"
-        elif status_code == 403:
-            return f"Website Not Supported: Failed to {action}. {error_message} - {error_details}"
-        elif status_code == 408:
-            return f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
-        elif status_code == 409:
-            return f"Conflict: Failed to {action} due to a conflict. {error_message} - {error_details}"
-        elif status_code == 500:
-            return f"Internal Server Error: Failed to {action}. {error_message} - {error_details}"
-        else:
-            return f"Unexpected error during {action}: Status code {status_code}. {error_message} - {error_details}"
+        # Base error template with consistent formatting
+        error_template = "{prefix}Failed to {action}. {error_message}"
+        details_suffix = f" - Additional details: {error_details}" if error_details and error_details != "No additional error details provided." else ""
+        
+        # Map status codes to descriptive prefixes
+        status_prefixes = {
+            400: "Bad Request: ",
+            401: "Unauthorized: ",
+            402: "Payment Required: ",
+            403: "Website Not Supported/Blocked: ",  # Updated to be more descriptive
+            404: "Not Found: ",
+            408: "Request Timeout: ",
+            409: "Conflict: ",
+            429: "Too Many Requests: ",
+            500: "Internal Server Error: ",
+            502: "Bad Gateway: ",
+            503: "Service Unavailable: ",
+            504: "Gateway Timeout: "
+        }
+        
+        prefix = status_prefixes.get(status_code, f"HTTP {status_code}: ")
+        message = error_template.format(prefix=prefix, action=action, error_message=error_message)
+        
+        return message + details_suffix
 
     def deep_research(
             self,
