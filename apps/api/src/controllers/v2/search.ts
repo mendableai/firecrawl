@@ -12,9 +12,7 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
-import { getJobPriority } from "../../lib/job-priority";
 import { Mode } from "../../types";
-import { getScrapeQueue } from "../../services/queue-service";
 import { search } from "../../search/v2";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import * as Sentry from "@sentry/node";
@@ -46,10 +44,6 @@ async function scrapeSearchResult(
   isSearchPreview: boolean = false,
 ): Promise<DocumentWithCostTracking> {
   const jobId = uuidv4();
-  const jobPriority = await getJobPriority({
-    team_id: options.teamId,
-    basePriority: 10,
-  });
   
   const costTracking = new CostTracking();
 
@@ -81,13 +75,11 @@ async function scrapeSearchResult(
         startTime: Date.now(),
         zeroDataRetention,
       },
-      {},
       jobId,
-      jobPriority,
       directToBullMQ,
     );
 
-    const doc: Document = await waitForJob(jobId, options.timeout);
+    const doc: Document = await waitForJob(jobId, options.timeout, zeroDataRetention);
     
     logger.info("Scrape job completed", {
       scrapeId: jobId,
@@ -95,7 +87,7 @@ async function scrapeSearchResult(
       teamId: options.teamId,
       origin: options.origin,
     });
-    await getScrapeQueue().remove(jobId);
+    // TODONUQ: await getScrapeQueue().remove(jobId);
 
     const document = {
       title: searchResult.title,

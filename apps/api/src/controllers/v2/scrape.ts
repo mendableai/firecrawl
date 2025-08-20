@@ -9,8 +9,6 @@ import {
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
-import { getJobPriority } from "../../lib/job-priority";
-import { getScrapeQueue } from "../../services/queue-service";
 import { hasFormatOfType } from "../../lib/format-utils";
 import { TransportableError } from "../../lib/error";
 
@@ -52,10 +50,6 @@ export async function scrapeController(
   const timeout = req.body.timeout;
 
   const startTime = new Date().getTime();
-  const jobPriority = await getJobPriority({
-    team_id: req.auth.team_id,
-    basePriority: 10,
-  });
 
   const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
   
@@ -83,9 +77,7 @@ export async function scrapeController(
       startTime,
       zeroDataRetention,
     },
-    {},
     jobId,
-    jobPriority,
     isDirectToBullMQ,
   );
 
@@ -98,7 +90,7 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob(jobId, (timeout !== undefined) ? timeout + totalWait : null);
+    doc = await waitForJob(jobId, (timeout !== undefined) ? timeout + totalWait : null, zeroDataRetention);
   } catch (e) {
     logger.error(`Error in scrapeController`, {
       startTime,
@@ -106,7 +98,7 @@ export async function scrapeController(
     });
 
     if (zeroDataRetention) {
-      await getScrapeQueue().remove(jobId);
+      // TODONUQ: await getScrapeQueue().remove(jobId);
     }
 
     if (e instanceof TransportableError) {
@@ -123,7 +115,7 @@ export async function scrapeController(
     }
   }
 
-  await getScrapeQueue().remove(jobId);
+  // TODONUQ: await getScrapeQueue().remove(jobId);
   
   if (!hasFormatOfType(req.body.formats, "rawHtml")) {
     if (doc && doc.rawHtml) {

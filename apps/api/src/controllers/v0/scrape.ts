@@ -7,7 +7,6 @@ import {
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
 import {
-  fromLegacyCombo,
   TeamFlags,
   toLegacyDocument,
   url as urlSchema,
@@ -21,17 +20,13 @@ import {
   defaultOrigin,
 } from "../../lib/default-values";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
-import { getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
-import { getJobPriority } from "../../lib/job-priority";
-import { fromLegacyScrapeOptions } from "../v1/types";
 import { ZodError } from "zod";
 import { Document as V0Document } from "./../../lib/entities";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
-import { getJobFromGCS } from "../../lib/gcs-jobs";
 import { fromV0Combo } from "../v2/types";
 import { ScrapeJobTimeoutError } from "../../lib/error";
 
@@ -63,8 +58,6 @@ export async function scrapeHelper(
     };
   }
 
-  const jobPriority = await getJobPriority({ team_id, basePriority: 10 });
-
   const { scrapeOptions, internalOptions } = fromV0Combo(
     pageOptions,
     extractorOptions,
@@ -88,15 +81,13 @@ export async function scrapeHelper(
       startTime: Date.now(),
       zeroDataRetention: false, // not supported on v0
     },
-    {},
     jobId,
-    jobPriority,
   );
 
   let doc;
 
   try {
-    doc = await waitForJob(jobId, timeout);
+    doc = await waitForJob(jobId, timeout, false);
   } catch (e) {
     if (e instanceof ScrapeJobTimeoutError) {
       return {
@@ -127,7 +118,7 @@ export async function scrapeHelper(
     return err;
   }
 
-  await getScrapeQueue().remove(jobId);
+  // TODONUQ: await getScrapeQueue().remove(jobId);
 
   if (!doc) {
     console.error("!!! PANIC DOC IS", doc);

@@ -13,7 +13,6 @@ import {
   getDoneJobsOrderedUntil,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
@@ -41,7 +40,8 @@ export type DBJob = { docs: any, success: boolean, page_options: any, date_added
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([
-    getScrapeQueue().getJob(id),
+    // TODONUQ: getScrapeQueue().getJob(id),
+    null as any,
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
@@ -73,7 +73,8 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
   const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-    Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    // TODONUQ: Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    [] as any[],
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
@@ -306,50 +307,55 @@ export async function crawlStatusController(
         : undefined,
     };
   } else {
-    // old BullMQ-based path
-    const doneJobs = await getDoneJobsOrderedUntil(req.params.jobId, djoCutoff, start, end !== undefined ? end - start : 100);
+    // TODONUQ: old BullMQ-based path
+    // const doneJobs = await getDoneJobsOrderedUntil(req.params.jobId, djoCutoff, start, end !== undefined ? end - start : 100);
 
-    let scrapes: Document[] = [];
-    let iteratedOver = 0;
-    let bytes = 0;
-    const bytesLimit = 10485760; // 10 MiB in bytes
+    // let scrapes: Document[] = [];
+    // let iteratedOver = 0;
+    // let bytes = 0;
+    // const bytesLimit = 10485760; // 10 MiB in bytes
 
-    for (const jobId of doneJobs) {
-      const job = await getScrapeQueue().getJob(jobId);
-      const state = await job?.getState();
+    // for (const jobId of doneJobs) {
+    //   const job = await getScrapeQueue().getJob(jobId);
+    //   const state = await job?.getState();
 
-      if (state === "failed") {
-        // no iterated over, just ignore
-        continue;
-      } else {
-        if (job?.returnvalue) {
-          scrapes.push(job.returnvalue);
-          bytes += JSON.stringify(job.returnvalue).length;
-        } else {
-          logger.warn(
-            "Job was considered done, but returnvalue is undefined!",
-            { scrapeId: jobId, crawlId: req.params.jobId, state, returnvalue: job?.returnvalue },
-          );
-        }
+    //   if (state === "failed") {
+    //     // no iterated over, just ignore
+    //     continue;
+    //   } else {
+    //     if (job?.returnvalue) {
+    //       scrapes.push(job.returnvalue);
+    //       bytes += JSON.stringify(job.returnvalue).length;
+    //     } else {
+    //       logger.warn(
+    //         "Job was considered done, but returnvalue is undefined!",
+    //         { scrapeId: jobId, crawlId: req.params.jobId, state, returnvalue: job?.returnvalue },
+    //       );
+    //     }
 
-        iteratedOver++;
-      }
+    //     iteratedOver++;
+    //   }
 
-      if (bytes > bytesLimit) {
-        break;
-      }
-    }
+    //   if (bytes > bytesLimit) {
+    //     break;
+    //   }
+    // }
 
-    if (bytes > bytesLimit && scrapes.length !== 1) {
-      scrapes.splice(scrapes.length - 1, 1);
-      iteratedOver--;
-    }
+    // if (bytes > bytesLimit && scrapes.length !== 1) {
+    //   scrapes.splice(scrapes.length - 1, 1);
+    //   iteratedOver--;
+    // }
+
+    // outputBulkB = {
+    //   data: scrapes,
+    //   next: (outputBulkA.total ?? 0) > (start + iteratedOver)
+    //     ? `${process.env.ENV === "local" ? req.protocol : "https"}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}?skip=${start + iteratedOver}${req.query.limit ? `&limit=${req.query.limit}` : ""}`
+    //     : undefined,
+    // };
 
     outputBulkB = {
-      data: scrapes,
-      next: (outputBulkA.total ?? 0) > (start + iteratedOver)
-        ? `${process.env.ENV === "local" ? req.protocol : "https"}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}?skip=${start + iteratedOver}${req.query.limit ? `&limit=${req.query.limit}` : ""}`
-        : undefined,
+      data: [],
+      next: undefined,
     };
   }
 

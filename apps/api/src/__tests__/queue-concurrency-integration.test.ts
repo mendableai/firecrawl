@@ -121,6 +121,7 @@ describe("Queue Concurrency Integration", () => {
       Array(count)
         .fill(null)
         .map((_, i) => ({
+          jobId: crypto.randomUUID(),
           data: {
             url: `https://test${i}.com`,
             mode: "single_urls",
@@ -128,10 +129,6 @@ describe("Queue Concurrency Integration", () => {
             scrapeOptions: defaultScrapeOptions,
             zeroDataRetention: false,
           } as any,
-          opts: {
-            jobId: `job-${i}`,
-            priority: 1,
-          },
         }));
 
     it("should handle batch jobs respecting concurrency limits", async () => {

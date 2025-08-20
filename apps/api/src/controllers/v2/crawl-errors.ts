@@ -8,7 +8,6 @@ import {
   getCrawl,
   getCrawlJobs,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
@@ -19,7 +18,8 @@ import { TransportableError } from "../../lib/error";
 configDotenv();
 
 export async function getJob(id: string) {
-  const job = await getScrapeQueue().getJob(id);
+  // TODONUQ: const job = await getScrapeQueue().getJob(id);
+  const job = null as any;
   if (!job) return job;
 
   return job;
@@ -27,7 +27,8 @@ export async function getJob(id: string) {
 
 export async function getJobs(ids: string[]) {
   const jobs: (Job & { id: string })[] = (
-    await Promise.all(ids.map((x) => getScrapeQueue().getJob(x)))
+    // TODONUQ: await Promise.all(ids.map((x) => getScrapeQueue().getJob(x)))
+    [] as any[]
   ).filter((x) => x) as (Job & { id: string })[];
 
   return jobs;
@@ -46,7 +47,7 @@ export async function crawlErrorsController(
 
     let jobStatuses = await Promise.all(
       (await getCrawlJobs(req.params.jobId)).map(
-        async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
+        async (x) => [x, null as any] as const, // TODONUQ: await getScrapeQueue().getJobState(x)
       ),
     );
 

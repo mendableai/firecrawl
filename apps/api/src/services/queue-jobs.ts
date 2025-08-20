@@ -1,7 +1,5 @@
-import { getScrapeQueue, getScrapeQueueEvents } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
-import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
   getConcurrencyLimitActiveJobs,
@@ -14,16 +12,15 @@ import {
 import { logger as _logger } from "../lib/logger";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
-import { getACUC, getACUCTeam } from "../controllers/auth";
+import { getACUCTeam } from "../controllers/auth";
 import { getJobFromGCS, removeJobFromGCS } from "../lib/gcs-jobs";
 import { Document } from "../controllers/v1/types";
 import { getCrawl } from "../lib/crawl-redis";
 import { Logger } from "winston";
-import { Job } from "bullmq";
 import { ScrapeJobTimeoutError, TransportableError } from "../lib/error";
 import { deserializeTransportableError } from "../lib/error-serde";
-import { robustFetch } from '../scraper/scrapeURL/lib/fetch';
 import { abTestJob } from "./ab-test";
+import { NuQJob, nuqAddJob, nuqWaitForJob } from "./worker/nuq";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -38,28 +35,18 @@ function isCrawlOrBatchScrape(options: { crawlerOptions?: any; crawl_id?: string
 
 async function _addScrapeJobToConcurrencyQueue(
   webScraperOptions: any,
-  options: any,
   jobId: string,
-  jobPriority: number,
 ) {
   await pushConcurrencyLimitedJob(webScraperOptions.team_id, {
     id: jobId,
     data: webScraperOptions,
-    opts: {
-      ...options,
-      priority: jobPriority,
-      jobId: jobId,
-    },
-    priority: jobPriority,
   }, webScraperOptions.crawl_id ? Infinity :(webScraperOptions.scrapeOptions?.timeout ?? (60 * 1000)));
 }
 
 export async function _addScrapeJobToBullMQ(
   webScraperOptions: WebScraperOptions,
-  options: any,
   jobId: string,
-  jobPriority: number,
-): Promise<Job> {
+): Promise<NuQJob<WebScraperOptions>> {
   abTestJob(webScraperOptions);
 
   if (
@@ -76,20 +63,14 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  return await getScrapeQueue().add(jobId, webScraperOptions, {
-    ...options,
-    priority: jobPriority,
-    jobId,
-  });
+  return await nuqAddJob(jobId, webScraperOptions);
 }
 
 async function addScrapeJobRaw(
   webScraperOptions: WebScraperOptions,
-  options: any,
   jobId: string,
-  jobPriority: number,
   directToBullMQ: boolean = false,
-): Promise<Job | null> {
+): Promise<NuQJob<WebScraperOptions> | null> {
   let concurrencyLimited: "yes" | "yes-crawl" | "no" | null = null;
   let currentActiveConcurrency = 0;
   let maxConcurrency = 0;
@@ -146,43 +127,33 @@ async function addScrapeJobRaw(
 
     await _addScrapeJobToConcurrencyQueue(
       webScraperOptions,
-      options,
       jobId,
-      jobPriority,
     );
     return null;
   } else {
-    return await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
+    return await _addScrapeJobToBullMQ(webScraperOptions, jobId);
   }
 }
 
 export async function addScrapeJob(
   webScraperOptions: WebScraperOptions,
-  options: any = {},
   jobId: string = uuidv4(),
-  jobPriority: number = 10,
   directToBullMQ: boolean = false,
-): Promise<Job | null> {
-  return await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
+): Promise<NuQJob<WebScraperOptions> | null> {
+  return await addScrapeJobRaw(webScraperOptions, jobId, directToBullMQ);
 }
 
 export async function addScrapeJobs(
   jobs: {
+    jobId: string;
     data: WebScraperOptions;
-    opts: {
-      jobId: string;
-      priority: number;
-    };
   }[],
 ) {
   if (jobs.length === 0) return true;
 
   const jobsByTeam = new Map<string, {
+    jobId: string;
     data: WebScraperOptions;
-    opts: {
-      jobId: string;
-      priority: number;
-    };
   }[]>();
 
   for (const job of jobs) {
@@ -196,35 +167,23 @@ export async function addScrapeJobs(
     // == Buckets for jobs ==
     let jobsForcedToCQ: {
       data: WebScraperOptions;
-      opts: {
-        jobId: string;
-        priority: number;
-      };
+      jobId: string;
     }[] = [];
 
     let jobsPotentiallyInCQ: {
       data: WebScraperOptions;
-      opts: {
-        jobId: string;
-        priority: number;
-      };
+      jobId: string;
     }[] = [];
 
     // == Select jobs by crawl ID ==
     const jobsByCrawlID = new Map<string, {
       data: WebScraperOptions;
-      opts: {
-        jobId: string;
-        priority: number;
-      };
+      jobId: string;
     }[]>();
 
     const jobsWithoutCrawlID: {
       data: WebScraperOptions;
-      opts: {
-        jobId: string;
-        priority: number;
-      };
+      jobId: string;
     }[] = [];
 
     for (const job of teamJobs) {
@@ -299,21 +258,16 @@ export async function addScrapeJobs(
         const size = JSON.stringify(job.data).length;
         await _addScrapeJobToConcurrencyQueue(
           job.data,
-          job.opts,
-          job.opts.jobId,
-          job.opts.priority,
+          job.jobId,
         );
       }),
     );
   
     await Promise.all(
       addToBull.map(async (job) => {
-        const size = JSON.stringify(job.data).length;
         await _addScrapeJobToBullMQ(
           job.data,
-          job.opts,
-          job.opts.jobId,
-          job.opts.priority,
+          job.jobId,
         );
       }),
     );
@@ -321,29 +275,22 @@ export async function addScrapeJobs(
 }
 
 export async function waitForJob(
-  _job: Job | string,
+  job: NuQJob<WebScraperOptions> | string,
   timeout: number | null,
+  zeroDataRetention: boolean,
   logger: Logger = _logger,
 ): Promise<Document> {
-    const start = Date.now();
-    const queue = getScrapeQueue();
-    let job: Job | undefined = typeof _job == "string" ? await queue.getJob(_job) : _job;
-    while (job === undefined) {
-      logger.debug("Waiting for job to be created");
-      await new Promise(resolve => setTimeout(resolve, 500));
-      job = await queue.getJob(_job as string);
-      if (Date.now() - start > (timeout ?? 180000)) {
-        throw new ScrapeJobTimeoutError("Scrape timed out while waiting in the concurrency limit queue");
-      }
-    }
-    let doc: Document;
+    const jobId = typeof job == "string" ? job : job.id;
+    const isConcurrencyLimited = !!(typeof job === "string");
+
+    let payload: "completed" | "failed";
     try {
-      doc = await Promise.race([
-        job.waitUntilFinished(getScrapeQueueEvents(), timeout ?? 180000),
-        timeout !== null ? new Promise((resolve, reject) => {
+      payload = await Promise.race([
+        nuqWaitForJob(jobId, timeout !== null ? timeout + 100 : null),
+        timeout !== null ? new Promise<"completed" | "failed">((_resolve, reject) => {
           setTimeout(() => {
-            reject(new ScrapeJobTimeoutError("Scrape timed out" + (typeof _job === "string" ? " after waiting in the concurrency limit queue" : "")));
-          }, Math.max(0, timeout - (Date.now() - start)));
+            reject(new ScrapeJobTimeoutError("Scrape timed out" + (isConcurrencyLimited ? " after waiting in the concurrency limit queue" : "")));
+          }, timeout);
         }) : null,
       ].filter(x => x !== null));
     } catch (e) {
@@ -362,17 +309,15 @@ export async function waitForJob(
     }
     logger.debug("Got job");
     
-    if (!doc) {
-      const docs = await getJobFromGCS(job.id!);
-      logger.debug("Got job from GCS");
-      if (!docs || docs.length === 0) {
-        throw new Error("Job not found in GCS");
-      }
-      doc = docs[0];
+    const docs = await getJobFromGCS(jobId);
+    logger.debug("Got job from GCS");
+    if (!docs || docs.length === 0) {
+      throw new Error("Job not found in GCS");
+    }
+    const doc: Document = docs[0];
 
-      if (job.data?.internalOptions?.zeroDataRetention) {
-        await removeJobFromGCS(job.id!);
-      }
+    if (zeroDataRetention) {
+      await removeJobFromGCS(jobId);
     }
 
     return doc;

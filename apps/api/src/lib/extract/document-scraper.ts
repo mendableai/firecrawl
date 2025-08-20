@@ -1,5 +1,4 @@
 import { Document, ScrapeOptions, TeamFlags, URLTrace, scrapeOptions as scrapeOptionsSchema } from "../../controllers/v2/types";
-import { getScrapeQueue } from "../../services/queue-service";
 import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../job-priority";
@@ -59,14 +58,11 @@ export async function scrapeDocument(
         startTime: Date.now(),
         zeroDataRetention: false, // not supported
       },
-      {},
       jobId,
-      jobPriority,
     );
 
-    const doc = await waitForJob(jobId, timeout);
-
-    await getScrapeQueue().remove(jobId);
+    const doc = await waitForJob(jobId, timeout, false, logger);
+    // TODONUQ: await getScrapeQueue().remove(jobId);
 
     if (trace) {
       trace.timing.completedAt = new Date().toISOString();

@@ -13,7 +13,6 @@ import {
   getCrawlQualifiedJobCount,
   getDoneJobsOrderedUntil,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
@@ -41,7 +40,8 @@ export type DBJob = { docs: any, success: boolean, page_options: any, date_added
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([
-    getScrapeQueue().getJob(id),
+    // TODONUQ: getScrapeQueue().getJob(id),
+    null as any,
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
@@ -73,7 +73,8 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
   const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-    Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    // TODONUQ: Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    [] as any[],
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
@@ -315,7 +316,8 @@ export async function crawlStatusController(
     const bytesLimit = 10485760; // 10 MiB in bytes
 
     for (const jobId of doneJobs) {
-      const job = await getScrapeQueue().getJob(jobId);
+      // TODONUQ: const job = await getScrapeQueue().getJob(jobId);
+      const job = null as any;
       const state = await job?.getState();
 
       if (state === "failed") {

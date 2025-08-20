@@ -11,7 +11,6 @@ import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
-import { getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
@@ -107,7 +106,7 @@ export async function searchHelper(
     const url = x.url;
     const uuid = uuidv4();
     return {
-      name: uuid,
+      jobId: uuid,
       data: {
         url,
         mode: "single_urls" as const,
@@ -117,21 +116,17 @@ export async function searchHelper(
         startTime: Date.now(),
         zeroDataRetention: false, // not supported on v0
       },
-      opts: {
-        jobId: uuid,
-        priority: jobPriority,
-      },
     };
   });
 
   // TODO: addScrapeJobs
   for (const job of jobDatas) {
-    await addScrapeJob(job.data, {}, job.opts.jobId, job.opts.priority);
+    await addScrapeJob(job.data, job.jobId);
   }
 
   const docs = (
     await Promise.all(
-      jobDatas.map((x) => waitForJob(x.opts.jobId, 60000)),
+      jobDatas.map((x) => waitForJob(x.jobId, 60000, false)),
     )
   ).map((x) => toLegacyDocument(x, internalOptions));
 
@@ -139,8 +134,9 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  const sq = getScrapeQueue();
-  await Promise.all(jobDatas.map((x) => sq.remove(x.opts.jobId)));
+  // TODONUQ: 
+  // const sq = getScrapeQueue();
+  // await Promise.all(jobDatas.map((x) => sq.remove(x.jobId)));
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
