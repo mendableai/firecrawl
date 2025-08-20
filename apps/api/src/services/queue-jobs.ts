@@ -85,8 +85,6 @@ export async function _addScrapeJobToBullMQ(
               url: webScraperOptions.url,
               ...webScraperOptions.scrapeOptions,
               origin: (webScraperOptions.scrapeOptions as any).origin ?? "api",
-              timeout: webScraperOptions.scrapeOptions.timeout ?? 30000,
-              maxAge: 1000000000,
             },
             logger: abLogger,
             tryCount: 1,
