@@ -1,6 +1,6 @@
 import z from "zod";
 import { logger } from "../../lib/logger";
-import { Pool, PoolClient } from "pg";
+import { Client, Pool } from "pg";
 
 // === Basics
 
@@ -20,15 +20,18 @@ export type NuQJob<T> = {
 
 // === Listener
 
-let nuqListener: PoolClient | null = null;
+let nuqListener: Client | null = null;
 let nuqListens: { [key: string]: ((status: "completed" | "failed") => void)[] } = {};
 
-export async function nuqStartListener() {
+async function nuqStartListener() {
     if (nuqListener) {
         return;
     }
 
-    nuqListener = await nuqPool.connect();
+    nuqListener = new Client({
+        connectionString: process.env.NUQ_DATABASE_URL_LISTEN ?? process.env.NUQ_DATABASE_URL,
+    });
+    await nuqListener.connect();
     await nuqListener.query("LISTEN \"nuq.queue_scrape\";");
 
     nuqListener.on("notification", (msg) => {
@@ -43,11 +46,15 @@ export async function nuqStartListener() {
 
     nuqListener.on("error", (err) => {
         logger.error("Error in NuQ listener", { err, module: "nuq" });
+    });
+
+    nuqListener.on("end", () => {
+        logger.info("NuQ listener disconnected");
         nuqListener = null;
     });
 }
 
-export async function nuqAddListener(id: string, listener: (status: "completed" | "failed") => void) {
+async function nuqAddListener(id: string, listener: (status: "completed" | "failed") => void) {
     await nuqStartListener();
 
     if (!(id in nuqListens)) {
@@ -57,7 +64,7 @@ export async function nuqAddListener(id: string, listener: (status: "completed" 
     }
 }
 
-export async function nuqRemoveListener(id: string, listener: (status: "completed" | "failed") => void) {
+async function nuqRemoveListener(id: string, listener: (status: "completed" | "failed") => void) {
     await nuqStartListener();
     if (id in nuqListens) {
         nuqListens[id] = nuqListens[id].filter(l => l !== listener);
@@ -169,7 +176,7 @@ export async function nuqShutdown() {
         const nl = nuqListener;
         nuqListener = null;
         await nl.query("UNLISTEN \"nuq.queue_scrape\";");
-        await nl.release();
+        await nl.end();
     }
     await nuqPool.end();
 }
