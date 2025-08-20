@@ -29,18 +29,57 @@ class BaseResponse(BaseModel, Generic[T]):
 
 # Document and content types
 class DocumentMetadata(BaseModel):
-    """Metadata for scraped documents."""
+    """Metadata for scraped documents (snake_case only; API camelCase normalized in code)."""
+    # Common metadata fields
     title: Optional[str] = None
     description: Optional[str] = None
+    url: Optional[str] = None
     language: Optional[str] = None
     keywords: Optional[Union[str, List[str]]] = None
     robots: Optional[str] = None
+
+    # OpenGraph and social metadata
     og_title: Optional[str] = None
     og_description: Optional[str] = None
     og_url: Optional[str] = None
     og_image: Optional[str] = None
+    og_audio: Optional[str] = None
+    og_determiner: Optional[str] = None
+    og_locale: Optional[str] = None
+    og_locale_alternate: Optional[List[str]] = None
+    og_site_name: Optional[str] = None
+    og_video: Optional[str] = None
+
+    # Dublin Core and other site metadata
+    favicon: Optional[str] = None
+    dc_terms_created: Optional[str] = None
+    dc_date_created: Optional[str] = None
+    dc_date: Optional[str] = None
+    dc_terms_type: Optional[str] = None
+    dc_type: Optional[str] = None
+    dc_terms_audience: Optional[str] = None
+    dc_terms_subject: Optional[str] = None
+    dc_subject: Optional[str] = None
+    dc_description: Optional[str] = None
+    dc_terms_keywords: Optional[str] = None
+
+    modified_time: Optional[str] = None
+    published_time: Optional[str] = None
+    article_tag: Optional[str] = None
+    article_section: Optional[str] = None
+
+    # Response-level metadata
     source_url: Optional[str] = None
     status_code: Optional[int] = None
+    scrape_id: Optional[str] = None
+    num_pages: Optional[int] = None
+    content_type: Optional[str] = None
+    proxy_used: Optional[Literal["basic", "stealth"]] = None
+    cache_state: Optional[Literal["hit", "miss"]] = None
+    cached_at: Optional[str] = None
+    credits_used: Optional[int] = None
+
+    # Error information
     error: Optional[str] = None
 
     @staticmethod
@@ -84,6 +123,29 @@ class Document(BaseModel):
     actions: Optional[Dict[str, Any]] = None
     warning: Optional[str] = None
     change_tracking: Optional[Dict[str, Any]] = None
+
+    @property
+    def metadata_typed(self) -> DocumentMetadata:
+        """Always returns a DocumentMetadata instance for LSP-friendly access."""
+        md = self.metadata
+        if isinstance(md, DocumentMetadata):
+            return md
+        if isinstance(md, dict):
+            try:
+                return DocumentMetadata(**md)
+            except Exception:
+                pass
+        return DocumentMetadata()
+
+    @property
+    def metadata_dict(self) -> Dict[str, Any]:
+        """Returns metadata as a plain dict (exclude None)."""
+        md = self.metadata
+        if isinstance(md, DocumentMetadata):
+            return md.model_dump(exclude_none=True)
+        if isinstance(md, dict):
+            return {k: v for k, v in md.items() if v is not None}
+        return {}
 
 # Webhook types
 class WebhookConfig(BaseModel):

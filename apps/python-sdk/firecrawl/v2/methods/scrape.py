@@ -4,6 +4,7 @@ Scraping functionality for Firecrawl v2 API.
 
 from typing import Optional, Dict, Any
 from ..types import ScrapeOptions, Document
+from ..utils.normalize import normalize_document_input
 from ..utils import HttpClient, handle_response_error, prepare_scrape_options, validate_scrape_options
 
 
@@ -59,10 +60,5 @@ def scrape(client: HttpClient, url: str, options: Optional[ScrapeOptions] = None
         raise Exception(body.get("error", "Unknown error occurred"))
 
     document_data = body.get("data", {})
-    # Normalize keys for Document (no Pydantic aliases)
-    normalized = dict(document_data)
-    if 'rawHtml' in normalized and 'raw_html' not in normalized:
-        normalized['raw_html'] = normalized.pop('rawHtml')
-    if 'changeTracking' in normalized and 'change_tracking' not in normalized:
-        normalized['change_tracking'] = normalized.pop('changeTracking')
+    normalized = normalize_document_input(document_data)
     return Document(**normalized)

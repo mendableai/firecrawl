@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from ...types import ScrapeOptions, Document
+from ...utils.normalize import normalize_document_input
 from ...utils.error_handler import handle_response_error
 from ...utils.validation import prepare_scrape_options, validate_scrape_options
 from ...utils.http_client_async import AsyncHttpClient
@@ -27,10 +28,6 @@ async def scrape(client: AsyncHttpClient, url: str, options: Optional[ScrapeOpti
     if not body.get("success"):
         raise Exception(body.get("error", "Unknown error occurred"))
     document_data = body.get("data", {})
-    normalized = dict(document_data)
-    if 'rawHtml' in normalized and 'raw_html' not in normalized:
-        normalized['raw_html'] = normalized.pop('rawHtml')
-    if 'changeTracking' in normalized and 'change_tracking' not in normalized:
-        normalized['change_tracking'] = normalized.pop('changeTracking')
+    normalized = normalize_document_input(document_data)
     return Document(**normalized)
 
