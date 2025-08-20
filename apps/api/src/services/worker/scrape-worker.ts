@@ -806,8 +806,7 @@ export const processJobInternal = async (job: NuQJob<any>) => {
                     if (result.success) {
                         try {
                             if (
-                                process.env.USE_DB_AUTHENTICATION === "true" &&
-                                (job.data.crawl_id || process.env.GCS_BUCKET_NAME)
+                                process.env.GCS_BUCKET_NAME
                             ) {
                                 logger.debug(
                                     "Job succeeded -- putting null in Redis",

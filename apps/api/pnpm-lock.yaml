@@ -245,9 +245,6 @@ importers:
       pg:
         specifier: ^8.16.3
         version: 8.16.3(pg-native@3.5.2)
-      pg-native:
-        specifier: ^3.5.2
-        version: 3.5.2
       pos:
         specifier: ^0.4.2
         version: 0.4.2
@@ -12817,6 +12814,7 @@ snapshots:
     dependencies:
       bindings: 1.5.0
       nan: 2.22.2
+    optional: true
 
   lie@3.3.0:
     dependencies:
@@ -13027,7 +13025,8 @@ snapshots:
 
   mustache@4.2.0: {}
 
-  nan@2.22.2: {}
+  nan@2.22.2:
+    optional: true
 
   nanoid@3.3.8: {}
 
@@ -13313,6 +13312,7 @@ snapshots:
     dependencies:
       libpq: 1.8.15
       pg-types: 2.2.0
+    optional: true
 
   pg-pool@3.10.1(pg@8.16.3(pg-native@3.5.2)):
     dependencies:
