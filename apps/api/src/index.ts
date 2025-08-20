@@ -33,6 +33,7 @@ import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { nuqShutdown } from "./services/worker/nuq";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -134,14 +135,17 @@ function startServer(port = DEFAULT_PORT) {
     }
     server.close(() => {
       logger.info("Server closed.");
-      if (otelSdk) {
-        otelSdk.shutdown().then(() => {
-          logger.info("OTEL shutdown");
+      nuqShutdown().then(() => {
+        logger.info("NUQ shutdown complete");
+        if (otelSdk) {
+          otelSdk.shutdown().then(() => {
+            logger.info("OTEL shutdown");
+            process.exit(0);
+          });
+        } else {
           process.exit(0);
-        });
-      } else {
-        process.exit(0);
-      }
+        }
+      });
     });
   };
 

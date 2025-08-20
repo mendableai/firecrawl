@@ -155,6 +155,13 @@ export async function nuqJobEnd(id: string, lock: string, status: "completed" | 
     }
 }
 
+// === Metrics
+
+export async function nuqGetMetrics(): Promise<string> {
+    const result = await nuqPool.query("SELECT status, COUNT(id) as count FROM nuq.queue_scrape GROUP BY status ORDER BY count DESC;");
+    return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}`;
+}
+
 // === Cleanup
 
 export async function nuqShutdown() {
