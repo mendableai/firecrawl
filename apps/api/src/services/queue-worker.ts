@@ -6,10 +6,8 @@ import {
   getExtractQueue,
   getDeepResearchQueue,
   getGenerateLlmsTxtQueue,
+  scrapeQueueName,
   getRedisConnection,
-  queueMultiplexWidth,
-  getScrapeQueueEventsByIndex,
-  getScrapeQueueByIndex,
 } from "./queue-service";
 import { Job, Queue, QueueEvents } from "bullmq";
 import { logger as _logger } from "../lib/logger";
@@ -510,15 +508,9 @@ app.listen(workerPort, () => {
   _logger.info(`Liveness endpoint is running on port ${workerPort}`);
 });
 
-const myScrapeQueue = process.env.QUEUE_MULTIPLEX_INDEX !== undefined
-  ? parseInt(process.env.QUEUE_MULTIPLEX_INDEX)
-  : Math.floor(Math.random() * queueMultiplexWidth);
-
-_logger.info(`Using scrape queue ${myScrapeQueue}`);
-
 (async () => {
   async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
-    const job = await getScrapeQueueByIndex(myScrapeQueue).getJob(args.jobId);
+    const job = await getScrapeQueue().getJob(args.jobId);
 
     if (job && job.data.crawl_id) {
       await redisEvictConnection.srem("crawl:" + job.data.crawl_id + ":jobs_qualified", args.jobId);
@@ -567,14 +559,12 @@ _logger.info(`Using scrape queue ${myScrapeQueue}`);
     }
   }
 
-  for (let i = 0; i < queueMultiplexWidth; i++) {
-    const scrapeQueueEvents = getScrapeQueueEventsByIndex(i);
-    scrapeQueueEvents.on("failed", failedListener);
-  }
+  const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: getRedisConnection() });
+  scrapeQueueEvents.on("failed", failedListener);
 
   const results = await Promise.all([
     separateWorkerFun(
-      getScrapeQueueByIndex(myScrapeQueue),
+      getScrapeQueue(),
       path.join(__dirname, "worker", "scrape-worker.js"),
     ),
     workerFun(getExtractQueue(), processExtractJobInternal),
@@ -596,14 +586,14 @@ _logger.info(`Using scrape queue ${myScrapeQueue}`);
       jobs: (
         await Promise.all(
           [...runningJobs].map(async (jobId) => {
-            return await getScrapeQueueByIndex(myScrapeQueue).getJob(jobId);
+            return await getScrapeQueue().getJob(jobId);
           }),
         )
       ).filter((x) => x && !x.data?.zeroDataRetention),
     });
   }, 1000);
 
-  await getScrapeQueueEventsByIndex(myScrapeQueue).close();
+  await scrapeQueueEvents.close();
   console.log("All jobs finished. Worker out!");
   if (otelSdk) {
     await otelSdk.shutdown();

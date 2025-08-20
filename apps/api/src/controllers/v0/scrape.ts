@@ -127,7 +127,7 @@ export async function scrapeHelper(
     return err;
   }
 
-  await getScrapeQueue(jobId).remove(jobId);
+  await getScrapeQueue().remove(jobId);
 
   if (!doc) {
     console.error("!!! PANIC DOC IS", doc);

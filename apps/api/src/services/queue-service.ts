@@ -5,8 +5,8 @@ import { BullMQOtel } from "bullmq-otel";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
-let scrapeQueues: Queue[] = [];
-let scrapeQueueEvents: QueueEvents[] = [];
+let scrapeQueue: Queue;
+let scrapeQueueEvents: QueueEvents;
 let extractQueue: Queue;
 let loggingQueue: Queue;
 let indexQueue: Queue;
@@ -29,6 +29,7 @@ export function getRedisConnection(): IORedis {
   return redisConnection;
 }
 
+export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
@@ -37,21 +38,9 @@ export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
 
-export const queueMultiplexWidth = process.env.QUEUE_MULTIPLEX_WIDTH ? parseInt(process.env.QUEUE_MULTIPLEX_WIDTH) : 1;
-
-function uuidToQueueIndex(uuid: string) {
-  const queueIndex = parseInt(uuid[0] ?? "0", 16) % queueMultiplexWidth;
-  return queueIndex;
-}
-
-export function getScrapeQueue(uuid: string) {
-  const queueIndex = uuidToQueueIndex(uuid);
-  return getScrapeQueueByIndex(queueIndex);
-}
-
-export function getScrapeQueueByIndex(index: number) {
-  if (!scrapeQueues[index]) {
-    scrapeQueues[index] = new Queue(`{scrapeQueue${index === 0 ? "" : index}}`, {
+export function getScrapeQueue() {
+  if (!scrapeQueue) {
+    scrapeQueue = new Queue(scrapeQueueName, {
       connection: getRedisConnection(),
       defaultJobOptions: {
         removeOnComplete: {
@@ -64,22 +53,17 @@ export function getScrapeQueueByIndex(index: number) {
       telemetry: new BullMQOtel("firecrawl-bullmq"),
     });
   }
-  return scrapeQueues[index];
+  return scrapeQueue;
 }
 
-export function getScrapeQueueEvents(uuid: string) {
-  const queueIndex = uuidToQueueIndex(uuid);
-  return getScrapeQueueEventsByIndex(queueIndex);
-}
-
-export function getScrapeQueueEventsByIndex(index: number) {
-  if (!scrapeQueueEvents[index]) {
-    scrapeQueueEvents[index] = new QueueEvents(`{scrapeQueue${index === 0 ? "" : index}}`, {
+export function getScrapeQueueEvents() {
+  if (!scrapeQueueEvents) {
+    scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
       connection: getRedisConnection(),
     });
   }
 
-  return scrapeQueueEvents[index];
+  return scrapeQueueEvents;
 }
 
 export function getExtractQueue() {

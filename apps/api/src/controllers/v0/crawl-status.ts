@@ -16,7 +16,7 @@ configDotenv();
 
 export async function getJobs(crawlId: string, ids: string[]): Promise<PseudoJob<any>[]> {
    const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-      Promise.all(ids.map((x) => getScrapeQueue(x).getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+      Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
       process.env.USE_DB_AUTHENTICATION === "true" ? await supabaseGetJobsByCrawlId(crawlId) : [],
       process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
     ]);
