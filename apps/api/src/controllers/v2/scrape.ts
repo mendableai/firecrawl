@@ -106,7 +106,7 @@ export async function scrapeController(
     });
 
     if (zeroDataRetention) {
-      await getScrapeQueue().remove(jobId);
+      await getScrapeQueue(jobId).remove(jobId);
     }
 
     if (e instanceof TransportableError) {
@@ -123,7 +123,7 @@ export async function scrapeController(
     }
   }
 
-  await getScrapeQueue().remove(jobId);
+  await getScrapeQueue(jobId).remove(jobId);
   
   if (!hasFormatOfType(req.body.formats, "rawHtml")) {
     if (doc && doc.rawHtml) {

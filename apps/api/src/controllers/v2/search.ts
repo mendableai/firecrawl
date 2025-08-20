@@ -95,7 +95,7 @@ async function scrapeSearchResult(
       teamId: options.teamId,
       origin: options.origin,
     });
-    await getScrapeQueue().remove(jobId);
+    await getScrapeQueue(jobId).remove(jobId);
 
     const document = {
       title: searchResult.title,
