@@ -1,6 +1,6 @@
 import z from "zod";
 import { logger } from "../../lib/logger";
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 
 // === Basics
 
@@ -12,14 +12,59 @@ nuqPool.on("error", (err) => {
     logger.error("Error in NuQ idle client", { err, module: "nuq" });
 });
 
-export async function nuqShutdown() {
-    return await nuqPool.end();
-}
-
 export type NuQJob<T> = {
     id: string;
     createdAt: Date;
     data: T;
+}
+
+// === Listener
+
+let nuqListener: PoolClient | null = null;
+let nuqListens: { [key: string]: ((status: "completed" | "failed") => void)[] } = {};
+
+export async function nuqStartListener() {
+    if (nuqListener) {
+        return;
+    }
+
+    nuqListener = await nuqPool.connect();
+    await nuqListener.query("LISTEN \"nuq.queue_scrape\";");
+
+    nuqListener.on("notification", (msg) => {
+        const tok = (msg.payload ?? "unknown|unknown").split("|");
+        if (tok[0] in nuqListens) {
+            for (const listener of nuqListens[tok[0]]) {
+                listener(tok[1] as "completed" | "failed");
+            }
+            delete nuqListens[tok[0]];
+        }
+    });
+
+    nuqListener.on("error", (err) => {
+        logger.error("Error in NuQ listener", { err, module: "nuq" });
+        nuqListener = null;
+    });
+}
+
+export async function nuqAddListener(id: string, listener: (status: "completed" | "failed") => void) {
+    await nuqStartListener();
+
+    if (!(id in nuqListens)) {
+        nuqListens[id] = [listener];
+    } else {
+        nuqListens[id].push(listener);
+    }
+}
+
+export async function nuqRemoveListener(id: string, listener: (status: "completed" | "failed") => void) {
+    await nuqStartListener();
+    if (id in nuqListens) {
+        nuqListens[id] = nuqListens[id].filter(l => l !== listener);
+        if (nuqListens[id].length === 0) {
+            delete nuqListens[id];
+        }
+    }
 }
 
 // === Producer
@@ -45,25 +90,24 @@ export async function nuqWaitForJob(id: string, timeout: number | null): Promise
         throw new Error("Invalid job ID");
     }
 
-    const client = await nuqPool.connect();
+    const done = new Promise<"completed" | "failed">(async (resolve, reject) => {
+        const listener = (msg: "completed" | "failed") => {
+            resolve(msg);
+        }
 
-    const done = new Promise<"completed" | "failed">((resolve, reject) => {
-        client.on("notification", msg => {
-            resolve(msg.payload as "completed" | "failed");
-        });
-
-        client.on("error", e => {
+        try {
+            await nuqAddListener(id, listener);
+        } catch (e) {
             reject(e);
-        });
+        }
 
         if (timeout !== null) {
             setTimeout(() => {
+                nuqRemoveListener(id, listener);
                 reject(new Error("Timed out"));
             }, timeout);
         }
-    }).finally(() => client.release());
-
-    client.query(`LISTEN "nuq.queue_scrape.${id}";`);
+    });
 
     return done;
 }
@@ -106,7 +150,19 @@ export async function nuqJobEnd(id: string, lock: string, status: "completed" | 
     if (result.rowCount === 0) {
         return false;
     } else {
-        await nuqPool.query("SELECT pg_notify($1, $2);", [`nuq.queue_scrape.${id}`, status]);
+        await nuqPool.query("SELECT pg_notify('nuq.queue_scrape', $1);", [`${id}|${status}`]);
         return true;
     }
+}
+
+// === Cleanup
+
+export async function nuqShutdown() {
+    if (nuqListener) {
+        const nl = nuqListener;
+        nuqListener = null;
+        await nl.query("UNLISTEN \"nuq.queue_scrape\";");
+        await nl.release();
+    }
+    await nuqPool.end();
 }
