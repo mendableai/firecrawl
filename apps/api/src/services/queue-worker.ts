@@ -510,7 +510,11 @@ app.listen(workerPort, () => {
   _logger.info(`Liveness endpoint is running on port ${workerPort}`);
 });
 
-const myScrapeQueue = Math.floor(Math.random() * queueMultiplexWidth);
+const myScrapeQueue = process.env.QUEUE_MULTIPLEX_INDEX !== undefined
+  ? parseInt(process.env.QUEUE_MULTIPLEX_INDEX)
+  : Math.floor(Math.random() * queueMultiplexWidth);
+
+_logger.info(`Using scrape queue ${myScrapeQueue}`);
 
 (async () => {
   async function failedListener(args: { jobId: string; failedReason: string; prev?: string | undefined; }) {
