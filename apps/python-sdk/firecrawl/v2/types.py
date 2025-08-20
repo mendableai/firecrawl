@@ -7,7 +7,8 @@ This module contains clean, modern type definitions for the v2 API.
 import warnings
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar, Union
-from pydantic import BaseModel, Field, field_validator
+import logging
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 # Suppress pydantic warnings about schema field shadowing
 # Tested using schema_field alias="schema" but it doesn't work.
@@ -18,6 +19,9 @@ warnings.filterwarnings("ignore", message="Field name \"json\" in \"ScrapeFormat
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"Document\" shadows an attribute in parent \"BaseModel\"")
 
 T = TypeVar('T')
+
+# Module logger
+logger = logging.getLogger("firecrawl")
 
 # Base response types
 class BaseResponse(BaseModel, Generic[T]):
@@ -133,8 +137,8 @@ class Document(BaseModel):
         if isinstance(md, dict):
             try:
                 return DocumentMetadata(**md)
-            except Exception:
-                pass
+            except (ValidationError, TypeError) as exc:
+                logger.debug("Failed to construct DocumentMetadata from dict: %s", exc)
         return DocumentMetadata()
 
     @property
