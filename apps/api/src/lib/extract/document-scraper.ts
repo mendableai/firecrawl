@@ -66,7 +66,7 @@ export async function scrapeDocument(
 
     const doc = await waitForJob(jobId, timeout);
 
-    await getScrapeQueue().remove(jobId);
+    await getScrapeQueue(jobId).remove(jobId);
 
     if (trace) {
       trace.timing.completedAt = new Date().toISOString();

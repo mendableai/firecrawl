@@ -274,7 +274,7 @@ export async function concurrentJobDone(job: Job) {
           }
         }
 
-        (await getScrapeQueue()).add(
+        (await getScrapeQueue(nextJob.job.id)).add(
           nextJob.job.id,
           {
             ...nextJob.job.data,

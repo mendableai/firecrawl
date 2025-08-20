@@ -6,11 +6,12 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import {
   getExtractQueue,
-  getScrapeQueue,
   getGenerateLlmsTxtQueue,
   getDeepResearchQueue,
   getBillingQueue,
   getPrecrawlQueue,
+  getScrapeQueueByIndex,
+  queueMultiplexWidth,
 } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
@@ -86,7 +87,7 @@ serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [
-    new BullMQAdapter(getScrapeQueue()),
+    ...new Array(queueMultiplexWidth).fill(0).map((_, index) => new BullMQAdapter(getScrapeQueueByIndex(index))),
     new BullMQAdapter(getExtractQueue()),
     new BullMQAdapter(getGenerateLlmsTxtQueue()),
     new BullMQAdapter(getDeepResearchQueue()),
@@ -159,9 +160,11 @@ if (require.main === module) {
 
 app.get(`/serverHealthCheck`, async (req, res) => {
   try {
-    const scrapeQueue = getScrapeQueue();
-    const [waitingJobs] = await Promise.all([scrapeQueue.getWaitingCount()]);
-    const noWaitingJobs = waitingJobs === 0;
+    const scrapeQueues = new Array(queueMultiplexWidth)
+      .fill(0)
+      .map((_, index) => getScrapeQueueByIndex(index));
+    const waitingJobs = await Promise.all(scrapeQueues.map((queue) => queue.getWaitingCount()));
+    const noWaitingJobs = waitingJobs.reduce((a, b) => a + b, 0) === 0;
     // 200 if no active jobs, 503 if there are active jobs
     return res.status(noWaitingJobs ? 200 : 500).json({
       waitingJobs,
@@ -179,12 +182,12 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
     const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
 
     const getWaitingJobsCount = async () => {
-      const scrapeQueue = getScrapeQueue();
-      const [waitingJobsCount] = await Promise.all([
-        scrapeQueue.getWaitingCount(),
-      ]);
+      const scrapeQueues = new Array(queueMultiplexWidth)
+        .fill(0)
+        .map((_, index) => getScrapeQueueByIndex(index));
+      const waitingJobsCount = await Promise.all(scrapeQueues.map((queue) => queue.getWaitingCount()));
 
-      return waitingJobsCount;
+      return waitingJobsCount.reduce((a, b) => a + b, 0);
     };
 
     res.status(200).json({ message: "Check initiated" });
@@ -296,12 +299,3 @@ app.use(
 );
 
 logger.info(`Worker ${process.pid} started`);
-// const sq = getScrapeQueue();
-
-// sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-// sq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-// sq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-// sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-// sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-// sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-// 

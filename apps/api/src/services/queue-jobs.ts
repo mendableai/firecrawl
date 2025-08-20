@@ -72,7 +72,7 @@ export async function _addScrapeJobToBullMQ(
     }
   }
 
-  return await getScrapeQueue().add(jobId, webScraperOptions, {
+  return await getScrapeQueue(jobId).add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
@@ -322,7 +322,7 @@ export async function waitForJob(
   logger: Logger = _logger,
 ): Promise<Document> {
     const start = Date.now();
-    const queue = getScrapeQueue();
+    const queue = getScrapeQueue(typeof _job === "string" ? _job : (_job.id as string));
     let job: Job | undefined = typeof _job == "string" ? await queue.getJob(_job) : _job;
     while (job === undefined) {
       logger.debug("Waiting for job to be created");
@@ -335,7 +335,7 @@ export async function waitForJob(
     let doc: Document;
     try {
       doc = await Promise.race([
-        job.waitUntilFinished(getScrapeQueueEvents(), timeout ?? 180000),
+        job.waitUntilFinished(getScrapeQueueEvents(job.id as string), timeout ?? 180000),
         timeout !== null ? new Promise((resolve, reject) => {
           setTimeout(() => {
             reject(new ScrapeJobTimeoutError("Scrape timed out" + (typeof _job === "string" ? " after waiting in the concurrency limit queue" : "")));

@@ -139,8 +139,7 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  const sq = getScrapeQueue();
-  await Promise.all(jobDatas.map((x) => sq.remove(x.opts.jobId)));
+  await Promise.all(jobDatas.map((x) => getScrapeQueue(x.opts.jobId).remove(x.opts.jobId)));
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
