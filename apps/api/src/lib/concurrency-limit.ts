@@ -5,7 +5,7 @@ import { getACUCTeam } from "../controllers/auth";
 import { getCrawl, StoredCrawl } from "./crawl-redis";
 import { getScrapeQueue } from "../services/queue-service";
 import { logger } from "./logger";
-import { abTestJob } from "../services/queue-jobs";
+import { abTestJob } from "../services/ab-test";
 
 const constructKey = (team_id: string) => "concurrency-limiter:" + team_id;
 const constructQueueKey = (team_id: string) =>
