@@ -29,6 +29,7 @@ import { nuqGetJobToProcess, nuqJobEnd, nuqRenewLock, nuqShutdown } from "./nuq"
 
         const lockRenewInterval = setInterval(async () => {
             const renewStart = Date.now();
+            logger.info("Renewing lock", { scrapeId: job.id });
             if (!await nuqRenewLock(job.id, myLock)) {
                 const renewTime = Date.now() - renewStart;
                 logger.warn(`Failed to renew lock (${renewTime}ms)`, { scrapeId: job.id });
@@ -39,12 +40,12 @@ import { nuqGetJobToProcess, nuqJobEnd, nuqRenewLock, nuqShutdown } from "./nuq"
             logger.info(`Renewed lock (${renewTime}ms)`, { scrapeId: job.id });
         }, 15000);
 
-        let processResult: { ok: true, data: Awaited<ReturnType<typeof processJobInternal>> } | { ok: false, error: Error };
+        let processResult: { ok: true, data: Awaited<ReturnType<typeof processJobInternal>> } | { ok: false, error: any };
 
         try {
             processResult = { ok: true, data: await processJobInternal(job) };
         } catch (error) {
-            processResult = { ok: false, error: error as Error };
+            processResult = { ok: false, error };
         }
         
         clearInterval(lockRenewInterval);
