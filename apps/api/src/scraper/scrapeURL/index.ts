@@ -39,11 +39,11 @@ import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
-import { robustFetch } from "./lib/fetch";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 import { checkRobotsTxt } from "../../lib/robots-txt";
 import { AbortInstance, AbortManager, AbortManagerThrownError } from "./lib/abortManager";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { transformHtml } from "../../lib/html-transformer";
 
 export type ScrapeUrlResponse = (
   | {
@@ -248,35 +248,35 @@ export type InternalOptions = {
 export type EngineScrapeResultWithContext = {
   engine: Engine;
   unsupportedFeatures: Set<FeatureFlag>;
-  result: EngineScrapeResult & { markdown: string };
+  result: EngineScrapeResult;
 };
 
-function safeguardCircularError<T>(error: T): T {
-  if (typeof error === "object" && error !== null && (error as any).results) {
-    const newError = structuredClone(error);
-    delete (newError as any).results;
-    return newError;
-  } else {
-    return error;
-  }
-}
-
-async function scrapeURLLoopIter(meta: Meta, engine: Engine, snipeAbort): Promise<EngineScrapeResult & { markdown: string }> {
-  const _engineResult = await scrapeURLWithEngine({
+async function scrapeURLLoopIter(meta: Meta, engine: Engine, snipeAbort): Promise<EngineScrapeResult> {
+  const engineResult = await scrapeURLWithEngine({
     ...meta,
     abort: meta.abort.child(snipeAbort),
   }, engine);
 
-  if (_engineResult.markdown === undefined) {
-    _engineResult.markdown = await parseMarkdown(_engineResult.html);
+  let checkMarkdown = await parseMarkdown(await transformHtml({
+    html: engineResult.html,
+    url: meta.url,
+    include_tags: [],
+    exclude_tags: [],
+    only_main_content: true,
+  }));
+
+  if (checkMarkdown.trim().length === 0) {
+    checkMarkdown = await parseMarkdown(await transformHtml({
+      html: engineResult.html,
+      url: meta.url,
+      include_tags: [],
+      exclude_tags: [],
+      only_main_content: false,
+    }));
   }
 
-  const engineResult = _engineResult as EngineScrapeResult & {
-    markdown: string;
-  };
-
   // Success factors
-  const isLongEnough = engineResult.markdown.length > 0;
+  const isLongEnough = checkMarkdown.trim().length > 0;
   const isGoodStatusCode =
     (engineResult.statusCode >= 200 && engineResult.statusCode < 300) ||
     engineResult.statusCode === 304;
