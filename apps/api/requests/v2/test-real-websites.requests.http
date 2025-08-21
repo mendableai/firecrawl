@@ -1,0 +1,201 @@
+### Test GitHub repository page (RECOMMENDED - Rich data attributes)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://github.com/microsoft/vscode",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-testid]",
+      "attribute": "data-testid"
+    },
+    {
+      "selector": "[data-view-component='true']",
+      "attribute": "data-view-component"
+    },
+    {
+      "selector": ".js-navigation-item",
+      "attribute": "data-name"
+    },
+    {
+      "selector": "[data-turbo-frame]",
+      "attribute": "data-turbo-frame"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test Hacker News (SIMPLE - Perfect for first test)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://news.ycombinator.com",
+  "extractDataAttributes": [
+    {
+      "selector": ".athing",
+      "attribute": "id"
+    },
+    {
+      "selector": ".titleline a",
+      "attribute": "href"
+    },
+    {
+      "selector": ".score",
+      "attribute": "id"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test Amazon product page (rich data attributes)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://www.amazon.com/dp/B08N5WRWNW",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-asin]",
+      "attribute": "data-asin"
+    },
+    {
+      "selector": "[data-feature-name]",
+      "attribute": "data-feature-name"
+    },
+    {
+      "selector": ".s-result-item",
+      "attribute": "data-component-type"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test Reddit (data attributes for posts)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://old.reddit.com/r/programming",
+  "extractDataAttributes": [
+    {
+      "selector": ".thing",
+      "attribute": "data-fullname"
+    },
+    {
+      "selector": ".thing",
+      "attribute": "data-subreddit"
+    },
+    {
+      "selector": ".thing",
+      "attribute": "data-score"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test YouTube video page (data attributes)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-video-id]",
+      "attribute": "data-video-id"
+    },
+    {
+      "selector": "[data-context-item-id]",
+      "attribute": "data-context-item-id"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test Stack Overflow Questions (Great data attributes)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://stackoverflow.com/questions/tagged/javascript",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-questionid]",
+      "attribute": "data-questionid"
+    },
+    {
+      "selector": ".js-vote-count",
+      "attribute": "data-value"
+    },
+    {
+      "selector": "[data-post-id]",
+      "attribute": "data-post-id"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test Dev.to Articles (Developer content with data attributes)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://dev.to",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-article-id]",
+      "attribute": "data-article-id"
+    },
+    {
+      "selector": "[data-user-id]",
+      "attribute": "data-user-id"
+    },
+    {
+      "selector": ".reaction-button",
+      "attribute": "data-category"
+    }
+  ],
+  "formats": ["markdown"]
+}
+
+###
+
+### Test Product Hunt (Product data attributes)
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://www.producthunt.com",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-test]",
+      "attribute": "data-test"
+    },
+    {
+      "selector": "[data-cy]",
+      "attribute": "data-cy"
+    }
+  ],
+  "formats": ["markdown"]
+}
