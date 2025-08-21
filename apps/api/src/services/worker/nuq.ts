@@ -1,4 +1,3 @@
-import z from "zod";
 import { logger } from "../../lib/logger";
 import { Client, Pool } from "pg";
 
@@ -6,17 +5,20 @@ import { Client, Pool } from "pg";
 
 const nuqPool = new Pool({
     connectionString: process.env.NUQ_DATABASE_URL,
+    application_name: "nuq",
 });
 
 nuqPool.on("error", (err) => {
     logger.error("Error in NuQ idle client", { err, module: "nuq" });
 });
 
+export type NuQJobStatus = "queued" | "active" | "completed" | "failed";
 export type NuQJob<T> = {
     id: string;
+    status: NuQJobStatus;
     createdAt: Date;
     data: T;
-}
+};
 
 // === Listener
 
@@ -30,6 +32,7 @@ async function nuqStartListener() {
 
     nuqListener = new Client({
         connectionString: process.env.NUQ_DATABASE_URL_LISTEN ?? process.env.NUQ_DATABASE_URL,
+        application_name: "nuq_listener",
     });
     await nuqListener.connect();
     await nuqListener.query("LISTEN \"nuq.queue_scrape\";");
@@ -51,6 +54,9 @@ async function nuqStartListener() {
     nuqListener.on("end", () => {
         logger.info("NuQ listener disconnected");
         nuqListener = null;
+        setTimeout(() => {
+            nuqStartListener().catch(err => logger.error("Error in NuQ listener reconnect", { err, module: "nuq" }));
+        }, 250);
     });
 }
 
@@ -65,7 +71,6 @@ async function nuqAddListener(id: string, listener: (status: "completed" | "fail
 }
 
 async function nuqRemoveListener(id: string, listener: (status: "completed" | "failed") => void) {
-    await nuqStartListener();
     if (id in nuqListens) {
         nuqListens[id] = nuqListens[id].filter(l => l !== listener);
         if (nuqListens[id].length === 0) {
@@ -74,34 +79,73 @@ async function nuqRemoveListener(id: string, listener: (status: "completed" | "f
     }
 }
 
+// === Job fetching
+
+function rowToJob<T>(row: any): NuQJob<T> {
+    return {
+        id: row.id,
+        status: row.status,
+        createdAt: new Date(row.created_at),
+        data: row.data,
+    };
+}
+
+export async function nuqGetJob<T>(id: string): Promise<NuQJob<T> | null> {
+    const start = Date.now();
+    try {
+        const result = await nuqPool.query("SELECT id, status, created_at, data FROM nuq.queue_scrape WHERE nuq.queue_scrape.id = $1;", [id]);
+        if (result.rowCount === 0) {
+            return null;
+        }
+        return rowToJob<T>(result.rows[0]);
+    } finally {
+        const end = Date.now();
+        logger.info("nuqGetJob metrics", { module: "nuq/metrics", method: "nuqGetJob", duration: end - start });
+    }
+}
+
+export async function nuqGetJobs<T>(ids: string[]): Promise<NuQJob<T>[]> {
+    if (ids.length === 0) {
+        return [];
+    }
+
+    const start = Date.now();
+    try {
+        const result = await nuqPool.query("SELECT id, status, created_at, data FROM nuq.queue_scrape WHERE nuq.queue_scrape.id = ANY($1);", [ids]);
+        return result.rows.map(row => rowToJob<T>(row));
+    } finally {
+        const end = Date.now();
+        logger.info("nuqGetJobs metrics", { module: "nuq/metrics", method: "nuqGetJobs", duration: end - start });
+    }
+}
+
 // === Producer
 
 export async function nuqAddJob<T>(id: string, data: T): Promise<NuQJob<T>> {
     const start = Date.now();
-    const client = await nuqPool.connect();
     try {
-        const result = await client.query(`INSERT INTO nuq.queue_scrape (id, data) VALUES ($1, $2) RETURNING *;`, [id, data]);
-        return {
-            id: result.rows[0].id,
-            createdAt: result.rows[0].created_at,
-            data: result.rows[0].data,
-        }
+        const result = await nuqPool.query("INSERT INTO nuq.queue_scrape (id, data) VALUES ($1, $2) RETURNING id, status, created_at, data;", [id, data]);
+        return rowToJob<T>(result.rows[0]);
     } finally {
-        await client.release();
         const end = Date.now();
         logger.info("nuqAddJob metrics", { module: "nuq/metrics", method: "nuqAddJob", duration: end - start });
     }
 }
 
 export async function nuqWaitForJob(id: string, timeout: number | null): Promise<"completed" | "failed"> {
-    try {
-        z.string().uuid().parse(id);
-    } catch (e) {
-        throw new Error("Invalid job ID");
-    }
-
     const done = new Promise<"completed" | "failed">(async (resolve, reject) => {
+        let timer: NodeJS.Timeout | null = null;
+        if (timeout !== null) {
+            timer = setTimeout(() => {
+                nuqRemoveListener(id, listener);
+                reject(new Error("Timed out"));
+            }, timeout);
+        }
+
         const listener = (msg: "completed" | "failed") => {
+            if (timer) {
+                clearTimeout(timer);
+            }
             resolve(msg);
         }
 
@@ -111,11 +155,18 @@ export async function nuqWaitForJob(id: string, timeout: number | null): Promise
             reject(e);
         }
 
-        if (timeout !== null) {
-            setTimeout(() => {
+        try {
+            const job = await nuqGetJob<any>(id);
+            if (job && ["completed", "failed"].includes(job.status)) {
                 nuqRemoveListener(id, listener);
-                reject(new Error("Timed out"));
-            }, timeout);
+                if (timer) {
+                    clearTimeout(timer);
+                }
+                resolve(job.status as "completed" | "failed");
+                return;
+            }
+        } catch (e) {
+            logger.warn("nuqGetJob ensure check failed", { module: "nuq", method: "nuqWaitForJob", error: e });
         }
     });
 
@@ -130,22 +181,16 @@ export async function nuqGetJobToProcess(lock: string): Promise<NuQJob<any> | nu
     try {
         await client.query("BEGIN");
 
-        const result = await client.query("SELECT id, created_at, data FROM nuq.queue_scrape WHERE nuq.queue_scrape.status = 'queued'::nuq.job_status ORDER BY nuq.queue_scrape.created_at ASC FOR UPDATE SKIP LOCKED LIMIT 1;");
+        const result = await client.query("SELECT id, status, created_at, data FROM nuq.queue_scrape WHERE nuq.queue_scrape.status = 'queued'::nuq.job_status ORDER BY nuq.queue_scrape.created_at ASC FOR UPDATE SKIP LOCKED LIMIT 1;");
         if (result.rowCount === 0) {
             await client.query("ROLLBACK");
             return null;
         }
 
-        const job: NuQJob<any> = {
-            id: result.rows[0].id,
-            createdAt: result.rows[0].created_at,
-            data: result.rows[0].data,
-        };
-
-        await client.query("UPDATE nuq.queue_scrape SET status = 'active'::nuq.job_status, lock = $1, locked_at = now() WHERE id = $2;", [lock, job.id]);
+        await client.query("UPDATE nuq.queue_scrape SET status = 'active'::nuq.job_status, lock = $1, locked_at = now() WHERE id = $2;", [lock, result.rows[0].id]);
         await client.query("COMMIT");
 
-        return job;
+        return rowToJob<any>(result.rows[0]);
     } finally {
         await client.release();
         const end = Date.now();
@@ -163,15 +208,20 @@ export async function nuqRenewLock(id: string, lock: string): Promise<boolean> {
 
 export async function nuqJobEnd(id: string, lock: string, status: "completed" | "failed"): Promise<boolean> {
     const start = Date.now();
+    const client = await nuqPool.connect();
     try {
-        const result = await nuqPool.query("UPDATE nuq.queue_scrape SET status = $1, lock = null, locked_at = null WHERE id = $2 AND lock = $3;", [status, id, lock]);
+        await client.query("BEGIN");
+        const result = await client.query("UPDATE nuq.queue_scrape SET status = $1, lock = null, locked_at = null WHERE id = $2 AND lock = $3;", [status, id, lock]);
         if (result.rowCount === 0) {
+            await client.query("ROLLBACK");
             return false;
-        } else {
-            await nuqPool.query("SELECT pg_notify('nuq.queue_scrape', $1);", [`${id}|${status}`]);
-            return true;
         }
+
+        await client.query("SELECT pg_notify('nuq.queue_scrape', $1);", [`${id}|${status}`]);
+        await client.query("COMMIT");
+        return true;
     } finally {
+        await client.release();
         const end = Date.now();
         logger.info("nuqJobEnd metrics", { module: "nuq/metrics", method: "nuqJobEnd", duration: end - start });
     }
@@ -187,12 +237,21 @@ export async function nuqGetMetrics(): Promise<string> {
     return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}`;
 }
 
+export async function nuqHealthCheck(): Promise<boolean> {
+    const start = Date.now();
+    const result = await nuqPool.query("SELECT 1;");
+    const end = Date.now();
+    logger.info("nuqHealthCheck metrics", { module: "nuq/metrics", method: "nuqHealthCheck", duration: end - start });
+    return result.rowCount !== 0;
+}
+
 // === Cleanup
 
 export async function nuqShutdown() {
     if (nuqListener) {
         const nl = nuqListener;
         nuqListener = null;
+        nuqListens = {};
         await nl.query("UNLISTEN \"nuq.queue_scrape\";");
         await nl.end();
     }
@@ -207,7 +266,7 @@ export async function nuqShutdown() {
 //
 // CREATE TABLE nuq.queue_scrape (
 //   id uuid NOT NULL DEFAULT gen_random_uuid(),
-//   status USER-DEFINED NOT NULL DEFAULT 'queued'::nuq.job_status,
+//   status nuq.job_status NOT NULL DEFAULT 'queued'::nuq.job_status,
 //   data jsonb,
 //   created_at timestamp with time zone NOT NULL DEFAULT now(),
 //   lock uuid,
@@ -234,7 +293,7 @@ export async function nuqShutdown() {
 //
 // SELECT cron.schedule('nuq_queue_scrape_lock_reaper', '15 seconds', $$
 //  UPDATE nuq.queue_scrape
-//  SET status = 'queued', lock = null, locked_at = null
+//  SET status = 'queued'::nuq.job_status, lock = null, locked_at = null
 //  WHERE nuq.queue_scrape.locked_at <= now() - interval '1 minute'
 //  AND nuq.queue_scrape.status = 'active'::nuq.job_status;
 // $$);
