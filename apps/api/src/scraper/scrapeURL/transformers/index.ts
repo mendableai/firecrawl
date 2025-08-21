@@ -8,6 +8,7 @@ import { performLLMExtract, performSummary } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { performAgent } from "./agent";
+import { deriveDataAttributesFromHTML } from "./dataAttributes";
 
 import { deriveDiff } from "./diff";
 import { useIndex } from "../../../services/index";
@@ -267,6 +268,7 @@ export function coerceFieldsToFormats(
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
   deriveHTMLFromRawHTML,
+  deriveDataAttributesFromHTML,
   deriveMarkdownFromHTML,
   deriveLinksFromHTML,
   deriveMetadataFromRawHTML,
