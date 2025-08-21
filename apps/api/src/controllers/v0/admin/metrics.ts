@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { redisEvictConnection } from "../../../services/redis";
-import { nuqGetMetrics } from "../../../services/worker/nuq";
+import { nuqGetLocalMetrics, nuqGetMetrics } from "../../../services/worker/nuq";
 
 export async function metricsController(_: Request, res: Response) {
     let cursor: string = "0";
@@ -29,5 +29,7 @@ export async function metricsController(_: Request, res: Response) {
 ${Object.entries(metrics).map(([key, value]) => `concurrency_limit_queue_job_count{team_id="${key}"} ${value}`).join("\n")}
 
 ${await nuqGetMetrics()}
+
+${nuqGetLocalMetrics()}
 `);
 }

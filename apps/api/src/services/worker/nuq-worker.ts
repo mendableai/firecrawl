@@ -1,11 +1,28 @@
 import "dotenv/config";
 import { logger } from "../../lib/logger";
 import { processJobInternal } from "./scrape-worker";
-import { nuqGetJobToProcess, nuqJobEnd, nuqRenewLock, nuqShutdown } from "./nuq";
+import { nuqGetJobToProcess, nuqGetLocalMetrics, nuqHealthCheck, nuqJobEnd, nuqRenewLock, nuqShutdown } from "./nuq";
+import Express from "express";
+import { _ } from "ajv";
 
 (async () => {
     let isShuttingDown = false;
     const myLock = crypto.randomUUID();
+
+    const app = Express();
+
+    app.get("/metrics", (_, res) => res.contentType("text/plain").send(nuqGetLocalMetrics()));
+    app.get("/health", async (_, res) => {
+        if (await nuqHealthCheck()) {
+            res.status(200).send("OK");
+        } else {
+            res.status(500).send("Not OK");
+        }
+    });
+
+    const server = app.listen(process.env.NUQ_WORKER_PORT ?? process.env.PORT ?? 3000, () => {
+        logger.info("NuQ worker metrics server started");
+    });
 
     function shutdown() {
         isShuttingDown = true;
@@ -59,9 +76,9 @@ import { nuqGetJobToProcess, nuqJobEnd, nuqRenewLock, nuqShutdown } from "./nuq"
 
     logger.info("NuQ worker shutting down");
 
-    await nuqShutdown();
-
-    logger.info("NuQ worker shut down");
-
-    process.exit(0);
+    server.close(async () => {
+        await nuqShutdown();
+        logger.info("NuQ worker shut down");
+        process.exit(0);
+    });
 })();

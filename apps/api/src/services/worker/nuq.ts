@@ -222,11 +222,14 @@ export async function nuqJobEnd(id: string, lock: string, status: "completed" | 
 
 export async function nuqGetMetrics(): Promise<string> {
     const start = Date.now();
-    const result = await nuqPool.query("SELECT status::text as status, COUNT(id) as count FROM nuq.queue_scrape GROUP BY status UNION (SELECT 'stalled' as status, split_part(return_message, ' ', 2)::bigint as count FROM cron.job_run_details WHERE cron.job_run_details.command = (SELECT command FROM cron.job WHERE cron.job.jobname = 'nuq_queue_scrape_lock_reaper') AND status = 'succeeded' ORDER BY end_time DESC LIMIT 1) ORDER BY count DESC;");
+    const result = await nuqPool.query("SELECT status, COUNT(id) as count FROM nuq.queue_scrape GROUP BY status ORDER BY count DESC;");
     const end = Date.now();
     logger.info("nuqGetMetrics metrics", { module: "nuq/metrics", method: "nuqGetMetrics", duration: end - start });
-    return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}\n
-# HELP nuq_pool_waiting_count Number of requests waiting in the pool\n# TYPE nuq_pool_waiting_count gauge\nnuq_pool_waiting_count ${nuqPool.waitingCount}\n
+    return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}\n`;
+}
+
+export function nuqGetLocalMetrics(): string {
+    return `# HELP nuq_pool_waiting_count Number of requests waiting in the pool\n# TYPE nuq_pool_waiting_count gauge\nnuq_pool_waiting_count ${nuqPool.waitingCount}\n
 # HELP nuq_pool_idle_count Number of connections idle in the pool\n# TYPE nuq_pool_idle_count gauge\nnuq_pool_idle_count ${nuqPool.idleCount}\n
 # HELP nuq_pool_total_count Number of connections in the pool\n# TYPE nuq_pool_total_count gauge\nnuq_pool_total_count ${nuqPool.totalCount}\n`;
 }
@@ -268,6 +271,7 @@ export async function nuqShutdown() {
 //   created_at timestamp with time zone NOT NULL DEFAULT now(),
 //   lock uuid,
 //   locked_at timestamp with time zone,
+//   stalls integer,
 //   CONSTRAINT queue_scrape_pkey PRIMARY KEY (id)
 // );
 // 
@@ -277,20 +281,15 @@ export async function nuqShutdown() {
 // CREATE INDEX nuq_queue_scrape_completed_created_at_idx ON nuq.queue_scrape USING btree (created_at) WHERE (status = 'completed'::nuq.job_status);
 // 
 // SELECT cron.schedule('nuq_queue_scrape_clean_completed', '*/5 * * * *', $$
-//  DELETE FROM nuq.queue_scrape
-//  WHERE nuq.queue_scrape.status = 'completed'::nuq.job_status
-//  AND nuq.queue_scrape.created_at < now() - interval '1 hour';
+//  DELETE FROM nuq.queue_scrape WHERE nuq.queue_scrape.status = 'completed'::nuq.job_status AND nuq.queue_scrape.created_at < now() - interval '1 hour';
 // $$);
 //
 // SELECT cron.schedule('nuq_queue_scrape_clean_failed', '*/5 * * * *', $$
-//  DELETE FROM nuq.queue_scrape
-//  WHERE nuq.queue_scrape.status = 'failed'::nuq.job_status
-//  AND nuq.queue_scrape.created_at < now() - interval '6 hours';
+//  DELETE FROM nuq.queue_scrape WHERE nuq.queue_scrape.status = 'failed'::nuq.job_status AND nuq.queue_scrape.created_at < now() - interval '6 hours';
 // $$);
 //
 // SELECT cron.schedule('nuq_queue_scrape_lock_reaper', '15 seconds', $$
-//  UPDATE nuq.queue_scrape
-//  SET status = 'queued'::nuq.job_status, lock = null, locked_at = null
-//  WHERE nuq.queue_scrape.locked_at <= now() - interval '1 minute'
-//  AND nuq.queue_scrape.status = 'active'::nuq.job_status;
+//  UPDATE nuq.queue_scrape SET status = 'queued'::nuq.job_status, lock = null, locked_at = null, stalls = COALESCE(stalls, 0) + 1WHERE nuq.queue_scrape.locked_at <= now() - interval '1 minute' AND nuq.queue_scrape.status = 'active'::nuq.job_status AND COALESCE(nuq.queue_scrape.stalls, 0) < 9;
+//  WITH stallfail AS (UPDATE nuq.queue_scrape SET status = 'failed'::nuq.job_status, lock = null, locked_at = null, stalls = COALESCE(stalls, 0) + 1 WHERE nuq.queue_scrape.locked_at <= now() - interval '1 minute' AND nuq.queue_scrape.status = 'active'::nuq.job_status AND COALESCE(nuq.queue_scrape.stalls, 0) >= 9 RETURNING id)
+//  SELECT pg_notify('nuq.queue_scrape', (id::text || '|' || 'failed'::text)) FROM stallfail;
 // $$);
