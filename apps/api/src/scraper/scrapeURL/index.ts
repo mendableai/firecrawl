@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions, TeamFlags } from "../../controllers/v2/types";
+import { Document, scrapeOptions, ScrapeOptions, TeamFlags } from "../../controllers/v2/types";
 import { ScrapeOptions as ScrapeOptionsV1 } from "../../controllers/v1/types";
 import { logger as _logger } from "../../lib/logger";
 import {
@@ -44,6 +44,7 @@ import { checkRobotsTxt } from "../../lib/robots-txt";
 import { AbortInstance, AbortManager, AbortManagerThrownError } from "./lib/abortManager";
 import { ScrapeJobTimeoutError } from "../../lib/error";
 import { transformHtml } from "../../lib/html-transformer";
+import { htmlTransform } from "./lib/removeUnwantedElements";
 
 export type ScrapeUrlResponse = (
   | {
@@ -257,22 +258,10 @@ async function scrapeURLLoopIter(meta: Meta, engine: Engine, snipeAbort): Promis
     abort: meta.abort.child(snipeAbort),
   }, engine);
 
-  let checkMarkdown = await parseMarkdown(await transformHtml({
-    html: engineResult.html,
-    url: meta.url,
-    include_tags: [],
-    exclude_tags: [],
-    only_main_content: true,
-  }));
+  let checkMarkdown = await parseMarkdown(await htmlTransform(engineResult.html, meta.url, scrapeOptions.parse({ onlyMainContent: true })));
 
   if (checkMarkdown.trim().length === 0) {
-    checkMarkdown = await parseMarkdown(await transformHtml({
-      html: engineResult.html,
-      url: meta.url,
-      include_tags: [],
-      exclude_tags: [],
-      only_main_content: false,
-    }));
+    checkMarkdown = await parseMarkdown(await htmlTransform(engineResult.html, meta.url, scrapeOptions.parse({ onlyMainContent: false })));
   }
 
   // Success factors
