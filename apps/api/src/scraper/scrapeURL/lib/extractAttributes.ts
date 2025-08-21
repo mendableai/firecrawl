@@ -1,5 +1,6 @@
 import { load } from "cheerio";
 import { logger } from "../../../lib/logger";
+import { extractAttributesRust } from "../../../lib/html-transformer";
 
 export type AttributeResult = {
   selector: string;
@@ -13,7 +14,7 @@ export type AttributeSelector = {
 };
 
 /**
- * Extracts attributes from HTML based on the provided selectors and attribute names
+ * Extracts attributes from HTML using Rust html-transformer (with Cheerio fallback)
  * @param html - The HTML content to extract from
  * @param selectors - Array of selector/attribute pairs to extract
  * @returns Array of extracted attribute results
@@ -26,6 +27,30 @@ export async function extractAttributes(
     return [];
   }
 
+  // Try Rust implementation first (faster, non-blocking)
+  try {
+    const results = await extractAttributesRust(html, selectors);
+    
+    logger.debug("Attribute extraction via Rust", {
+      selectorsCount: selectors.length,
+      resultsCount: results.length,
+      sampleResults: results.slice(0, 2).map(r => ({
+        selector: r.selector,
+        attribute: r.attribute,
+        valuesCount: r.values.length
+      }))
+    });
+
+    return results;
+  } catch (error) {
+    logger.warn("Failed to extract attributes with Rust, falling back to Cheerio", {
+      error,
+      module: "scrapeURL",
+      method: "extractAttributes"
+    });
+  }
+
+  // Fallback to Cheerio implementation
   const results: AttributeResult[] = [];
 
   try {
@@ -57,7 +82,7 @@ export async function extractAttributes(
         values
       });
 
-      logger.debug("Attribute extraction", {
+      logger.debug("Attribute extraction via Cheerio fallback", {
         selector,
         attribute,
         valuesCount: values.length,
@@ -65,7 +90,7 @@ export async function extractAttributes(
       });
     }
   } catch (error) {
-    logger.error("Failed to extract attributes", {
+    logger.error("Failed to extract attributes with Cheerio fallback", {
       error,
       module: "scrapeURL",
       method: "extractAttributes"
