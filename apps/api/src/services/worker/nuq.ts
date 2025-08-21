@@ -10,9 +10,7 @@ const nuqPool = new Pool({
     application_name: "nuq",
 });
 
-nuqPool.on("error", (err) => {
-    logger.error("Error in NuQ idle client", { err, module: "nuq" });
-});
+nuqPool.on("error", (err) => logger.error("Error in NuQ idle client", { err, module: "nuq" }));
 
 export type NuQJobStatus = "queued" | "active" | "completed" | "failed";
 export type NuQJob<T> = {
@@ -47,9 +45,7 @@ async function nuqStartListener() {
         }
     });
 
-    nuqListener.on("error", (err) => {
-        logger.error("Error in NuQ listener", { err, module: "nuq" });
-    });
+    nuqListener.on("error", (err) => logger.error("Error in NuQ listener", { err, module: "nuq" }));
 
     nuqListener.on("end", () => {
         logger.info("NuQ listener disconnected", { module: "nuq" });
@@ -229,7 +225,10 @@ export async function nuqGetMetrics(): Promise<string> {
     const result = await nuqPool.query("SELECT status::text as status, COUNT(id) as count FROM nuq.queue_scrape GROUP BY status UNION (SELECT 'stalled' as status, split_part(return_message, ' ', 2)::bigint as count FROM cron.job_run_details WHERE cron.job_run_details.command = (SELECT command FROM cron.job WHERE cron.job.jobname = 'nuq_queue_scrape_lock_reaper') AND status = 'succeeded' ORDER BY end_time DESC LIMIT 1) ORDER BY count DESC;");
     const end = Date.now();
     logger.info("nuqGetMetrics metrics", { module: "nuq/metrics", method: "nuqGetMetrics", duration: end - start });
-    return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}`;
+    return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}\n
+# HELP nuq_pool_waiting_count Number of requests waiting in the pool\n# TYPE nuq_pool_waiting_count gauge\nnuq_pool_waiting_count ${nuqPool.waitingCount}\n
+# HELP nuq_pool_idle_count Number of connections idle in the pool\n# TYPE nuq_pool_idle_count gauge\nnuq_pool_idle_count ${nuqPool.idleCount}\n
+# HELP nuq_pool_total_count Number of connections in the pool\n# TYPE nuq_pool_total_count gauge\nnuq_pool_total_count ${nuqPool.totalCount}\n`;
 }
 
 export async function nuqHealthCheck(): Promise<boolean> {
