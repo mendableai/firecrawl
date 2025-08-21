@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, scrapeOptions, ScrapeOptions, TeamFlags } from "../../controllers/v2/types";
+import { type Document, scrapeOptions, type ScrapeOptions, type TeamFlags } from "../../controllers/v2/types";
 import { ScrapeOptions as ScrapeOptionsV1 } from "../../controllers/v1/types";
 import { logger as _logger } from "../../lib/logger";
 import {
