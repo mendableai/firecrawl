@@ -226,7 +226,7 @@ export async function nuqJobEnd(id: string, lock: string, status: "completed" | 
 
 export async function nuqGetMetrics(): Promise<string> {
     const start = Date.now();
-    const result = await nuqPool.query("SELECT status, COUNT(id) as count FROM nuq.queue_scrape GROUP BY status ORDER BY count DESC;");
+    const result = await nuqPool.query("SELECT status::text as status, COUNT(id) as count FROM nuq.queue_scrape GROUP BY status UNION (SELECT 'stalled' as status, split_part(return_message, ' ', 2)::bigint as count FROM cron.job_run_details WHERE cron.job_run_details.command = (SELECT command FROM cron.job WHERE cron.job.jobname = 'nuq_queue_scrape_lock_reaper') AND status = 'succeeded' ORDER BY end_time DESC LIMIT 1) ORDER BY count DESC;");
     const end = Date.now();
     logger.info("nuqGetMetrics metrics", { module: "nuq/metrics", method: "nuqGetMetrics", duration: end - start });
     return `# HELP nuq_queue_scrape_job_count Number of jobs in each status\n# TYPE nuq_queue_scrape_job_count gauge\n${result.rows.map(x => `nuq_queue_scrape_job_count{status="${x.status}"} ${x.count}`).join("\n")}`;
