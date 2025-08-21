@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from ...types import SearchRequest, SearchData, SearchResult, Document
+from ...utils.normalize import normalize_document_input
 from ...utils.http_client_async import AsyncHttpClient
 from ...utils.error_handler import handle_response_error
 from ...utils.validation import prepare_scrape_options, validate_scrape_options
@@ -38,11 +39,7 @@ async def search(client: AsyncHttpClient, request: SearchRequest) -> SearchData:
                     if request.scrape_options is not None and any(
                         key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'summary', 'screenshot', 'changeTracking']
                     ):
-                        normalized = dict(doc_data)
-                        if 'rawHtml' in normalized and 'raw_html' not in normalized:
-                            normalized['raw_html'] = normalized.pop('rawHtml')
-                        if 'changeTracking' in normalized and 'change_tracking' not in normalized:
-                            normalized['change_tracking'] = normalized.pop('changeTracking')
+                        normalized = normalize_document_input(doc_data)
                         results.append(Document(**normalized))
                     else:
                         results.append(SearchResult(

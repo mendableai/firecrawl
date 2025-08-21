@@ -13,6 +13,7 @@ from ..types import (
     WebhookConfig,
 )
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
+from ..utils.normalize import normalize_document_input
 from ..types import CrawlErrorsResponse
 
 
@@ -107,11 +108,7 @@ def get_batch_scrape_status(
     documents: List[Document] = []
     for doc in body.get("data", []) or []:
         if isinstance(doc, dict):
-            normalized = dict(doc)
-            if 'rawHtml' in normalized and 'raw_html' not in normalized:
-                normalized['raw_html'] = normalized.pop('rawHtml')
-            if 'changeTracking' in normalized and 'change_tracking' not in normalized:
-                normalized['change_tracking'] = normalized.pop('changeTracking')
+            normalized = normalize_document_input(doc)
             documents.append(Document(**normalized))
 
     return BatchScrapeJob(

@@ -7,7 +7,8 @@ This module contains clean, modern type definitions for the v2 API.
 import warnings
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar, Union
-from pydantic import BaseModel, Field, field_validator
+import logging
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 # Suppress pydantic warnings about schema field shadowing
 # Tested using schema_field alias="schema" but it doesn't work.
@@ -19,6 +20,9 @@ warnings.filterwarnings("ignore", message="Field name \"json\" in \"Document\" s
 
 T = TypeVar('T')
 
+# Module logger
+logger = logging.getLogger("firecrawl")
+
 # Base response types
 class BaseResponse(BaseModel, Generic[T]):
     """Base response structure for all API responses."""
@@ -29,18 +33,57 @@ class BaseResponse(BaseModel, Generic[T]):
 
 # Document and content types
 class DocumentMetadata(BaseModel):
-    """Metadata for scraped documents."""
+    """Metadata for scraped documents (snake_case only; API camelCase normalized in code)."""
+    # Common metadata fields
     title: Optional[str] = None
     description: Optional[str] = None
+    url: Optional[str] = None
     language: Optional[str] = None
     keywords: Optional[Union[str, List[str]]] = None
     robots: Optional[str] = None
+
+    # OpenGraph and social metadata
     og_title: Optional[str] = None
     og_description: Optional[str] = None
     og_url: Optional[str] = None
     og_image: Optional[str] = None
+    og_audio: Optional[str] = None
+    og_determiner: Optional[str] = None
+    og_locale: Optional[str] = None
+    og_locale_alternate: Optional[List[str]] = None
+    og_site_name: Optional[str] = None
+    og_video: Optional[str] = None
+
+    # Dublin Core and other site metadata
+    favicon: Optional[str] = None
+    dc_terms_created: Optional[str] = None
+    dc_date_created: Optional[str] = None
+    dc_date: Optional[str] = None
+    dc_terms_type: Optional[str] = None
+    dc_type: Optional[str] = None
+    dc_terms_audience: Optional[str] = None
+    dc_terms_subject: Optional[str] = None
+    dc_subject: Optional[str] = None
+    dc_description: Optional[str] = None
+    dc_terms_keywords: Optional[str] = None
+
+    modified_time: Optional[str] = None
+    published_time: Optional[str] = None
+    article_tag: Optional[str] = None
+    article_section: Optional[str] = None
+
+    # Response-level metadata
     source_url: Optional[str] = None
     status_code: Optional[int] = None
+    scrape_id: Optional[str] = None
+    num_pages: Optional[int] = None
+    content_type: Optional[str] = None
+    proxy_used: Optional[Literal["basic", "stealth"]] = None
+    cache_state: Optional[Literal["hit", "miss"]] = None
+    cached_at: Optional[str] = None
+    credits_used: Optional[int] = None
+
+    # Error information
     error: Optional[str] = None
 
     @staticmethod
@@ -84,6 +127,29 @@ class Document(BaseModel):
     actions: Optional[Dict[str, Any]] = None
     warning: Optional[str] = None
     change_tracking: Optional[Dict[str, Any]] = None
+
+    @property
+    def metadata_typed(self) -> DocumentMetadata:
+        """Always returns a DocumentMetadata instance for LSP-friendly access."""
+        md = self.metadata
+        if isinstance(md, DocumentMetadata):
+            return md
+        if isinstance(md, dict):
+            try:
+                return DocumentMetadata(**md)
+            except (ValidationError, TypeError) as exc:
+                logger.debug("Failed to construct DocumentMetadata from dict: %s", exc)
+        return DocumentMetadata()
+
+    @property
+    def metadata_dict(self) -> Dict[str, Any]:
+        """Returns metadata as a plain dict (exclude None)."""
+        md = self.metadata
+        if isinstance(md, DocumentMetadata):
+            return md.model_dump(exclude_none=True)
+        if isinstance(md, dict):
+            return {k: v for k, v in md.items() if v is not None}
+        return {}
 
 # Webhook types
 class WebhookConfig(BaseModel):

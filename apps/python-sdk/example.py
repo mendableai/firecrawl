@@ -24,6 +24,8 @@ def main():
     # Scrape
     doc = firecrawl.scrape("https://docs.firecrawl.dev", formats=["markdown"])
     print("scrape:", doc.markdown)
+    # doc.metadata_dict is a dict, doc.metadata_typed is a DocumentMetadata object
+    print(doc.metadata_dict.get("source_url"))
 
     # Crawl (waits until terminal state)
     crawl_job = firecrawl.crawl("https://docs.firecrawl.dev", limit=3, poll_interval=1, timeout=120)

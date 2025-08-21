@@ -25,6 +25,7 @@ import logging
 from .v1 import V1FirecrawlApp, AsyncV1FirecrawlApp
 from .v2 import FirecrawlClient as V2FirecrawlClient
 from .v2.client_async import AsyncFirecrawlClient
+from .v2.types import Document
 
 logger = logging.getLogger("firecrawl")
 

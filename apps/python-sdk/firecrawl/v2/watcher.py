@@ -15,6 +15,7 @@ from typing import Callable, List, Optional, Literal, Union, Dict, Any
 import websockets
 
 from .types import CrawlJob, BatchScrapeJob, Document
+from .utils.normalize import normalize_document_input
 
 
 JobKind = Literal["crawl", "batch"]
@@ -172,11 +173,7 @@ class Watcher:
                         docs: List[Document] = []
                         for doc in self.data:
                             if isinstance(doc, dict):
-                                d = dict(doc)
-                                if "rawHtml" in d and "raw_html" not in d:
-                                    d["raw_html"] = d.pop("rawHtml")
-                                if "changeTracking" in d and "change_tracking" not in d:
-                                    d["change_tracking"] = d.pop("changeTracking")
+                                d = normalize_document_input(doc)
                                 docs.append(Document(**d))
                         if self._kind == "crawl":
                             job = CrawlJob(
@@ -212,11 +209,7 @@ class Watcher:
                         docs = []
                         for doc in payload.get("data", []):
                             if isinstance(doc, dict):
-                                d = dict(doc)
-                                if "rawHtml" in d and "raw_html" not in d:
-                                    d["raw_html"] = d.pop("rawHtml")
-                                if "changeTracking" in d and "change_tracking" not in d:
-                                    d["change_tracking"] = d.pop("changeTracking")
+                                d = normalize_document_input(doc)
                                 docs.append(Document(**d))
                         job = CrawlJob(
                             status=status_str,
@@ -241,11 +234,7 @@ class Watcher:
                         docs = []
                         for doc in payload.get("data", []):
                             if isinstance(doc, dict):
-                                d = dict(doc)
-                                if "rawHtml" in d and "raw_html" not in d:
-                                    d["raw_html"] = d.pop("rawHtml")
-                                if "changeTracking" in d and "change_tracking" not in d:
-                                    d["change_tracking"] = d.pop("changeTracking")
+                                d = normalize_document_input(doc)
                                 docs.append(Document(**d))
                         job = BatchScrapeJob(
                             status=status_str,

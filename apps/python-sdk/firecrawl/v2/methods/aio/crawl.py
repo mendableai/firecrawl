@@ -14,6 +14,7 @@ from ...types import (
 from ...utils.error_handler import handle_response_error
 from ...utils.validation import prepare_scrape_options
 from ...utils.http_client_async import AsyncHttpClient
+from ...utils.normalize import normalize_document_input
 
 
 def _prepare_crawl_request(request: CrawlRequest) -> dict:
@@ -76,11 +77,7 @@ async def get_crawl_status(client: AsyncHttpClient, job_id: str) -> CrawlJob:
         documents = []
         for doc_data in body.get("data", []):
             if isinstance(doc_data, dict):
-                normalized = dict(doc_data)
-                if 'rawHtml' in normalized and 'raw_html' not in normalized:
-                    normalized['raw_html'] = normalized.pop('rawHtml')
-                if 'changeTracking' in normalized and 'change_tracking' not in normalized:
-                    normalized['change_tracking'] = normalized.pop('changeTracking')
+                normalized = normalize_document_input(doc_data)
                 documents.append(Document(**normalized))
         return CrawlJob(
             status=body.get("status"),
