@@ -10,7 +10,7 @@ import {
   WebSearchResult,
 } from "../../lib/entities";
 import { agentOptionsExtract, ScrapeOptions as V1ScrapeOptions } from "../v1/types";
-import { InternalOptions } from "../../scraper/scrapeURL";
+import type { InternalOptions } from "../../scraper/scrapeURL";
 import { ErrorCodes } from "../../lib/error";
 import Ajv from "ajv";
 
