@@ -184,6 +184,37 @@ class TestSearchRequestModel:
         assert request.location is None
         assert request.scrape_options is None
 
+
+    def test_validate_custom_date_ranges(self):
+        """Test validation of custom date range formats."""
+        valid_custom_ranges = [
+            "cdr:1,cd_min:1/1/2024,cd_max:12/31/2024",
+            "cdr:1,cd_min:12/1/2024,cd_max:12/31/2024",
+            "cdr:1,cd_min:2/28/2023,cd_max:3/1/2023",
+            "cdr:1,cd_min:10/15/2023,cd_max:11/15/2023"
+        ]
+        
+        for valid_range in valid_custom_ranges:
+            request = SearchRequest(query="test", tbs=valid_range)
+            validated = _validate_search_request(request)
+            assert validated == request
+
+    def test_validate_invalid_custom_date_ranges(self):
+        """Test validation of invalid custom date range formats."""
+        # Invalid custom date ranges
+        invalid_custom_ranges = [
+            "cdr:1,cd_min:2/28/2023",  # Missing cd_max
+            "cdr:1,cd_max:2/28/2023",  # Missing cd_min
+            "cdr:2,cd_min:1/1/2024,cd_max:12/31/2024",  # Wrong cdr value
+            "cdr:cd_min:1/1/2024,cd_max:12/31/2024",  # Missing :1
+            "custom:1,cd_min:1/1/2024,cd_max:12/31/2024"  # Wrong prefix
+        ]
+        
+        for invalid_range in invalid_custom_ranges:
+            request = SearchRequest(query="test", tbs=invalid_range)
+            with pytest.raises(ValueError, match="Invalid"):
+                _validate_search_request(request)
+
     def test_field_aliases(self):
         """Test that field aliases work correctly for API serialization."""
         # Test with None value (no default)
@@ -203,4 +234,4 @@ class TestSearchRequestModel:
         data2 = request2.model_dump(by_alias=True)
         assert "ignore_invalid_urls" in data2  # No alias, uses snake_case
         assert "scrape_options" in data2  # No alias, uses snake_case
-        assert data2["ignore_invalid_urls"] is False 
+        assert data2["ignore_invalid_urls"] is False   
