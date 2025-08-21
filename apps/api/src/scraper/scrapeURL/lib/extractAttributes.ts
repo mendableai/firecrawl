@@ -1,33 +1,37 @@
 import { load } from "cheerio";
-import { ScrapeOptions } from "../../../controllers/v2/types";
 import { logger } from "../../../lib/logger";
 
-export type DataAttributeResult = {
+export type AttributeResult = {
   selector: string;
   attribute: string;
   values: string[];
 };
 
+export type AttributeSelector = {
+  selector: string;
+  attribute: string;
+};
+
 /**
- * Extracts data-* attributes from HTML based on the provided selectors and attribute names
+ * Extracts attributes from HTML based on the provided selectors and attribute names
  * @param html - The HTML content to extract from
- * @param scrapeOptions - The scrape options containing extractDataAttributes configuration
- * @returns Array of extracted data attribute results
+ * @param selectors - Array of selector/attribute pairs to extract
+ * @returns Array of extracted attribute results
  */
-export async function extractDataAttributes(
+export async function extractAttributes(
   html: string,
-  scrapeOptions: ScrapeOptions
-): Promise<DataAttributeResult[]> {
-  if (!scrapeOptions.extractDataAttributes || scrapeOptions.extractDataAttributes.length === 0) {
+  selectors: AttributeSelector[]
+): Promise<AttributeResult[]> {
+  if (!selectors || selectors.length === 0) {
     return [];
   }
 
-  const results: DataAttributeResult[] = [];
+  const results: AttributeResult[] = [];
 
   try {
     const $ = load(html);
 
-    for (const extraction of scrapeOptions.extractDataAttributes) {
+    for (const extraction of selectors) {
       const { selector, attribute } = extraction;
       const values: string[] = [];
 
@@ -53,7 +57,7 @@ export async function extractDataAttributes(
         values
       });
 
-      logger.debug("Data attribute extraction", {
+      logger.debug("Attribute extraction", {
         selector,
         attribute,
         valuesCount: values.length,
@@ -61,10 +65,10 @@ export async function extractDataAttributes(
       });
     }
   } catch (error) {
-    logger.error("Failed to extract data attributes", {
+    logger.error("Failed to extract attributes", {
       error,
       module: "scrapeURL",
-      method: "extractDataAttributes"
+      method: "extractAttributes"
     });
   }
 

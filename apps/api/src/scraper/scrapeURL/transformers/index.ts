@@ -8,7 +8,7 @@ import { performLLMExtract, performSummary } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { performAgent } from "./agent";
-import { deriveDataAttributesFromHTML } from "./dataAttributes";
+import { performAttributes } from "./performAttributes";
 
 import { deriveDiff } from "./diff";
 import { useIndex } from "../../../services/index";
@@ -268,7 +268,6 @@ export function coerceFieldsToFormats(
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
   deriveHTMLFromRawHTML,
-  deriveDataAttributesFromHTML,
   deriveMarkdownFromHTML,
   deriveLinksFromHTML,
   deriveMetadataFromRawHTML,
@@ -276,6 +275,7 @@ export const transformerStack: Transformer[] = [
   ...(useIndex ? [sendDocumentToIndex] : []),
   performLLMExtract,
   performSummary,
+  performAttributes,
   performAgent,
   deriveDiff,
   coerceFieldsToFormats,
