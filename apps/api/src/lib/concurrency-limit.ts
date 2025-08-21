@@ -5,6 +5,7 @@ import { getACUCTeam } from "../controllers/auth";
 import { getCrawl, StoredCrawl } from "./crawl-redis";
 import { getScrapeQueue } from "../services/queue-service";
 import { logger } from "./logger";
+import { abTestJob } from "../services/queue-jobs";
 
 const constructKey = (team_id: string) => "concurrency-limiter:" + team_id;
 const constructQueueKey = (team_id: string) =>
@@ -273,6 +274,8 @@ export async function concurrentJobDone(job: Job) {
             await new Promise(resolve => setTimeout(resolve, sc.crawlerOptions.delay * 1000));
           }
         }
+
+        abTestJob(nextJob.job.data);
 
         (await getScrapeQueue()).add(
           nextJob.job.id,

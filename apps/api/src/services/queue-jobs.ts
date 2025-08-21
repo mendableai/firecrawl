@@ -53,12 +53,7 @@ async function _addScrapeJobToConcurrencyQueue(
   }, webScraperOptions.crawl_id ? Infinity :(webScraperOptions.scrapeOptions?.timeout ?? (60 * 1000)));
 }
 
-export async function _addScrapeJobToBullMQ(
-  webScraperOptions: WebScraperOptions,
-  options: any,
-  jobId: string,
-  jobPriority: number,
-): Promise<Job> {
+export function abTestJob(webScraperOptions: WebScraperOptions) {
   // Global A/B test: mirror request to staging /v1/scrape based on SCRAPEURL_AB_RATE
   const abLogger = _logger.child({ method: "ABTestToStaging" });
   try {
@@ -101,6 +96,15 @@ export async function _addScrapeJobToBullMQ(
   } catch (error) {
     abLogger.warn("Failed to initiate A/B test to staging", { error });
   }
+}
+
+export async function _addScrapeJobToBullMQ(
+  webScraperOptions: WebScraperOptions,
+  options: any,
+  jobId: string,
+  jobPriority: number,
+): Promise<Job> {
+  abTestJob(webScraperOptions);
 
   if (
     webScraperOptions &&
