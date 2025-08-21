@@ -1,0 +1,19 @@
+### Test data-* attribute extraction
+POST http://localhost:3002/v2/scrape
+Content-Type: application/json
+Authorization: Bearer {{$dotenv FIRECRAWL_API_KEY}}
+
+{
+  "url": "https://example.com",
+  "extractDataAttributes": [
+    {
+      "selector": "[data-testid]",
+      "attribute": "data-testid"
+    },
+    {
+      "selector": ".product",
+      "attribute": "data-product-id"
+    }
+  ],
+  "formats": ["markdown", "html"]
+}
