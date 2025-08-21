@@ -211,6 +211,16 @@ export const screenshotFormatWithOptions = z.object({
 
 export type ScreenshotFormatWithOptions = z.output<typeof screenshotFormatWithOptions>;
 
+export const attributesFormatWithOptions = z.object({
+  type: z.literal("attributes"),
+  selectors: z.array(z.object({
+    selector: z.string().describe("CSS selector to find elements"),
+    attribute: z.string().describe("Attribute name to extract (e.g., 'data-vehicle-name' or 'id')")
+  })).describe("Extract specific attributes from elements"),
+}).strict();
+
+export type AttributesFormatWithOptions = z.output<typeof attributesFormatWithOptions>;
+
 export type FormatObject = 
   | { type: "markdown" }
   | { type: "html" }
@@ -219,7 +229,8 @@ export type FormatObject =
   | { type: "summary" }
   | JsonFormatWithOptions
   | ChangeTrackingFormatWithOptions
-  | ScreenshotFormatWithOptions;
+  | ScreenshotFormatWithOptions
+  | AttributesFormatWithOptions;
 
 export const parsersSchema = z.array(z.enum(["pdf"])).default(["pdf"]);
 
@@ -254,6 +265,7 @@ const baseScrapeOptions = z
           jsonFormatWithOptions,
           changeTrackingFormatWithOptions,
           screenshotFormatWithOptions,
+          attributesFormatWithOptions,
         ])
         .array()
         .optional()
@@ -293,10 +305,6 @@ const baseScrapeOptions = z
     mobile: z.boolean().default(false),
     parsers: parsersSchema.optional(),
     actions: actionsSchema.optional(),
-    extractDataAttributes: z.array(z.object({
-      selector: z.string().describe("CSS selector to find elements"),
-      attribute: z.string().describe("Data attribute name to extract (e.g., 'data-vehicle-name')")
-    })).optional().describe("Extract specific data-* attributes from elements"),
     
     location: z
       .object({
@@ -638,7 +646,7 @@ export type Document = {
   json?: any;
   summary?: string;
   warning?: string;
-  dataAttributes?: Array<{
+  attributes?: Array<{
     selector: string;
     attribute: string;
     values: string[];
