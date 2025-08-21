@@ -1398,11 +1398,13 @@ export type SearchResponse =
     success: true;
     warning?: string;
     data: Document[];
+    creditsUsed: number;
   }
   | {
     success: true;
     warning?: string;
     data: import("../../lib/entities").SearchV2Response;
+    creditsUsed: number;
   };
 
 export type TokenUsage = {
