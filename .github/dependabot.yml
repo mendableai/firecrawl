@@ -43,3 +43,9 @@ updates:
     commit-message:
       prefix: "apps/test-suite"
       include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
