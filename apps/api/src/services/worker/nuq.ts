@@ -111,7 +111,7 @@ export async function nuqGetJob<T>(id: string): Promise<NuQJob<T> | null> {
         return rowToJob<T>(result.rows[0]);
     } finally {
         const end = Date.now();
-        logger.info("nuqGetJob metrics", { module: "nuq/metrics", method: "nuqGetJob", duration: end - start });
+        logger.info("nuqGetJob metrics", { module: "nuq/metrics", method: "nuqGetJob", duration: end - start, scrapeId: id });
     }
 }
 
@@ -124,7 +124,7 @@ export async function nuqGetJobs<T>(ids: string[]): Promise<NuQJob<T>[]> {
         return result.rows.map(row => rowToJob<T>(row));
     } finally {
         const end = Date.now();
-        logger.info("nuqGetJobs metrics", { module: "nuq/metrics", method: "nuqGetJobs", duration: end - start });
+        logger.info("nuqGetJobs metrics", { module: "nuq/metrics", method: "nuqGetJobs", duration: end - start, scrapeIds: ids });
     }
 }
 
@@ -137,7 +137,7 @@ export async function nuqAddJob<T>(id: string, data: T): Promise<NuQJob<T>> {
         return rowToJob<T>(result.rows[0]);
     } finally {
         const end = Date.now();
-        logger.info("nuqAddJob metrics", { module: "nuq/metrics", method: "nuqAddJob", duration: end - start });
+        logger.info("nuqAddJob metrics", { module: "nuq/metrics", method: "nuqAddJob", duration: end - start, scrapeId: id });
     }
 }
 
@@ -175,7 +175,7 @@ export async function nuqWaitForJob(id: string, timeout: number | null): Promise
                 return;
             }
         } catch (e) {
-            logger.warn("nuqGetJob ensure check failed", { module: "nuq", method: "nuqWaitForJob", error: e });
+            logger.warn("nuqGetJob ensure check failed", { module: "nuq", method: "nuqWaitForJob", error: e, scrapeId: id });
         }
     });
 
@@ -205,7 +205,7 @@ export async function nuqRenewLock(id: string, lock: string): Promise<boolean> {
         return (await nuqPool.query("UPDATE nuq.queue_scrape SET locked_at = now() WHERE id = $1 AND lock = $2 AND status = 'active'::nuq.job_status;", [id, lock])).rowCount !== 0;
     } finally {
         const end = Date.now();
-        logger.info("nuqRenewLock metrics", { module: "nuq/metrics", method: "nuqRenewLock", duration: end - start });
+        logger.info("nuqRenewLock metrics", { module: "nuq/metrics", method: "nuqRenewLock", duration: end - start, scrapeId: id });
     }
 }
 
@@ -218,7 +218,7 @@ export async function nuqJobEnd(id: string, lock: string, status: "completed" | 
         `, [status, id, lock])).rowCount !== 0;
     } finally {
         const end = Date.now();
-        logger.info("nuqJobEnd metrics", { module: "nuq/metrics", method: "nuqJobEnd", duration: end - start });
+        logger.info("nuqJobEnd metrics", { module: "nuq/metrics", method: "nuqJobEnd", duration: end - start, scrapeId: id });
     }
 }
 
