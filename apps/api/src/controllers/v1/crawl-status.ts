@@ -314,7 +314,7 @@ export async function crawlStatusController(
     const bytesLimit = 10485760; // 10 MiB in bytes
 
     for (const jobId of doneJobs) {
-      const job = await nuqGetJob<any, Document>(jobId);
+      const job = await getJob(jobId);
       const state = job?.status;
 
       if (state === "failed") {
