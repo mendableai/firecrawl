@@ -92,10 +92,15 @@ jobs:
         run: |
           kubectl logs deployment/firecrawl-app > logs/api.log || true
           kubectl logs deployment/firecrawl-worker > logs/worker.log || true
-          kubectl logs deployment/firecrawl-index-worker > logs/index-worker.log || true
           kubectl logs deployment/firecrawl-nuq-worker > logs/nuq-worker.log || true
           kubectl logs deployment/firecrawl-dragonfly > logs/dragonfly.log || true
           kubectl logs deployment/nuq-postgres > logs/postgres.log || true
+      - name: Copy SearXNG logs
+        if: always() && matrix.search == 'searxng'
+        run: kubectl logs deployment/firecrawl-searxng > logs/searxng.log || true
+      - name: Copy Playwright logs
+        if: always() && matrix.engine == 'playwright'
+        run: kubectl logs deployment/firecrawl-playwright-service > logs/playwright.log || true
       - name: Zip logs
         if: always()
         run: |

@@ -98,6 +98,7 @@ jobs:
           kubectl logs deployment/firecrawl-nuq-worker > logs/nuq-worker.log || true
           kubectl logs deployment/firecrawl-dragonfly > logs/dragonfly.log || true
           kubectl logs deployment/nuq-postgres > logs/postgres.log || true
+          kubectl logs deployment/tailscale-proxy > logs/tailscale-proxy.log || true
       - name: Zip and encrypt logs
         if: always()
         run: |
