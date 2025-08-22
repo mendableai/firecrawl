@@ -248,6 +248,20 @@ app.post('/scrape', async (req: Request, res: Response) => {
   });
 });
 
+// Health check for liveness
+app.get('/health/liveness', (req, res) => {
+  res.sendStatus(200);
+});
+
+// Health check for readiness
+app.get('/health/readiness', (req, res) => {
+  if (browser && context) {
+    res.sendStatus(200);
+  } else {
+    res.sendStatus(503);
+  }
+});
+
 app.listen(port, () => {
   initializeBrowser().then(() => {
     console.log(`Server is running on port ${port}`);
