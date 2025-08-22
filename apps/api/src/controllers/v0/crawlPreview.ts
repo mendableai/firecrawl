@@ -15,7 +15,6 @@ import {
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
-import { fromLegacyScrapeOptions } from "../v1/types";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { fromV0ScrapeOptions } from "../v2/types";
 
@@ -140,7 +139,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
                 sitemapped: true,
                 zeroDataRetention: false, // not supported on v0
               },
-              {},
               jobId,
             );
             await addCrawlJob(id, jobId, logger);
@@ -162,7 +160,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
           crawl_id: id,
           zeroDataRetention: false, // not supported on v0
         },
-        {},
         jobId,
       );
       await addCrawlJob(id, jobId, logger);

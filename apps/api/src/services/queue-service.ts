@@ -1,12 +1,10 @@
-import { Queue, QueueEvents } from "bullmq";
+import { Queue } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
 import { BullMQOtel } from "bullmq-otel";
 
 export type QueueFunction = () => Queue<any, any, string, any, any, string>;
 
-let scrapeQueue: Queue;
-let scrapeQueueEvents: QueueEvents;
 let extractQueue: Queue;
 let loggingQueue: Queue;
 let indexQueue: Queue;
@@ -29,7 +27,6 @@ export function getRedisConnection(): IORedis {
   return redisConnection;
 }
 
-export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
@@ -37,34 +34,6 @@ export const generateLlmsTxtQueueName = "{generateLlmsTxtQueue}";
 export const deepResearchQueueName = "{deepResearchQueue}";
 export const billingQueueName = "{billingQueue}";
 export const precrawlQueueName = "{precrawlQueue}";
-
-export function getScrapeQueue() {
-  if (!scrapeQueue) {
-    scrapeQueue = new Queue(scrapeQueueName, {
-      connection: getRedisConnection(),
-      defaultJobOptions: {
-        removeOnComplete: {
-          age: 3600, // 1 hour
-        },
-        removeOnFail: {
-          age: 3600, // 1 hour
-        },
-      },
-      telemetry: new BullMQOtel("firecrawl-bullmq"),
-    });
-  }
-  return scrapeQueue;
-}
-
-export function getScrapeQueueEvents() {
-  if (!scrapeQueueEvents) {
-    scrapeQueueEvents = new QueueEvents(scrapeQueueName, {
-      connection: getRedisConnection(),
-    });
-  }
-
-  return scrapeQueueEvents;
-}
 
 export function getExtractQueue() {
   if (!extractQueue) {

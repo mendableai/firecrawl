@@ -7,7 +7,7 @@ import { TeamFlags } from "../../controllers/v1/types";
 // Configuration
 // =========================================
 
-export const TEST_URL = "http://127.0.0.1:3002";
+export const TEST_URL = process.env.TEST_API_URL ?? "http://127.0.0.1:3002";
 
 // Due to the limited resources of the CI runner, we need to set a longer timeout for the many many scrape tests
 export const scrapeTimeout = 90000;

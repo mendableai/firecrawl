@@ -60,6 +60,7 @@ export interface WebScraperOptions {
   sentry?: any;
   is_extract?: boolean;
   concurrencyLimited?: boolean;
+  priority?: number;
 }
 
 export interface RunWebScraperParams {

@@ -20,6 +20,8 @@
     "harness": "tsx src/harness.ts",
     "workers": "tsc-watch --onSuccess \"node dist/src/services/queue-worker.js\"",
     "worker:production": "node dist/src/services/queue-worker.js",
+    "nuq-worker": "tsc-watch --onSuccess \"node dist/src/services/worker/nuq-worker.js\"",
+    "nuq-worker:production": "node dist/src/services/worker/nuq-worker.js",
     "index-worker": "tsc-watch --onSuccess \"node dist/src/services/indexing/index-worker.js\"",
     "index-worker:production": "node dist/src/services/indexing/index-worker.js",
     "mongo-docker": "docker run -d -p 2717:27017 -v ./mongo-data:/data/db --name mongodb mongo:latest",
@@ -43,6 +45,7 @@
     "@types/lodash": "^4.17.14",
     "@types/node": "^20.14.1",
     "@types/pdf-parse": "^1.1.4",
+    "@types/pg": "^8.15.5",
     "@types/supertest": "^6.0.2",
     "@types/tough-cookie": "^4.0.5",
     "jest": "^29.6.3",
@@ -133,6 +136,7 @@
     "openai": "^5.12.0",
     "parse-diff": "^0.11.1",
     "pdf-parse": "^1.1.1",
+    "pg": "^8.16.3",
     "pos": "^0.4.2",
     "posthog-node": "^4.0.1",
     "psl": "^1.15.0",
@@ -167,7 +171,12 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@sentry-internal/node-cpu-profiler"
+      "@sentry-internal/node-cpu-profiler",
+      "bigint-buffer",
+      "bufferutil",
+      "keccak",
+      "libpq",
+      "utf-8-validate"
     ],
     "overrides": {
       "brace-expansion@>=2.0.0 <=2.0.1": "2.0.2"

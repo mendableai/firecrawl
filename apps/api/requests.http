@@ -1,10 +1,10 @@
 # Pick your baseUrl here:
-# @baseUrl = http://localhost:3002
-@baseUrl = https://api.firecrawl.dev
+@baseUrl = http://localhost:3002
+# @baseUrl = https://api.firecrawl.dev
 
 ### Scrape Website
 # @name scrape
-POST {{baseUrl}}/v1/scrape HTTP/1.1
+POST {{baseUrl}}/v2/scrape HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 

@@ -1,0 +1,291 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: firecrawl-config
+data:
+  HOST: "0.0.0.0"
+  REDIS_URL: "redis://firecrawl-dragonfly:6379"
+  REDIS_RATE_LIMIT_URL: "redis://firecrawl-dragonfly:6379"
+  REDIS_EVICT_URL: "redis://firecrawl-dragonfly:6379"
+  SENTRY_ENVIRONMENT: "dev"
+  ENV: "production"
+  LOGGING_LEVEL: "DEBUG"
+  IS_KUBERNETES: "true"
+  USE_GO_MARKDOWN_PARSER: "true"
+  NUQ_DATABASE_URL: "postgres://postgres:postgres@nuq-postgres:5432/postgres"
+  NUQ_DATABASE_URL_LISTEN: "postgres://postgres:postgres@nuq-postgres:5432/postgres"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nuq-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nuq-postgres
+  template:
+    metadata:
+      labels:
+        app: nuq-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: firecrawl/nuq-postgres:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+            - name: POSTGRES_DB
+              value: "postgres"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nuq-postgres
+spec:
+  selector:
+    app: nuq-postgres
+  ports:
+    - name: postgres
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-dragonfly
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firecrawl-dragonfly
+  template:
+    metadata:
+      labels:
+        app: firecrawl-dragonfly
+    spec:
+      containers:
+        - name: dragonfly
+          image: ghcr.io/dragonflydb/dragonfly:v1.31.2
+          args:
+          - "--logtostderr"
+          - "--cluster_mode=emulated"
+          - "--lock_on_hashtags"
+          - "--bind=::"
+          - "--maxmemory=4gb"
+          - "--dir=/data"
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firecrawl-dragonfly
+spec:
+  selector:
+    app: firecrawl-dragonfly
+  ports:
+    - name: redis
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firecrawl-app
+  template:
+    metadata:
+      labels:
+        app: firecrawl-app
+    spec:
+      containers:
+        - name: firecrawl-app
+          image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
+          command: ["node"]
+          args: ["dist/src/index.js"]
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+            - configMapRef:
+                name: firecrawl-config-dynamic
+          env:
+            - name: FLY_PROCESS_GROUP
+              value: "app"
+            - name: PORT
+              value: "3002"
+            - name: NODE_OPTIONS
+              value: "--no-node-snapshot --max-old-space-size=6144"
+          resources:
+            requests:
+              memory: "1G"
+              cpu: "500m"
+            limits:
+              memory: "6G"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /v0/health/liveness
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v0/health/readiness
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firecrawl-app
+  namespace: default
+  labels:
+    app: firecrawl-app
+spec:
+  selector:
+    app: firecrawl-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3002
+      targetPort: 3002
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firecrawl-worker
+  template:
+    metadata:
+      labels:
+        app: firecrawl-worker
+    spec:
+      containers:
+        - name: worker
+          image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
+          command: [ "node" ]
+          args: [ "dist/src/services/queue-worker.js", "--max-old-space-size=2048" ]
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+            - configMapRef:
+                name: firecrawl-config-dynamic
+          env:
+            - name: FLY_PROCESS_GROUP
+              value: "worker"
+            - name: PORT
+              value: "3005"
+            - name: NODE_OPTIONS
+              value: "--no-node-snapshot"
+            - name: GOMEMLIMIT
+              value: "1024MiB"
+            - name: SCRAPE_WORKER_MAX_OLD_SPACE_SIZE
+              value: "768"
+          resources:
+            requests:
+              memory: "2G"
+              cpu: "500m"
+            limits:
+              memory: "4G"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 3005
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-nuq-worker
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: firecrawl-nuq-worker
+  template:
+    metadata:
+      labels:
+        app: firecrawl-nuq-worker
+    spec:
+      containers:
+        - name: nuq-worker
+          image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
+          command: [ "node" ]
+          args: [ "dist/src/services/worker/nuq-worker.js", "--max-old-space-size=2048" ]
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+            - configMapRef:
+                name: firecrawl-config-dynamic
+          env:
+            - name: PORT
+              value: "3005"
+            - name: NODE_OPTIONS
+              value: "--no-node-snapshot"
+            - name: GOMEMLIMIT
+              value: "1024MiB"
+          resources:
+            requests:
+              memory: "2G"
+              cpu: "500m"
+            limits:
+              memory: "4G"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3005
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3

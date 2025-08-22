@@ -2,9 +2,8 @@ import { logger } from "../../lib/logger";
 import { getRedisConnection } from "../queue-service";
 import { supabase_service } from "../supabase";
 import * as Sentry from "@sentry/node";
-import { Queue } from "bullmq";
 import { withAuth } from "../../lib/withAuth";
-import { getACUC, setCachedACUC, setCachedACUCTeam } from "../../controllers/auth";
+import { setCachedACUC, setCachedACUCTeam } from "../../controllers/auth";
 
 // Configuration constants
 const BATCH_KEY = "billing_batch";

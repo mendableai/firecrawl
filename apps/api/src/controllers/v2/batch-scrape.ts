@@ -134,25 +134,22 @@ export async function batchScrapeController(
   delete (scrapeOptions as any).appendToId;
 
   const jobs = urls.map(x => ({
-      data: {
-        url: x,
-        mode: "single_urls" as const,
-        team_id: req.auth.team_id,
-        crawlerOptions: null,
-        scrapeOptions,
-        origin: "api",
-        integration: req.body.integration,
-        crawl_id: id,
-        sitemapped: true,
-        v1: true,
-        webhook: req.body.webhook,
-        internalOptions: sc.internalOptions,
-        zeroDataRetention,
-      },
-      opts: {
-        jobId: uuidv4(),
-        priority: 20,
-      },
+    jobId: uuidv4(),
+    data: {
+      url: x,
+      mode: "single_urls" as const,
+      team_id: req.auth.team_id,
+      crawlerOptions: null,
+      scrapeOptions,
+      origin: "api",
+      integration: req.body.integration,
+      crawl_id: id,
+      sitemapped: true,
+      v1: true,
+      webhook: req.body.webhook,
+      internalOptions: sc.internalOptions,
+      zeroDataRetention,
+    },
   }));
 
   await finishCrawlKickoff(id);
@@ -167,7 +164,7 @@ export async function batchScrapeController(
   logger.debug("Adding scrape jobs to Redis...");
   await addCrawlJobs(
     id,
-    jobs.map((x) => x.opts.jobId),
+    jobs.map((x) => x.jobId),
     logger,
   );
   logger.debug("Adding scrape jobs to BullMQ...");

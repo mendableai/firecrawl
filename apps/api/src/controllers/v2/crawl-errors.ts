@@ -8,30 +8,14 @@ import {
   getCrawl,
   getCrawlJobs,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
 import { redisEvictConnection } from "../../../src/services/redis";
 import { configDotenv } from "dotenv";
-import { Job } from "bullmq";
 import { supabase_rr_service } from "../../services/supabase";
 import { logger } from "../../lib/logger";
 import { deserializeTransportableError } from "../../lib/error-serde";
 import { TransportableError } from "../../lib/error";
+import { nuqGetJobsWithStatus } from "../../services/worker/nuq";
 configDotenv();
-
-export async function getJob(id: string) {
-  const job = await getScrapeQueue().getJob(id);
-  if (!job) return job;
-
-  return job;
-}
-
-export async function getJobs(ids: string[]) {
-  const jobs: (Job & { id: string })[] = (
-    await Promise.all(ids.map((x) => getScrapeQueue().getJob(x)))
-  ).filter((x) => x) as (Job & { id: string })[];
-
-  return jobs;
-}
 
 export async function crawlErrorsController(
   req: RequestWithAuth<CrawlStatusParams, undefined, CrawlErrorsResponse>,
@@ -44,35 +28,23 @@ export async function crawlErrorsController(
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
 
-    let jobStatuses = await Promise.all(
-      (await getCrawlJobs(req.params.jobId)).map(
-        async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
-      ),
-    );
-
-    const failedJobIDs: string[] = [];
-
-    for (const [id, status] of jobStatuses) {
-      if (status === "failed") {
-        failedJobIDs.push(id);
-      }
-    }
+    const failedJobs = (await nuqGetJobsWithStatus<any, any>(await getCrawlJobs(req.params.jobId), "failed")).filter(x => x.failedReason);
 
     res.status(200).json({
-      errors: (await getJobs(failedJobIDs)).map((x) => {
-        const error = deserializeTransportableError(x.failedReason) as TransportableError | null;
+      errors: failedJobs.map((x) => {
+        const error = deserializeTransportableError(x.failedReason!) as TransportableError | null;
         return {
           id: x.id,
           timestamp:
-            x.finishedOn !== undefined
-              ? new Date(x.finishedOn).toISOString()
+            x.finishedAt !== undefined
+              ? new Date(x.finishedAt).toISOString()
               : undefined,
           url: x.data.url,
           ...(error ? {
             code: error.code,
             error: error.message,
           } : {
-            error: x.failedReason,
+            error: x.failedReason!,
           }),
         };
       }),

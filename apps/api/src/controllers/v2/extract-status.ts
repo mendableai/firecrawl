@@ -1,10 +1,23 @@
 import { Response } from "express";
 import { RequestWithAuth } from "./types";
 import { getExtract, getExtractExpiry } from "../../lib/extract/extract-redis";
-import { DBJob, PseudoJob } from "./crawl-status";
+import { DBJob } from "./crawl-status";
 import { getExtractQueue } from "../../services/queue-service";
 import { ExtractResult } from "../../lib/extract/extraction-service";
 import { supabaseGetJobByIdDirect } from "../../lib/supabase-jobs";
+import { JobState } from "bullmq";
+
+type PseudoJob<T> = {
+  id: string,
+  getState: () => Promise<JobState | "unknown"> | JobState | "unknown",
+  returnvalue: T | null,
+  timestamp: number,
+  data: {
+    scrapeOptions: any,
+    teamId?: string,
+  },
+  failedReason?: string,
+}
 
 export async function getExtractJob(id: string): Promise<PseudoJob<ExtractResult> | null> {
   const [bullJob, dbJob] = await Promise.all([

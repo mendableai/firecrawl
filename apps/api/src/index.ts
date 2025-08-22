@@ -6,7 +6,6 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import {
   getExtractQueue,
-  getScrapeQueue,
   getGenerateLlmsTxtQueue,
   getDeepResearchQueue,
   getBillingQueue,
@@ -23,7 +22,6 @@ import expressWs from "express-ws";
 import { ErrorResponse, RequestWithMaybeACUC, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { RateLimiterMode } from "./types";
 import { attachWsProxy } from "./services/agentLivecastWS";
 import { cacheableLookup } from "./scraper/scrapeURL/lib/cacheableLookup";
 import { v2Router } from "./routes/v2";
@@ -35,6 +33,7 @@ import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { nuqShutdown } from "./services/worker/nuq";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -86,7 +85,6 @@ serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [
-    new BullMQAdapter(getScrapeQueue()),
     new BullMQAdapter(getExtractQueue()),
     new BullMQAdapter(getGenerateLlmsTxtQueue()),
     new BullMQAdapter(getDeepResearchQueue()),
@@ -137,14 +135,17 @@ function startServer(port = DEFAULT_PORT) {
     }
     server.close(() => {
       logger.info("Server closed.");
-      if (otelSdk) {
-        otelSdk.shutdown().then(() => {
-          logger.info("OTEL shutdown");
+      nuqShutdown().then(() => {
+        logger.info("NUQ shutdown complete");
+        if (otelSdk) {
+          otelSdk.shutdown().then(() => {
+            logger.info("OTEL shutdown");
+            process.exit(0);
+          });
+        } else {
           process.exit(0);
-        });
-      } else {
-        process.exit(0);
-      }
+        }
+      });
     });
   };
 
@@ -156,77 +157,6 @@ function startServer(port = DEFAULT_PORT) {
 if (require.main === module) {
   startServer();
 }
-
-app.get(`/serverHealthCheck`, async (req, res) => {
-  try {
-    const scrapeQueue = getScrapeQueue();
-    const [waitingJobs] = await Promise.all([scrapeQueue.getWaitingCount()]);
-    const noWaitingJobs = waitingJobs === 0;
-    // 200 if no active jobs, 503 if there are active jobs
-    return res.status(noWaitingJobs ? 200 : 500).json({
-      waitingJobs,
-    });
-  } catch (error) {
-    Sentry.captureException(error);
-    logger.error(error);
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-app.get("/serverHealthCheck/notify", async (req, res) => {
-  if (process.env.SLACK_WEBHOOK_URL) {
-    const treshold = 1; // The treshold value for the active jobs
-    const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
-
-    const getWaitingJobsCount = async () => {
-      const scrapeQueue = getScrapeQueue();
-      const [waitingJobsCount] = await Promise.all([
-        scrapeQueue.getWaitingCount(),
-      ]);
-
-      return waitingJobsCount;
-    };
-
-    res.status(200).json({ message: "Check initiated" });
-
-    const checkWaitingJobs = async () => {
-      try {
-        let waitingJobsCount = await getWaitingJobsCount();
-        if (waitingJobsCount >= treshold) {
-          setTimeout(async () => {
-            // Re-check the waiting jobs count after the timeout
-            waitingJobsCount = await getWaitingJobsCount();
-            if (waitingJobsCount >= treshold) {
-              const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL!;
-              const message = {
-                text: `⚠️ Warning: The number of active jobs (${waitingJobsCount}) has exceeded the threshold (${treshold}) for more than ${
-                  timeout / 60000
-                } minute(s).`,
-              };
-
-              const response = await fetch(slackWebhookUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(message),
-              });
-
-              if (!response.ok) {
-                logger.error("Failed to send Slack notification");
-              }
-            }
-          }, timeout);
-        }
-      } catch (error) {
-        Sentry.captureException(error);
-        logger.debug(error);
-      }
-    };
-
-    checkWaitingJobs();
-  }
-});
 
 app.get("/is-production", (req, res) => {
   res.send({ isProduction: global.isProduction });
@@ -296,12 +226,3 @@ app.use(
 );
 
 logger.info(`Worker ${process.pid} started`);
-// const sq = getScrapeQueue();
-
-// sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-// sq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-// sq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-// sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-// sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-// sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-// 

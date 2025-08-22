@@ -43,6 +43,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
   });
 
   try {
+    if (process.env.GCS_BUCKET_NAME) {
+      await saveJobToGCS(job);
+    }
+    
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (!useDbAuthentication) {
       return;
@@ -88,10 +92,6 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
       change_tracking_tag: zeroDataRetention ? null : job.change_tracking_tag ?? null,
       dr_clean_by: zeroDataRetention && job.crawl_id ? new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString() : null,
     };
-
-    if (process.env.GCS_BUCKET_NAME) {
-      await saveJobToGCS(job);
-    }
 
     if (bypassLogging) {
       return;

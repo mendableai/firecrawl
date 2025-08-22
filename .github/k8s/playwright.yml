@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-playwright-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firecrawl-playwright-service
+  template:
+    metadata:
+      labels:
+        app: firecrawl-playwright-service
+    spec:
+      containers:
+        - name: playwright-service
+          image: firecrawl/playwright-service:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+            - configMapRef:
+                name: firecrawl-config-dynamic
+          env:
+            - name: PORT
+              value: "3003"
+          ports:
+            - containerPort: 3003
+          resources:
+            requests:
+              memory: "1G"
+              cpu: "500m"
+            limits:
+              memory: "3G"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firecrawl-playwright-service
+spec:
+  selector:
+    app: firecrawl-playwright-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3003
+      targetPort: 3003
