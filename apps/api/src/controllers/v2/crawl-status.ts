@@ -56,7 +56,7 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
   const job: PseudoJob<any> = {
     id,
-    status: nuqJob ? nuqJob.status : (dbJob!.success ? "completed" : "failed"),
+    status: dbJob ? (dbJob.success ? "completed" : "failed") : nuqJob!.status,
     returnvalue: Array.isArray(data)
       ? data[0]
       : data,
@@ -72,7 +72,7 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
   const [nuqJobs, dbJobs, gcsJobs] = await Promise.all([
-    nuqGetJobs<any, any>(ids),
+    nuqGetJobs(ids),
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
@@ -111,7 +111,7 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
 
     const job: PseudoJob<any> = {
       id,
-      status: nuqJob ? nuqJob.status : (dbJob!.success ? "completed" : "failed"),
+      status: dbJob ? (dbJob.success ? "completed" : "failed") : nuqJob!.status,
       returnvalue: Array.isArray(data)
         ? data[0]
         : data,
