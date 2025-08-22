@@ -1,6 +1,10 @@
 CREATE SCHEMA IF NOT EXISTS nuq;
 
-CREATE TYPE IF NOT EXISTS nuq.job_status AS ENUM ('queued', 'active', 'completed', 'failed');
+DO $$ BEGIN
+  CREATE TYPE nuq.job_status AS ENUM ('queued', 'active', 'completed', 'failed');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS nuq.queue_scrape (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
