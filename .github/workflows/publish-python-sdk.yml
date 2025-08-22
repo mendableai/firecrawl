@@ -1,6 +1,11 @@
 name: Publish Python SDK 
 
-on: []
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/python-sdk/**'
 
 env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
