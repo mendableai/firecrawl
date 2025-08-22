@@ -1,4 +1,4 @@
-import { type Document, type SearchData, type SearchRequest, type SearchResult, type ScrapeOptions } from "../types";
+import { type Document, type SearchData, type SearchRequest, type SearchResultWeb, type ScrapeOptions, type SearchResultNews, type SearchResultImages } from "../types";
 import { HttpClient } from "../utils/httpClient";
 import { ensureValidScrapeOptions } from "../utils/validation";
 import { throwForBadResponse, normalizeAxiosError } from "../utils/errorHandler";
@@ -23,6 +23,31 @@ function prepareSearchPayload(req: SearchRequest): Record<string, unknown> {
   return payload;
 }
 
+function transformArray<ResultType>(arr: any[]): Array<ResultType | Document> {
+  const results: Array<ResultType | Document> = [] as any;
+  for (const item of arr) {
+    if (item && typeof item === "object") {
+      if (
+        "markdown" in item ||
+        "html" in item ||
+        "rawHtml" in item ||
+        "links" in item ||
+        "screenshot" in item ||
+        "changeTracking" in item ||
+        "summary" in item ||
+        "json" in item
+      ) {
+        results.push(item as Document);
+      } else {
+        results.push(item as ResultType);
+      }
+    } else {
+      results.push({ url: item } as ResultType);
+    }
+  }
+  return results;
+}
+
 export async function search(http: HttpClient, request: SearchRequest): Promise<SearchData> {
   const payload = prepareSearchPayload(request);
   try {
@@ -32,34 +57,9 @@ export async function search(http: HttpClient, request: SearchRequest): Promise<
     }
     const data = (res.data.data || {}) as Record<string, any>;
     const out: SearchData = {};
-    for (const key of Object.keys(data)) {
-      const arr = data[key];
-      if (Array.isArray(arr)) {
-        const results: Array<SearchResult | Document> = [] as any;
-        for (const item of arr) {
-          if (item && typeof item === "object") {
-            // If scraped page fields present, treat as Document; otherwise SearchResult
-            if (
-              "markdown" in item ||
-              "html" in item ||
-              "rawHtml" in item ||
-              "links" in item ||
-              "screenshot" in item ||
-              "changeTracking" in item ||
-              "summary" in item ||
-              "json" in item
-            ) {
-              results.push(item as Document);
-            } else {
-              results.push({ url: item.url, title: item.title, description: item.description } as SearchResult);
-            }
-          } else if (typeof item === "string") {
-            results.push({ url: item } as SearchResult);
-          }
-        }
-        (out as any)[key] = results;
-      }
-    }
+    if (data.web) out.web = transformArray<SearchResultWeb>(data.web);
+    if (data.news) out.news = transformArray<SearchResultNews>(data.news);
+    if (data.images) out.images = transformArray<SearchResultImages>(data.images);
     return out;
   } catch (err: any) {
     if (err?.isAxiosError) return normalizeAxiosError(err, "search");
