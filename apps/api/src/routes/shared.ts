@@ -187,12 +187,12 @@ export function countryCheck(
   const couldBeRestricted = req.body
     && (
       req.body.actions
-      || req.body.headers
+      || (req.body.headers && typeof req.body.headers === "object" && Object.keys(req.body.headers).length > 0)
       || req.body.agent
       || req.body.jsonOptions?.agent
       || req.body.extract?.agent
       || req.body.scrapeOptions?.actions
-      || req.body.scrapeOptions?.headers
+      || (req.body.scrapeOptions?.headers && typeof req.body.scrapeOptions.headers === "object" && Object.keys(req.body.scrapeOptions.headers).length > 0)
       || req.body.scrapeOptions?.agent
       || req.body.scrapeOptions?.jsonOptions?.agent
       || req.body.scrapeOptions?.extract?.agent
