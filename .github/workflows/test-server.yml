@@ -21,13 +21,12 @@ jobs:
           use-cache: 'true'
       - name: Start minikube
         uses: medyagh/setup-minikube@latest
-      - name: Build Firecrawl image
-        run: docker build -t firecrawl/firecrawl:latest . && minikube image load firecrawl/firecrawl:latest
-        working-directory: ./apps/api
-      - name: Build Postgres image
-        run: docker build -t firecrawl/nuq-postgres:latest -f .github/k8s/nuq-postgres/Dockerfile . && minikube image load firecrawl/nuq-postgres:latest
-      - name: Build Tailscale proxy image
-        run: docker build -t firecrawl/tailscale-proxy:latest .github/k8s/tailscale-proxy && minikube image load firecrawl/tailscale-proxy:latest
+      - name: Build images using minikube's docker
+        run: |
+          eval $(minikube docker-env)
+          docker build -t firecrawl/firecrawl:latest ./apps/api
+          docker build -t firecrawl/nuq-postgres:latest -f .github/k8s/nuq-postgres/Dockerfile .
+          docker build -t firecrawl/tailscale-proxy:latest .github/k8s/tailscale-proxy
       - name: Create Tailscale secret
         run: |
           kubectl create secret generic tailscale \

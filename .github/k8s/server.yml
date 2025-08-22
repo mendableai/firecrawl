@@ -32,6 +32,7 @@ spec:
       containers:
         - name: proxy
           image: firecrawl/tailscale-proxy:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           env:
@@ -83,6 +84,7 @@ spec:
       containers:
         - name: postgres
           image: firecrawl/nuq-postgres:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 5432
           env:
@@ -178,6 +180,7 @@ spec:
       containers:
         - name: firecrawl-app
           image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
           command: ["node"]
           args: ["dist/src/index.js"]
           ports:
@@ -254,6 +257,7 @@ spec:
       containers:
         - name: worker
           image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
           command: [ "node" ]
           args: [ "dist/src/services/queue-worker.js", "--max-old-space-size=2048" ]
           envFrom:
@@ -306,6 +310,7 @@ spec:
       containers:
         - name: index-worker
           image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
           command: [ "node" ]
           args: [ "--max-old-space-size=2048", "dist/src/services/indexing/index-worker.js" ]
           envFrom:
@@ -341,6 +346,7 @@ spec:
       containers:
         - name: nuq-worker
           image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
           command: [ "node" ]
           args: [ "dist/src/services/worker/nuq-worker.js", "--max-old-space-size=2048" ]
           envFrom:
