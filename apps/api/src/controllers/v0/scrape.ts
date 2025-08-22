@@ -29,6 +29,7 @@ import { Document as V0Document } from "./../../lib/entities";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { fromV0Combo } from "../v2/types";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { nuqRemoveJob } from "../../services/worker/nuq";
 
 export async function scrapeHelper(
   jobId: string,
@@ -118,7 +119,7 @@ export async function scrapeHelper(
     return err;
   }
 
-  // TODONUQ: await getScrapeQueue().remove(jobId);
+  await nuqRemoveJob(jobId);
 
   if (!doc) {
     console.error("!!! PANIC DOC IS", doc);

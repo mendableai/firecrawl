@@ -18,15 +18,15 @@ import {
   supabaseGetJobsById,
 } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
-import type { Job, JobState } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { nuqGetJob, nuqGetJobs, NuQJob, NuQJobStatus } from "../../services/worker/nuq";
 configDotenv();
 
 export type PseudoJob<T> = {
   id: string,
-  getState(): Promise<JobState | "unknown"> | JobState | "unknown",
+  status: NuQJobStatus,
   returnvalue: T | null,
   timestamp: number,
   data: {
@@ -39,16 +39,15 @@ export type PseudoJob<T> = {
 export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string }
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
-  const [bullJob, dbJob, gcsJob] = await Promise.all([
-    // TODONUQ: getScrapeQueue().getJob(id),
-    null as any,
+  const [nuqJob, dbJob, gcsJob] = await Promise.all([
+    nuqGetJob<any, any>(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
     (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
 
-  if (!bullJob && !dbJob) return null;
+  if (!nuqJob && !dbJob) return null;
 
-  const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
+  const data = gcsJob ?? dbJob?.docs ?? nuqJob?.returnvalue;
   if (gcsJob === null && data) {
     logger.warn("GCS Job not found", {
       jobId: id,
@@ -57,34 +56,33 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 
   const job: PseudoJob<any> = {
     id,
-    getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : bullJob!.getState,
+    status: dbJob ? (dbJob.success ? "completed" : "failed") : nuqJob!.status,
     returnvalue: Array.isArray(data)
       ? data[0]
       : data,
     data: {
-      scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
+      scrapeOptions: nuqJob ? nuqJob.data.scrapeOptions : dbJob!.page_options,
     },
-    timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
-    failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
+    timestamp: nuqJob ? nuqJob.createdAt.valueOf() : new Date(dbJob!.date_added).valueOf(),
+    failedReason: (nuqJob ? nuqJob.failedReason : dbJob!.message) || undefined,
   }
 
   return job;
 }
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
-  const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
-    // TODONUQ: Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
-    [] as any[],
+  const [nuqJobs, dbJobs, gcsJobs] = await Promise.all([
+    nuqGetJobs(ids),
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
     process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
 
-  const bullJobMap = new Map<string, PseudoJob<any>>();
+  const nuqJobMap = new Map<string, NuQJob<any, any>>();
   const dbJobMap = new Map<string, DBJob>();
   const gcsJobMap = new Map<string, any>();
 
-  for (const job of bullJobs) {
-    bullJobMap.set(job.id, job);
+  for (const job of nuqJobs) {
+    nuqJobMap.set(job.id, job);
   }
 
   for (const job of dbJobs) {
@@ -98,13 +96,13 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
   const jobs: PseudoJob<any>[] = [];
 
   for (const id of ids) {
-    const bullJob = bullJobMap.get(id);
+    const nuqJob = nuqJobMap.get(id);
     const dbJob = dbJobMap.get(id);
     const gcsJob = gcsJobMap.get(id);
 
-    if (!bullJob && !dbJob) continue;
+    if (!nuqJob && !dbJob) continue;
 
-    const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
+    const data = gcsJob ?? dbJob?.docs ?? nuqJob?.returnvalue;
     if (gcsJob === null && data) {
       logger.warn("GCS Job not found", {
         jobId: id,
@@ -113,15 +111,15 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
 
     const job: PseudoJob<any> = {
       id,
-      getState: dbJob ? (() => dbJob.success ? "completed" : "failed") : (() => bullJob!.getState()),
+      status: dbJob ? (dbJob.success ? "completed" : "failed") : nuqJob!.status,
       returnvalue: Array.isArray(data)
         ? data[0]
         : data,
       data: {
-        scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
+        scrapeOptions: nuqJob ? nuqJob.data.scrapeOptions : dbJob!.page_options,
       },
-      timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
-      failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
+      timestamp: nuqJob ? nuqJob.createdAt.valueOf() : new Date(dbJob!.date_added).valueOf(),
+      failedReason: (nuqJob ? nuqJob.failedReason : dbJob!.message) || undefined,
     }
 
     jobs.push(job);
@@ -316,9 +314,8 @@ export async function crawlStatusController(
     const bytesLimit = 10485760; // 10 MiB in bytes
 
     for (const jobId of doneJobs) {
-      // TODONUQ: const job = await getScrapeQueue().getJob(jobId);
-      const job = null as any;
-      const state = await job?.getState();
+      const job = await nuqGetJob<any, Document>(jobId);
+      const state = job?.status;
 
       if (state === "failed") {
         // no iterated over, just ignore

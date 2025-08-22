@@ -15,17 +15,14 @@ import { redisEvictConnection } from "../../../src/services/redis";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
-import { Job } from "bullmq";
 import {
-  Document,
-  fromLegacyCombo,
   fromLegacyScrapeOptions,
   TeamFlags,
   toLegacyDocument,
 } from "../v1/types";
-import { getJobFromGCS } from "../../lib/gcs-jobs";
 import { fromV0Combo } from "../v2/types";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { nuqRemoveJobs } from "../../services/worker/nuq";
 
 export async function searchHelper(
   jobId: string,
@@ -134,9 +131,7 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  // TODONUQ: 
-  // const sq = getScrapeQueue();
-  // await Promise.all(jobDatas.map((x) => sq.remove(x.jobId)));
+  await nuqRemoveJobs(jobDatas.map((x) => x.jobId));
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(

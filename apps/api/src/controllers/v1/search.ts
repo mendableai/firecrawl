@@ -24,6 +24,7 @@ import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
 import { fromV1ScrapeOptions } from "../v2/types";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { nuqRemoveJob } from "../../services/worker/nuq";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -129,7 +130,7 @@ async function scrapeSearchResult(
       teamId: options.teamId,
       origin: options.origin,
     });
-    // TODONUQ: await getScrapeQueue().remove(jobId);
+    await nuqRemoveJob(jobId);
 
     const document = {
       title: searchResult.title,

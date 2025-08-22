@@ -226,12 +226,3 @@ app.use(
 );
 
 logger.info(`Worker ${process.pid} started`);
-// const sq = getScrapeQueue();
-
-// sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-// sq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-// sq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-// sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-// sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-// sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-// 

@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { hasFormatOfType } from "../../lib/format-utils";
 import { TransportableError } from "../../lib/error";
+import { nuqRemoveJob } from "../../services/worker/nuq";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -98,7 +99,7 @@ export async function scrapeController(
     });
 
     if (zeroDataRetention) {
-      // TODONUQ: await getScrapeQueue().remove(jobId);
+      await nuqRemoveJob(jobId);
     }
 
     if (e instanceof TransportableError) {
@@ -115,7 +116,7 @@ export async function scrapeController(
     }
   }
 
-  // TODONUQ: await getScrapeQueue().remove(jobId);
+  await nuqRemoveJob(jobId);
   
   if (!hasFormatOfType(req.body.formats, "rawHtml")) {
     if (doc && doc.rawHtml) {

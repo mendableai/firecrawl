@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { logger } from "../../lib/logger";
 import { processJobInternal } from "./scrape-worker";
-import { nuqGetJobToProcess, nuqGetLocalMetrics, nuqHealthCheck, nuqJobEnd, nuqRenewLock, nuqShutdown } from "./nuq";
+import { nuqGetJobToProcess, nuqGetLocalMetrics, nuqHealthCheck, nuqJobFinish, nuqJobFail, nuqRenewLock, nuqShutdown } from "./nuq";
 import Express from "express";
 import { _ } from "ajv";
 
@@ -67,10 +67,14 @@ import { _ } from "ajv";
         
         clearInterval(lockRenewInterval);
 
-        const status: "completed" | "failed" = processResult.ok ? "completed" : "failed";
-
-        if (!await nuqJobEnd(job.id, myLock, status)) {
-            logger.warn("Could not update job status", { status, scrapeId: job.id });
+        if (processResult.ok) {
+            if (!await nuqJobFinish(job.id, myLock, processResult.data)) {
+                logger.warn("Could not update job status", { scrapeId: job.id });
+            }
+        } else {
+            if (!await nuqJobFail(job.id, myLock, processResult.error instanceof Error ? processResult.error.message : typeof processResult.error === "string" ? processResult.error : JSON.stringify(processResult.error))) {
+                logger.warn("Could not update job status", { scrapeId: job.id });
+            }
         }
     }
 

@@ -4,6 +4,7 @@ import { addScrapeJob } from "../../../services/queue-jobs";
 import { getJobPriority } from "../../job-priority";
 import type { Logger } from "winston";
 import { isUrlBlocked } from "../../../scraper/WebScraper/utils/blocklist";
+import { nuqRemoveJob } from "../../../services/worker/nuq";
 
 interface ScrapeDocumentOptions {
   url: string;
@@ -63,7 +64,7 @@ export async function scrapeDocument_F0(
     );
 
     const doc = await waitForJob(jobId, timeout, false, logger);
-    // TODONUQ: await getScrapeQueue().remove(jobId);
+    await nuqRemoveJob(jobId);
 
     if (trace) {
       trace.timing.completedAt = new Date().toISOString();

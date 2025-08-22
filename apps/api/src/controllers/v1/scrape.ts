@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { fromV1ScrapeOptions } from "../v2/types";
 import { TransportableError } from "../../lib/error";
+import { nuqRemoveJob } from "../../services/worker/nuq";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -97,7 +98,7 @@ export async function scrapeController(
     });
 
     if (zeroDataRetention) {
-      // TODONUQ: await getScrapeQueue().remove(jobId);
+      await nuqRemoveJob(jobId);
     }
 
     if (e instanceof TransportableError) {
@@ -117,7 +118,7 @@ export async function scrapeController(
 
   logger.info("Done with waitForJob");
 
-  // TODONUQ: await getScrapeQueue().remove(jobId);
+  await nuqRemoveJob(jobId);
 
   logger.info("Removed job from queue");
   

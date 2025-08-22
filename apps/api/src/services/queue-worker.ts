@@ -7,9 +7,8 @@ import {
   getGenerateLlmsTxtQueue,
   getRedisConnection,
 } from "./queue-service";
-import { Job, Queue } from "bullmq";
+import { Job, Queue, Worker } from "bullmq";
 import { logger as _logger } from "../lib/logger";
-import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
 import { configDotenv } from "dotenv";
