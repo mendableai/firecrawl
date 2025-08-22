@@ -57,7 +57,6 @@ jobs:
             --from-literal=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }} \
             --from-literal=ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
             --from-literal=VERTEX_CREDENTIALS=${{ secrets.VERTEX_CREDENTIALS }} \
-            --from-literal=IDMUX_URL=${{ secrets.IDMUX_URL }} \
             --from-literal=LOG_ENCRYPTION_KEY=${{ secrets.LOG_ENCRYPTION_KEY }}
       - name: Deploy server
         run: kubectl apply -f .github/k8s/server.yml
@@ -77,6 +76,8 @@ jobs:
       - name: Wait for API
         run: kubectl wait --for=condition=ready pod -l app=firecrawl-app --timeout=60s
       - name: Run snippet tests
+        env:
+          IDMUX_URL: ${{ secrets.IDMUX_URL }}
         run: |
           TEST_API_URL=$(minikube service firecrawl-app --url) pnpm run test:snips
         working-directory: ./apps/api
