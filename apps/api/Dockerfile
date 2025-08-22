@@ -7,6 +7,9 @@ RUN corepack enable
 COPY . /app
 WORKDIR /app
 
+# Install tools for node-gyp
+RUN apt-get update && apt-get install -y python3 build-essential && rm -rf /var/lib/apt/lists/*
+
 FROM base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
