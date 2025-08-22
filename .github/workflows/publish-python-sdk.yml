@@ -35,18 +35,17 @@ jobs:
           VERSION_INCREMENTED=$(python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py)
           echo "VERSION_INCREMENTED=$VERSION_INCREMENTED" >> $GITHUB_ENV
 
-      - name: Build the package
-        if: ${{ env.VERSION_INCREMENTED == 'true' }}
-        run: |
-          python -m build
-        working-directory: ./apps/python-sdk
-
-      - name: Publish to PyPI
+      - name: Build and publish to PyPI
         if: ${{ env.VERSION_INCREMENTED == 'true' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
+          python -m build
+          twine upload dist/*
+          sed -i 's/name = "firecrawl-py"/name = "firecrawl"/g' pyproject.toml
+          sed -i 's/name="firecrawl-py"/name="firecrawl"/g' setup.py
+          python -m build
           twine upload dist/*
         working-directory: ./apps/python-sdk
 
