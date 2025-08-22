@@ -80,7 +80,7 @@ jobs:
         env:
           TEST_SUITE_SELF_HOSTED: true
           OPENAI_API_KEY: ${{ matrix.ai == 'openai' && '<IS SET>' || '' }}
-          PROXY_SERVER: ${{ matrix.proxy == 'proxy' && '<IS SET>' || '' }}
+          PROXY_SERVER: ${{ matrix.proxy == 'proxy' && secrets.PROXY_SERVER || '' }}
           PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && '<IS SET>' || '' }}
         run: TEST_API_URL=$(minikube service firecrawl-app --url) pnpm run test:snips
         working-directory: ./apps/api
