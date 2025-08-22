@@ -10,7 +10,7 @@ import {
   WebSearchResult,
 } from "../../lib/entities";
 import { agentOptionsExtract, ScrapeOptions as V1ScrapeOptions } from "../v1/types";
-import type { InternalOptions } from "../../scraper/scrapeURL";
+import { InternalOptions } from "../../scraper/scrapeURL";
 import { ErrorCodes } from "../../lib/error";
 import Ajv from "ajv";
 
@@ -35,6 +35,7 @@ export type Format =
   | "html"
   | "rawHtml"
   | "links"
+  | "images"
   | "screenshot"
   | "screenshot@fullPage"
   | "extract"
@@ -216,6 +217,7 @@ export type FormatObject =
   | { type: "html" }
   | { type: "rawHtml" }
   | { type: "links" }
+  | { type: "images" }
   | { type: "summary" }
   | JsonFormatWithOptions
   | ChangeTrackingFormatWithOptions
@@ -250,6 +252,7 @@ const baseScrapeOptions = z
           z.object({ type: z.literal("html") }),
           z.object({ type: z.literal("rawHtml") }),
           z.object({ type: z.literal("links") }),
+          z.object({ type: z.literal("images") }),
           z.object({ type: z.literal("summary") }),
           jsonFormatWithOptions,
           changeTrackingFormatWithOptions,
@@ -293,6 +296,10 @@ const baseScrapeOptions = z
     mobile: z.boolean().default(false),
     parsers: parsersSchema.optional(),
     actions: actionsSchema.optional(),
+    extractDataAttributes: z.array(z.object({
+      selector: z.string().describe("CSS selector to find elements"),
+      attribute: z.string().describe("Data attribute name to extract (e.g., 'data-vehicle-name')")
+    })).optional().describe("Extract specific data-* attributes from elements"),
     
     location: z
       .object({
@@ -629,11 +636,17 @@ export type Document = {
   html?: string;
   rawHtml?: string;
   links?: string[];
+  images?: string[];
   screenshot?: string;
   extract?: any;
   json?: any;
   summary?: string;
   warning?: string;
+  dataAttributes?: Array<{
+    selector: string;
+    attribute: string;
+    values: string[];
+  }>;
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
@@ -1322,6 +1335,7 @@ export const searchRequestSchema = z
               z.object({ type: z.literal("html") }),
               z.object({ type: z.literal("rawHtml") }),
               z.object({ type: z.literal("links") }),
+              z.object({ type: z.literal("images") }),
               z.object({ type: z.literal("summary") }),
               jsonFormatWithOptions,
               screenshotFormatWithOptions,

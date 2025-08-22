@@ -3,11 +3,13 @@ import { Meta } from "..";
 import { Document } from "../../../controllers/v1/types";
 import { htmlTransform } from "../lib/removeUnwantedElements";
 import { extractLinks } from "../lib/extractLinks";
+import { extractImages } from "../lib/extractImages";
 import { extractMetadata } from "../lib/extractMetadata";
 import { performLLMExtract, performSummary } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { performAgent } from "./agent";
+import { deriveDataAttributesFromHTML } from "./dataAttributes";
 
 import { deriveDiff } from "./diff";
 import { useIndex } from "../../../services/index";
@@ -116,6 +118,21 @@ export async function deriveLinksFromHTML(meta: Meta, document: Document): Promi
   return document;
 }
 
+export async function deriveImagesFromHTML(meta: Meta, document: Document): Promise<Document> {
+  // Only derive if the formats has images
+  if (hasFormatOfType(meta.options.formats, "images")) {
+    if (document.html === undefined) {
+      throw new Error(
+        "html is undefined -- this transformer is being called out of order",
+      );
+    }
+
+    document.images = await extractImages(document.html, document.metadata.url ?? document.metadata.sourceURL ?? meta.rewrittenUrl ?? meta.url);
+  }
+
+  return document;
+}
+
 export function coerceFieldsToFormats(
   meta: Meta,
   document: Document,
@@ -124,6 +141,7 @@ export function coerceFieldsToFormats(
   const hasRawHtml = hasFormatOfType(meta.options.formats, "rawHtml");
   const hasHtml = hasFormatOfType(meta.options.formats, "html");
   const hasLinks = hasFormatOfType(meta.options.formats, "links");
+  const hasImages = hasFormatOfType(meta.options.formats, "images");
   const hasChangeTracking = hasFormatOfType(meta.options.formats, "changeTracking");
   const hasJson = hasFormatOfType(meta.options.formats, "json");
   const hasScreenshot = hasFormatOfType(meta.options.formats, "screenshot");
@@ -178,6 +196,17 @@ export function coerceFieldsToFormats(
   } else if (hasLinks && document.links === undefined) {
     meta.logger.warn(
       "Request had format: links, but there was no links field in the result.",
+    );
+  }
+
+  if (!hasImages && document.images !== undefined) {
+    meta.logger.warn(
+      "Removed images from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
+    );
+    delete document.images;
+  } else if (hasImages && document.images === undefined) {
+    meta.logger.warn(
+      "Request had format: images, but there was no images field in the result.",
     );
   }
 
@@ -267,8 +296,10 @@ export function coerceFieldsToFormats(
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
   deriveHTMLFromRawHTML,
+  deriveDataAttributesFromHTML,
   deriveMarkdownFromHTML,
   deriveLinksFromHTML,
+  deriveImagesFromHTML,
   deriveMetadataFromRawHTML,
   uploadScreenshot,
   ...(useIndex ? [sendDocumentToIndex] : []),

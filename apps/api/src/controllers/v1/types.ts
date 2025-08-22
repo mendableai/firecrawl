@@ -357,6 +357,10 @@ const baseScrapeOptions = z
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
+    extractDataAttributes: z.array(z.object({
+      selector: z.string().describe("CSS selector to find elements"),
+      attribute: z.string().describe("Data attribute name to extract (e.g., 'data-vehicle-name')")
+    })).optional().describe("Extract specific data-* attributes from elements"),
     // New
     location: z
       .object({
@@ -829,11 +833,17 @@ export type Document = {
   html?: string;
   rawHtml?: string;
   links?: string[];
+  images?: string[];
   screenshot?: string;
   extract?: any;
   json?: any;
   summary?: string;
   warning?: string;
+  dataAttributes?: Array<{
+    selector: string;
+    attribute: string;
+    values: string[];
+  }>;
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
