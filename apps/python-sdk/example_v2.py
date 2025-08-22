@@ -12,6 +12,13 @@ print("=== Basic Scrape (Markdown) ===")
 # doc = firecrawl.scrape("https://firecrawl.dev", formats=["markdown"])
 # print(doc.markdown)
 
+# Image extraction - Get all images from a page
+print("\n=== Image Extraction ===")
+# images_doc = firecrawl.scrape("https://github.com", formats=["images"])
+# print(f"Found {len(images_doc.images or [])} images")
+# for img in (images_doc.images or [])[:3]:
+#     print(f"  - {img}")
+
 # Scraping with location settings
 print("\n=== Scrape with Location Settings ===")
 # doc = firecrawl.scrape('https://docs.firecrawl.dev',
