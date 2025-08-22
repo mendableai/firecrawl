@@ -327,11 +327,35 @@ class CrawlJob(BaseModel):
     next: Optional[str] = None
     data: List[Document] = []
 
-class SearchDocument(Document):
-    """A document from a search operation with URL and description."""
+class SearchResultWeb(BaseModel):
+    """A web search result with URL, title, and description."""
     url: str
     title: Optional[str] = None
-    description: Optional[str] = None
+    description: Optional[str] = None 
+
+class SearchResultNews(BaseModel):
+  """A news search result with URL, title, snippet, date, image URL, and position."""
+  title: Optional[str] = None
+  url: Optional[str] = None
+  snippet: Optional[str] = None
+  date: Optional[str] = None
+  image_url: Optional[str] = None
+  position: Optional[int] = None
+
+class SearchResultImages(BaseModel):
+  """An image search result with URL, title, image URL, image width, image height, and position."""
+  title: Optional[str] = None
+  image_url: Optional[str] = None
+  image_width: Optional[int] = None
+  image_height: Optional[int] = None
+  url: Optional[str] = None
+  position: Optional[int] = None
+
+class SearchData(BaseModel):
+  """Search results grouped by source type."""
+  web: Optional[List[Union[SearchResultWeb, Document]]] = None
+  news: Optional[List[Union[SearchResultNews, Document]]] = None
+  images: Optional[List[Union[SearchResultImages, Document]]] = None
 
 class MapDocument(Document):
     """A document from a map operation with URL and description."""
@@ -535,9 +559,9 @@ SearchResult = LinkResult
 
 class SearchData(BaseModel):
     """Search results grouped by source type."""
-    web: Optional[List[Union[LinkResult, SearchDocument]]] = None
-    news: Optional[List[Union[LinkResult, SearchDocument]]] = None
-    images: Optional[List[Union[LinkResult, SearchDocument]]] = None
+    web: Optional[List[Union[SearchResultWeb, Document]]] = None
+    news: Optional[List[Union[SearchResultNews, Document]]] = None
+    images: Optional[List[Union[SearchResultImages, Document]]] = None
 
 class SearchResponse(BaseResponse[SearchData]):
     """Response from search operation."""

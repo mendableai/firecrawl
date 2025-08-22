@@ -1,7 +1,7 @@
 from firecrawl import Firecrawl
 import os
 from dotenv import load_dotenv
-from firecrawl.types import SearchData, SearchResult, Document, ScrapeFormats, ScrapeOptions
+from firecrawl.types import SearchData, Document, ScrapeOptions, SearchResultWeb, SearchResultNews, SearchResultImages
 
 load_dotenv()
 
@@ -53,7 +53,7 @@ def test_search_minimal_request():
     assert results.images is None
     
     for result in results.web:
-        assert isinstance(result, SearchResult)
+        assert isinstance(result, SearchResultWeb)
         assert hasattr(result, 'url')
         assert hasattr(result, 'title')
         assert hasattr(result, 'description')
@@ -73,7 +73,7 @@ def test_search_with_sources():
     """Test search with specific sources."""
     results = firecrawl.search(
         query="firecrawl",
-        sources=["web", "news"],
+        sources=["web", "news", "images"],
         limit=3
     )
     
@@ -81,11 +81,15 @@ def test_search_with_sources():
     
     assert results.web is not None
     assert len(results.web) <= 3
+    assert isinstance(results.web[0], SearchResultWeb)
     
     if results.news is not None:
         assert len(results.news) <= 3
+        assert isinstance(results.news[0], SearchResultNews)
     
-    assert results.images is None
+    if results.images is not None:
+        assert len(results.images) <= 3
+        assert isinstance(results.images[0], SearchResultImages)
     
     web_titles = [result.title.lower() for result in results.web]
     web_descriptions = [result.description.lower() for result in results.web]
@@ -193,7 +197,7 @@ def test_search_all_parameters():
     
     # Test that each result has proper structure
     for result in results.web:
-        assert isinstance(result, (SearchResult, Document))
+        assert isinstance(result, (SearchResultWeb, Document))
         if isinstance(result, Document):
             # Document path: ensure content present
             assert (result.markdown is not None) or (result.html is not None)
@@ -206,7 +210,7 @@ def test_search_all_parameters():
     if results.news is not None:
         assert len(results.news) <= 3
         for result in results.news:
-            assert isinstance(result, (SearchResult, Document))
+            assert isinstance(result, (SearchResultNews, Document))
             if isinstance(result, Document):
                 assert (result.markdown is not None) or (result.html is not None)
             else:

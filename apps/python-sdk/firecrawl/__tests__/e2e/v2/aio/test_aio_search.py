@@ -2,8 +2,19 @@ import os
 import pytest
 from dotenv import load_dotenv
 from firecrawl import AsyncFirecrawl
-from firecrawl.v2.types import ScrapeOptions, ScrapeFormats, SearchData, SearchResult, Document
+from firecrawl.types import (
+    SearchData,
+    Document,
+    ScrapeOptions,
+    ScrapeFormats,
+    SearchResultWeb,
+    SearchResultNews,
+    SearchResultImages,
+)
 
+load_dotenv()
+
+firecrawl = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
 
 def _collect_texts(entries):
     texts = []
@@ -36,148 +47,202 @@ def _is_document(entry) -> bool:
                hasattr(entry, 'change_tracking') or \
                hasattr(entry, 'summary')
 
-
-load_dotenv()
-
-if not os.getenv("API_KEY"):
-    raise ValueError("API_KEY is not set")
-
-if not os.getenv("API_URL"):
-    raise ValueError("API_URL is not set")
-
-
 @pytest.mark.asyncio
-async def test_async_search_minimal():
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.search("What is the capital of France?")
-    # Assert sections like sync tests
-    assert hasattr(data, "web")
-    assert hasattr(data, "news")
-    assert hasattr(data, "images")
-    assert data.web is not None
-    assert len(data.web) > 0
-    titles = [getattr(r, "title", None) for r in data.web]
-    descs = [getattr(r, "description", None) for r in data.web]
-    all_text = " ".join([t.lower() for t in titles if t] + [d.lower() for d in descs if d])
-    assert "paris" in all_text
-    assert data.news is None
-    assert data.images is None
-
-
-@pytest.mark.asyncio
-async def test_async_search_with_sources_and_limit():
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.search("firecrawl", sources=["web", "news"], limit=3)
-    # Sections present
-    assert hasattr(data, "web") and hasattr(data, "news") and hasattr(data, "images")
-    # Web present, images absent, news optional but if present respects limit
-    if data.web is not None:
-        assert len(data.web) <= 3
-    if data.news is not None:
-        assert len(data.news) <= 3
-    assert data.images is None
-
-
-@pytest.mark.asyncio
-async def test_async_search_with_all_params():
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.search(
-        "artificial intelligence",
-        sources=["web", "news"],
-        limit=3,
-        tbs="qdr:w",
-        location="US",
-        ignore_invalid_urls=False,
-        timeout=30000,
-        scrape_options={
-            "formats": ["markdown"],
-            "headers": {"User-Agent": "E2E-AIO"},
-            "include_tags": ["h1"],
-            "exclude_tags": ["nav"],
-            "only_main_content": False,
-            "timeout": 15000,
-            "wait_for": 2000,
-            "mobile": True,
-            "skip_tls_verification": True,
-            "remove_base64_images": False,
-        },
+async def test_async_search_minimal_request():
+    results = await firecrawl.search(
+        query="What is the capital of France?"
     )
-    # Structure and type assertions mirroring sync
-    assert isinstance(data, SearchData)
-    assert hasattr(data, "web") and hasattr(data, "news") and hasattr(data, "images")
-    assert data.web is not None
-    assert len(data.web) <= 3
-    non_doc = [r for r in (data.web or []) if not _is_document(r)]
-    if non_doc:
-        combined = " ".join(_collect_texts(non_doc))
-        ai_terms = ["artificial", "intelligence", "ai", "machine", "learning"]
-        assert any(term in combined for term in ai_terms)
-    for r in data.web:
-        assert isinstance(r, (SearchResult, Document))
-        if isinstance(r, Document):
-            assert (r.markdown is not None) or (r.html is not None)
-        else:
-            assert hasattr(r, "url")
-            assert isinstance(r.url, str) and r.url.startswith("http")
-    if data.news is not None:
-        assert len(data.news) <= 10
-        for r in data.news:
-            assert isinstance(r, (SearchResult, Document))
-            if isinstance(r, Document):
-                assert (r.markdown is not None) or (r.html is not None)
-            else:
-                assert isinstance(r.url, str) and r.url.startswith("http")
-    assert data.images is None
+    assert isinstance(results, SearchData)
+    assert hasattr(results, 'web')
+    assert results.web is not None
+    assert len(results.web) > 0
+    assert hasattr(results, 'news')
+    assert results.news is None
+    assert hasattr(results, 'images')
+    assert results.images is None
 
+    for result in results.web:
+        assert isinstance(result, SearchResultWeb)
+        assert hasattr(result, 'url')
+        assert hasattr(result, 'title')
+        assert hasattr(result, 'description')
+        assert result.url.startswith('http')
+        assert result.title is not None
+        assert result.description is not None
+
+    all_text = ' '.join(_collect_texts(results.web))
+    assert 'paris' in all_text
+
+    assert results.news is None
+    assert results.images is None
 
 @pytest.mark.asyncio
-async def test_async_search_minimal_content_check():
-    """Stronger assertion similar to sync: content check on a known query."""
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.search("What is the capital of France?")
-    assert hasattr(data, "web") and data.web is not None
-    non_doc = [r for r in (data.web or []) if not _is_document(r)]
-    if non_doc:
-        combined = " ".join(_collect_texts(non_doc))
-        assert "paris" in combined
+async def test_async_search_with_sources():
+    results = await firecrawl.search(
+        query="firecrawl",
+        sources=["web", "news", "images"],
+        limit=3
+    )
+    assert isinstance(results, SearchData)
+    assert results.web is not None
+    assert len(results.web) <= 3
+    assert isinstance(results.web[0], SearchResultWeb)
 
+    if results.news is not None:
+        assert len(results.news) <= 3
+        assert isinstance(results.news[0], SearchResultNews)
+
+    if results.images is not None:
+        assert len(results.images) <= 3
+        assert isinstance(results.images[0], SearchResultImages)
+
+    web_titles = [result.title.lower() for result in results.web]
+    web_descriptions = [result.description.lower() for result in results.web]
+    all_web_text = ' '.join(web_titles + web_descriptions)
+    assert 'firecrawl' in all_web_text
 
 @pytest.mark.asyncio
 async def test_async_search_result_structure():
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    data = await client.search("test query", limit=1)
-    if data.web and len(data.web) > 0:
-        result = data.web[0]
-        assert hasattr(result, "url")
-        assert hasattr(result, "title")
-        assert hasattr(result, "description")
-        assert isinstance(result.url, str) and result.url.startswith("http")
-        assert isinstance(getattr(result, "title", None), (str, type(None)))
-        assert isinstance(getattr(result, "description", None), (str, type(None)))
+    results = await firecrawl.search(
+        query="test query",
+        limit=1
+    )
+    if results.web and len(results.web) > 0:
+        result = results.web[0]
+        assert hasattr(result, 'url')
+        assert hasattr(result, 'title')
+        assert hasattr(result, 'description')
+        assert isinstance(result.url, str)
+        assert isinstance(result.title, str) or result.title is None
+        assert isinstance(result.description, str) or result.description is None
+        assert result.url.startswith('http')
 
+@pytest.mark.asyncio
+async def test_async_search_all_parameters():
+    from firecrawl.types import ScrapeOptions, Location, WaitAction
+    schema = {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+            "url": {"type": "string"}
+        },
+        "required": ["title", "description"]
+    }
+    results = await firecrawl.search(
+        query="artificial intelligence",
+        sources=[
+            {"type": "web"},
+            {"type": "news"}
+        ],
+        limit=3,
+        tbs="qdr:m",
+        location="US",
+        ignore_invalid_urls=True,
+        timeout=60000,
+        scrape_options=ScrapeOptions(
+            formats=[
+                "markdown",
+                "html",
+                {
+                    "type": "json",
+                    "prompt": "Extract the title and description from the page",
+                    "schema": schema
+                },
+                {"type": "summary"}
+            ],
+            headers={"User-Agent": "Firecrawl-Test/1.0"},
+            include_tags=["h1", "h2", "p"],
+            exclude_tags=["nav", "footer"],
+            only_main_content=True,
+            wait_for=2000,
+            mobile=False,
+            skip_tls_verification=False,
+            remove_base64_images=True,
+            block_ads=True,
+            proxy="basic",
+            max_age=3600000,
+            store_in_cache=True,
+            location=Location(
+                country="US",
+                languages=["en"]
+            ),
+            actions=[
+                WaitAction(milliseconds=1000)
+            ]
+        )
+    )
+    assert isinstance(results, SearchData)
+    assert hasattr(results, 'web')
+    assert hasattr(results, 'news')
+    assert hasattr(results, 'images')
+    assert results.web is not None
+    assert len(results.web) <= 3
+
+    non_doc_entries = [r for r in (results.web or []) if not _is_document(r)]
+    if non_doc_entries:
+        all_web_text = ' '.join(_collect_texts(non_doc_entries))
+        ai_terms = ['artificial', 'intelligence', 'ai', 'machine', 'learning']
+        assert any(term in all_web_text for term in ai_terms)
+
+    for result in results.web:
+        assert isinstance(result, (SearchResultWeb, Document))
+        if isinstance(result, Document):
+            assert (result.markdown is not None) or (result.html is not None)
+        else:
+            assert hasattr(result, 'url')
+            assert isinstance(result.url, str) and result.url.startswith('http')
+
+    if results.news is not None:
+        assert len(results.news) <= 3
+        for result in results.news:
+            assert isinstance(result, (SearchResultNews, Document))
+            if isinstance(result, Document):
+                assert (result.markdown is not None) or (result.html is not None)
+            else:
+                assert hasattr(result, 'url')
+                assert isinstance(result.url, str) and result.url.startswith('http')
+
+    assert results.images is None
 
 @pytest.mark.asyncio
 async def test_async_search_formats_flexibility():
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    # list string
-    res1 = await client.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=["markdown"]))
-    # list objects
-    res2 = await client.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=[{"type": "markdown"}]))
-    # ScrapeFormats object
-    res3 = await client.search("python programming", limit=1, scrape_options=ScrapeOptions(formats=ScrapeFormats(markdown=True)))
-    assert isinstance(res1, SearchData) and hasattr(res1, "web")
-    assert isinstance(res2, SearchData) and hasattr(res2, "web")
-    assert isinstance(res3, SearchData) and hasattr(res3, "web")
-
+    # Test with list format
+    results1 = await firecrawl.search(
+        query="python programming",
+        limit=1,
+        scrape_options=ScrapeOptions(
+            formats=["markdown"]
+        )
+    )
+    # Test with ScrapeFormats object
+    results2 = await firecrawl.search(
+        query="python programming",
+        limit=1,
+        scrape_options=ScrapeOptions(
+            formats=ScrapeFormats(markdown=True)
+        )
+    )
+    assert isinstance(results1, SearchData)
+    assert isinstance(results2, SearchData)
+    assert results1.web is not None
+    assert results2.web is not None
 
 @pytest.mark.asyncio
-async def test_async_search_json_format_object():
-    client = AsyncFirecrawl(api_key=os.getenv("API_KEY"), api_url=os.getenv("API_URL"))
-    json_schema = {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
-    data = await client.search(
-        "site:docs.firecrawl.dev",
+async def test_async_search_with_json_format_object():
+    json_schema = {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"}
+        },
+        "required": ["title"],
+    }
+    results = await firecrawl.search(
+        query="site:docs.firecrawl.dev",
         limit=1,
-        scrape_options={"formats": [{"type": "json", "prompt": "Extract page title", "schema": json_schema}]},
+        scrape_options=ScrapeOptions(
+            formats=[{"type": "json", "prompt": "Extract page title", "schema": json_schema}]
+        ),
     )
-    assert hasattr(data, "web")
-
+    assert isinstance(results, SearchData)
+    assert results.web is not None and len(results.web) >= 0

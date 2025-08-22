@@ -15,6 +15,7 @@ class AsyncHttpClient:
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
+            limits=httpx.Limits(max_keepalive_connections=0),
         )
 
     async def close(self) -> None:
