@@ -313,25 +313,30 @@ export async function crawlStatusController(
     let bytes = 0;
     const bytesLimit = 10485760; // 10 MiB in bytes
 
-    for (const jobId of doneJobs) {
-      const job = await getJob(jobId);
-      const state = job?.status;
+    for (let i = 0; i < Math.ceil(doneJobs.length / 50); i++) {
+      const jobIds = doneJobs.slice(i * 50, (i + 1) * 50);
+      const jobs = await getJobs(jobIds);
 
-      if (state === "failed") {
-        // no iterated over, just ignore
-        continue;
-      } else {
-        if (job?.returnvalue) {
-          scrapes.push(job.returnvalue);
-          bytes += JSON.stringify(job.returnvalue).length;
+      for (const job of jobs) {
+        if (job.status === "failed") {
+          continue;
         } else {
-          logger.warn(
-            "Job was considered done, but returnvalue is undefined!",
-            { scrapeId: jobId, crawlId: req.params.jobId, state, returnvalue: job?.returnvalue },
-          );
+          if (job?.returnvalue) {
+            scrapes.push(job.returnvalue);
+            bytes += JSON.stringify(job.returnvalue).length;
+          } else {
+            logger.warn(
+              "Job was considered done, but returnvalue is undefined!",
+              { scrapeId: job.id, crawlId: req.params.jobId, state: job.status, returnvalue: job?.returnvalue },
+            );
+          }
+
+          iteratedOver++;
         }
 
-        iteratedOver++;
+        if (bytes > bytesLimit) {
+          break;
+        }
       }
 
       if (bytes > bytesLimit) {
