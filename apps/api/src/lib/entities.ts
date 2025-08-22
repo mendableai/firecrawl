@@ -118,6 +118,7 @@ export class Document {
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
+  imagesOnPage?: string[]; // Array of all images found on the page
 
   constructor(data: Partial<Document>) {
     if (!data.content) {
@@ -132,6 +133,7 @@ export class Document {
     this.childrenLinks = data.childrenLinks || undefined;
     this.provider = data.provider || undefined;
     this.linksOnPage = data.linksOnPage; // Assign linksOnPage if provided
+    this.imagesOnPage = data.imagesOnPage; // Assign imagesOnPage if provided
   }
 }
 
