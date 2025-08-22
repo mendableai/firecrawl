@@ -12,6 +12,10 @@ const run = async () => {
   const doc = await client.scrape('https://docs.firecrawl.dev', { formats: ['markdown'] });
   console.log('scrape:', !!doc.markdown);
 
+  // Image extraction example
+  const images = await client.scrape('https://github.com', { formats: ['images'] });
+  console.log('images:', images.images?.length || 0, 'found');
+
   const crawl = await client.crawl('https://docs.firecrawl.dev', { limit: 3, pollInterval: 1, timeout: 120 });
   console.log('crawl:', crawl.status, crawl.completed, '/', crawl.total);
 
