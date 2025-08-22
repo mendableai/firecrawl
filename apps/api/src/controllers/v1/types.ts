@@ -834,7 +834,6 @@ export type Document = {
   json?: any;
   summary?: string;
   warning?: string;
-
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
