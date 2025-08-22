@@ -36,6 +36,6 @@ jobs:
             with:
               context: ./apps/api
               push: true
-              tags: ghcr.io/mendableai/firecrawl:latest
-              cache-from: type=registry,ref=ghcr.io/mendableai/firecrawl:buildcache
-              cache-to: type=registry,ref=ghcr.io/mendableai/firecrawl:buildcache,mode=max
+              tags: ghcr.io/firecrawl/firecrawl:latest
+              cache-from: type=registry,ref=ghcr.io/firecrawl/firecrawl:buildcache
+              cache-to: type=registry,ref=ghcr.io/firecrawl/firecrawl:buildcache,mode=max

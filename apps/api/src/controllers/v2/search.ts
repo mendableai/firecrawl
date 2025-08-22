@@ -400,7 +400,7 @@ export async function searchController(
       {
         job_id: jobId,
         success: true,
-        num_docs: credits_billed,
+        num_docs: (searchResponse.web?.length ?? 0) + (searchResponse.images?.length ?? 0) + (searchResponse.news?.length ?? 0),
         docs: [searchResponse],
         time_taken: timeTakenInSeconds,
         team_id: req.auth.team_id,
@@ -424,6 +424,7 @@ export async function searchController(
     return res.status(200).json({
       success: true,
       data: searchResponse,
+      creditsUsed: credits_billed,
     });
   } catch (error) {
     if (error instanceof ScrapeJobTimeoutError) {

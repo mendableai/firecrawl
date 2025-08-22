@@ -71,9 +71,7 @@ async def cancel_batch_scrape(client: AsyncHttpClient, job_id: str) -> bool:
     if response.status_code >= 400:
         handle_response_error(response, "cancel batch scrape")
     body = response.json()
-    if not body.get("success"):
-        raise Exception(body.get("error", "Unknown error occurred"))
-    return True
+    return body.get("status") == "cancelled"
 
 
 async def get_batch_scrape_errors(client: AsyncHttpClient, job_id: str) -> Dict[str, Any]:

@@ -16,6 +16,7 @@ import websockets
 from websockets.exceptions import ConnectionClosed, ConnectionClosedOK, ConnectionClosedError
 
 from .types import BatchScrapeJob, CrawlJob, Document
+from .utils.normalize import normalize_document_input
 
 JobKind = Literal["crawl", "batch"]
 
@@ -216,11 +217,7 @@ class AsyncWatcher:
         source_docs = docs_override if docs_override is not None else payload.get("data", []) or []
         for doc in source_docs:
             if isinstance(doc, dict):
-                d = dict(doc)
-                if "rawHtml" in d and "raw_html" not in d:
-                    d["raw_html"] = d.pop("rawHtml")
-                if "changeTracking" in d and "change_tracking" not in d:
-                    d["change_tracking"] = d.pop("changeTracking")
+                d = normalize_document_input(doc)
                 docs.append(Document(**d))
 
         if self._kind == "crawl":

@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions, TeamFlags } from "../../controllers/v2/types";
+import { type Document, scrapeOptions, type ScrapeOptions, type TeamFlags } from "../../controllers/v2/types";
 import { ScrapeOptions as ScrapeOptionsV1 } from "../../controllers/v1/types";
 import { logger as _logger } from "../../lib/logger";
 import {
@@ -39,11 +39,12 @@ import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
 import { CostTracking } from "../../lib/extract/extraction-service";
-import { robustFetch } from "./lib/fetch";
 import { addIndexRFInsertJob, generateDomainSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 import { checkRobotsTxt } from "../../lib/robots-txt";
 import { AbortInstance, AbortManager, AbortManagerThrownError } from "./lib/abortManager";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { transformHtml } from "../../lib/html-transformer";
+import { htmlTransform } from "./lib/removeUnwantedElements";
 
 export type ScrapeUrlResponse = (
   | {
@@ -248,35 +249,23 @@ export type InternalOptions = {
 export type EngineScrapeResultWithContext = {
   engine: Engine;
   unsupportedFeatures: Set<FeatureFlag>;
-  result: EngineScrapeResult & { markdown: string };
+  result: EngineScrapeResult;
 };
 
-function safeguardCircularError<T>(error: T): T {
-  if (typeof error === "object" && error !== null && (error as any).results) {
-    const newError = structuredClone(error);
-    delete (newError as any).results;
-    return newError;
-  } else {
-    return error;
-  }
-}
-
-async function scrapeURLLoopIter(meta: Meta, engine: Engine, snipeAbort): Promise<EngineScrapeResult & { markdown: string }> {
-  const _engineResult = await scrapeURLWithEngine({
+async function scrapeURLLoopIter(meta: Meta, engine: Engine, snipeAbort): Promise<EngineScrapeResult> {
+  const engineResult = await scrapeURLWithEngine({
     ...meta,
     abort: meta.abort.child(snipeAbort),
   }, engine);
 
-  if (_engineResult.markdown === undefined) {
-    _engineResult.markdown = await parseMarkdown(_engineResult.html);
+  let checkMarkdown = await parseMarkdown(await htmlTransform(engineResult.html, meta.url, scrapeOptions.parse({ onlyMainContent: true })));
+
+  if (checkMarkdown.trim().length === 0) {
+    checkMarkdown = await parseMarkdown(await htmlTransform(engineResult.html, meta.url, scrapeOptions.parse({ onlyMainContent: false })));
   }
 
-  const engineResult = _engineResult as EngineScrapeResult & {
-    markdown: string;
-  };
-
   // Success factors
-  const isLongEnough = engineResult.markdown.length > 0;
+  const isLongEnough = checkMarkdown.trim().length > 0;
   const isGoodStatusCode =
     (engineResult.statusCode >= 200 && engineResult.statusCode < 300) ||
     engineResult.statusCode === 304;
@@ -630,49 +619,6 @@ export async function scrapeURL(
       storeInCache: meta.options.storeInCache,
       zeroDataRetention: meta.internalOptions.zeroDataRetention,
     });
-  }
-
-  // Global A/B test: mirror request to staging /v1/scrape based on SCRAPEURL_AB_RATE
-  try {
-    const abRateEnv = process.env.SCRAPEURL_AB_RATE;
-    const abHostEnv = process.env.SCRAPEURL_AB_HOST;
-    const abRate = abRateEnv !== undefined ? Math.max(0, Math.min(1, Number(abRateEnv))) : 0;
-    const shouldABTest = !meta.internalOptions.zeroDataRetention
-      && abRate > 0
-      && Math.random() <= abRate
-      && abHostEnv
-      && meta.internalOptions.v1Agent === undefined
-      && meta.internalOptions.v1JSONAgent === undefined;
-    if (shouldABTest) {
-      (async () => {
-        try {
-          const abLogger = meta.logger.child({ method: "scrapeURL/abTestToStaging" });
-          abLogger.info("A/B-testing scrapeURL to staging");
-          const abort = AbortSignal.timeout(Math.min(60000, (meta.options.timeout ?? 30000) + 10000));
-          await robustFetch({
-            url: `http://${abHostEnv}/v2/scrape`,
-            method: "POST",
-            body: {
-              url: meta.url,
-              ...meta.options,
-              origin: (meta.options as any).origin ?? "api",
-              timeout: meta.options.timeout ?? 30000,
-              maxAge: 1000000000,
-            },
-            logger: abLogger,
-            tryCount: 1,
-            ignoreResponse: true,
-            mock: null,
-            abort,
-          });
-          abLogger.info("A/B-testing scrapeURL (staging) request sent");
-        } catch (error) {
-          meta.logger.warn("A/B-testing scrapeURL (staging) failed", { error });
-        }
-      })();
-    }
-  } catch (error) {
-    meta.logger.warn("Failed to initiate A/B test to staging", { error });
   }
 
   try {

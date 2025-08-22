@@ -17,7 +17,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: worker
-          image: ghcr.io/mendableai/firecrawl:latest
+          image: ghcr.io/firecrawl/firecrawl:latest
           imagePullPolicy: Always
           command: [ "node" ]
           args: [ "--max-old-space-size=3072", "dist/src/services/queue-worker.js" ]

@@ -34,10 +34,12 @@ import type {
   BatchScrapeResponse,
   BatchScrapeJob,
   ExtractResponse,
+  CrawlOptions,
+  BatchScrapeOptions,
 } from "./types";
 import { Watcher } from "./watcher";
 import type { WatcherOptions } from "./watcher";
-import type { ZodTypeAny, infer as ZodInfer } from "zod";
+import * as zt from "zod";
 
 // Helper types to infer the `json` field from a Zod schema included in `formats`
 type ExtractJsonSchemaFromFormats<Formats> = Formats extends readonly any[]
@@ -45,8 +47,8 @@ type ExtractJsonSchemaFromFormats<Formats> = Formats extends readonly any[]
   : never;
 
 type InferredJsonFromOptions<Opts> = Opts extends { formats?: infer Fmts }
-  ? ExtractJsonSchemaFromFormats<Fmts> extends ZodTypeAny
-    ? ZodInfer<ExtractJsonSchemaFromFormats<Fmts>>
+  ? ExtractJsonSchemaFromFormats<Fmts> extends zt.ZodTypeAny
+    ? zt.infer<ExtractJsonSchemaFromFormats<Fmts>>
     : unknown
   : unknown;
 
@@ -136,8 +138,8 @@ export class FirecrawlClient {
    * @param req Crawl configuration (paths, limits, scrapeOptions, webhook, etc.).
    * @returns Job id and url.
    */
-  async startCrawl(url: string, req: Omit<Parameters<typeof startCrawl>[1], "url"> = {}): Promise<CrawlResponse> {
-    return startCrawl(this.http, { url, ...(req as any) });
+  async startCrawl(url: string, req: CrawlOptions = {}): Promise<CrawlResponse> {
+    return startCrawl(this.http, { url, ...req });
   }
   /**
    * Get the status and partial data of a crawl job.
@@ -160,8 +162,8 @@ export class FirecrawlClient {
    * @param req Crawl configuration plus waiter controls (pollInterval, timeout seconds).
    * @returns Final job snapshot.
    */
-  async crawl(url: string, req: Omit<Parameters<typeof startCrawl>[1], "url"> & { pollInterval?: number; timeout?: number } = {}): Promise<CrawlJob> {
-    return crawlWaiter(this.http, { url, ...(req as any) }, req.pollInterval, req.timeout);
+  async crawl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number } = {}): Promise<CrawlJob> {
+    return crawlWaiter(this.http, { url, ...req }, req.pollInterval, req.timeout);
   }
   /**
    * Retrieve crawl errors and robots.txt blocks.
@@ -192,7 +194,7 @@ export class FirecrawlClient {
    * @param opts Batch options (scrape options, webhook, concurrency, idempotency key, etc.).
    * @returns Job id and url.
    */
-  async startBatchScrape(urls: string[], opts?: Parameters<typeof startBatchScrape>[2]): Promise<BatchScrapeResponse> {
+  async startBatchScrape(urls: string[], opts?: BatchScrapeOptions): Promise<BatchScrapeResponse> {
     return startBatchScrape(this.http, urls, opts);
   }
   /**
@@ -223,7 +225,7 @@ export class FirecrawlClient {
    * @param opts Batch options plus waiter controls (pollInterval, timeout seconds).
    * @returns Final job snapshot.
    */
-  async batchScrape(urls: string[], opts?: Parameters<typeof startBatchScrape>[2] & { pollInterval?: number; timeout?: number }): Promise<BatchScrapeJob> {
+  async batchScrape(urls: string[], opts?: BatchScrapeOptions & { pollInterval?: number; timeout?: number }): Promise<BatchScrapeJob> {
     return batchWaiter(this.http, urls, opts);
   }
 

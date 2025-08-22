@@ -11,6 +11,7 @@ from ..types import (
     WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse, ActiveCrawl
 )
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
+from ..utils.normalize import normalize_document_input
 
 
 def _validate_crawl_request(request: CrawlRequest) -> None:
@@ -173,7 +174,7 @@ def get_crawl_status(client: HttpClient, job_id: str) -> CrawlJob:
                 # but we'll handle it gracefully
                 continue
             else:
-                documents.append(Document(**doc_data))
+                documents.append(Document(**normalize_document_input(doc_data)))
         
         # Create CrawlJob with current status and data
         return CrawlJob(

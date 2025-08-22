@@ -19,7 +19,7 @@ def get_version():
 setup(
     name="firecrawl-py",
     version=get_version(),
-    url="https://github.com/mendableai/firecrawl",
+    url="https://github.com/firecrawl/firecrawl",
     author="Mendable.ai",
     author_email="nick@mendable.ai",
     description="Python SDK for Firecrawl API",
@@ -61,8 +61,8 @@ setup(
     keywords="SDK API firecrawl",
     project_urls={
         "Documentation": "https://docs.firecrawl.dev",
-        "Source": "https://github.com/mendableai/firecrawl",
-        "Tracker": "https://github.com/mendableai/firecrawl/issues",
+        "Source": "https://github.com/firecrawl/firecrawl",
+        "Tracker": "https://github.com/firecrawl/firecrawl/issues",
     },
     license="GNU General Public License v3 (GPLv3)",
 )

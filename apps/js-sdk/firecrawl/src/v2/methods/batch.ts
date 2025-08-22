@@ -3,23 +3,11 @@ import {
   type BatchScrapeResponse,
   type CrawlErrorsResponse,
   type Document,
-  type ScrapeOptions,
-  type WebhookConfig,
+  type BatchScrapeOptions,
 } from "../types";
 import { HttpClient } from "../utils/httpClient";
 import { ensureValidScrapeOptions } from "../utils/validation";
 import { normalizeAxiosError, throwForBadResponse } from "../utils/errorHandler";
-
-export interface StartBatchOptions {
-  options?: ScrapeOptions;
-  webhook?: string | WebhookConfig;
-  appendToId?: string;
-  ignoreInvalidURLs?: boolean;
-  maxConcurrency?: number;
-  zeroDataRetention?: boolean;
-  integration?: string;
-  idempotencyKey?: string;
-}
 
 export async function startBatchScrape(
   http: HttpClient,
@@ -33,7 +21,7 @@ export async function startBatchScrape(
     zeroDataRetention,
     integration,
     idempotencyKey,
-  }: StartBatchOptions = {}
+  }: BatchScrapeOptions = {}
 ): Promise<BatchScrapeResponse> {
   if (!Array.isArray(urls) || urls.length === 0) throw new Error("URLs list cannot be empty");
   const payload: Record<string, unknown> = { urls };
@@ -117,7 +105,7 @@ export async function waitForBatchCompletion(http: HttpClient, jobId: string, po
 export async function batchScrape(
   http: HttpClient,
   urls: string[],
-  opts: StartBatchOptions & { pollInterval?: number; timeout?: number } = {}
+  opts: BatchScrapeOptions & { pollInterval?: number; timeout?: number } = {}
 ): Promise<BatchScrapeJob> {
   const start = await startBatchScrape(http, urls, opts);
   return waitForBatchCompletion(http, start.id, opts.pollInterval ?? 2, opts.timeout);

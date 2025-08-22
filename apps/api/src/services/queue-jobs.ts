@@ -22,6 +22,8 @@ import { Logger } from "winston";
 import { Job } from "bullmq";
 import { ScrapeJobTimeoutError, TransportableError } from "../lib/error";
 import { deserializeTransportableError } from "../lib/error-serde";
+import { robustFetch } from '../scraper/scrapeURL/lib/fetch';
+import { abTestJob } from "./ab-test";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -58,6 +60,8 @@ export async function _addScrapeJobToBullMQ(
   jobId: string,
   jobPriority: number,
 ): Promise<Job> {
+  abTestJob(webScraperOptions);
+
   if (
     webScraperOptions &&
     webScraperOptions.team_id

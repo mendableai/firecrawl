@@ -10,7 +10,7 @@ import {
   WebSearchResult,
 } from "../../lib/entities";
 import { agentOptionsExtract, ScrapeOptions as V1ScrapeOptions } from "../v1/types";
-import { InternalOptions } from "../../scraper/scrapeURL";
+import type { InternalOptions } from "../../scraper/scrapeURL";
 import { ErrorCodes } from "../../lib/error";
 import Ajv from "ajv";
 
@@ -1119,6 +1119,8 @@ export function fromV1ScrapeOptions(
   delete (spreadScrapeOptions as any).webhook;
   delete (spreadScrapeOptions as any).zeroDataRetention;
   delete (spreadScrapeOptions as any).maxConcurrency;
+  // v2 scrapeOptions schema is strict and does not include `agent`. We carry it via internalOptions below.
+  delete (spreadScrapeOptions as any).agent;
   
   delete spreadScrapeOptions.__experimental_cache;
   delete spreadScrapeOptions.jsonOptions;
@@ -1396,11 +1398,13 @@ export type SearchResponse =
     success: true;
     warning?: string;
     data: Document[];
+    creditsUsed: number;
   }
   | {
     success: true;
     warning?: string;
     data: import("../../lib/entities").SearchV2Response;
+    creditsUsed: number;
   };
 
 export type TokenUsage = {

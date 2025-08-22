@@ -5,7 +5,7 @@ version = "1.2.1"
 edition = "2021"
 license = "MIT"
 homepage = "https://www.firecrawl.dev/"
-repository ="https://github.com/mendableai/firecrawl"
+repository ="https://github.com/firecrawl/firecrawl"
 description = "Rust SDK for Firecrawl API."
 authors = ["Gergő Móricz <mogery@firecrawl.dev>", "sanix-darker <sanixdk@gmail.com>", "kkharji <kkharji@protonmail.com>"]
 

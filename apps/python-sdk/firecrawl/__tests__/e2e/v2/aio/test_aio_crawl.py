@@ -96,7 +96,6 @@ async def test_async_get_crawl_status_shape():
     assert status.status in ("scraping", "completed", "failed")
     assert status.completed >= 0
     assert status.expires_at is not None
-    assert status.next is not None
     assert isinstance(status.data, list)
 
 

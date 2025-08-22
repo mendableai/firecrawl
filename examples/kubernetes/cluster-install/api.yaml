@@ -17,7 +17,7 @@ spec:
         - name: docker-registry-secret
       containers:
         - name: api
-          image: ghcr.io/mendableai/firecrawl:latest
+          image: ghcr.io/firecrawl/firecrawl:latest
           imagePullPolicy: Always
           command: [ "node" ]
           args: [ "--max-old-space-size=6144", "dist/src/index.js" ]

@@ -4,12 +4,12 @@ import { getExtract, getExtractExpiry } from "../../lib/extract/extract-redis";
 import { DBJob, PseudoJob } from "./crawl-status";
 import { getExtractQueue } from "../../services/queue-service";
 import { ExtractResult } from "../../lib/extract/extraction-service";
-import { supabaseGetJobById } from "../../lib/supabase-jobs";
+import { supabaseGetJobByIdDirect } from "../../lib/supabase-jobs";
 
 export async function getExtractJob(id: string): Promise<PseudoJob<ExtractResult> | null> {
   const [bullJob, dbJob] = await Promise.all([
     getExtractQueue().getJob(id),
-    (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
+    (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobByIdDirect(id) : null) as Promise<DBJob | null>,
   ]);
 
   if (!bullJob && !dbJob) return null;

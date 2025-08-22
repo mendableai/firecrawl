@@ -44,8 +44,6 @@ export class HttpClient {
     const version = getVersion();
     config.headers = {
       ...(config.headers || {}),
-      // origin header for GET/DELETE; for POST we also include in body below
-      origin: `js-sdk@${version}`,
     };
 
     let lastError: any;

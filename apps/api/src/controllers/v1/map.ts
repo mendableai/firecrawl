@@ -53,8 +53,10 @@ async function queryIndex(url: string, limit: number, useIndex: boolean, include
     const hostname = urlObj.hostname;
 
     // TEMP: this should be altered on June 15th 2025 7AM PT - mogery
-    const domainLinks = includeSubdomains ? await queryIndexAtDomainSplitLevel(hostname, limit, 14 * 24 * 60 * 60 * 1000) : [];
-    const splitLinks = await queryIndexAtSplitLevel(url, limit, 14 * 24 * 60 * 60 * 1000);
+    const [domainLinks, splitLinks] = await Promise.all([
+      includeSubdomains ? queryIndexAtDomainSplitLevel(hostname, limit, 14 * 24 * 60 * 60 * 1000) : [],
+      queryIndexAtSplitLevel(url, limit, 14 * 24 * 60 * 60 * 1000),
+    ]);
 
     return Array.from(new Set([...domainLinks, ...splitLinks]));
   } else {
