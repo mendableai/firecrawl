@@ -169,8 +169,8 @@ export async function nuqAddJob<Data, ReturnValue>(id: string, data: Data): Prom
     }
 }
 
-export async function nuqWaitForJob(id: string, timeout: number | null): Promise<"completed" | "failed"> {
-    const done = new Promise<"completed" | "failed">(async (resolve, reject) => {
+export async function nuqWaitForJob<ReturnValue = any>(id: string, timeout: number | null): Promise<ReturnValue> {
+    const done = new Promise<ReturnValue>(async (resolve, reject) => {
         let timer: NodeJS.Timeout | null = null;
         if (timeout !== null) {
             timer = setTimeout(() => {
@@ -179,9 +179,18 @@ export async function nuqWaitForJob(id: string, timeout: number | null): Promise
             }, timeout);
         }
 
-        const listener = (msg: "completed" | "failed") => {
+        const listener = async (_msg: "completed" | "failed") => {
             if (timer) clearTimeout(timer);
-            resolve(msg);
+            const job = await nuqGetJob<any, ReturnValue>(id);
+            if (!job) {
+                reject(new Error("Job raced out while waiting for it"));
+            } else {
+                if (job.status === "completed") {
+                    resolve(job.returnvalue!);
+                } else {
+                    reject(new Error(job.failedReason!));
+                }
+            }
         }
 
         try {
@@ -195,7 +204,11 @@ export async function nuqWaitForJob(id: string, timeout: number | null): Promise
             if (job && ["completed", "failed"].includes(job.status)) {
                 nuqRemoveListener(id, listener);
                 if (timer) clearTimeout(timer);
-                resolve(job.status as "completed" | "failed");
+                if (job.status === "completed") {
+                    resolve(job.returnvalue!);
+                } else {
+                    reject(new Error(job.failedReason!));
+                }
                 return;
             }
         } catch (e) {

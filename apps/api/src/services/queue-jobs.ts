@@ -280,45 +280,47 @@ export async function waitForJob(
   zeroDataRetention: boolean,
   logger: Logger = _logger,
 ): Promise<Document> {
-    const jobId = typeof job == "string" ? job : job.id;
-    const isConcurrencyLimited = !!(typeof job === "string");
+  const jobId = typeof job == "string" ? job : job.id;
+  const isConcurrencyLimited = !!(typeof job === "string");
 
-    let payload: "completed" | "failed";
-    try {
-      payload = await Promise.race([
-        nuqWaitForJob(jobId, timeout !== null ? timeout + 100 : null),
-        timeout !== null ? new Promise<"completed" | "failed">((_resolve, reject) => {
-          setTimeout(() => {
-            reject(new ScrapeJobTimeoutError("Scrape timed out" + (isConcurrencyLimited ? " after waiting in the concurrency limit queue" : "")));
-          }, timeout);
-        }) : null,
-      ].filter(x => x !== null));
-    } catch (e) {
-      if (e instanceof TransportableError) {
-        throw e;
-      } else if (e instanceof Error) {
-        const x = deserializeTransportableError(e.message);
-        if (x) {
-          throw x;
-        } else {
-          throw e;
-        }
+  let doc: Document | null = null;
+  try {
+    doc = await Promise.race([
+      nuqWaitForJob<Document>(jobId, timeout !== null ? timeout + 100 : null),
+      timeout !== null ? new Promise<Document>((_resolve, reject) => {
+        setTimeout(() => {
+          reject(new ScrapeJobTimeoutError("Scrape timed out" + (isConcurrencyLimited ? " after waiting in the concurrency limit queue" : "")));
+        }, timeout);
+      }) : null,
+    ].filter(x => x !== null));
+  } catch (e) {
+    if (e instanceof TransportableError) {
+      throw e;
+    } else if (e instanceof Error) {
+      const x = deserializeTransportableError(e.message);
+      if (x) {
+        throw x;
       } else {
         throw e;
       }
+    } else {
+      throw e;
     }
-    logger.debug("Got job");
-    
+  }
+  logger.debug("Got job");
+  
+  if (!job) {
     const docs = await getJobFromGCS(jobId);
     logger.debug("Got job from GCS");
     if (!docs || docs.length === 0) {
       throw new Error("Job not found in GCS");
     }
-    const doc: Document = docs[0];
+    doc = docs[0]!;
 
     if (zeroDataRetention) {
       await removeJobFromGCS(jobId);
     }
+  }
 
-    return doc;
+  return doc;
 }
