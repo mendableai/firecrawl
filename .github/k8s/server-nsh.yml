@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale-proxy
+  template:
+    metadata:
+      labels:
+        app: tailscale-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: firecrawl/tailscale-proxy:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale
+                  key: TS_AUTHKEY
+            - name: FIRE_ENGINE_BETA_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: firecrawl-config-dynamic
+                  key: FIRE_ENGINE_BETA_URL
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tailscale-proxy
+spec:
+  selector:
+    app: tailscale-proxy
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-index-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firecrawl-index-worker
+  template:
+    metadata:
+      labels:
+        app: firecrawl-index-worker
+    spec:
+      containers:
+        - name: index-worker
+          image: firecrawl/firecrawl:latest
+          imagePullPolicy: Never
+          command: [ "node" ]
+          args: [ "--max-old-space-size=2048", "dist/src/services/indexing/index-worker.js" ]
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+            - configMapRef:
+                name: firecrawl-config-dynamic
+          env:
+            - name: FLY_PROCESS_GROUP
+              value: "index-worker"
+          resources:
+            requests:
+              memory: "1G"
+              cpu: "500m"
+            limits:
+              memory: "3G"
+              cpu: "1000m"

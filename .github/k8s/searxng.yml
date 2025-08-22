@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+data:
+  settings.yml: |
+    use_default_settings: true
+    search:
+      formats: [html, json, csv]
+    server:
+      secret_key: 'fcsecret'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firecrawl-searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firecrawl-searxng
+  template:
+    metadata:
+      labels:
+        app: firecrawl-searxng
+    spec:
+      containers:
+        - name: searxng
+          image: searxng/searxng:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/searxng
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "200m"
+      volumes:
+        - name: settings
+          configMap:
+            name: searxng-settings
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firecrawl-searxng
+spec:
+  selector:
+    app: firecrawl-searxng
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080

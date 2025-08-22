@@ -59,7 +59,9 @@ jobs:
             --from-literal=VERTEX_CREDENTIALS=${{ secrets.VERTEX_CREDENTIALS }} \
             --from-literal=LOG_ENCRYPTION_KEY=${{ secrets.LOG_ENCRYPTION_KEY }}
       - name: Deploy server
-        run: kubectl apply -f .github/k8s/server.yml
+        run: |
+          kubectl apply -f .github/k8s/server.yml
+          kubectl apply -f .github/k8s/server-nsh.yml
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:

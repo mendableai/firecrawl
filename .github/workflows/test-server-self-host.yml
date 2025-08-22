@@ -6,14 +6,6 @@ on:
       - main
       - nsc/v2
 
-env:
-  REDIS_URL: redis://localhost:6379
-  ENV: ${{ secrets.ENV }}
-  TEST_SUITE_SELF_HOSTED: true
-  USE_GO_MARKDOWN_PARSER: true
-  FIRECRAWL_DEBUG_FILTER_LINKS: true
-  SENTRY_ENVIRONMENT: dev
-
 jobs:
   test:
     name: Run tests
@@ -31,15 +23,38 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-    env:
-      OPENAI_API_KEY: ${{ matrix.ai == 'openai' && secrets.OPENAI_API_KEY || '' }}
-      SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'http://localhost:3434' || '' }}
-      PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && 'http://localhost:3003/scrape' || '' }}
-      PROXY_SERVER: ${{ matrix.proxy == 'proxy' && secrets.PROXY_SERVER || '' }}
-      PROXY_USERNAME: ${{ matrix.proxy == 'proxy' && secrets.PROXY_USERNAME || '' }}
-      PROXY_PASSWORD: ${{ matrix.proxy == 'proxy' && secrets.PROXY_PASSWORD || '' }}
     steps:
       - uses: actions/checkout@v3
+      - name: Start minikube
+        uses: medyagh/setup-minikube@latest
+      - name: Build images using minikube's docker
+        run: |
+          eval $(minikube docker-env)
+          docker build -t firecrawl/firecrawl:latest ./apps/api
+          docker build -t firecrawl/nuq-postgres:latest -f .github/k8s/nuq-postgres/Dockerfile .
+      - name: Build Playwright image
+        if: matrix.engine == 'playwright'
+        run: |
+          eval $(minikube docker-env)
+          docker build -t firecrawl/playwright-service:latest ./apps/playwright-service-ts
+      # TODO: Build SearXNG image
+      - name: Create configmap
+        run: |
+          kubectl create configmap firecrawl-config-dynamic -n default \
+            --from-literal=OPENAI_API_KEY=${{ matrix.ai == 'openai' && secrets.OPENAI_API_KEY || '' }} \
+            --from-literal=SEARXNG_ENDPOINT=${{ matrix.search == 'searxng' && 'http://firecrawl-searxng:8080/search' || '' }} \
+            --from-literal=PLAYWRIGHT_MICROSERVICE_URL=${{ matrix.engine == 'playwright' && 'http://firecrawl-playwright-service:3003/scrape' || '' }} \
+            --from-literal=PROXY_SERVER=${{ matrix.proxy == 'proxy' && secrets.PROXY_SERVER || '' }} \
+            --from-literal=PROXY_USERNAME=${{ matrix.proxy == 'proxy' && secrets.PROXY_USERNAME || '' }} \
+            --from-literal=PROXY_PASSWORD=${{ matrix.proxy == 'proxy' && secrets.PROXY_PASSWORD || '' }}
+      - name: Deploy server
+        run: kubectl apply -f .github/k8s/server.yml
+      - name: Deploy playwright
+        if: matrix.engine == 'playwright'
+        run: kubectl apply -f .github/k8s/playwright.yml
+      - name: Deploy searxng
+        if: matrix.search == 'searxng'
+        run: kubectl apply -f .github/k8s/searxng.yml
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -53,110 +68,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install
         working-directory: ./apps/api
-      - name: Install Playwright dependencies
-        if: matrix.engine == 'playwright'
-        run: |
-          pnpm install
-          pnpm exec playwright install-deps
-          pnpm exec playwright install
-        working-directory: ./apps/playwright-service-ts
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: ./apps/api/sharedLibs/go-html-to-md/go.sum
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-      - name: Build go-html-to-md
-        run: |
-          go mod tidy
-          go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go
-          chmod +x html-to-markdown.so
-        working-directory: ./apps/api/sharedLibs/go-html-to-md
-      - name: Build html-transformer
-        run: |
-          cargo build --release
-          chmod +x target/release/libhtml_transformer.so
-        working-directory: ./apps/api/sharedLibs/html-transformer
-      - name: Build pdf-parser
-        run: |
-          cargo build --release
-          chmod +x target/release/libpdf_parser.so
-        working-directory: ./apps/api/sharedLibs/pdf-parser
-      - name: Build crawler
-        run: |
-          cargo build --release
-          chmod +x target/release/libcrawler.so
-        working-directory: ./apps/api/sharedLibs/crawler
-      - name: Set up SearXNG
-        if: matrix.search == 'searxng'
-        run: |
-          mkdir searxng
-
-          echo "use_default_settings: true
-          search:
-            formats: [html, json, csv]
-          server:
-            secret_key: 'fcsecret'" > searxng/settings.yml
-          
-          docker run -d -p 3434:8080 -v "${PWD}/searxng:/etc/searxng" --name searxng searxng/searxng
-          pnpx wait-on tcp:3434 -t 30s
-        working-directory: ./
-      - name: Build the application
-        run: npm run build
-        working-directory: ./apps/api
-      - name: Start server
-        run: npm run start:production:nobuild > api.log 2>&1 &
-        env:
-          PORT: 3002
-          HOST: 0.0.0.0
-        working-directory: ./apps/api
-      - name: Start worker
-        run: npm run worker:production > worker.log 2>&1 &
-        env:
-          PORT: 3005
-          HOST: 0.0.0.0
-        working-directory: ./apps/api
-      - name: Start playwright
-        if: matrix.engine == 'playwright'
-        run: npm run dev > playwright.log 2>&1 &
-        working-directory: ./apps/playwright-service-ts
-        env:
-          PORT: 3003
       - name: Wait for server
-        run: pnpx wait-on tcp:3002 -t 60s
+        run: kubectl wait --for=condition=ready pod -l app=firecrawl-app --timeout=60s
       - name: Wait for playwright
         if: matrix.engine == 'playwright'
-        run: pnpx wait-on tcp:3003 -t 15s
+        run: kubectl wait --for=condition=ready pod -l app=firecrawl-playwright-service --timeout=60s
+      - name: Wait for searxng
+        if: matrix.search == 'searxng'
+        run: kubectl wait --for=condition=ready pod -l app=firecrawl-searxng --timeout=60s
       - name: Run snippet tests
-        run: |
-          npm run test:snips
+        env:
+          TEST_SUITE_SELF_HOSTED: true
+          OPENAI_API_KEY: ${{ matrix.ai == 'openai' && '<IS SET>' || '' }}
+          PROXY_SERVER: ${{ matrix.proxy == 'proxy' && '<IS SET>' || '' }}
+          PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && '<IS SET>' || '' }}
+        run: pnpm run test:snips
         working-directory: ./apps/api
-      - name: Kill instances
+      - name: Create logs directory
         if: always()
-        run: pkill -9 node
-      - name: Kill SearXNG
-        if: always() && matrix.search == 'searxng'
+        run: mkdir -p logs
+      - name: Copy log files
+        if: always()
         run: |
-          docker logs searxng > searxng.log 2>&1
-          docker kill searxng
-        working-directory: ./
+          kubectl logs deployment/firecrawl-app > logs/api.log || true
+          kubectl logs deployment/firecrawl-worker > logs/worker.log || true
+          kubectl logs deployment/firecrawl-index-worker > logs/index-worker.log || true
+          kubectl logs deployment/firecrawl-nuq-worker > logs/nuq-worker.log || true
+          kubectl logs deployment/firecrawl-dragonfly > logs/dragonfly.log || true
+          kubectl logs deployment/nuq-postgres > logs/postgres.log || true
+      - name: Zip logs
+        if: always()
+        run: |
+          cd logs
+          zip -r logs.zip ./*
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
-          path: |
-            ./apps/api/api.log
-            ./apps/api/worker.log
-      - uses: actions/upload-artifact@v4
-        if: always() && matrix.playwright
-        with:
-          name: Playwright Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.proxy }})
-          path: |
-            ./apps/playwright-service-ts/playwright.log
-      - uses: actions/upload-artifact@v4
-        if: always() && matrix.search == 'searxng'
-        with:
-          name: SearXNG (${{ matrix.ai }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
-          path: |
-            ./searxng.log
+          path: logs/logs.zip
