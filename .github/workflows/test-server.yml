@@ -90,11 +90,12 @@ jobs:
       - name: Copy log files
         if: always()
         run: |
-          kubectl logs firecrawl-app > logs/api.log || true
-          kubectl logs firecrawl-worker > logs/worker.log || true
-          kubectl logs firecrawl-index-worker > logs/index-worker.log || true
-          kubectl logs firecrawl-dragonfly > logs/dragonfly.log || true
-          kubectl logs nuq-postgres > logs/postgres.log || true
+          kubectl logs deployment/firecrawl-app > logs/api.log || true
+          kubectl logs deployment/firecrawl-worker > logs/worker.log || true
+          kubectl logs deployment/firecrawl-index-worker > logs/index-worker.log || true
+          kubectl logs deployment/firecrawl-nuq-worker > logs/nuq-worker.log || true
+          kubectl logs deployment/firecrawl-dragonfly > logs/dragonfly.log || true
+          kubectl logs deployment/nuq-postgres > logs/postgres.log || true
       - name: Zip and encrypt logs
         if: always()
         run: |
