@@ -48,7 +48,9 @@ from .v2.types import (
     JsonFormat,
     FormatOption,
     SearchRequest,
-    SearchResult,
+    SearchResultWeb,
+    SearchResultNews,
+    SearchResultImages,
     SearchData,
     SearchResponse,
     
@@ -124,7 +126,9 @@ __all__ = [
     'JsonFormat',
     'FormatOption',
     'SearchRequest',
-    'SearchResult',
+    'SearchResultWeb',
+    'SearchResultNews',
+    'SearchResultImages',
     'SearchData',
     'SearchResponse',
     

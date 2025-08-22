@@ -3,11 +3,12 @@ Search functionality for Firecrawl v2 API.
 """
 
 import re
-from typing import Optional, Dict, Any, Union
-from ..types import SearchRequest, SearchData, SearchResult, Document
+from typing import Dict, Any, Union, List, TypeVar, Type
+from ..types import SearchRequest, SearchData, Document, SearchResultWeb, SearchResultNews, SearchResultImages
 from ..utils.normalize import normalize_document_input
 from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 
+T = TypeVar("T")
 
 def search(
     client: HttpClient,
@@ -27,48 +28,56 @@ def search(
         FirecrawlError: If the search operation fails
     """
     request_data = _prepare_search_request(request)
-    
-    response = client.post("/v2/search", request_data)
-    
-    if not response.ok:
-        handle_response_error(response, "search")
-    
-    response_data = response.json()
-    
-    if not response_data.get("success"):
-        # Handle error case
-        error_msg = response_data.get("error", "Unknown error occurred")
-        raise Exception(f"Search failed: {error_msg}")
-    
-    data = response_data.get("data", {})
-    search_data = SearchData()
-    
-    for source_type, source_documents in data.items():
-        if isinstance(source_documents, list):
-            results = []
-            for doc_data in source_documents:
-                if isinstance(doc_data, dict):
-                    # If page scraping options were provided, API returns full Document objects
-                    if request.scrape_options is not None and any(
-                        key in doc_data for key in ['markdown', 'html', 'rawHtml', 'links', 'summary', 'screenshot', 'changeTracking']
-                    ):
-                        normalized = normalize_document_input(doc_data)
-                        results.append(Document(**normalized))
-                    else:
-                        # Minimal search result shape
-                        results.append(SearchResult(
-                            url=doc_data.get('url', ''),
-                            title=doc_data.get('title'),
-                            description=doc_data.get('description')
-                        ))
-                elif isinstance(doc_data, str):
-                    results.append(SearchResult(url=doc_data))
+    try:
+        response = client.post("/v2/search", request_data)
+        if response.status_code != 200:
+            handle_response_error(response, "search")
+        response_data = response.json()
+        if not response_data.get("success"):
+            handle_response_error(response, "search")
+        data = response_data.get("data", {}) or {}
+        out = SearchData()
+        if "web" in data:
+            out.web = _transform_array(data["web"], SearchResultWeb)
+        if "news" in data:
+            out.news = _transform_array(data["news"], SearchResultNews)
+        if "images" in data:
+            out.images = _transform_array(data["images"], SearchResultImages)
+        return out
+    except Exception as err:
+        # If the error is an HTTP error from requests, handle it
+        # (simulate isAxiosError by checking for requests' HTTPError or Response)
+        if hasattr(err, "response"):
+            handle_response_error(getattr(err, "response"), "search")
+        raise err
 
-            if hasattr(search_data, source_type):
-                setattr(search_data, source_type, results)
-    
-    return search_data
-
+def _transform_array(arr: List[Any], result_type: Type[T]) -> List[Union[T, 'Document']]:
+    """
+    Transforms an array of items into a list of result_type or Document.
+    If the item dict contains any of the special keys, it is treated as a Document.
+    Otherwise, it is treated as result_type.
+    If the item is not a dict, it is wrapped as result_type with url=item.
+    """
+    results: List[Union[T, 'Document']] = []
+    for item in arr:
+        if item and isinstance(item, dict):
+            if (
+                "markdown" in item or
+                "html" in item or
+                "rawHtml" in item or
+                "links" in item or
+                "screenshot" in item or
+                "changeTracking" in item or
+                "summary" in item or
+                "json" in item
+            ):
+                results.append(Document(**item))
+            else:
+                results.append(result_type(**item))
+        else:
+            # For non-dict items, assume it's a URL and wrap in result_type
+            results.append(result_type(url=item))
+    return results
 
 def _validate_search_request(request: SearchRequest) -> SearchRequest:
     """
