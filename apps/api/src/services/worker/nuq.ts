@@ -213,7 +213,7 @@ export async function nuqGetJobToProcess(lock: string): Promise<NuQJob<any, any>
     try {
         return rowToJob<any, any>((await nuqPool.query(`
             WITH next AS (SELECT ${jobReturning.join(", ")} FROM nuq.queue_scrape WHERE nuq.queue_scrape.status = 'queued'::nuq.job_status ORDER BY nuq.queue_scrape.created_at ASC FOR UPDATE SKIP LOCKED LIMIT 1)
-            UPDATE nuq.queue_scrape q SET status = 'active'::nuq.job_status, lock = $1, locked_at = now() FROM next WHERE q.id = next.id RETURNING ${jobReturning.join(", ")};
+            UPDATE nuq.queue_scrape q SET status = 'active'::nuq.job_status, lock = $1, locked_at = now() FROM next WHERE q.id = next.id RETURNING ${jobReturning.map(x => `q.${x}`).join(", ")};
         `, [lock])).rows[0])!;
     } finally {
         logger.info("nuqGetJobToProcess metrics", { module: "nuq/metrics", method: "nuqGetJobToProcess", duration: Date.now() - start });
