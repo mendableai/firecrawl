@@ -2,7 +2,7 @@
  * Example: Using Firecrawl JS SDK v2 to extract attributes from HTML elements
  */
 
-import FirecrawlApp from '@mendableai/firecrawl-js';
+import FirecrawlApp from '@mendable/firecrawl-js';
 
 const app = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
 
