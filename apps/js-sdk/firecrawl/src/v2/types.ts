@@ -173,16 +173,34 @@ export interface Document {
   changeTracking?: Record<string, unknown>;
 }
 
-export interface SearchResult {
+export interface SearchResultWeb {
   url: string;
   title?: string;
   description?: string;
 }
 
+export interface SearchResultNews {
+  title?: string;
+  url?: string;
+  snippet?: string;
+  date?: string;
+  imageUrl?: string;
+  position?: number;
+}
+
+export interface SearchResultImages {
+  title?: string;
+  imageUrl?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  url?: string;
+  position?: number;
+}
+
 export interface SearchData {
-  web?: Array<SearchResult | Document>;
-  news?: Array<SearchResult | Document>;
-  images?: Array<SearchResult | Document>;
+  web?: Array<SearchResultWeb | Document>;
+  news?: Array<SearchResultNews | Document>;
+  images?: Array<SearchResultImages | Document>;
 }
 
 export interface SearchRequest {
@@ -257,7 +275,7 @@ export interface BatchScrapeJob {
 }
 
 export interface MapData {
-  links: SearchResult[];
+  links: SearchResultWeb[];
 }
 
 export interface MapOptions {
