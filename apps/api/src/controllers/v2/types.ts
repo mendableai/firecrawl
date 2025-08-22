@@ -230,7 +230,7 @@ export type FormatObject =
   | JsonFormatWithOptions
   | ChangeTrackingFormatWithOptions
   | ScreenshotFormatWithOptions
-  | AttributesFormatWithOptions;
+  | AttributesFormatWithOptions
 
 export const parsersSchema = z.array(z.enum(["pdf"])).default(["pdf"]);
 
