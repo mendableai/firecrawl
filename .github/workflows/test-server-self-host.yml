@@ -82,7 +82,7 @@ jobs:
           OPENAI_API_KEY: ${{ matrix.ai == 'openai' && '<IS SET>' || '' }}
           PROXY_SERVER: ${{ matrix.proxy == 'proxy' && '<IS SET>' || '' }}
           PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && '<IS SET>' || '' }}
-        run: pnpm run test:snips
+        run: TEST_API_URL=$(minikube service firecrawl-app --url) pnpm run test:snips
         working-directory: ./apps/api
       - name: Create logs directory
         if: always()
