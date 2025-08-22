@@ -24,6 +24,8 @@ spec:
           env:
             - name: PORT
               value: "3003"
+          ports:
+            - containerPort: 3003
           resources:
             requests:
               memory: "1G"
