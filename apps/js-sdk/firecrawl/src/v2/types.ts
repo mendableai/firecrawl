@@ -177,6 +177,7 @@ export interface SearchResultWeb {
   url: string;
   title?: string;
   description?: string;
+  category?: string;
 }
 
 export interface SearchResultNews {
@@ -186,6 +187,7 @@ export interface SearchResultNews {
   date?: string;
   imageUrl?: string;
   position?: number;
+  category?: string;
 }
 
 export interface SearchResultImages {
@@ -203,9 +205,14 @@ export interface SearchData {
   images?: Array<SearchResultImages | Document>;
 }
 
+export interface CategoryOption {
+  type: "github" | "research";
+}
+
 export interface SearchRequest {
   query: string;
   sources?: Array<"web" | "news" | "images" | { type: "web" | "news" | "images" }>;
+  categories?: Array<"github" | "research" | CategoryOption>;
   limit?: number;
   tbs?: string;
   location?: string;
