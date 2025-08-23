@@ -116,7 +116,7 @@ export function getCategoryFromUrl(
     
     // Check against category map for other sites
     for (const [site, category] of categoryMap.entries()) {
-      if (hostname.includes(site.toLowerCase())) {
+      if (hostname === site.toLowerCase() || hostname.endsWith('.' + site.toLowerCase())) {
         return category;
       }
     }
