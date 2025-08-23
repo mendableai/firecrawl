@@ -110,13 +110,13 @@ export function getCategoryFromUrl(
     const hostname = urlObj.hostname.toLowerCase();
     
     // Direct match for GitHub
-    if (hostname.includes('github.com')) {
+    if (hostname === 'github.com' || hostname.endsWith('.github.com')) {
       return 'github';
     }
     
     // Check against category map for other sites
     for (const [site, category] of categoryMap.entries()) {
-      if (hostname.includes(site.toLowerCase())) {
+      if (hostname === site.toLowerCase() || hostname.endsWith('.' + site.toLowerCase())) {
         return category;
       }
     }
