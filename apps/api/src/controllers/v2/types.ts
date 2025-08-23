@@ -1418,15 +1418,11 @@ export const searchRequestSchema = z
           switch (c) {
             case 'github':
               return {
-                type: 'github' as const,
-                lang: x.lang,
-                tbs: x.tbs,
+                type: 'github' as const
               };
             case 'research':
               return {
                 type: 'research' as const,
-                lang: x.lang,
-                tbs: x.tbs,
               };
             default:
               return { type: c as any };
