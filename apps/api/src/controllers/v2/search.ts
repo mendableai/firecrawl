@@ -26,6 +26,7 @@ import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
 import { SearchResult, SearchV2Response } from "../../lib/entities";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { z } from "zod";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -196,8 +197,85 @@ export async function searchController(
     // After transformation, sources is always an array of objects
     const searchTypes = [...new Set(req.body.sources.map((s: any) => s.type))];
 
+    // Build site filters based on categories
+    let categoryFilter = "";
+    const categoryMap = new Map<string, string>();
+    
+    if (req.body.categories && req.body.categories.length > 0) {
+      const siteFilters: string[] = [];
+      
+      for (const category of req.body.categories) {
+        if (typeof category === 'string') {
+          if (category === 'github') {
+            siteFilters.push("site:github.com");
+          } else if (category === 'research') {
+            // Use default research sites
+            const defaultResearchSites = [
+              "arxiv.org",
+              "scholar.google.com",
+              "pubmed.ncbi.nlm.nih.gov",
+              "researchgate.net",
+              "nature.com",
+              "science.org",
+              "ieee.org",
+              "acm.org",
+              "springer.com",
+              "wiley.com",
+              "sciencedirect.com",
+              "plos.org",
+              "biorxiv.org",
+              "medrxiv.org"
+            ];
+            for (const site of defaultResearchSites) {
+              siteFilters.push(`site:${site}`);
+              categoryMap.set(site, "research");
+            }
+          }
+        } else {
+          // It's an object
+          if (category.type === 'github') {
+            siteFilters.push("site:github.com");
+          } else if (category.type === 'research') {
+            const sites = (category as any).sites || [
+              "arxiv.org",
+              "scholar.google.com",
+              "pubmed.ncbi.nlm.nih.gov",
+              "researchgate.net",
+              "nature.com",
+              "science.org",
+              "ieee.org",
+              "acm.org",
+              "springer.com",
+              "wiley.com",
+              "sciencedirect.com",
+              "plos.org",
+              "biorxiv.org",
+              "medrxiv.org"
+            ];
+            for (const site of sites) {
+              siteFilters.push(`site:${site}`);
+              categoryMap.set(site, "research");
+            }
+          }
+        }
+      }
+      
+      // Build the OR filter for sites
+      if (siteFilters.length > 0) {
+        categoryFilter = " (" + siteFilters.join(" OR ") + ")";
+      }
+      
+      // Add GitHub to category map
+      if (req.body.categories.some((c: any) => c.type === 'github')) {
+        categoryMap.set("github.com", "github");
+      }
+    }
+
+    // Append category filter to the query if categories are specified
+    const searchQuery = req.body.query + categoryFilter;
+
     const searchResponse = await search({
-      query: req.body.query,
+      query: searchQuery,
       advanced: false,
       num_results: num_results_buffer,
       tbs: req.body.tbs,
@@ -213,6 +291,45 @@ export async function searchController(
       searchResponse.web = searchResponse.web.filter(
         (result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null),
       );
+    }
+
+    // Helper function to determine category from URL
+    const getCategoryFromUrl = (url: string): string | undefined => {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname.toLowerCase();
+        
+        // Check if it's a GitHub URL
+        if (hostname.includes('github.com')) {
+          return 'github';
+        }
+        
+        // Check against category map for research sites
+        for (const [site, category] of categoryMap.entries()) {
+          if (hostname.includes(site.toLowerCase())) {
+            return category;
+          }
+        }
+      } catch (e) {
+        // Invalid URL, skip
+      }
+      return undefined;
+    };
+
+    // Add category labels to web results
+    if (searchResponse.web && searchResponse.web.length > 0) {
+      searchResponse.web = searchResponse.web.map(result => ({
+        ...result,
+        category: getCategoryFromUrl(result.url),
+      }));
+    }
+    
+    // Add category labels to news results  
+    if (searchResponse.news && searchResponse.news.length > 0) {
+      searchResponse.news = searchResponse.news.map(result => ({
+        ...result,
+        category: result.url ? getCategoryFromUrl(result.url) : undefined,
+      }));
     }
 
     // Apply limit to each result type separately
@@ -288,6 +405,7 @@ export async function searchController(
           title: doc.title || searchResponse.web![index].title,
           description: doc.description || searchResponse.web![index].description,
           position: searchResponse.web![index].position,
+          category: searchResponse.web![index].category,
           markdown: doc.markdown,
           html: doc.html,
           rawHtml: doc.rawHtml,
@@ -332,6 +450,7 @@ export async function searchController(
           const scrapedDoc = newsDocs.find(doc => doc.url === newsItem.url);
           return {
             ...newsItem,
+            category: newsItem.category,
             markdown: scrapedDoc?.markdown,
             html: scrapedDoc?.html,
             rawHtml: scrapedDoc?.rawHtml,
@@ -427,6 +546,15 @@ export async function searchController(
       creditsUsed: credits_billed,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      logger.warn("Invalid request body", { error: error.errors });
+      return res.status(400).json({
+        success: false,
+        error: "Invalid request body",
+        details: error.errors,
+      });
+    }
+    
     if (error instanceof ScrapeJobTimeoutError) {
       return res.status(408).json({
         success: false,

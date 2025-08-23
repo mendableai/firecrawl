@@ -1267,6 +1267,18 @@ export type WebSearchSourceOptions = z.infer<typeof webSearchSourceOptions>;
 export type ImagesSearchSourceOptions = z.infer<typeof imagesSearchSourceOptions>;
 export type NewsSearchSourceOptions = z.infer<typeof newsSearchSourceOptions>;
 
+// Category source type definitions
+export const githubCategoryOptions = z.object({
+  type: z.literal("github"),
+}).strict();
+
+export const researchCategoryOptions = z.object({
+  type: z.literal("research"),
+}).strict();
+
+export type GithubCategoryOptions = z.infer<typeof githubCategoryOptions>;
+export type ResearchCategoryOptions = z.infer<typeof researchCategoryOptions>;
+
 export const searchRequestSchema = z
   .object({
     query: z.string(),
@@ -1296,6 +1308,19 @@ export const searchRequestSchema = z
       ])
       .optional()
       .default(["web"]),
+    categories: z
+      .union([
+        // Array of strings (simple format)
+        z.array(z.enum(["github", "research"])),
+        // Array of objects (advanced format)
+        z.array(
+          z.union([
+            githubCategoryOptions,
+            researchCategoryOptions,
+          ])
+        ),
+      ])
+      .optional(),
     lang: z.string().optional().default("en"),
     country: z.string().optional().default("us"),
     location: z.string().optional(),
@@ -1382,9 +1407,38 @@ export const searchRequestSchema = z
       // Otherwise it's already an object array, keep as is
     }
     
+    // Transform string array categories to object format
+    let categories = x.categories;
+    if (categories && Array.isArray(categories) && categories.length > 0) {
+      // Check if it's a string array by checking the first element
+      if (typeof categories[0] === 'string') {
+        // It's a string array, transform to object array
+        categories = (categories as string[]).map((c) => {
+          switch (c) {
+            case 'github':
+              return {
+                type: 'github' as const,
+                lang: x.lang,
+                tbs: x.tbs,
+              };
+            case 'research':
+              return {
+                type: 'research' as const,
+                lang: x.lang,
+                tbs: x.tbs,
+              };
+            default:
+              return { type: c as any };
+          }
+        });
+      }
+      // Otherwise it's already an object array, keep as is
+    }
+    
     return {
       ...x,
       sources,
+      categories,
       scrapeOptions: extractTransform(x.scrapeOptions),
     };
   });
