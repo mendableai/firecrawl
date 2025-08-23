@@ -110,7 +110,7 @@ export function getCategoryFromUrl(
     const hostname = urlObj.hostname.toLowerCase();
     
     // Direct match for GitHub
-    if (hostname.includes('github.com')) {
+    if (hostname === 'github.com' || hostname.endsWith('.github.com')) {
       return 'github';
     }
     
