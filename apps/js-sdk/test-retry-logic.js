@@ -19,7 +19,8 @@ class NetworkRetryDemo {
     }
     
     if (error.response?.status) {
-      return [408, 429, 502, 503, 504].includes(error.response.status);
+      // Only retry on status codes that are safe and won't cause double billing
+      return [408, 429].includes(error.response.status);
     }
     
     const message = error.message?.toLowerCase() || '';
@@ -79,7 +80,11 @@ class NetworkRetryDemo {
   }
 
   isRetryableHttpStatus(status) {
-    return [408, 429, 502, 503, 504].includes(status);
+    // Only retry on status codes that are safe and won't cause double billing:
+    // 408 Request Timeout - server explicitly didn't process the request
+    // 429 Too Many Requests - rate limited, request wasn't processed
+    // Note: 5xx errors (502, 503, 504) are NOT retried to prevent double billing
+    return [408, 429].includes(status);
   }
 
   // Simulate different network conditions
@@ -145,7 +150,7 @@ async function demonstrateRetryLogic() {
   console.log('2. ✅ Exponential backoff with jitter to avoid thundering herd');
   console.log('3. ✅ Configurable retry attempts (default: 3)');
   console.log('4. ✅ Better error messages with context');
-  console.log('5. ✅ Retryable HTTP status codes (408, 429, 502, 503, 504)');
+  console.log('5. ✅ Retryable HTTP status codes (408, 429) - 5xx codes removed to prevent double billing');
   console.log('6. ✅ Timeout improvements (default 30s)');
 }
 

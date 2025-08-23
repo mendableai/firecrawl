@@ -1681,7 +1681,11 @@ export default class FirecrawlApp {
    * @returns True if the status code indicates a retryable error
    */
   private isRetryableHttpStatus(status: number): boolean {
-    return [408, 429, 502, 503, 504].includes(status);
+    // Only retry on status codes that are safe and won't cause double billing:
+    // 408 Request Timeout - server explicitly didn't process the request
+    // 429 Too Many Requests - rate limited, request wasn't processed
+    // Note: 5xx errors (502, 503, 504) are NOT retried to prevent double billing
+    return [408, 429].includes(status);
   }
 
   /**
