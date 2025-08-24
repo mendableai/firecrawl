@@ -580,10 +580,13 @@ app.listen(workerPort, () => {
   const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: getRedisConnection() });
   scrapeQueueEvents.on("failed", failedListener);
 
+  // Convert worker path to proper format for Windows ESM compatibility
+  const scrapeWorkerPath = path.join(__dirname, "worker", "scrape-worker.js");
+
   const results = await Promise.all([
     separateWorkerFun(
       getScrapeQueue(),
-      path.join(__dirname, "worker", "scrape-worker.js"),
+      scrapeWorkerPath,
     ),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
