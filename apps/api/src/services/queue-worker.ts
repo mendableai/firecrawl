@@ -40,6 +40,7 @@ import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
 import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { redisEvictConnection } from "./redis";
 import path from "path";
+import { pathToFileURL } from "url";
 import { finishCrawlIfNeeded } from "./worker/crawl-logic";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
@@ -565,7 +566,7 @@ app.listen(workerPort, () => {
   const results = await Promise.all([
     separateWorkerFun(
       getScrapeQueue(),
-      path.join(__dirname, "worker", "scrape-worker.js"),
+      pathToFileURL(path.join(__dirname, "worker", "scrape-worker.js")).href,
     ),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
