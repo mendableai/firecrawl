@@ -583,6 +583,8 @@ app.listen(workerPort, () => {
   // Convert worker path to proper format for Windows ESM compatibility
   const scrapeWorkerPath = path.join(__dirname, "worker", "scrape-worker.js");
 
+
+  
   const results = await Promise.all([
     separateWorkerFun(
       getScrapeQueue(),
