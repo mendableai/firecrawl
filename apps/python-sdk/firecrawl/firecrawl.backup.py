@@ -1702,7 +1702,7 @@ class FirecrawlApp:
         Check the status of a batch scrape job using the Firecrawl API.
 
         Args:
-            id (str): The ID of the batch scrape job.
+            id (str]]): The ID of the batch scrape job.
 
         Returns:
             BatchScrapeStatusResponse: The status of the batch scrape job.
@@ -2307,7 +2307,7 @@ class FirecrawlApp:
                     if 'data' in status_data:
                         data = status_data['data']
                         while 'next' in status_data:
-                            if len(status_data['data']] == 0:
+                            if len(status_data['data']) == 0:
                                 break
                             status_response = self._get_request(status_data['next'], headers)
                             try:
@@ -3299,53 +3299,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             timeout (Optional[int]]): Request timeout in milliseconds
             location (Optional[LocationConfig]]): Location configuration
             mobile (Optional[bool]]): Use mobile user agent
-            skip_tls_verification (Optional[bool]]): Skip TLS verification
-            remove_base64_images (Optional[bool]]): Remove base64 encoded images
-            block_ads (Optional[bool]]): Block advertisements
-            proxy (Optional[Literal]]): Proxy type to use
-            extract (Optional[JsonConfig]]): Content extraction config
-            json_options (Optional[JsonConfig]]): JSON extraction config
-            actions (Optional[List[Union]]): Actions to perform
-            agent (Optional[AgentOptions]]): Agent configuration
-            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
-            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
-            **kwargs: Additional parameters to pass to the API
-
-        Returns:
-            BatchScrapeResponse with:
-            * success - Whether job started successfully
-            * id - Unique identifier for the job
-            * url - Status check URL
-            * error - Error message if start failed
-
-        Raises:
-            Exception: If job initiation fails
-        """
-        # Validate any additional kwargs
-        self._validate_kwargs(kwargs, "async_batch_scrape_urls")
-
-        scrape_params = {}
-
-        # Add individual parameters
-        if formats is not None:
-            scrape_params['formats'] = formats
-        if headers is not None:
-            scrape_params['headers'] = headers
-        if include_tags is not None:
-            scrape_params['includeTags'] = include_tags
-        if exclude_tags is not None:
-            scrape_params['excludeTags'] = exclude_tags
-        if only_main_content is not None:
-            scrape_params['onlyMainContent'] = only_main_content
-        if wait_for is not None:
-            scrape_params['waitFor'] = wait_for
-        if timeout is not None:
-            scrape_params['timeout'] = timeout
-        if location is not None:
-            scrape_params['location'] = location.dict(by_alias=True, exclude_none=True)
-        if mobile is not None:
-            scrape_params['mobile'] = mobile
-        if skip_tls_veification is not None:
+            skip_tls_veification is not None:
             scrape_params['skipTlsVerification'] = skip_tls_verification
         if remove_base64_images is not None:
             scrape_params['removeBase64Images'] = remove_base64_images
@@ -3530,13 +3484,13 @@ class AsyncFirecrawlApp(FirecrawlApp):
         *,
         include_paths: Optional[List[str]] = None,
         exclude_paths: Optional[List[str]] = None,
-        max_depth: Optional[int]] = None,
-        max_discovery_depth: Optional[int]] = None,
-        limit: Optional[int]] = None,
-        allow_backward_links: Optional[bool]] = None,
-        crawl_entire_domain: Optional[bool]] = None,
-        allow_external_links: Optional[bool]] = None,
-        ignore_sitemap: Optional[bool]] = None,
+        max_depth: Optional[int] = None,
+        max_discovery_depth: Optional[int] = None,
+        limit: Optional[int] = None,
+        allow_backward_links: Optional[bool] = None,
+        crawl_entire_domain: Optional[bool] = None,
+        allow_external_links: Optional[bool] = None,
+        ignore_sitemap: Optional[bool] = None,
         scrape_options: Optional[ScrapeOptions]] = None,
         webhook: Optional[Union[str, WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool]] = None,
@@ -3684,7 +3638,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if 'data' in status_data:
                 data = status_data['data']
                 while 'next' in status_data:
-                    if len(status_data['data']] == 0:
+                    if len(status_data['data']) == 0:
                         break
                     next_url = status_data.get('next')
                     if not next_url:
@@ -3738,7 +3692,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 if 'data' in status_data:
                     data = status_data['data']
                     while 'next' in status_data:
-                        if len(status_data['data']] == 0:
+                        if len(status_data['data']) == 0:
                             break
                         next_url = status_data.get('next')
                         if not next_url:
@@ -3956,7 +3910,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if 'data' in status_data:
                 data = status_data['data']
                 while 'next' in status_data:
-                    if len(status_data['data']] == 0:
+                    if len(status_data['data']) == 0:
                         break
                     next_url = status_data.get('next')
                     if not next_url:
