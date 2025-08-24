@@ -26,6 +26,8 @@ import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 import { supabase_service } from "../../services/supabase";
 import { SearchResult, SearchV2Response } from "../../lib/entities";
 import { ScrapeJobTimeoutError } from "../../lib/error";
+import { z } from "zod";
+import { buildSearchQuery, getCategoryFromUrl, CategoryOption } from "../../lib/search-query-builder";
 
 interface DocumentWithCostTracking {
   document: Document;
@@ -196,8 +198,14 @@ export async function searchController(
     // After transformation, sources is always an array of objects
     const searchTypes = [...new Set(req.body.sources.map((s: any) => s.type))];
 
+    // Build search query with category filters
+    const { query: searchQuery, categoryMap } = buildSearchQuery(
+      req.body.query,
+      req.body.categories as CategoryOption[]
+    );
+
     const searchResponse = await search({
-      query: req.body.query,
+      query: searchQuery,
       advanced: false,
       num_results: num_results_buffer,
       tbs: req.body.tbs,
@@ -213,6 +221,22 @@ export async function searchController(
       searchResponse.web = searchResponse.web.filter(
         (result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null),
       );
+    }
+
+    // Add category labels to web results
+    if (searchResponse.web && searchResponse.web.length > 0) {
+      searchResponse.web = searchResponse.web.map(result => ({
+        ...result,
+        category: getCategoryFromUrl(result.url, categoryMap),
+      }));
+    }
+    
+    // Add category labels to news results  
+    if (searchResponse.news && searchResponse.news.length > 0) {
+      searchResponse.news = searchResponse.news.map(result => ({
+        ...result,
+        category: result.url ? getCategoryFromUrl(result.url, categoryMap) : undefined,
+      }));
     }
 
     // Apply limit to each result type separately
@@ -288,6 +312,7 @@ export async function searchController(
           title: doc.title || searchResponse.web![index].title,
           description: doc.description || searchResponse.web![index].description,
           position: searchResponse.web![index].position,
+          category: searchResponse.web![index].category,
           markdown: doc.markdown,
           html: doc.html,
           rawHtml: doc.rawHtml,
@@ -332,6 +357,7 @@ export async function searchController(
           const scrapedDoc = newsDocs.find(doc => doc.url === newsItem.url);
           return {
             ...newsItem,
+            category: newsItem.category,
             markdown: scrapedDoc?.markdown,
             html: scrapedDoc?.html,
             rawHtml: scrapedDoc?.rawHtml,
@@ -427,6 +453,15 @@ export async function searchController(
       creditsUsed: credits_billed,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      logger.warn("Invalid request body", { error: error.errors });
+      return res.status(400).json({
+        success: false,
+        error: "Invalid request body",
+        details: error.errors,
+      });
+    }
+    
     if (error instanceof ScrapeJobTimeoutError) {
       return res.status(408).json({
         success: false,
