@@ -5,6 +5,96 @@ Firecrawl Python SDK
 
 import logging
 import os
+from typing import Dict, List, Optional, Union, Literal, Any
+from pydantic import BaseModel, Field
+
+# Backward-compatible ScrapeOptions class for users migrating from older versions
+class ScrapeOptions(BaseModel):
+    """
+    Configuration options for scraping operations.
+    Supports both camelCase (legacy) and snake_case (modern) field names for backward compatibility.
+    """
+    # Modern snake_case fields (preferred)
+    formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
+    headers: Optional[Dict[str, str]] = None
+    include_tags: Optional[List[str]] = None
+    exclude_tags: Optional[List[str]] = None
+    only_main_content: Optional[bool] = None
+    wait_for: Optional[int] = None
+    timeout: Optional[int] = None
+    location: Optional[Dict[str, Any]] = None
+    mobile: Optional[bool] = None
+    skip_tls_verification: Optional[bool] = None
+    remove_base64_images: Optional[bool] = None
+    block_ads: Optional[bool] = None
+    proxy: Optional[Literal["basic", "stealth", "auto"]] = None
+    parse_pdf: Optional[bool] = None
+    extract: Optional[Dict[str, Any]] = None
+    actions: Optional[List[Dict[str, Any]]] = None
+    max_age: Optional[int] = None
+    
+    # Legacy camelCase fields with aliases for backward compatibility
+    onlyMainContent: Optional[bool] = Field(None, alias="only_main_content")
+    waitFor: Optional[int] = Field(None, alias="wait_for")
+    skipTlsVerification: Optional[bool] = Field(None, alias="skip_tls_verification")
+    removeBase64Images: Optional[bool] = Field(None, alias="remove_base64_images")
+    blockAds: Optional[bool] = Field(None, alias="block_ads")
+    parsePDF: Optional[bool] = Field(None, alias="parse_pdf")
+    maxAge: Optional[int] = Field(None, alias="max_age")
+    includeTags: Optional[List[str]] = Field(None, alias="include_tags")
+    excludeTags: Optional[List[str]] = Field(None, alias="exclude_tags")
+    
+    class Config:
+        allow_population_by_field_name = True
+        extra = "allow"  # Allow additional fields for flexibility
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert ScrapeOptions to dictionary format expected by the API."""
+        result = {}
+        data = self.dict(by_alias=False, exclude_none=True)
+        
+        # Handle field name conversions
+        field_mappings = {
+            "include_tags": "includeTags",
+            "exclude_tags": "excludeTags", 
+            "only_main_content": "onlyMainContent",
+            "wait_for": "waitFor",
+            "skip_tls_verification": "skipTlsVerification",
+            "remove_base64_images": "removeBase64Images",
+            "block_ads": "blockAds",
+            "parse_pdf": "parsePDF",
+            "max_age": "maxAge"
+        }
+        
+        for key, value in data.items():
+            if key in field_mappings:
+                result[field_mappings[key]] = value
+            else:
+                result[key] = value
+                
+        return result
+
+# Helper function to normalize scrape options
+def _normalize_scrape_options(scrape_options: Optional[Union[ScrapeOptions, Dict[str, Any]]]) -> Optional[Dict[str, Any]]:
+    """
+    Normalize scrape_options to dictionary format.
+    Handles both ScrapeOptions class instances and plain dictionaries.
+    """
+    if scrape_options is None:
+        return None
+    
+    if isinstance(scrape_options, ScrapeOptions):
+        return scrape_options.to_dict()
+    elif isinstance(scrape_options, dict):
+        return scrape_options
+    else:
+        # Try to convert to dict if it has dict-like methods
+        if hasattr(scrape_options, 'dict'):
+            return scrape_options.dict(exclude_none=True)
+        elif hasattr(scrape_options, '__dict__'):
+            return {k: v for k, v in scrape_options.__dict__.items() if v is not None}
+        else:
+            return scrape_options
 
 from .client import Firecrawl, AsyncFirecrawl, FirecrawlApp, AsyncFirecrawlApp
 from .v2.watcher import Watcher
@@ -84,4 +174,6 @@ __all__ = [
     'V1JsonConfig',
     'V1ScrapeOptions',
     'V1ChangeTrackingOptions',
+    'ScrapeOptions',
+    '_normalize_scrape_options',
 ]

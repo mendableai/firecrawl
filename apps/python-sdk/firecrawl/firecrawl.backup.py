@@ -669,7 +669,9 @@ class FirecrawlApp:
         if timeout is not None:
             search_params['timeout'] = timeout
         if scrape_options is not None:
-            search_params['scrapeOptions'] = scrape_options.dict(by_alias=True, exclude_none=True)
+            # Import the normalization function from the main module
+            from . import _normalize_scrape_options
+            search_params['scrapeOptions'] = _normalize_scrape_options(scrape_options)
         
         # Add any additional kwargs
         search_params.update(kwargs)
@@ -791,7 +793,9 @@ class FirecrawlApp:
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.dict(by_alias=True, exclude_none=True)
+            # Import the normalization function from the main module
+            from . import _normalize_scrape_options
+            crawl_params['scrapeOptions'] = _normalize_scrape_options(scrape_options)
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -876,13 +880,13 @@ class FirecrawlApp:
             scrape_options (Optional[ScrapeOptions]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
-            ignore_query_parameters (Optional[bool]): Ignore URL parameters
-            regex_on_full_url (Optional[bool]): Apply regex to full URLs
-            delay (Optional[int]): Delay in seconds between scrapes
-            allow_subdomains (Optional[bool]): Follow subdomains
-            max_concurrency (Optional[int]): Maximum number of concurrent scrapes
-            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            ignore_query_parameters (Optional[bool]]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]]): Apply regex to full URLs
+            delay (Optional[int]]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]]): Follow subdomains
+            max_concurrency (Optional[int]]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -920,7 +924,9 @@ class FirecrawlApp:
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.dict(by_alias=True, exclude_none=True)
+            # Import the normalization function from the main module
+            from . import _normalize_scrape_options
+            crawl_params['scrapeOptions'] = _normalize_scrape_options(scrape_options)
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -1127,23 +1133,23 @@ class FirecrawlApp:
             url (str): Target URL to start crawling from
             include_paths (Optional[List[str]]): Patterns of URLs to include
             exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
-            max_depth (Optional[int]): Maximum crawl depth
-            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
-            limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
-            crawl_entire_domain (Optional[bool]): Follow parent directory links
-            allow_external_links (Optional[bool]): Follow external domain links
-            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
+            max_depth (Optional[int]]): Maximum crawl depth
+            max_discovery_depth (Optional[int]]): Maximum depth for finding new URLs
+            limit (Optional[int]]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]]): Follow parent directory links
+            allow_external_links (Optional[bool]]): Follow external domain links
+            ignore_sitemap (Optional[bool]]): Skip sitemap.xml processing
+            scrape_options (Optional[ScrapeOptions]]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
-            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
-            ignore_query_parameters (Optional[bool]): Ignore URL parameters
-            regex_on_full_url (Optional[bool]): Apply regex to full URLs
-            delay (Optional[int]): Delay in seconds between scrapes
-            allow_subdomains (Optional[bool]): Follow subdomains
-            max_concurrency (Optional[int]): Maximum number of concurrent scrapes
-            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            deduplicate_similar_urls (Optional[bool]]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]]): Apply regex to full URLs
+            delay (Optional[int]]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]]): Follow subdomains
+            max_concurrency (Optional[int]]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -1197,19 +1203,19 @@ class FirecrawlApp:
 
         Args:
             url (str): Target URL to map
-            search (Optional[str]): Filter pattern for URLs
-            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            include_subdomains (Optional[bool]): Include subdomain links
-            sitemap_only (Optional[bool]): Only use sitemap.xml
-            limit (Optional[int]): Maximum URLs to return
-            timeout (Optional[int]): Request timeout in milliseconds
+            search (Optional[str]]): Filter pattern for URLs
+            ignore_sitemap (Optional[bool]]): Skip sitemap.xml processing
+            include_subdomains (Optional[bool]]): Include subdomain links
+            sitemap_only (Optional[bool]]): Only use sitemap.xml
+            limit (Optional[int]]): Maximum URLs to return
+            timeout (Optional[int]]): Request timeout in milliseconds
             **kwargs: Additional parameters to pass to the API
 
         Returns:
             MapResponse: Response containing:
-                * success (bool): Whether request succeeded
-                * links (List[str]): Discovered URLs
-                * error (Optional[str]): Error message if any
+                * success (bool]]): Whether request succeeded
+                * links (List[str]]): Discovered URLs
+                * error (Optional[str]]): Error message if any
 
         Raises:
             Exception: If mapping fails or response cannot be parsed
@@ -1301,27 +1307,27 @@ class FirecrawlApp:
         Batch scrape multiple URLs and monitor until completion.
 
         Args:
-            urls (List[str]): URLs to scrape
+            urls (List[str]]): URLs to scrape
             formats (Optional[List[Literal]]): Content formats to retrieve
             headers (Optional[Dict[str, str]]): Custom HTTP headers
             include_tags (Optional[List[str]]): HTML tags to include
             exclude_tags (Optional[List[str]]): HTML tags to exclude
-            only_main_content (Optional[bool]): Extract main content only
-            wait_for (Optional[int]): Wait time in milliseconds
-            timeout (Optional[int]): Request timeout in milliseconds
-            location (Optional[LocationConfig]): Location configuration
-            mobile (Optional[bool]): Use mobile user agent
-            skip_tls_verification (Optional[bool]): Skip TLS verification
-            remove_base64_images (Optional[bool]): Remove base64 encoded images
-            block_ads (Optional[bool]): Block advertisements
-            proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[JsonConfig]): Content extraction config
-            json_options (Optional[JsonConfig]): JSON extraction config
+            only_main_content (Optional[bool]]): Extract main content only
+            wait_for (Optional[int]]): Wait time in milliseconds
+            timeout (Optional[int]]): Request timeout in milliseconds
+            location (Optional[LocationConfig]]): Location configuration
+            mobile (Optional[bool]]): Use mobile user agent
+            skip_tls_verification (Optional[bool]]): Skip TLS verification
+            remove_base64_images (Optional[bool]]): Remove base64 encoded images
+            block_ads (Optional[bool]]): Block advertisements
+            proxy (Optional[Literal]]): Proxy type to use
+            extract (Optional[JsonConfig]]): Content extraction config
+            json_options (Optional[JsonConfig]]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
-            agent (Optional[AgentOptions]): Agent configuration
-            max_concurrency (Optional[int]): Maximum number of concurrent scrapes
-            poll_interval (Optional[int]): Seconds between status checks (default: 2)
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            agent (Optional[AgentOptions]]): Agent configuration
+            max_concurrency (Optional[int]]): Maximum number of concurrent scrapes
+            poll_interval (Optional[int]]): Seconds between status checks (default: 2)
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -1441,27 +1447,27 @@ class FirecrawlApp:
         Initiate a batch scrape job asynchronously.
 
         Args:
-            urls (List[str]): URLs to scrape
+            urls (List[str]]): URLs to scrape
             formats (Optional[List[Literal]]): Content formats to retrieve
             headers (Optional[Dict[str, str]]): Custom HTTP headers
             include_tags (Optional[List[str]]): HTML tags to include
             exclude_tags (Optional[List[str]]): HTML tags to exclude
-            only_main_content (Optional[bool]): Extract main content only
-            wait_for (Optional[int]): Wait time in milliseconds
-            timeout (Optional[int]): Request timeout in milliseconds
-            location (Optional[LocationConfig]): Location configuration
-            mobile (Optional[bool]): Use mobile user agent
-            skip_tls_verification (Optional[bool]): Skip TLS verification
-            remove_base64_images (Optional[bool]): Remove base64 encoded images
-            block_ads (Optional[bool]): Block advertisements
-            proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[JsonConfig]): Content extraction config
-            json_options (Optional[JsonConfig]): JSON extraction config
+            only_main_content (Optional[bool]]): Extract main content only
+            wait_for (Optional[int]]): Wait time in milliseconds
+            timeout (Optional[int]]): Request timeout in milliseconds
+            location (Optional[LocationConfig]]): Location configuration
+            mobile (Optional[bool]]): Use mobile user agent
+            skip_tls_verification (Optional[bool]]): Skip TLS verification
+            remove_base64_images (Optional[bool]]): Remove base64 encoded images
+            block_ads (Optional[bool]]): Block advertisements
+            proxy (Optional[Literal]]): Proxy type to use
+            extract (Optional[JsonConfig]]): Content extraction config
+            json_options (Optional[JsonConfig]]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
-            agent (Optional[AgentOptions]): Agent configuration
-            max_concurrency (Optional[int]): Maximum number of concurrent scrapes
-            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            agent (Optional[AgentOptions]]): Agent configuration
+            max_concurrency (Optional[int]]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -1581,27 +1587,27 @@ class FirecrawlApp:
         Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
         Args:
-            urls (List[str]): URLs to scrape
+            urls (List[str]]): URLs to scrape
             formats (Optional[List[Literal]]): Content formats to retrieve
             headers (Optional[Dict[str, str]]): Custom HTTP headers
             include_tags (Optional[List[str]]): HTML tags to include
             exclude_tags (Optional[List[str]]): HTML tags to exclude
-            only_main_content (Optional[bool]): Extract main content only
-            wait_for (Optional[int]): Wait time in milliseconds
-            timeout (Optional[int]): Request timeout in milliseconds
-            location (Optional[LocationConfig]): Location configuration
-            mobile (Optional[bool]): Use mobile user agent
-            skip_tls_verification (Optional[bool]): Skip TLS verification
-            remove_base64_images (Optional[bool]): Remove base64 encoded images
-            block_ads (Optional[bool]): Block advertisements
-            proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[JsonConfig]): Content extraction config
-            json_options (Optional[JsonConfig]): JSON extraction config
+            only_main_content (Optional[bool]]): Extract main content only
+            wait_for (Optional[int]]): Wait time in milliseconds
+            timeout (Optional[int]]): Request timeout in milliseconds
+            location (Optional[LocationConfig]]): Location configuration
+            mobile (Optional[bool]]): Use mobile user agent
+            skip_tls_verification (Optional[bool]]): Skip TLS verification
+            remove_base64_images (Optional[bool]]): Remove base64 encoded images
+            block_ads (Optional[bool]]): Block advertisements
+            proxy (Optional[Literal]]): Proxy type to use
+            extract (Optional[JsonConfig]]): Content extraction config
+            json_options (Optional[JsonConfig]]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
-            agent (Optional[AgentOptions]): Agent configuration
-            max_concurrency (Optional[int]): Maximum number of concurrent scrapes
-            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            agent (Optional[AgentOptions]]): Agent configuration
+            max_concurrency (Optional[int]]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -1767,7 +1773,7 @@ class FirecrawlApp:
               * timestamp (str): When the error occurred
               * url (str): URL that caused the error
               * error (str): Error message
-            * robotsBlocked (List[str]): List of URLs blocked by robots.txt
+            * robotsBlocked (List[str]]): List of URLs blocked by robots.txt
 
         Raises:
             Exception: If the error check request fails
@@ -1799,20 +1805,20 @@ class FirecrawlApp:
 
         Args:
             urls (Optional[List[str]]): URLs to extract from
-            prompt (Optional[str]): Custom extraction prompt
-            schema (Optional[Any]): JSON schema/Pydantic model
-            system_prompt (Optional[str]): System context
-            allow_external_links (Optional[bool]): Follow external links
-            enable_web_search (Optional[bool]): Enable web search
-            show_sources (Optional[bool]): Include source URLs
+            prompt (Optional[str]]): Custom extraction prompt
+            schema (Optional[Any]]): JSON schema/Pydantic model
+            system_prompt (Optional[str]]): System context
+            allow_external_links (Optional[bool]]): Follow external links
+            enable_web_search (Optional[bool]]): Enable web search
+            show_sources (Optional[bool] = False): Include source URLs
             agent (Optional[Dict[str, Any]]): Agent configuration
             **kwargs: Additional parameters to pass to the API
 
         Returns:
             ExtractResponse[Any] with:
-            * success (bool): Whether request succeeded
-            * data (Optional[Any]): Extracted data matching schema
-            * error (Optional[str]): Error message if any
+            * success (bool]]): Whether request succeeded
+            * data (Optional[Any]]): Extracted data matching schema
+            * error (Optional[str]]): Error message if any
 
         Raises:
             ValueError: If prompt/schema missing or extraction fails
@@ -1902,10 +1908,10 @@ class FirecrawlApp:
         Retrieve the status of an extract job.
 
         Args:
-            job_id (str): The ID of the extract job.
+            job_id (str]]): The ID of the extract job.
 
         Returns:
-            ExtractResponse[Any]: The status of the extract job.
+            ExtractResponse[Any]]: The status of the extract job.
 
         Raises:
             ValueError: If there is an error retrieving the status.
@@ -1938,21 +1944,21 @@ class FirecrawlApp:
         Initiate an asynchronous extract job.
 
         Args:
-            urls (List[str]): URLs to extract information from
-            prompt (Optional[str]): Custom extraction prompt
-            schema (Optional[Any]): JSON schema/Pydantic model
-            system_prompt (Optional[str]): System context
-            allow_external_links (Optional[bool]): Follow external links
-            enable_web_search (Optional[bool]): Enable web search
-            show_sources (Optional[bool]): Include source URLs
+            urls (List[str]]): URLs to extract information from
+            prompt (Optional[str]]): Custom extraction prompt
+            schema (Optional[Any]]): JSON schema/Pydantic model
+            system_prompt (Optional[str]]): System context
+            allow_external_links (Optional[bool]]): Follow external links
+            enable_web_search (Optional[bool]]): Enable web search
+            show_sources (Optional[bool]]): Include source URLs
             agent (Optional[Dict[str, Any]]): Agent configuration
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
 
         Returns:
             ExtractResponse[Any] with:
-            * success (bool): Whether request succeeded
-            * data (Optional[Any]): Extracted data matching schema
-            * error (Optional[str]): Error message if any
+            * success (bool]]): Whether request succeeded
+            * data (Optional[Any]]): Extracted data matching schema
+            * error (Optional[str]]): Error message if any
 
         Raises:
             ValueError: If job initiation fails
@@ -2003,11 +2009,11 @@ class FirecrawlApp:
         Generate LLMs.txt for a given URL and poll until completion.
 
         Args:
-            url (str): Target URL to generate LLMs.txt from
-            max_urls (Optional[int]): Maximum URLs to process (default: 10)
-            show_full_text (Optional[bool]): Include full text in output (default: False)
-            cache (Optional[bool]): Whether to use cached content if available (default: True)
-            experimental_stream (Optional[bool]): Enable experimental streaming
+            url (str]]): Target URL to generate LLMs.txt from
+            max_urls (Optional[int]]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]]): Include full text in output (default: False)
+            cache (Optional[bool]]): Whether to use cached content if available (default: True)
+            experimental_stream (Optional[bool]]): Enable experimental streaming
 
         Returns:
             GenerateLLMsTextStatusResponse with:
@@ -2072,17 +2078,17 @@ class FirecrawlApp:
         Initiate an asynchronous LLMs.txt generation operation.
 
         Args:
-            url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
-            max_urls (Optional[int]): Maximum URLs to process (default: 10)
-            show_full_text (Optional[bool]): Include full text in output (default: False)
-            cache (Optional[bool]): Whether to use cached content if available (default: True)
-            experimental_stream (Optional[bool]): Enable experimental streaming
+            url (str]]): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
+            max_urls (Optional[int]]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]]): Include full text in output (default: False)
+            cache (Optional[bool]]): Whether to use cached content if available (default: True)
+            experimental_stream (Optional[bool]]): Enable experimental streaming
 
         Returns:
             GenerateLLMsTextResponse: A response containing:
-            * success (bool): Whether the generation initiation was successful
-            * id (str): The unique identifier for the generation job
-            * error (str, optional): Error message if initiation failed
+            * success (bool]]): Whether the generation initiation was successful
+            * id (str]]): The unique identifier for the generation job
+            * error (str, optional]]): Error message if initiation failed
 
         Raises:
             Exception: If the generation job initiation fails.
@@ -2123,17 +2129,17 @@ class FirecrawlApp:
         Check the status of a LLMs.txt generation operation.
 
         Args:
-            id (str): The unique identifier of the LLMs.txt generation job to check status for.
+            id (str]]): The unique identifier of the LLMs.txt generation job to check status for.
 
         Returns:
             GenerateLLMsTextStatusResponse: A response containing:
-            * success (bool): Whether the generation was successful
-            * status (str): Status of generation ("processing", "completed", "failed")
-            * data (Dict[str, str], optional): Generated text with fields:
-              * llmstxt (str): Generated LLMs.txt content
-              * llmsfulltxt (str, optional): Full version if requested
-            * error (str, optional): Error message if generation failed
-            * expiresAt (str): When the generated data expires
+            * success (bool]]): Whether the generation was successful
+            * status (str]]): Status of generation ("processing", "completed", "failed")
+            * data (Dict[str, str], optional]]): Generated text with fields:
+              * llmstxt (str]]): Generated LLMs.txt content
+              * llmsfulltxt (str, optional]]): Full version if requested
+            * error (str, optional]]): Error message if generation failed
+            * expiresAt (str]]): When the generated data expires
 
         Raises:
             Exception: If the status check fails.
@@ -2163,10 +2169,10 @@ class FirecrawlApp:
         Prepare the headers for API requests.
 
         Args:
-            idempotency_key (Optional[str]): A unique key to ensure idempotency of requests.
+            idempotency_key (Optional[str]]): A unique key to ensure idempotency of requests.
 
         Returns:
-            Dict[str, str]: The headers including content type, authorization, and optionally idempotency key.
+            Dict[str, str]]: The headers including content type, authorization, and optionally idempotency key.
         """
         if idempotency_key:
             return {
@@ -2191,11 +2197,11 @@ class FirecrawlApp:
         Make a POST request with retries.
 
         Args:
-            url (str): The URL to send the POST request to.
-            data (Dict[str, Any]): The JSON data to include in the POST request.
-            headers (Dict[str, str]): The headers to include in the POST request.
-            retries (int): Number of retries for the request.
-            backoff_factor (float): Backoff factor for retries.
+            url (str]]): The URL to send the POST request to.
+            data (Dict[str, Any]]): The JSON data to include in the POST request.
+            headers (Dict[str, str]]): The headers to include in the POST request.
+            retries (int]]): Number of retries for the request.
+            backoff_factor (float]]): Backoff factor for retries.
 
         Returns:
             requests.Response: The response from the POST request.
@@ -2221,10 +2227,10 @@ class FirecrawlApp:
         Make a GET request with retries.
 
         Args:
-            url (str): The URL to send the GET request to.
-            headers (Dict[str, str]): The headers to include in the GET request.
-            retries (int): Number of retries for the request.
-            backoff_factor (float): Backoff factor for retries.
+            url (str]]): The URL to send the GET request to.
+            headers (Dict[str, str]]): The headers to include in the GET request.
+            retries (int]]): Number of retries for the request.
+            backoff_factor (float]]): Backoff factor for retries.
 
         Returns:
             requests.Response: The response from the GET request.
@@ -2250,10 +2256,10 @@ class FirecrawlApp:
         Make a DELETE request with retries.
 
         Args:
-            url (str): The URL to send the DELETE request to.
-            headers (Dict[str, str]): The headers to include in the DELETE request.
-            retries (int): Number of retries for the request.
-            backoff_factor (float): Backoff factor for retries.
+            url (str]]): The URL to send the DELETE request to.
+            headers (Dict[str, str]]): The headers to include in the DELETE request.
+            retries (int]]): Number of retries for the request.
+            backoff_factor (float]]): Backoff factor for retries.
 
         Returns:
             requests.Response: The response from the DELETE request.
@@ -2278,9 +2284,9 @@ class FirecrawlApp:
         Monitor the status of a crawl job until completion.
 
         Args:
-            id (str): The ID of the crawl job.
-            headers (Dict[str, str]): The headers to include in the status check requests.
-            poll_interval (int): Seconds between status checks.
+            id (str]]): The ID of the crawl job.
+            headers (Dict[str, str]]): The headers to include in the status check requests.
+            poll_interval (int]]): Seconds between status checks.
 
         Returns:
             CrawlStatusResponse: The crawl results if the job is completed successfully.
@@ -2301,7 +2307,7 @@ class FirecrawlApp:
                     if 'data' in status_data:
                         data = status_data['data']
                         while 'next' in status_data:
-                            if len(status_data['data']) == 0:
+                            if len(status_data['data']] == 0:
                                 break
                             status_response = self._get_request(status_data['next'], headers)
                             try:
@@ -2329,8 +2335,8 @@ class FirecrawlApp:
         Handle errors from API responses.
 
         Args:
-            response (requests.Response): The response object from the API request.
-            action (str): Description of the action that was being performed.
+            response (requests.Response]]): The response object from the API request.
+            action (str]]): Description of the action that was being performed.
 
         Raises:
             Exception: An exception with a message containing the status code and error details from the response.
@@ -2363,10 +2369,10 @@ class FirecrawlApp:
         Generate a standardized error message based on HTTP status code.
         
         Args:
-            status_code (int): The HTTP status code from the response
-            action (str): Description of the action that was being performed
-            error_message (str): The error message from the API response
-            error_details (str): Additional error details from the API response
+            status_code (int]]): The HTTP status code from the response
+            action (str]]): Description of the action that was being performed
+            error_message (str]]): The error message from the API response
+            error_details (str]]): Additional error details from the API response
             
         Returns:
             str: A formatted error message
@@ -2400,26 +2406,26 @@ class FirecrawlApp:
         Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-            query (str): Research query or topic to investigate
-            max_depth (Optional[int]): Maximum depth of research exploration
-            time_limit (Optional[int]): Time limit in seconds for research
-            max_urls (Optional[int]): Maximum number of URLs to process
-            analysis_prompt (Optional[str]): Custom prompt for analysis
-            system_prompt (Optional[str]): Custom system prompt
-            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
-            on_activity (Optional[Callable]): Progress callback receiving {type, status, message, timestamp, depth}
-            on_source (Optional[Callable]): Source discovery callback receiving {url, title, description}
+            query (str]]): Research query or topic to investigate
+            max_depth (Optional[int]]): Maximum depth of research exploration
+            time_limit (Optional[int]]): Time limit in seconds for research
+            max_urls (Optional[int]]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]]): Custom prompt for analysis
+            system_prompt (Optional[str]]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]]): Enable experimental streaming
+            on_activity (Optional[Callable]]): Progress callback receiving {type, status, message, timestamp, depth}
+            on_source (Optional[Callable]]): Source discovery callback receiving {url, title, description}
 
         Returns:
             DeepResearchStatusResponse containing:
-            * success (bool): Whether research completed successfully
-            * status (str): Current state (processing/completed/failed)
-            * error (Optional[str]): Error message if failed
-            * id (str): Unique identifier for the research job
-            * data (Any): Research findings and analysis
-            * sources (List[Dict]): List of discovered sources
-            * activities (List[Dict]): Research progress log
-            * summaries (List[str]): Generated research summaries
+            * success (bool]]): Whether research completed successfully
+            * status (str]]): Current state (processing/completed/failed)
+            * error (Optional[str]]): Error message if failed
+            * id (str]]): Unique identifier for the research job
+            * data (Any]]): Research findings and analysis
+            * sources (List[Dict]]): List of discovered sources
+            * activities (List[Dict]]): Research progress log
+            * summaries (List[str]]): Generated research summaries
 
         Raises:
             Exception: If research fails
@@ -2494,19 +2500,19 @@ class FirecrawlApp:
         Initiates an asynchronous deep research operation.
 
         Args:
-            query (str): Research query or topic to investigate
-            max_depth (Optional[int]): Maximum depth of research exploration
-            time_limit (Optional[int]): Time limit in seconds for research
-            max_urls (Optional[int]): Maximum number of URLs to process
-            analysis_prompt (Optional[str]): Custom prompt for analysis
-            system_prompt (Optional[str]): Custom system prompt
-            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
+            query (str]]): Research query or topic to investigate
+            max_depth (Optional[int]]): Maximum depth of research exploration
+            time_limit (Optional[int]]): Time limit in seconds for research
+            max_urls (Optional[int]]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]]): Custom prompt for analysis
+            system_prompt (Optional[str]]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]]): Enable experimental streaming
 
         Returns:
-            Dict[str, Any]: A response containing:
-            * success (bool): Whether the research initiation was successful
-            * id (str): The unique identifier for the research job
-            * error (str, optional): Error message if initiation failed
+            Dict[str, Any]]: A response containing:
+            * success (bool]]): Whether the research initiation was successful
+            * id (str]]): The unique identifier for the research job
+            * error (str, optional]]): Error message if initiation failed
 
         Raises:
             Exception: If the research initiation fails.
@@ -2556,7 +2562,7 @@ class FirecrawlApp:
         Check the status of a deep research operation.
 
         Args:
-            id (str): The ID of the deep research operation.
+            id (str]]): The ID of the deep research operation.
 
         Returns:
             DeepResearchResponse containing:
@@ -2599,8 +2605,8 @@ class FirecrawlApp:
         This provides early validation before the Pydantic model validation.
 
         Args:
-            kwargs (Dict[str, Any]): Additional keyword arguments to validate
-            method_name (str): Name of the method these kwargs are for
+            kwargs (Dict[str, Any]]): Additional keyword arguments to validate
+            method_name (str]]): Name of the method these kwargs are for
 
         Raises:
             ValueError: If kwargs contain invalid or unsupported parameters
@@ -2667,12 +2673,12 @@ class CrawlWatcher:
     A class to watch and handle crawl job events via WebSocket connection.
 
     Attributes:
-        id (str): The ID of the crawl job to watch
-        app (FirecrawlApp): The FirecrawlApp instance
+        id (str]]): The ID of the crawl job to watch
+        app (FirecrawlApp]]): The FirecrawlApp instance
         data (List[Dict[str, Any]]): List of crawled documents/data
-        status (str): Current status of the crawl job
-        ws_url (str): WebSocket URL for the crawl job
-        event_handlers (dict): Dictionary of event type to list of handler functions
+        status (str]]): Current status of the crawl job
+        ws_url (str]]): WebSocket URL for the crawl job
+        event_handlers (dict]]): Dictionary of event type to list of handler functions
     """
     def __init__(self, id: str, app: FirecrawlApp):
         self.id = id
@@ -2713,8 +2719,8 @@ class CrawlWatcher:
         Adds an event handler function for a specific event type.
 
         Args:
-            event_type (str): Type of event to listen for ('done', 'error', or 'document')
-            handler (Callable): Function to handle the event
+            event_type (str]]): Type of event to listen for ('done', 'error', or 'document')
+            handler (Callable]]): Function to handle the event
         """
         if event_type in self.event_handlers:
             self.event_handlers[event_type].append(handler)
@@ -2724,8 +2730,8 @@ class CrawlWatcher:
         Dispatches an event to all registered handlers for that event type.
 
         Args:
-            event_type (str): Type of event to dispatch
-            detail (Dict[str, Any]): Event details/data to pass to handlers
+            event_type (str]]): Type of event to dispatch
+            detail (Dict[str, Any]]): Event details/data to pass to handlers
         """
         if event_type in self.event_handlers:
             for handler in self.event_handlers[event_type]:
@@ -2736,7 +2742,7 @@ class CrawlWatcher:
         Handles incoming WebSocket messages based on their type.
 
         Args:
-            msg (Dict[str, Any]): The message to handle
+            msg (Dict[str, Any]]): The message to handle
         """
         if msg['type'] == 'done':
             self.status = 'completed'
@@ -2771,16 +2777,16 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Generic async request method with exponential backoff retry logic.
 
         Args:
-            method (str): The HTTP method to use (e.g., "GET" or "POST").
-            url (str): The URL to send the request to.
-            headers (Dict[str, str]): Headers to include in the request.
+            method (str]]): The HTTP method to use (e.g., "GET" or "POST").
+            url (str]]): The URL to send the request to.
+            headers (Dict[str, str]]): Headers to include in the request.
             data (Optional[Dict[str, Any]]): The JSON data to include in the request body (only for POST requests).
-            retries (int): Maximum number of retry attempts (default: 3).
-            backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
+            retries (int]]): Maximum number of retry attempts (default: 3).
+            backoff_factor (float]]): Factor to calculate delay between retries (default: 0.5).
                 Delay will be backoff_factor * (2 ** retry_count).
 
         Returns:
-            Dict[str, Any]: The parsed JSON response from the server.
+            Dict[str, Any]]: The parsed JSON response from the server.
 
         Raises:
             aiohttp.ClientError: If the request fails after all retries.
@@ -2811,15 +2817,15 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Make an async POST request with exponential backoff retry logic.
 
         Args:
-            url (str): The URL to send the POST request to.
-            data (Dict[str, Any]): The JSON data to include in the request body.
-            headers (Dict[str, str]): Headers to include in the request.
-            retries (int): Maximum number of retry attempts (default: 3).
-            backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
+            url (str]]): The URL to send the POST request to.
+            data (Dict[str, Any]]): The JSON data to include in the request body.
+            headers (Dict[str, str]]): Headers to include in the request.
+            retries (int]]): Maximum number of retry attempts (default: 3).
+            backoff_factor (float]]): Factor to calculate delay between retries (default: 0.5).
                 Delay will be backoff_factor * (2 ** retry_count).
 
         Returns:
-            Dict[str, Any]: The parsed JSON response from the server.
+            Dict[str, Any]]: The parsed JSON response from the server.
 
         Raises:
             aiohttp.ClientError: If the request fails after all retries.
@@ -2834,14 +2840,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Make an async GET request with exponential backoff retry logic.
 
         Args:
-            url (str): The URL to send the GET request to.
-            headers (Dict[str, str]): Headers to include in the request.
-            retries (int): Maximum number of retry attempts (default: 3).
-            backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
+            url (str]]): The URL to send the GET request to.
+            headers (Dict[str, str]]): Headers to include in the request.
+            retries (int]]): Maximum number of retry attempts (default: 3).
+            backoff_factor (float]]): Factor to calculate delay between retries (default: 0.5).
                 Delay will be backoff_factor * (2 ** retry_count).
 
         Returns:
-            Dict[str, Any]: The parsed JSON response from the server.
+            Dict[str, Any]]: The parsed JSON response from the server.
 
         Raises:
             aiohttp.ClientError: If the request fails after all retries.
@@ -2854,8 +2860,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Handle errors from async API responses with detailed error messages.
 
         Args:
-            response (aiohttp.ClientResponse): The response object from the failed request
-            action (str): Description of the action that was being attempted
+            response (aiohttp.ClientResponse]]): The response object from the failed request
+            action (str]]): Description of the action that was being attempted
 
         Raises:
             aiohttp.ClientError: With a detailed error message based on the response status:
@@ -2881,10 +2887,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Generate a standardized error message based on HTTP status code for async operations.
         
         Args:
-            status_code (int): The HTTP status code from the response
-            action (str): Description of the action that was being performed
-            error_message (str): The error message from the API response
-            error_details (str): Additional error details from the API response
+            status_code (int]]): The HTTP status code from the response
+            action (str]]): Description of the action that was being performed
+            error_message (str]]): The error message from the API response
+            error_details (str]]): Additional error details from the API response
             
         Returns:
             str: A formatted error message
@@ -2900,8 +2906,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Initiate an async crawl job and return an AsyncCrawlWatcher to monitor progress via WebSocket.
 
         Args:
-          url (str): Target URL to start crawling from
-          params (Optional[CrawlParams]): See CrawlParams model for configuration:
+          url (str]]): Target URL to start crawling from
+          params (Optional[CrawlParams]]): See CrawlParams model for configuration:
             URL Discovery:
             * includePaths - Patterns of URLs to include
             * excludePaths - Patterns of URLs to exclude
@@ -2921,7 +2927,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             * deduplicateSimilarURLs - Remove similar URLs
             * ignoreQueryParameters - Ignore URL parameters
             * regexOnFullURL - Apply regex to full URLs
-          idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+          idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
 
         Returns:
           AsyncCrawlWatcher: An instance to monitor the crawl job via WebSocket
@@ -2944,8 +2950,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Initiate an async batch scrape job and return an AsyncCrawlWatcher to monitor progress.
 
         Args:
-            urls (List[str]): List of URLs to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
+            urls (List[str]]): List of URLs to scrape
+            params (Optional[ScrapeParams]]): See ScrapeParams model for configuration:
 
               Content Options:
               * formats - Content formats to retrieve
@@ -2963,7 +2969,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
               * extract - Content extraction config
               * jsonOptions - JSON extraction config
               * actions - Actions to perform
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
 
         Returns:
             AsyncCrawlWatcher: An instance to monitor the batch scrape job via WebSocket
@@ -3004,24 +3010,24 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Scrape a single URL asynchronously.
 
         Args:
-          url (str): Target URL to scrape
+          url (str]]): Target URL to scrape
           formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
           headers (Optional[Dict[str, str]]): Custom HTTP headers
           include_tags (Optional[List[str]]): HTML tags to include
           exclude_tags (Optional[List[str]]): HTML tags to exclude
-          only_main_content (Optional[bool]): Extract main content only
-          wait_for (Optional[int]): Wait for a specific element to appear
-          timeout (Optional[int]): Request timeout (ms)
-          location (Optional[LocationConfig]): Location configuration
-          mobile (Optional[bool]): Use mobile user agent
-          skip_tls_verification (Optional[bool]): Skip TLS verification
-          remove_base64_images (Optional[bool]): Remove base64 images
-          block_ads (Optional[bool]): Block ads
-          proxy (Optional[Literal["basic", "stealth", "auto"]]): Proxy type (basic/stealth)
-          extract (Optional[JsonConfig]): Content extraction settings
-          json_options (Optional[JsonConfig]): JSON extraction settings
+          only_main_content (Optional[bool]]): Extract main content only
+          wait_for (Optional[int]]): Wait for a specific element to appear
+          timeout (Optional[int]]): Request timeout (ms)
+          location (Optional[LocationConfig]]): Location configuration
+          mobile (Optional[bool]]): Use mobile user agent
+          skip_tls_verification (Optional[bool]]): Skip TLS verification
+          remove_base64_images (Optional[bool]]): Remove base64 images
+          block_ads (Optional[bool]]): Block ads
+          proxy (Optional[Literal["basic", "stealth", "auto"]]]): Proxy type (basic/stealth)
+          extract (Optional[JsonConfig]]): Content extraction settings
+          json_options (Optional[JsonConfig]]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, PDFAction]]]): Actions to perform
-          agent (Optional[AgentOptions]): Agent configuration for FIRE-1 model
+          agent (Optional[AgentOptions]]): Agent configuration for FIRE-1 model
           **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3144,26 +3150,26 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Asynchronously scrape multiple URLs and monitor until completion.
 
         Args:
-            urls (List[str]): URLs to scrape
+            urls (List[str]]): URLs to scrape
             formats (Optional[List[Literal]]): Content formats to retrieve
             headers (Optional[Dict[str, str]]): Custom HTTP headers
             include_tags (Optional[List[str]]): HTML tags to include
             exclude_tags (Optional[List[str]]): HTML tags to exclude
-            only_main_content (Optional[bool]): Extract main content only
-            wait_for (Optional[int]): Wait time in milliseconds
-            timeout (Optional[int]): Request timeout in milliseconds
-            location (Optional[LocationConfig]): Location configuration
-            mobile (Optional[bool]): Use mobile user agent
-            skip_tls_verification (Optional[bool]): Skip TLS verification
-            remove_base64_images (Optional[bool]): Remove base64 encoded images
-            block_ads (Optional[bool]): Block advertisements
-            proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[JsonConfig]): Content extraction config
-            json_options (Optional[JsonConfig]): JSON extraction config
+            only_main_content (Optional[bool]]): Extract main content only
+            wait_for (Optional[int]]): Wait time in milliseconds
+            timeout (Optional[int]]): Request timeout in milliseconds
+            location (Optional[LocationConfig]]): Location configuration
+            mobile (Optional[bool]]): Use mobile user agent
+            skip_tls_verification (Optional[bool]]): Skip TLS verification
+            remove_base64_images (Optional[bool]]): Remove base64 encoded images
+            block_ads (Optional[bool]]): Block advertisements
+            proxy (Optional[Literal]]): Proxy type to use
+            extract (Optional[JsonConfig]]): Content extraction config
+            json_options (Optional[JsonConfig]]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
-            agent (Optional[AgentOptions]): Agent configuration
-            poll_interval (Optional[int]): Seconds between status checks (default: 2)
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            agent (Optional[AgentOptions]]): Agent configuration
+            poll_interval (Optional[int]]): Seconds between status checks (default: 2)
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3283,26 +3289,26 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Initiate a batch scrape job asynchronously.
 
         Args:
-            urls (List[str]): URLs to scrape
+            urls (List[str]]): URLs to scrape
             formats (Optional[List[Literal]]): Content formats to retrieve
             headers (Optional[Dict[str, str]]): Custom HTTP headers
             include_tags (Optional[List[str]]): HTML tags to include
             exclude_tags (Optional[List[str]]): HTML tags to exclude
-            only_main_content (Optional[bool]): Extract main content only
-            wait_for (Optional[int]): Wait time in milliseconds
-            timeout (Optional[int]): Request timeout in milliseconds
-            location (Optional[LocationConfig]): Location configuration
-            mobile (Optional[bool]): Use mobile user agent
-            skip_tls_verification (Optional[bool]): Skip TLS verification
-            remove_base64_images (Optional[bool]): Remove base64 encoded images
-            block_ads (Optional[bool]): Block advertisements
-            proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[JsonConfig]): Content extraction config
-            json_options (Optional[JsonConfig]): JSON extraction config
+            only_main_content (Optional[bool]]): Extract main content only
+            wait_for (Optional[int]]): Wait time in milliseconds
+            timeout (Optional[int]]): Request timeout in milliseconds
+            location (Optional[LocationConfig]]): Location configuration
+            mobile (Optional[bool]]): Use mobile user agent
+            skip_tls_verification (Optional[bool]]): Skip TLS verification
+            remove_base64_images (Optional[bool]]): Remove base64 encoded images
+            block_ads (Optional[bool]]): Block advertisements
+            proxy (Optional[Literal]]): Proxy type to use
+            extract (Optional[JsonConfig]]): Content extraction config
+            json_options (Optional[JsonConfig]]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
-            agent (Optional[AgentOptions]): Agent configuration
-            zero_data_retention (Optional[bool]): Whether to delete data after 24 hours
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            agent (Optional[AgentOptions]]): Agent configuration
+            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3339,7 +3345,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['location'] = location.dict(by_alias=True, exclude_none=True)
         if mobile is not None:
             scrape_params['mobile'] = mobile
-        if skip_tls_verification is not None:
+        if skip_tls_veification is not None:
             scrape_params['skipTlsVerification'] = skip_tls_verification
         if remove_base64_images is not None:
             scrape_params['removeBase64Images'] = remove_base64_images
@@ -3361,6 +3367,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(by_alias=True, exclude_none=True) for action in actions]
         if agent is not None:
             scrape_params['agent'] = agent.dict(by_alias=True, exclude_none=True)
+        if max_concurrency is not None:
+            scrape_params['maxConcurrency'] = max_concurrency
         if zero_data_retention is not None:
             scrape_params['zeroDataRetention'] = zero_data_retention
         
@@ -3422,25 +3430,25 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Crawl a website starting from a URL.
 
         Args:
-            url (str): Target URL to start crawling from
+            url (str]]): Target URL to start crawling from
             include_paths (Optional[List[str]]): Patterns of URLs to include
             exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
-            max_depth (Optional[int]): Maximum crawl depth
-            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
-            limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
-            crawl_entire_domain (Optional[bool]): Follow parent directory links
-            allow_external_links (Optional[bool]): Follow external domain links
-            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
+            max_depth (Optional[int]]): Maximum crawl depth
+            max_discovery_depth (Optional[int]]): Maximum depth for finding new URLs
+            limit (Optional[int]]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]]): Follow parent directory links
+            allow_external_links (Optional[bool]]): Follow external domain links
+            ignore_sitemap (Optional[bool]]): Skip sitemap.xml processing
+            scrape_options (Optional[ScrapeOptions]]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
-            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
-            ignore_query_parameters (Optional[bool]): Ignore URL parameters
-            regex_on_full_url (Optional[bool]): Apply regex to full URLs
-            delay (Optional[int]): Delay in seconds between scrapes
-            allow_subdomains (Optional[bool]): Follow subdomains
-            poll_interval (Optional[int]): Seconds between status checks (default: 2)
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            deduplicate_similar_urls (Optional[bool]]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]]): Apply regex to full URLs
+            delay (Optional[int]]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]]): Follow subdomains
+            poll_interval (Optional[int]]): Seconds between status checks (default: 2)
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3477,7 +3485,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.dict(by_alias=True, exclude_none=True)
+            # Import the normalization function from the main module
+            from . import _normalize_scrape_options
+            crawl_params['scrapeOptions'] = _normalize_scrape_options(scrape_options)
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -3520,44 +3530,48 @@ class AsyncFirecrawlApp(FirecrawlApp):
         *,
         include_paths: Optional[List[str]] = None,
         exclude_paths: Optional[List[str]] = None,
-        max_depth: Optional[int] = None,
-        max_discovery_depth: Optional[int] = None,
-        limit: Optional[int] = None,
-        allow_backward_links: Optional[bool] = None,
-        crawl_entire_domain: Optional[bool] = None,
-        allow_external_links: Optional[bool] = None,
-        ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[ScrapeOptions] = None,
+        max_depth: Optional[int]] = None,
+        max_discovery_depth: Optional[int]] = None,
+        limit: Optional[int]] = None,
+        allow_backward_links: Optional[bool]] = None,
+        crawl_entire_domain: Optional[bool]] = None,
+        allow_external_links: Optional[bool]] = None,
+        ignore_sitemap: Optional[bool]] = None,
+        scrape_options: Optional[ScrapeOptions]] = None,
         webhook: Optional[Union[str, WebhookConfig]] = None,
-        deduplicate_similar_urls: Optional[bool] = None,
-        ignore_query_parameters: Optional[bool] = None,
-        regex_on_full_url: Optional[bool] = None,
-        delay: Optional[int] = None,
-        allow_subdomains: Optional[bool] = None,
-        poll_interval: Optional[int] = 2,
-        idempotency_key: Optional[str] = None,
+        deduplicate_similar_urls: Optional[bool]] = None,
+        ignore_query_parameters: Optional[bool]] = None,
+        regex_on_full_url: Optional[bool]] = None,
+        delay: Optional[int]] = None,
+        allow_subdomains: Optional[bool]] = None,
+        poll_interval: Optional[int]] = 2,
+        idempotency_key: Optional[str]] = None,
         **kwargs
     ) -> CrawlResponse:
         """
         Start an asynchronous crawl job.
 
         Args:
-            url (str): Target URL to start crawling from
+            url (str]]): Target URL to start crawling from
             include_paths (Optional[List[str]]): Patterns of URLs to include
             exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
-            max_depth (Optional[int]): Maximum crawl depth
-            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
-            limit (Optional[int]): Maximum pages to crawl
-            allow_backward_links (Optional[bool]): DEPRECATED: Use crawl_entire_domain instead
-            crawl_entire_domain (Optional[bool]): Follow parent directory links
-            allow_external_links (Optional[bool]): Follow external domain links
-            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
+            max_depth (Optional[int]]): Maximum crawl depth
+            max_discovery_depth (Optional[int]]): Maximum depth for finding new URLs
+            limit (Optional[int]]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]]): DEPRECATED: Use crawl_entire_domain instead
+            crawl_entire_domain (Optional[bool]]): Follow parent directory links
+            allow_external_links (Optional[bool]]): Follow external domain links
+            ignore_sitemap (Optional[bool]]): Skip sitemap.xml processing
+            scrape_options (Optional[ScrapeOptions]]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
-            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
-            ignore_query_parameters (Optional[bool]): Ignore URL parameters
-            regex_on_full_url (Optional[bool]): Apply regex to full URLs
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            deduplicate_similar_urls (Optional[bool]]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]]): Apply regex to full URLs
+            delay (Optional[int]]): Delay in seconds between scrapes
+            allow_subdomains (Optional[bool]]): Follow subdomains
+            max_concurrency (Optional[int]]): Maximum number of concurrent scrapes
+            zero_data_retention (Optional[bool]]): Whether to delete data after 24 hours
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
 
         Returns:
@@ -3592,7 +3606,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.dict(by_alias=True, exclude_none=True)
+            # Import the normalization function from the main module
+            from . import _normalize_scrape_options
+            crawl_params['scrapeOptions'] = _normalize_scrape_options(scrape_options)
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -3636,7 +3652,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Check the status and results of an asynchronous crawl job.
 
         Args:
-            id (str): Unique identifier for the crawl job
+            id (str]]): Unique identifier for the crawl job
 
         Returns:
             CrawlStatusResponse containing:
@@ -3668,7 +3684,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if 'data' in status_data:
                 data = status_data['data']
                 while 'next' in status_data:
-                    if len(status_data['data']) == 0:
+                    if len(status_data['data']] == 0:
                         break
                     next_url = status_data.get('next')
                     if not next_url:
@@ -3702,9 +3718,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Monitor the status of an asynchronous job until completion.
 
         Args:
-            id (str): The ID of the job to monitor
-            headers (Dict[str, str]): Headers to include in status check requests
-            poll_interval (int): Seconds between status checks (default: 2)
+            id (str]]): The ID of the job to monitor
+            headers (Dict[str, str]]): Headers to include in status check requests
+            poll_interval (int]]): Seconds between status checks (default: 2)
 
         Returns:
             CrawlStatusResponse: The job results if completed successfully
@@ -3722,7 +3738,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 if 'data' in status_data:
                     data = status_data['data']
                     while 'next' in status_data:
-                        if len(status_data['data']) == 0:
+                        if len(status_data['data']] == 0:
                             break
                         next_url = status_data.get('next')
                         if not next_url:
@@ -3755,8 +3771,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Asynchronously map and discover links from a URL.
 
         Args:
-          url (str): Target URL to map
-          params (Optional[MapParams]): See MapParams model:
+          url (str]]): Target URL to map
+          params (Optional[MapParams]]): See MapParams model:
             Discovery Options:
             * search - Filter pattern for URLs
             * ignoreSitemap - Skip sitemap.xml
@@ -3831,12 +3847,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         Args:
             urls (Optional[List[str]]): URLs to extract from
-            prompt (Optional[str]): Custom extraction prompt
-            schema (Optional[Any]): JSON schema/Pydantic model
-            system_prompt (Optional[str]): System context
-            allow_external_links (Optional[bool]): Follow external links
-            enable_web_search (Optional[bool]): Enable web search
-            show_sources (Optional[bool]): Include source URLs
+            prompt (Optional[str]]): Custom extraction prompt
+            schema (Optional[Any]]): JSON schema/Pydantic model
+            system_prompt (Optional[str]]): System context
+            allow_external_links (Optional[bool]]): Follow external links
+            enable_web_search (Optional[bool]]): Enable web search
+            show_sources (Optional[bool]]): Include source URLs
             agent (Optional[Dict[str, Any]]): Agent configuration
 
         Returns:
@@ -3908,7 +3924,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Check the status of an asynchronous batch scrape job.
 
         Args:
-            id (str): The ID of the batch scrape job
+            id (str]]): The ID of the batch scrape job
 
         Returns:
             BatchScrapeStatusResponse containing:
@@ -3940,7 +3956,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if 'data' in status_data:
                 data = status_data['data']
                 while 'next' in status_data:
-                    if len(status_data['data']) == 0:
+                    if len(status_data['data']] == 0:
                         break
                     next_url = status_data.get('next')
                     if not next_url:
@@ -3976,16 +3992,16 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Get information about errors from an asynchronous batch scrape job.
 
         Args:
-          id (str): The ID of the batch scrape job
+          id (str]]): The ID of the batch scrape job
 
         Returns:
           CrawlErrorsResponse containing:
             errors (List[Dict[str, str]]): List of errors with fields:
-              * id (str): Error ID
-              * timestamp (str): When the error occurred
-              * url (str): URL that caused the error
-              * error (str): Error message
-          * robotsBlocked (List[str]): List of URLs blocked by robots.txt
+              * id (str]]): Error ID
+              * timestamp (str]]): When the error occurred
+              * url (str]]): URL that caused the error
+              * error (str]]): Error message
+          * robotsBlocked (List[str]]): List of URLs blocked by robots.txt
 
         Raises:
           Exception: If error check fails
@@ -4001,16 +4017,16 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Get information about errors from an asynchronous crawl job.
 
         Args:
-            id (str): The ID of the crawl job
+            id (str]]): The ID of the crawl job
 
         Returns:
             CrawlErrorsResponse containing:
             * errors (List[Dict[str, str]]): List of errors with fields:
-                - id (str): Error ID
-                - timestamp (str): When the error occurred
-                - url (str): URL that caused the error
-                - error (str): Error message
-            * robotsBlocked (List[str]): List of URLs blocked by robots.txt
+                - id (str]]): Error ID
+                - timestamp (str]]): When the error occurred
+                - url (str]]): URL that caused the error
+                - error (str]]): Error message
+            * robotsBlocked (List[str]]): List of URLs blocked by robots.txt
 
         Raises:
             Exception: If error check fails
@@ -4026,12 +4042,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Cancel an asynchronous crawl job.
 
         Args:
-            id (str): The ID of the crawl job to cancel
+            id (str]]): The ID of the crawl job to cancel
 
         Returns:
-            Dict[str, Any] containing:
-            * success (bool): Whether cancellation was successful
-            * error (str, optional): Error message if cancellation failed
+            Dict[str, Any]] containing:
+            * success (bool]]): Whether cancellation was successful
+            * error (str, optional]]): Error message if cancellation failed
 
         Raises:
             Exception: If cancellation fails
@@ -4046,14 +4062,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Check the status of an asynchronous extraction job.
 
         Args:
-            job_id (str): The ID of the extraction job
+            job_id (str]]): The ID of the extraction job
 
         Returns:
-            ExtractResponse[Any] with:
-            * success (bool): Whether request succeeded
-            * data (Optional[Any]): Extracted data matching schema
-            * error (Optional[str]): Error message if any
-            * warning (Optional[str]): Warning message if any
+            ExtractResponse[Any]] with:
+            * success (bool]]): Whether request succeeded
+            * data (Optional[Any]]): Extracted data matching schema
+            * error (Optional[str]]): Error message if any
+            * warning (Optional[str]]): Warning message if any
             * sources (Optional[List[str]]): Source URLs if requested
 
         Raises:
@@ -4084,20 +4100,20 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         Args:
             urls (Optional[List[str]]): URLs to extract from
-            prompt (Optional[str]): Custom extraction prompt
-            schema (Optional[Any]): JSON schema/Pydantic model
-            system_prompt (Optional[str]): System context
-            allow_external_links (Optional[bool]): Follow external links
-            enable_web_search (Optional[bool]): Enable web search
-            show_sources (Optional[bool]): Include source URLs
+            prompt (Optional[str]]): Custom extraction prompt
+            schema (Optional[Any]]): JSON schema/Pydantic model
+            system_prompt (Optional[str]]): System context
+            allow_external_links (Optional[bool]]): Follow external links
+            enable_web_search (Optional[bool]]): Enable web search
+            show_sources (Optional[bool]]): Include source URLs
             agent (Optional[Dict[str, Any]]): Agent configuration
-            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            idempotency_key (Optional[str]]): Unique key to prevent duplicate requests
 
         Returns:
-            ExtractResponse[Any] with:
-            * success (bool): Whether request succeeded
-            * data (Optional[Any]): Extracted data matching schema
-            * error (Optional[str]): Error message if any
+            ExtractResponse[Any]] with:
+            * success (bool]]): Whether request succeeded
+            * data (Optional[Any]]): Extracted data matching schema
+            * error (Optional[str]]): Error message if any
 
         Raises:
             ValueError: If job initiation fails
@@ -4149,20 +4165,20 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Generate LLMs.txt for a given URL and monitor until completion.
 
         Args:
-            url (str): Target URL to generate LLMs.txt from
-            max_urls (Optional[int]): Maximum URLs to process (default: 10)
-            show_full_text (Optional[bool]): Include full text in output (default: False)
-            experimental_stream (Optional[bool]): Enable experimental streaming
+            url (str]]): Target URL to generate LLMs.txt from
+            max_urls (Optional[int]]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]]): Enable experimental streaming
 
         Returns:
             GenerateLLMsTextStatusResponse containing:
-            * success (bool): Whether generation completed successfully
-            * status (str): Status of generation (processing/completed/failed)
-            * data (Dict[str, str], optional): Generated text with fields:
-                - llmstxt (str): Generated LLMs.txt content
-                - llmsfulltxt (str, optional): Full version if requested
-            * error (str, optional): Error message if generation failed
-            * expiresAt (str): When the generated data expires
+            * success (bool]]): Whether generation completed successfully
+            * status (str]]): Status of generation (processing/completed/failed)
+            * data (Dict[str, str], optional]]): Generated text with fields:
+                - llmstxt (str]]): Generated LLMs.txt content
+                - llmsfulltxt (str, optional]]): Full version if requested
+            * error (str, optional]]): Error message if generation failed
+            * expiresAt (str]]): When the generated data expires
 
         Raises:
             Exception: If generation fails
@@ -4211,17 +4227,17 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Initiate an asynchronous LLMs.txt generation job without waiting for completion.
 
         Args:
-            url (str): Target URL to generate LLMs.txt from
-            max_urls (Optional[int]): Maximum URLs to process (default: 10)
-            show_full_text (Optional[bool]): Include full text in output (default: False)
-            cache (Optional[bool]): Whether to use cached content if available (default: True)
-            experimental_stream (Optional[bool]): Enable experimental streaming
+            url (str]]): Target URL to generate LLMs.txt from
+            max_urls (Optional[int]]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]]): Include full text in output (default: False)
+            cache (Optional[bool]]): Whether to use cached content if available (default: True)
+            experimental_stream (Optional[bool]]): Enable experimental streaming
 
         Returns:
             GenerateLLMsTextResponse containing:
-            * success (bool): Whether job started successfully
-            * id (str): Unique identifier for the job
-            * error (str, optional): Error message if start failed
+            * success (bool]]): Whether job started successfully
+            * id (str]]): Unique identifier for the job
+            * error (str, optional]]): Error message if start failed
 
         Raises:
             ValueError: If job initiation fails
@@ -4259,17 +4275,17 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Check the status of an asynchronous LLMs.txt generation job.
 
         Args:
-            id (str): The ID of the generation job
+            id (str]]): The ID of the generation job
 
         Returns:
             GenerateLLMsTextStatusResponse containing:
-            * success (bool): Whether generation completed successfully
-            * status (str): Status of generation (processing/completed/failed)
-            * data (Dict[str, str], optional): Generated text with fields:
-                - llmstxt (str): Generated LLMs.txt content
-                - llmsfulltxt (str, optional): Full version if requested
-            * error (str, optional): Error message if generation failed
-            * expiresAt (str): When the generated data expires
+            * success (bool]]): Whether generation completed successfully
+            * status (str]]): Status of generation (processing/completed/failed)
+            * data (Dict[str, str], optional]]): Generated text with fields:
+                - llmstxt (str]]): Generated LLMs.txt content
+                - llmsfulltxt (str, optional]]): Full version if requested
+            * error (str, optional]]): Error message if generation failed
+            * expiresAt (str]]): When the generated data expires
 
         Raises:
             ValueError: If status check fails
@@ -4299,26 +4315,26 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-            query (str): Research query or topic to investigate
-            max_depth (Optional[int]): Maximum depth of research exploration
-            time_limit (Optional[int]): Time limit in seconds for research
-            max_urls (Optional[int]): Maximum number of URLs to process
-            analysis_prompt (Optional[str]): Custom prompt for analysis
-            system_prompt (Optional[str]): Custom system prompt
-            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
-            on_activity (Optional[Callable]): Progress callback receiving {type, status, message, timestamp, depth}
-            on_source (Optional[Callable]): Source discovery callback receiving {url, title, description}
+            query (str]]): Research query or topic to investigate
+            max_depth (Optional[int]]): Maximum depth of research exploration
+            time_limit (Optional[int]]): Time limit in seconds for research
+            max_urls (Optional[int]]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]]): Custom prompt for analysis
+            system_prompt (Optional[str]]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]]): Enable experimental streaming
+            on_activity (Optional[Callable]]): Progress callback receiving {type, status, message, timestamp, depth}
+            on_source (Optional[Callable]]): Source discovery callback receiving {url, title, description}
 
         Returns:
             DeepResearchStatusResponse containing:
-            * success (bool): Whether research completed successfully
-            * status (str): Current state (processing/completed/failed)
-            * error (Optional[str]): Error message if failed
-            * id (str): Unique identifier for the research job
-            * data (Any): Research findings and analysis
-            * sources (List[Dict]): List of discovered sources
-            * activities (List[Dict]): Research progress log
-            * summaries (List[str]): Generated research summaries
+            * success (bool]]): Whether research completed successfully
+            * status (str]]): Current state (processing/completed/failed)
+            * error (Optional[str]]): Error message if failed
+            * id (str]]): Unique identifier for the research job
+            * data (Any]]): Research findings and analysis
+            * sources (List[Dict]]): List of discovered sources
+            * activities (List[Dict]]): Research progress log
+            * summaries (List[str]]): Generated research summaries
 
         Raises:
             Exception: If research fails
@@ -4393,19 +4409,19 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Initiates an asynchronous deep research operation.
 
         Args:
-            query (str): Research query or topic to investigate
-            max_depth (Optional[int]): Maximum depth of research exploration
-            time_limit (Optional[int]): Time limit in seconds for research
-            max_urls (Optional[int]): Maximum number of URLs to process
-            analysis_prompt (Optional[str]): Custom prompt for analysis
-            system_prompt (Optional[str]): Custom system prompt
-            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
+            query (str]]): Research query or topic to investigate
+            max_depth (Optional[int]]): Maximum depth of research exploration
+            time_limit (Optional[int]]): Time limit in seconds for research
+            max_urls (Optional[int]]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]]): Custom prompt for analysis
+            system_prompt (Optional[str]]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]]): Enable experimental streaming
 
         Returns:
-            Dict[str, Any]: A response containing:
-            * success (bool): Whether the research initiation was successful
-            * id (str): The unique identifier for the research job
-            * error (str, optional): Error message if initiation failed
+            Dict[str, Any]]: A response containing:
+            * success (bool]]): Whether the research initiation was successful
+            * id (str]]): The unique identifier for the research job
+            * error (str, optional]]): Error message if initiation failed
 
         Raises:
             Exception: If the research initiation fails.
@@ -4444,7 +4460,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Check the status of a deep research operation.
 
         Args:
-            id (str): The ID of the deep research operation.
+            id (str]]): The ID of the deep research operation.
 
         Returns:
             DeepResearchResponse containing:
@@ -4491,24 +4507,24 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Asynchronously search for content using Firecrawl.
 
         Args:
-            query (str): Search query string
-            limit (Optional[int]): Max results (default: 5)
-            tbs (Optional[str]): Time filter (e.g. "qdr:d")
-            filter (Optional[str]): Custom result filter
-            lang (Optional[str]): Language code (default: "en")
-            country (Optional[str]): Country code (default: "us") 
-            location (Optional[str]): Geo-targeting
-            timeout (Optional[int]): Request timeout in milliseconds
-            scrape_options (Optional[ScrapeOptions]): Result scraping configuration
+            query (str]]): Search query string
+            limit (Optional[int]]): Max results (default: 5)
+            tbs (Optional[str]]): Time filter (e.g. "qdr:d")
+            filter (Optional[str]]): Custom result filter
+            lang (Optional[str]]): Language code (default: "en")
+            country (Optional[str]]): Country code (default: "us") 
+            location (Optional[str]]): Geo-targeting
+            timeout (Optional[int]]): Request timeout in milliseconds
+            scrape_options (Optional[ScrapeOptions]]): Result scraping configuration
             params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters
             **kwargs: Additional keyword arguments for future compatibility
 
         Returns:
             SearchResponse: Response containing:
-                * success (bool): Whether request succeeded
-                * data (List[FirecrawlDocument]): Search results
-                * warning (Optional[str]): Warning message if any
-                * error (Optional[str]): Error message if any
+                * success (bool]]): Whether request succeeded
+                * data (List[FirecrawlDocument]]): Search results
+                * warning (Optional[str]]): Warning message if any
+                * error (Optional[str]]): Error message if any
 
         Raises:
             Exception: If search fails or response cannot be parsed
@@ -4537,7 +4553,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if timeout is not None:
             search_params['timeout'] = timeout
         if scrape_options is not None:
-            search_params['scrapeOptions'] = scrape_options.dict(by_alias=True, exclude_none=True)
+            # Import the normalization function from the main module
+            from . import _normalize_scrape_options
+            search_params['scrapeOptions'] = _normalize_scrape_options(scrape_options)
         
         # Add any additional kwargs
         search_params.update(kwargs)
@@ -4586,7 +4604,7 @@ class AsyncCrawlWatcher(CrawlWatcher):
         Handles incoming WebSocket messages based on their type asynchronously.
 
         Args:
-            msg (Dict[str, Any]): The message to handle
+            msg (Dict[str, Any]]): The message to handle
         """
         if msg['type'] == 'done':
             self.status = 'completed'
@@ -4624,10 +4642,10 @@ class AsyncCrawlWatcher(CrawlWatcher):
         Generate a standardized error message based on HTTP status code for async operations.
         
         Args:
-            status_code (int): The HTTP status code from the response
-            action (str): Description of the action that was being performed
-            error_message (str): The error message from the API response
-            error_details (str): Additional error details from the API response
+            status_code (int]]): The HTTP status code from the response
+            action (str]]): Description of the action that was being performed
+            error_message (str]]): The error message from the API response
+            error_details (str]]): Additional error details from the API response
             
         Returns:
             str: A formatted error message
