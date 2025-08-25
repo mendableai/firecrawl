@@ -318,6 +318,7 @@ export async function searchController(
           rawHtml: doc.rawHtml,
           links: doc.links,
           screenshot: doc.screenshot,
+          summary: doc.summary,
           metadata: doc.metadata,
         }));
         
@@ -361,6 +362,7 @@ export async function searchController(
             markdown: scrapedDoc?.markdown,
             html: scrapedDoc?.html,
             rawHtml: scrapedDoc?.rawHtml,
+            summary: scrapedDoc?.summary,
             metadata: scrapedDoc?.metadata,
           };
         });
