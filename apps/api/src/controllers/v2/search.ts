@@ -206,6 +206,7 @@ export async function searchController(
 
     const searchResponse = await search({
       query: searchQuery,
+      logger,
       advanced: false,
       num_results: num_results_buffer,
       tbs: req.body.tbs,
