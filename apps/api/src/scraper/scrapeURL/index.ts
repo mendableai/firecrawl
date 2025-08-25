@@ -455,6 +455,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           }
 
           // Otherwise, just keep racing
+        } else if (error instanceof AddFeatureError || error instanceof RemoveFeatureError) {
+          throw error;
         } else if (error instanceof WaterfallNextEngineSignal) {
           // It's time to waterfall the next engine
           break;
