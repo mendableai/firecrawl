@@ -25,7 +25,10 @@ export function checkCreditsMiddleware(
     (async () => {
       if (!minimum && req.body) {
         minimum =
-          (req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1;
+          Number((req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1);
+        if (isNaN(minimum) || !isFinite(minimum) || minimum <= 0) {
+          minimum = undefined;
+        }
       }
       const { success, remainingCredits, chunk } = await checkTeamCredits(
         req.acuc,
