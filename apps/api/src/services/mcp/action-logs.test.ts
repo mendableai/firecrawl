@@ -158,6 +158,14 @@ describe("MCP action log contract", () => {
       input({ objective: "Check docs using Bearer abc.def and fc-123abc" })
         .objective,
     ).toBe("Check docs using [redacted] and [redacted]");
+    expect(input({ objective: "Find\u0085the\u009fdocs" }).objective).toBe(
+      "Find the docs",
+    );
+    const started = performance.now();
+    expect(input({ objective: "eyJ-".repeat(16_000) }).objective).toHaveLength(
+      1000,
+    );
+    expect(performance.now() - started).toBeLessThan(250);
     expect(input({ objective: "x".repeat(1200) }).objective).toBe(
       "x".repeat(1000),
     );

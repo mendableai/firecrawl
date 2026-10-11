@@ -86,7 +86,8 @@ function objective(value: unknown) {
   if (value == null) return null;
   if (typeof value !== "string") invalid("objective must be a string");
   const normalized = value
-    .replace(/[\u0000-\u001F\u007F]+/g, " ")
+    .slice(0, OBJECTIVE_MAX_LENGTH * 4)
+    .replace(/[\u0000-\u001F\u007F-\u009F]+/g, " ")
     .replace(SECRET_PATTERN_ALL, "[redacted]")
     .trim()
     .slice(0, OBJECTIVE_MAX_LENGTH)
