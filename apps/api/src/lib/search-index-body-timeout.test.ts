@@ -3,13 +3,24 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../config", () => ({ config: {} }));
 vi.mock("./logger", () => {
-  const logger = { debug: vi.fn(), info: vi.fn(), error: vi.fn(), warn: vi.fn(), child: () => logger };
+  const logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    child: () => logger,
+  };
   return { logger };
 });
 import { SearchIndexClient } from "./search-index-client";
 
 describe("search-index response body deadline", () => {
-  for (const mode of ["stalled", "success", "invalid", "unavailable"] as const) {
+  for (const mode of [
+    "stalled",
+    "success",
+    "invalid",
+    "unavailable",
+  ] as const) {
     it(`handles a native HTTP ${mode} health response`, async () => {
       const server = createServer((_req, res) => {
         res.statusCode = mode === "unavailable" ? 503 : 200;
@@ -25,20 +36,38 @@ describe("search-index response body deadline", () => {
           res.end(JSON.stringify({ error: "owned unavailable" }));
         }
       });
-      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-      const client = new SearchIndexClient({ baseUrl: `http://127.0.0.1:${(server.address() as { port: number }).port}`, timeout: 50 });
+      await new Promise<void>(resolve =>
+        server.listen(0, "127.0.0.1", resolve),
+      );
+      const client = new SearchIndexClient({
+        baseUrl: `http://127.0.0.1:${(server.address() as { port: number }).port}`,
+        timeout: 50,
+      });
       let guard: ReturnType<typeof setTimeout> | undefined;
+      const started = performance.now();
       const pending = client.health();
       try {
         const healthy = await Promise.race([
           pending,
-          new Promise<never>((_resolve, reject) => { guard = setTimeout(() => reject(new Error("body exceeded consumer deadline")), 300); }),
+          new Promise<never>((_resolve, reject) => {
+            guard = setTimeout(
+              () => reject(new Error("body exceeded consumer deadline")),
+              300,
+            );
+          }),
         ]);
         expect(healthy).toBe(mode === "success");
+        if (mode === "stalled") {
+          const elapsed = performance.now() - started;
+          expect(elapsed).toBeGreaterThanOrEqual(35);
+          expect(elapsed).toBeLessThan(150);
+        }
       } finally {
         clearTimeout(guard);
         server.closeAllConnections();
-        await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
+        await new Promise<void>((resolve, reject) =>
+          server.close(err => (err ? reject(err) : resolve())),
+        );
         await pending;
       }
     });

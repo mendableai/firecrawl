@@ -268,7 +268,13 @@ async function redactOnce(
     return { ok: false, reason };
   }
   if (!response.ok) {
-    clearTimeout(timer);
+    try {
+      await response.body?.cancel();
+    } catch {
+      // Preserve the upstream status if cancellation races the deadline.
+    } finally {
+      clearTimeout(timer);
+    }
     const reason: RedactionReason =
       response.status === 503 ? "service_unavailable" : "error";
     logger?.warn("fire-privacy returned non-2xx", {
