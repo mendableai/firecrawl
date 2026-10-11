@@ -32,6 +32,7 @@ for (const operation of ["create", "update"] as const) {
         const request = { name: "test", schedule: { text: "every day" }, targets: Object.freeze([target, search]) } as unknown as CreateMonitorRequest; // Public types are mutable; exercise frozen input at runtime.
         if (operation === "create") await createMonitor(http, request);
         else await updateMonitor(http, "mon_test", request);
+        assert.equal(captured.targets[0].scrapeOptions.formats.length, 2);
         for (const format of captured.targets[0].scrapeOptions.formats) {
           assert.equal(format.schema.type, "object");
           assert.deepEqual(format.schema.properties.title, { type: "string" });

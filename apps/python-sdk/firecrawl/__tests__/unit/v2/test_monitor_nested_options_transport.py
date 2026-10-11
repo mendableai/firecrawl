@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -39,8 +40,11 @@ def test_monitor_typed_scrape_options_reach_transport_as_api_keys(async_mode, up
     thread.start()
     url = f"http://127.0.0.1:{server.server_port}"
     target = MonitorTarget(type="scrape", urls=["https://example.com"], scrape_options=ScrapeOptions(
-        formats=["raw_html"], only_main_content=False, wait_for=150, include_tags=["main"]))
+        formats=["raw_html", {"type": "change_tracking", "modes": ["git-diff"]},
+                 {"type": "json", "schema": {"type": "object", "properties": {"name": {"type": "string"}}}}],
+        only_main_content=False, wait_for=150, include_tags=["main"]))
     targets = [target, {"type": "search", "queries": ["fixture"], "futureField": False}]
+    original_formats = deepcopy(target.scrape_options.formats)
     try:
         if async_mode:
             async def run():
@@ -67,8 +71,12 @@ def test_monitor_typed_scrape_options_reach_transport_as_api_keys(async_mode, up
     assert options["onlyMainContent"] is False
     assert options["waitFor"] == 150
     assert options["includeTags"] == ["main"]
-    assert options["formats"] == ["rawHtml"]
+    assert options["formats"][0] == "rawHtml"
+    assert options["formats"][1] == {"type": "changeTracking", "modes": ["git-diff"]}
+    assert options["formats"][2]["type"] == "json"
+    assert options["formats"][2]["schema"] == original_formats[2]["schema"]
     assert "only_main_content" not in options
     assert "wait_for" not in options
     assert bodies[0]["targets"][1]["futureField"] is False
     assert target.scrape_options.only_main_content is False
+    assert target.scrape_options.formats == original_formats
