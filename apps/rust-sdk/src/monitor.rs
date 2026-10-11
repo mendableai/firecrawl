@@ -438,6 +438,7 @@ impl Client {
         let mut check = response.data;
 
         let mut visited = std::collections::HashSet::new();
+        visited.insert(self.pin_to_api_origin(&self.url(&path))?.to_string());
         while let Some(next) = check.next.clone() {
             let url = self.pin_to_api_origin(&next)?;
             if !visited.insert(url.to_string()) {
