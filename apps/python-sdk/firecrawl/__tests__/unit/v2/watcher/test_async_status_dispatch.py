@@ -1,4 +1,5 @@
 import asyncio
+from contextvars import ContextVar
 import threading
 from types import SimpleNamespace
 
@@ -8,7 +9,11 @@ from firecrawl.v2.watcher_async import AsyncWatcher
 
 
 @pytest.mark.parametrize("proxy", [False, True])
-def test_sync_status_methods_run_outside_event_loop(proxy):
+@pytest.mark.parametrize("to_thread_available", [True, False])
+def test_sync_status_methods_run_outside_event_loop(proxy, to_thread_available, monkeypatch):
+    if not to_thread_available:
+        # Python3.8 has no asyncio.to_thread; exercise that stdlib boundary.
+        monkeypatch.delattr(asyncio, "to_thread", raising=False)
     loop_thread = threading.get_ident()
     calls = []
     job = SimpleNamespace(status="completed")
@@ -61,3 +66,13 @@ def test_sync_type_error_is_propagated_without_repeating_request():
     with pytest.raises(TypeError, match="invalid response"):
         asyncio.run(AsyncWatcher(SimpleNamespace(get_crawl_status=get_crawl_status), "job")._fetch_job_status())
     assert calls == ["job"]
+
+
+def test_sync_status_offload_preserves_callers_context():
+    trace = ContextVar("trace", default="missing")
+    token = trace.set("request-trace")
+    try:
+        client = SimpleNamespace(get_crawl_status=lambda job_id: trace.get())
+        assert asyncio.run(AsyncWatcher(client, "job")._fetch_job_status()) == "request-trace"
+    finally:
+        trace.reset(token)

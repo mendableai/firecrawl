@@ -7,6 +7,7 @@ Usage:
 """
 
 import asyncio
+from contextvars import copy_context
 import inspect
 import json
 import time
@@ -186,7 +187,9 @@ class AsyncWatcher:
         if inspect.iscoroutinefunction(meth):
             result = meth(self._job_id)
         else:
-            result = await asyncio.to_thread(meth, self._job_id)
+            result = await asyncio.get_running_loop().run_in_executor(
+                None, copy_context().run, meth, self._job_id
+            )
         if inspect.isawaitable(result):
             return await result
         return result
