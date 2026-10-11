@@ -11,33 +11,53 @@ describe("AbortManager source cancellation propagation", () => {
         delivered++;
         res.end("unexpected delivery");
       });
-      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      await new Promise<void>(resolve =>
+        server.listen(0, "127.0.0.1", resolve),
+      );
       const manager = new AbortManager();
       try {
         const controller = new AbortController();
         const inner = new Error("owned cancellation");
         controller.abort(inner);
-        const instance = { signal: controller.signal, tier: "external" as const, throwable: () => inner };
-        const active = mode === "constructor" ? new AbortManager(instance) : manager;
+        const instance = {
+          signal: controller.signal,
+          tier: "external" as const,
+          throwable: () => inner,
+        };
+        const active =
+          mode === "constructor" ? new AbortManager(instance) : manager;
         if (mode === "add") {
           active.asSignal();
           active.add(instance);
         }
         try {
           const port = (server.address() as { port: number }).port;
-          await expect(fetch(`http://127.0.0.1:${port}/owned`, { signal: active.asSignal() })).rejects.toMatchObject({
-            name: "AbortManagerThrownError", tier: "external", inner,
+          await expect(
+            fetch(`http://127.0.0.1:${port}/owned`, {
+              signal: active.asSignal(),
+            }),
+          ).rejects.toMatchObject({
+            name: "AbortManagerThrownError",
+            tier: "external",
+            inner,
           });
           expect(delivered).toBe(0);
           expect(active.isAborted()).toBe(true);
-          expect(active.asSignal().reason).toBeInstanceOf(AbortManagerThrownError);
+          expect(active.asSignal().reason).toBeInstanceOf(
+            AbortManagerThrownError,
+          );
+          expect(
+            (active.asSignal().reason as AbortManagerThrownError).inner,
+          ).toBe(inner);
         } finally {
           active.dispose();
         }
       } finally {
         manager.dispose();
         server.closeAllConnections();
-        await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
+        await new Promise<void>((resolve, reject) =>
+          server.close(err => (err ? reject(err) : resolve())),
+        );
       }
     });
   }
@@ -45,13 +65,20 @@ describe("AbortManager source cancellation propagation", () => {
   it("future abort preserves signal identity and wrapped thrown reason", () => {
     const controller = new AbortController();
     const inner = new Error("owned engine failure");
-    const manager = new AbortManager({ signal: controller.signal, tier: "engine", throwable: () => { throw inner; } });
+    const manager = new AbortManager({
+      signal: controller.signal,
+      tier: "engine",
+      throwable: () => {
+        throw inner;
+      },
+    });
     try {
       const signal = manager.asSignal();
       expect(signal.aborted).toBe(false);
       controller.abort();
       expect(manager.asSignal()).toBe(signal);
       expect(signal.reason).toMatchObject({ tier: "engine", inner });
+      expect((signal.reason as AbortManagerThrownError).inner).toBe(inner);
       expect(() => manager.throwIfAborted()).toThrow(AbortManagerThrownError);
     } finally {
       manager.dispose();
@@ -64,10 +91,17 @@ describe("AbortManager source cancellation propagation", () => {
     const manager = new AbortManager();
     try {
       const signal = manager.asSignal();
-      manager.add({ signal: controller.signal, tier: "scrape", throwable: () => "deadline" });
+      manager.add({
+        signal: controller.signal,
+        tier: "scrape",
+        throwable: () => "deadline",
+      });
       expect(signal.aborted).toBe(false);
       controller.abort();
-      expect(signal.reason).toMatchObject({ tier: "scrape", inner: "deadline" });
+      expect(signal.reason).toMatchObject({
+        tier: "scrape",
+        inner: "deadline",
+      });
     } finally {
       manager.dispose();
     }
