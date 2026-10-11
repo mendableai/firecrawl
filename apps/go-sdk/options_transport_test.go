@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/firecrawl/firecrawl/apps/go-sdk/option"
@@ -15,10 +16,14 @@ import (
 func TestOptionsTransportPreservesSchemaInteger(t *testing.T) {
 	for _, batch := range []bool{false, true} {
 		t.Run(map[bool]string{false: "scrape", true: "batch"}[batch], func(t *testing.T) {
-			var received string
+			received := make(chan string, 1)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				b, _ := io.ReadAll(r.Body)
-				received = string(b)
+				select {
+				case received <- string(b):
+				default:
+					t.Error("unexpected extra request body")
+				}
 				w.Header().Set("Content-Type", "application/json")
 				if batch {
 					io.WriteString(w, `{"success":true,"id":"fixture"}`)
@@ -40,27 +45,28 @@ func TestOptionsTransportPreservesSchemaInteger(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(received, "9007199254740993") {
-				t.Fatalf("schema integer changed in actual request: %s", received)
+			bodyJSON := <-received
+			if !strings.Contains(bodyJSON, "9007199254740993") {
+				t.Fatalf("schema integer changed in actual request: %s", bodyJSON)
 			}
 			var body map[string]json.RawMessage
-			if err = json.Unmarshal([]byte(received), &body); err != nil {
+			if err = json.Unmarshal([]byte(bodyJSON), &body); err != nil {
 				t.Fatal(err)
 			}
 			if string(body["onlyMainContent"]) != "false" {
-				t.Fatalf("false option dropped: %s", received)
+				t.Fatalf("false option dropped: %s", bodyJSON)
 			}
 			if _, nested := body["options"]; nested {
-				t.Fatalf("batch options not flattened: %s", received)
+				t.Fatalf("batch options not flattened: %s", bodyJSON)
 			}
 		})
 	}
 }
 
 func TestOptionsSerializationFailureDoesNotDeliverDefaultRequest(t *testing.T) {
-	calls := 0
+	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		calls.Add(1)
 		io.WriteString(w, `{"success":true,"data":{"markdown":"fixture"}}`)
 	}))
 	defer server.Close()
@@ -72,7 +78,7 @@ func TestOptionsSerializationFailureDoesNotDeliverDefaultRequest(t *testing.T) {
 	if err == nil {
 		t.Fatal("invalid options silently discarded")
 	}
-	if calls != 0 {
-		t.Fatalf("delivered %d default requests despite invalid options", calls)
+	if delivered := calls.Load(); delivered != 0 {
+		t.Fatalf("delivered %d default requests despite invalid options", delivered)
 	}
 }

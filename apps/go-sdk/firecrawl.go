@@ -12,6 +12,7 @@
 package firecrawl
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -1181,7 +1182,7 @@ func mergeOptions(body map[string]interface{}, opts interface{}) error {
 		return &FirecrawlError{Message: fmt.Sprintf("failed to serialize options: %v", err)}
 	}
 	var optsMap map[string]interface{}
-	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	if err := decoder.Decode(&optsMap); err != nil {
 		return &FirecrawlError{Message: fmt.Sprintf("failed to decode options: %v", err)}
