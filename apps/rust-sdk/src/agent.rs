@@ -1939,7 +1939,8 @@ mod tests {
 mod url_constraint_contract_regression {
     use super::*;
     #[tokio::test]
-    async fn start_agent_sends_the_constraint_key_to_http() {
+    async fn start_agent_sends_the_constraint_key_to_http() -> Result<(), Box<dyn std::error::Error>>
+    {
         for constraint in [false, true] {
             let mut server = mockito::Server::new_async().await;
             let mock = server
@@ -1952,36 +1953,38 @@ mod url_constraint_contract_regression {
                 .with_body(r#"{"success":true,"id":"owned-agent"}"#)
                 .create_async()
                 .await;
-            let client = Client::new_selfhosted(server.url(), Some("owned-key")).unwrap();
+            let client = Client::new_selfhosted(server.url(), Some("owned-key"))?;
             let response = client
                 .start_agent(AgentOptions {
                     prompt: "owned fixture".into(),
                     strict_constrain_to_urls: Some(constraint),
                     ..Default::default()
                 })
-                .await
-                .unwrap();
+                .await?;
             assert_eq!(response.id, "owned-agent");
             mock.assert_async().await;
         }
+        Ok(())
     }
 
     #[test]
-    fn constraint_uses_api_acronym_key_for_both_boolean_values() {
+    fn constraint_uses_api_acronym_key_for_both_boolean_values(
+    ) -> Result<(), Box<dyn std::error::Error>> {
         for constraint in [false, true] {
             let options = AgentOptions {
                 prompt: "owned fixture".into(),
                 strict_constrain_to_urls: Some(constraint),
                 ..Default::default()
             };
-            let body = serde_json::to_value(options).unwrap();
+            let body = serde_json::to_value(options)?;
             assert_eq!(
                 body.get("strictConstrainToURLs"),
                 Some(&serde_json::json!(constraint))
             );
             assert!(body.get("strictConstrainToUrls").is_none());
         }
-        let body = serde_json::to_value(AgentOptions::default()).unwrap();
+        let body = serde_json::to_value(AgentOptions::default())?;
         assert!(body.get("strictConstrainToURLs").is_none());
+        Ok(())
     }
 }
