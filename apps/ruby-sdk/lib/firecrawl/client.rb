@@ -573,7 +573,10 @@ module Firecrawl
     private
 
     def serialize_monitor_targets(targets)
-      targets&.map { |target| target.is_a?(Models::MonitorTarget) ? target.to_h : target }
+      return nil if targets.nil?
+      raise ArgumentError, "targets must be an Array" unless targets.is_a?(Array)
+
+      targets.map { |target| target.is_a?(Models::MonitorTarget) ? target.to_h : target }
     end
 
     def query(params = nil, **kwargs)
