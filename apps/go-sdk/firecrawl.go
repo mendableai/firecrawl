@@ -800,8 +800,7 @@ func (c *Client) AgentWithPolling(ctx context.Context, opts *AgentOptions, pollI
 	parentContext := ctx
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
-	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second)
-	for time.Now().Before(deadline) {
+	for {
 		select {
 		case <-ctx.Done():
 			return nil, pollingError(parentContext, ctx, start.ID, timeoutSec, ctx.Err())
@@ -820,12 +819,6 @@ func (c *Client) AgentWithPolling(ctx context.Context, opts *AgentOptions, pollI
 			return nil, pollingError(parentContext, ctx, start.ID, timeoutSec, ctx.Err())
 		case <-time.After(time.Duration(pollIntervalSec) * time.Second):
 		}
-	}
-
-	return nil, &JobTimeoutError{
-		FirecrawlError: FirecrawlError{Message: "agent job timed out"},
-		JobID:          start.ID,
-		TimeoutSeconds: timeoutSec,
 	}
 }
 
@@ -1047,8 +1040,7 @@ func (c *Client) pollCrawl(ctx context.Context, jobID string, pollIntervalSec, t
 	parentContext := ctx
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
-	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second)
-	for time.Now().Before(deadline) {
+	for {
 		select {
 		case <-ctx.Done():
 			return nil, pollingError(parentContext, ctx, jobID, timeoutSec, ctx.Err())
@@ -1069,20 +1061,13 @@ func (c *Client) pollCrawl(ctx context.Context, jobID string, pollIntervalSec, t
 		case <-time.After(time.Duration(pollIntervalSec) * time.Second):
 		}
 	}
-
-	return nil, &JobTimeoutError{
-		FirecrawlError: FirecrawlError{Message: "crawl job timed out"},
-		JobID:          jobID,
-		TimeoutSeconds: timeoutSec,
-	}
 }
 
 func (c *Client) pollBatchScrape(ctx context.Context, jobID string, pollIntervalSec, timeoutSec int) (*BatchScrapeJob, error) {
 	parentContext := ctx
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
-	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second)
-	for time.Now().Before(deadline) {
+	for {
 		select {
 		case <-ctx.Done():
 			return nil, pollingError(parentContext, ctx, jobID, timeoutSec, ctx.Err())
@@ -1102,12 +1087,6 @@ func (c *Client) pollBatchScrape(ctx context.Context, jobID string, pollInterval
 			return nil, pollingError(parentContext, ctx, jobID, timeoutSec, ctx.Err())
 		case <-time.After(time.Duration(pollIntervalSec) * time.Second):
 		}
-	}
-
-	return nil, &JobTimeoutError{
-		FirecrawlError: FirecrawlError{Message: "batch scrape job timed out"},
-		JobID:          jobID,
-		TimeoutSeconds: timeoutSec,
 	}
 }
 

@@ -18,9 +18,17 @@ async def test_watch_deadline_covers_status_and_disconnect(kind, slow_status):
 
     async with websockets.serve(handler, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
+        status_calls = 0
+        status_cancelled = False
         async def status(_job_id):
+            nonlocal status_calls, status_cancelled
+            status_calls += 1
             if slow_status:
-                await asyncio.sleep(1)
+                try:
+                    await asyncio.sleep(1)
+                except asyncio.CancelledError:
+                    status_cancelled = True
+                    raise
             return SimpleNamespace(status="scraping")
         client = SimpleNamespace(api_url=f"http://127.0.0.1:{port}", api_key=None,
                                  get_crawl_status=status, get_batch_scrape_status=status)
@@ -28,8 +36,15 @@ async def test_watch_deadline_covers_status_and_disconnect(kind, slow_status):
         async def consume():
             return [snapshot async for snapshot in watcher]
         started = asyncio.get_running_loop().time()
-        await asyncio.wait_for(consume(), 0.3)
+        snapshots = await asyncio.wait_for(consume(), 0.3)
         assert asyncio.get_running_loop().time() - started < 0.25
+        assert status_calls > 0
+        if slow_status:
+            assert status_cancelled
+            assert snapshots == []
+        else:
+            assert snapshots
+            assert all(snapshot.status == "scraping" for snapshot in snapshots)
 
 
 @pytest.mark.asyncio
