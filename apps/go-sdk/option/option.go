@@ -59,7 +59,8 @@ func WithBackoffFactor(f float64) RequestOption {
 // WithTimeout sets the HTTP client timeout. Default: 5 minutes.
 func WithTimeout(d time.Duration) RequestOption {
 	return func(c *RequestConfig) {
-		c.Timeout = &d
+		timeout := d
+		c.Timeout = &timeout
 	}
 }
 
