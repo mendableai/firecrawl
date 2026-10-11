@@ -90,6 +90,7 @@ function appFor(
     remainingCredits,
     teamId = "account-team",
     rules = TEST_RULES,
+    domainProviders,
   } = {} as any,
 ) {
   const app = express();
@@ -97,6 +98,7 @@ function appFor(
   app.post("/", agentHintsMiddleware(endpoint), (req, res) => {
     (req as any).auth = { team_id: teamId };
     res.locals.agentCreditsRemaining = remainingCredits;
+    res.locals.agentHintDomainProviders = domainProviders;
     res.locals.agentHintsProvider = { settled: true, hints: [], rules };
     res.status(status).json(body);
   });
@@ -194,6 +196,48 @@ describe("agent hint response middleware", () => {
       .set("X-Firecrawl-Agent-Hints", "true")
       .send({});
     expect(response.body.agent_hints).toEqual(["Interact: scrape-id."]);
+  });
+
+  it("passes matched domain providers to the rules and changes only agent_hints", async () => {
+    const body = {
+      success: true,
+      data: { markdown: "page", metadata: { statusCode: 200 } },
+    };
+    const rules: AgentHintRule[] = [
+      {
+        id: "domain-provider",
+        when: [
+          SUCCESS,
+          { signal: "alexandria_provider_count", op: "gt", value: 0 },
+        ],
+        text: "Provider: {alexandria_provider} of {alexandria_provider_count}.",
+      },
+    ];
+    const matched = await request(
+      appFor({
+        endpoint: "scrape",
+        body,
+        rules,
+        domainProviders: ["finance-yahoo-com", "sec-gov"],
+      }),
+    )
+      .post("/")
+      .set("X-Firecrawl-Agent-Hints", "true")
+      .send({});
+    expect(matched.body).toEqual({
+      ...body,
+      agent_hints: ["Provider: finance-yahoo-com of 2."],
+    });
+
+    for (const domainProviders of [[], undefined]) {
+      const response = await request(
+        appFor({ endpoint: "scrape", body, rules, domainProviders }),
+      )
+        .post("/")
+        .set("X-Firecrawl-Agent-Hints", "true")
+        .send({});
+      expect(response.body).toEqual(body);
+    }
   });
 
   it("reports Interact as unavailable without database authentication", async () => {
