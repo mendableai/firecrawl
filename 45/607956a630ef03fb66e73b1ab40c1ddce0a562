@@ -1,0 +1,22 @@
+apps/api/src/scraper/scrapeURL/engines/fire-engine/branding-script/buttons.ts
+  s_3002048a2ce37a::t_ba33879227fa60 45-104,106-114
+apps/api/src/__tests__/lib/branding/branding-script-buttons.test.ts
+  s_3002048a2ce37a::t_70339e4978da2d 8,42,116-138
+  s_3002048a2ce37a::t_1329e59073358a 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45607956a630ef03fb66e73b1ab40c1ddce0a562",
+  "prompts": {},
+  "sessions": {
+    "s_3002048a2ce37a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fabc48ca-b328-4b9d-9e17-ee599b54f859",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Abimael Martell <1450169+abimaelmartell@users.noreply.github.com>"
+    }
+  }
+}
