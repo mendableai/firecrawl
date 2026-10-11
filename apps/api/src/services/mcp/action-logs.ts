@@ -89,6 +89,7 @@ function objective(value: unknown) {
     .slice(0, OBJECTIVE_MAX_LENGTH * 4)
     .replace(/[\u0000-\u001F\u007F-\u009F]+/g, " ")
     .replace(SECRET_PATTERN_ALL, "[redacted]")
+    .replace(/\beyJ[A-Za-z0-9_.-]*$/, "[redacted]")
     .trim()
     .slice(0, OBJECTIVE_MAX_LENGTH)
     .replace(/[\uD800-\uDBFF]$/, "")

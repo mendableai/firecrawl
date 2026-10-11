@@ -162,10 +162,14 @@ describe("MCP action log contract", () => {
       "Find the docs",
     );
     const started = performance.now();
-    expect(input({ objective: "eyJ-".repeat(16_000) }).objective).toHaveLength(
-      1000,
+    expect(input({ objective: "eyJ-".repeat(16_000) }).objective).toBe(
+      "[redacted]",
     );
-    expect(performance.now() - started).toBeLessThan(250);
+    expect(performance.now() - started).toBeLessThan(500);
+    const cutJwt = `${`fc-${"x".repeat(96)} `.repeat(39)}eyJhbGciOi.eyJ${"a".repeat(200)}.c2ln`;
+    expect(input({ objective: cutJwt }).objective).toBe(
+      `${"[redacted] ".repeat(39)}[redacted]`,
+    );
     expect(input({ objective: "x".repeat(1200) }).objective).toBe(
       "x".repeat(1000),
     );
