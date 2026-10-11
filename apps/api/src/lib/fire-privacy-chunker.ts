@@ -62,8 +62,12 @@ function findSafeSplit(text: string, lo: number, hi: number): number {
 function codePointBoundary(text: string, index: number): number {
   const previous = text.charCodeAt(index - 1);
   const next = text.charCodeAt(index);
-  return previous >= 0xd800 && previous <= 0xdbff &&
-    next >= 0xdc00 && next <= 0xdfff ? index - 1 : index;
+  return previous >= 0xd800 &&
+    previous <= 0xdbff &&
+    next >= 0xdc00 &&
+    next <= 0xdfff
+    ? index - 1
+    : index;
 }
 
 function utf8ByteLength(s: string): number {
@@ -114,7 +118,7 @@ export function chunkMarkdown(text: string, opts?: ChunkOptions): Chunk[] {
       if (safeEnd <= cursor) safeEnd = tentativeEnd;
     }
 
-    safeEnd = codePointBoundary(text, safeEnd);
+    safeEnd = codePointBoundary(text, Math.floor(safeEnd));
     let chunkText = text.slice(cursor, safeEnd);
 
     // Byte-budget enforcement for non-ASCII text. Rare on web markdown
@@ -126,7 +130,9 @@ export function chunkMarkdown(text: string, opts?: ChunkOptions): Chunk[] {
       }
     }
     if (safeEnd <= cursor) {
-      throw new RangeError("chunkMarkdown: budgets cannot fit the next code point");
+      throw new RangeError(
+        "chunkMarkdown: budgets cannot fit the next code point",
+      );
     }
 
     chunks.push({ text: chunkText, start: cursor });
