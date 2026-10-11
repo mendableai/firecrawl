@@ -12,6 +12,7 @@ from firecrawl.v2.utils.error_handler import BadRequestError
 
 
 CASES = [
+    ({"code": "", "type": "https://owned.invalid/problems/query", "detail": "Blank code fallback"}, "Blank code fallback", "https://owned.invalid/problems/query"),
     ({"type": "https://owned.invalid/problems/query", "title": "Invalid query", "detail": "Provide a narrower query"}, "Provide a narrower query", "https://owned.invalid/problems/query"),
     ({"type": "https://owned.invalid/problems/query", "title": "Invalid query"}, "Invalid query", "https://owned.invalid/problems/query"),
     ({"error": "Original error", "code": "ORIGINAL", "detail": "Do not replace", "type": "ignored"}, "Original error", "ORIGINAL"),
