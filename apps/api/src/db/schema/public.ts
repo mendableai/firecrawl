@@ -458,6 +458,8 @@ export const mcp_action_logs = pgTable(
     client_version: text("client_version"),
     error_class: text("error_class"),
     resource: text("resource").notNull(),
+    objective: text("objective"),
+    api_job_id: text("api_job_id"),
     created_at: ts("created_at").notNull().defaultNow(),
     expires_at: ts("expires_at").notNull(),
   },

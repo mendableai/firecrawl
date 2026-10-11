@@ -8,12 +8,15 @@ const AUTH_TYPES = ["oauth", "api-key"] as const;
 const RESOURCES = new Set([
   "https://mcp.firecrawl.dev/v2/mcp",
   "https://mcp.firecrawl.dev/v2/mcp-oauth",
+  "https://mcp.firecrawl.dev/v2/mcp-search",
 ]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const POSTGRES_BIGINT_MAX = 9_223_372_036_854_775_807n;
 const SECRET_PATTERN =
   /(?:\bBearer\s+\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b|\b(?:sk-|fc-|fco_|fcr_|fcmcp_)[A-Za-z0-9_-]+)/i;
+const SECRET_PATTERN_ALL = new RegExp(SECRET_PATTERN.source, "gi");
+const OBJECTIVE_MAX_LENGTH = 1000;
 const RETENTION_DAYS = 30;
 const CLEANUP_BATCH_SIZE = 500;
 const ALLOWED_FIELDS = new Set([
@@ -30,6 +33,8 @@ const ALLOWED_FIELDS = new Set([
   "client_version",
   "error_class",
   "resource",
+  "objective",
+  "api_job_id",
 ]);
 
 export class McpActionLogValidationError extends Error {}
@@ -77,6 +82,19 @@ function text(value: unknown, field: string, max = 128, required = false) {
   return normalized || null;
 }
 
+function objective(value: unknown) {
+  if (value == null) return null;
+  if (typeof value !== "string") invalid("objective must be a string");
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]+/g, " ")
+    .replace(SECRET_PATTERN_ALL, "[redacted]")
+    .trim()
+    .slice(0, OBJECTIVE_MAX_LENGTH)
+    .replace(/[\uD800-\uDBFF]$/, "")
+    .trim();
+  return normalized || null;
+}
+
 type McpActionLogInput = {
   team_id: string;
   user_id: string | null;
@@ -90,6 +108,8 @@ type McpActionLogInput = {
   client_version: string | null;
   error_class: string | null;
   resource: string;
+  objective: string | null;
+  api_job_id: string | null;
 };
 
 export function normalizeMcpActionLogInput(
@@ -138,6 +158,8 @@ export function normalizeMcpActionLogInput(
     client_version: text(payload.client_version, "client_version"),
     error_class: text(payload.error_class, "error_class"),
     resource,
+    objective: objective(payload.objective),
+    api_job_id: text(payload.api_job_id, "api_job_id"),
   };
 }
 

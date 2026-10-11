@@ -131,6 +131,60 @@ describe("MCP action log contract", () => {
     );
   });
 
+  it("accepts the hosted MCP search resource", () => {
+    expect(
+      input({ resource: "https://mcp.firecrawl.dev/v2/mcp-search" }).resource,
+    ).toBe("https://mcp.firecrawl.dev/v2/mcp-search");
+  });
+
+  it("stores an optional, normalized objective with secret-like values redacted", () => {
+    expect(input()).toMatchObject({ objective: null, api_job_id: null });
+    expect(
+      input({
+        tool_name: "firecrawl_find_tools",
+        objective: "Pick a tool to extract product prices",
+      }),
+    ).toMatchObject({
+      objective: "Pick a tool to extract product prices",
+      api_job_id: null,
+    });
+    expect(input({ objective: null }).objective).toBeNull();
+    expect(input({ objective: "   " }).objective).toBeNull();
+    expect(
+      input({ objective: "  Compare pricing pages\nfor three vendors  " })
+        .objective,
+    ).toBe("Compare pricing pages for three vendors");
+    expect(
+      input({ objective: "Check docs using Bearer abc.def and fc-123abc" })
+        .objective,
+    ).toBe("Check docs using [redacted] and [redacted]");
+    expect(input({ objective: "x".repeat(1200) }).objective).toBe(
+      "x".repeat(1000),
+    );
+    expect(input({ objective: `${"x".repeat(999)}\u{1F600}` }).objective).toBe(
+      "x".repeat(999),
+    );
+    expect(() => input({ objective: 42 })).toThrow(
+      "objective must be a string",
+    );
+  });
+
+  it("stores an optional API job ID with the standard text limits", () => {
+    expect(input({ api_job_id: " 0190a5d4-7b10-7cc3 " }).api_job_id).toBe(
+      "0190a5d4-7b10-7cc3",
+    );
+    expect(input({ api_job_id: "" }).api_job_id).toBeNull();
+    expect(() => input({ api_job_id: "j".repeat(129) })).toThrow(
+      "api_job_id must be at most 128 characters",
+    );
+    expect(() => input({ api_job_id: "fc-secret" })).toThrow(
+      "api_job_id must not contain secret-like values",
+    );
+    expect(() => input({ api_job_id: 7 })).toThrow(
+      "api_job_id must be a string",
+    );
+  });
+
   it("validates API-key and OAuth actors against the claimed team", async () => {
     const apiKeyDb = {
       select: vi.fn(() => ({
@@ -212,9 +266,18 @@ describe("MCP action log contract", () => {
     expect((values.mock.calls as any)[0][0]).not.toHaveProperty("user_agent");
 
     returning.mockResolvedValueOnce([{ id: REQUEST_ID }]);
-    await expect(recordMcpActionLog(db as any, input())).resolves.toEqual({
+    await expect(
+      recordMcpActionLog(
+        db as any,
+        input({ objective: "Find the refund policy", api_job_id: REQUEST_ID }),
+      ),
+    ).resolves.toEqual({
       disposition: "stored",
       id: REQUEST_ID,
+    });
+    expect((values.mock.calls as any)[1][0]).toMatchObject({
+      objective: "Find the refund policy",
+      api_job_id: REQUEST_ID,
     });
   });
 
@@ -349,5 +412,25 @@ describe("MCP action log contract", () => {
 
     const complete = await listMcpActionLogs(db as any, TEAM_ID, { limit: 2 });
     expect(complete.data[1].api_key_id).toBeNull();
+  });
+
+  it("never selects the objective or API job ID for the team-readable list", async () => {
+    const select = vi.fn(() => ({
+      from() {
+        return this;
+      },
+      where() {
+        return this;
+      },
+      orderBy() {
+        return this;
+      },
+      limit: () => Promise.resolve([]),
+    }));
+    await listMcpActionLogs({ select } as any, TEAM_ID);
+    const columns = Object.keys((select.mock.calls as any)[0][0]);
+    expect(columns).toContain("tool_name");
+    expect(columns).not.toContain("objective");
+    expect(columns).not.toContain("api_job_id");
   });
 });
