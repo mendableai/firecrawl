@@ -12,8 +12,10 @@ import { logger } from "./logger";
  *
  * Only the host is sent, and results are cached per host: the API always
  * requests the extended catalogue, so a host resolves to the same providers
- * for every team. Unmatched hosts are cached as well; failures are cached
- * briefly so an unavailable Exchange is not called on every request.
+ * for every team. Unmatched hosts are cached as well. Failures resolve to
+ * undefined, never to an empty list, so an outage is not read as "no
+ * provider"; they are cached briefly so an unavailable Exchange is not called
+ * on every request.
  */
 const MATCH_TTL_MS = 10 * 60_000;
 const ERROR_TTL_MS = 30_000;
@@ -25,8 +27,10 @@ const resolveResponseSchema = z.object({
   skills: z.array(z.object({ id: z.string() })),
 });
 
-const cache = new Map<string, { providers: string[]; expiresAt: number }>();
-const inFlight = new Map<string, Promise<string[]>>();
+type Providers = string[] | undefined;
+
+const cache = new Map<string, { providers: Providers; expiresAt: number }>();
+const inFlight = new Map<string, Promise<Providers>>();
 
 export const alexandriaDomainLookupsTotal = new Counter({
   name: "alexandria_domain_lookups_total",
@@ -47,7 +51,7 @@ function hostOf(url: unknown): string | undefined {
   return parsed.hostname.toLowerCase().replace(/\.$/, "") || undefined;
 }
 
-function remember(host: string, providers: string[], ttlMs: number): void {
+function remember(host: string, providers: Providers, ttlMs: number): void {
   cache.delete(host);
   if (cache.size >= MAX_CACHED_HOSTS) {
     const oldest = cache.keys().next().value;
@@ -59,12 +63,13 @@ function remember(host: string, providers: string[], ttlMs: number): void {
 /**
  * Starts (or reuses) the provider lookup for a URL's host. Returns undefined
  * when Alexandria is not configured or the URL has no usable host. The
- * returned promise never rejects; a failed lookup resolves to no providers.
+ * returned promise never rejects: it resolves to the matching providers (an
+ * empty list when none match) or to undefined when the lookup failed.
  */
 export function lookupDomainProviders(
   url: unknown,
   teamId: string,
-): Promise<string[]> | undefined {
+): Promise<Providers> | undefined {
   if (!config.FIRE_EXCHANGE_URL) return undefined;
   const host = hostOf(url);
   if (!host) return undefined;
@@ -104,28 +109,32 @@ export function lookupDomainProviders(
         module: "alexandria-domain-providers",
         error: error instanceof Error ? error.message : String(error),
       });
-      remember(host, [], ERROR_TTL_MS);
-      return [] as string[];
+      remember(host, undefined, ERROR_TTL_MS);
+      return undefined;
     })
     .finally(() => inFlight.delete(host));
   inFlight.set(host, lookup);
   return lookup;
 }
 
-/** The lookup's providers if it settles within `ms`, otherwise undefined. */
+/**
+ * The lookup's providers if it succeeds within `ms`; undefined when it is
+ * late or failed.
+ */
 export async function domainProvidersWithin(
-  lookup: Promise<string[]>,
+  lookup: Promise<Providers>,
   ms: number,
-): Promise<string[] | undefined> {
+): Promise<Providers> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<undefined>(resolve => {
-    timer = setTimeout(() => resolve(undefined), ms);
+  const late = Symbol("late");
+  const timeout = new Promise<typeof late>(resolve => {
+    timer = setTimeout(() => resolve(late), ms);
   });
   try {
-    const providers = await Promise.race([lookup, late]);
-    if (providers === undefined)
-      alexandriaDomainLookupsTotal.inc({ outcome: "late" });
-    return providers;
+    const providers = await Promise.race([lookup, timeout]);
+    if (providers !== late) return providers;
+    alexandriaDomainLookupsTotal.inc({ outcome: "late" });
+    return undefined;
   } finally {
     clearTimeout(timer);
   }

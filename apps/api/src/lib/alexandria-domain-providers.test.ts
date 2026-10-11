@@ -99,19 +99,21 @@ describe("Alexandria domain providers for agent hints", () => {
     expect(exchange).toHaveBeenCalledTimes(1);
   });
 
-  it("resolves to no providers when the Exchange fails, and backs off", async () => {
+  it("reports a failed lookup as unknown, not as no providers, and backs off", async () => {
     exchange.mockRejectedValue(new Error("connect ECONNREFUSED"));
     const errors = await count("error");
     const lookup = lookupDomainProviders("https://example.com/", "team-1");
-    expect(await domainProvidersWithin(lookup!, 100)).toEqual([]);
+    expect(await domainProvidersWithin(lookup!, 100)).toBeUndefined();
     expect(await count("error")).toBe(errors + 1);
 
     exchange.mockResolvedValue({ status: 503, body: "unavailable" });
     const other = lookupDomainProviders("https://example.org/", "team-1");
-    expect(await domainProvidersWithin(other!, 100)).toEqual([]);
+    expect(await domainProvidersWithin(other!, 100)).toBeUndefined();
 
+    const late = await count("late");
     const again = lookupDomainProviders("https://example.com/x", "team-1");
-    expect(await domainProvidersWithin(again!, 0)).toEqual([]);
+    expect(await domainProvidersWithin(again!, 0)).toBeUndefined();
+    expect(await count("late")).toBe(late);
     expect(exchange).toHaveBeenCalledTimes(2);
   });
 

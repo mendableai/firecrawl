@@ -14,7 +14,7 @@ export interface AgentHintSignalContext {
   remainingCredits?: number;
   canUseMapAndCrawl?: boolean;
   canUseInteract?: boolean;
-  /** Alexandria providers covering the page's host, when that lookup finished in time. */
+  /** Alexandria providers covering the page's host, when that lookup succeeded in time; undefined when it was skipped, late or failed. */
   domainProviders?: string[];
 }
 
