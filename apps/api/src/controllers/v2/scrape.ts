@@ -52,9 +52,15 @@ import { resolveThreatProtection } from "../../lib/threat-protection/request";
 import { emitRejectedScrapeActivityEvent } from "../../lib/siem-logging";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
+import {
+  domainProvidersWithin,
+  lookupDomainProviders,
+} from "../../lib/alexandria-domain-providers";
+import { agentHintsRequested } from "../../middlewares/agent-hints";
 import { DEFAULT_TEAM_LIMITS } from "../../services/autumn/autumn.service";
 
 const AGENT_INTEROP_CONCURRENCY_BOOST = 3;
+const DOMAIN_PROVIDER_HINT_GRACE_MS = 100;
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -219,6 +225,13 @@ export async function scrapeController(
           success: false,
           error: "Provider discovery does not support zero data retention.",
         });
+      const domainProviders =
+        agentHintsRequested(req) &&
+        !zeroDataRetention &&
+        !zeroDataRetentionTrace &&
+        !req.auth.team_id.startsWith("preview_keyless_")
+          ? lookupDomainProviders(req.body.url, req.auth.team_id)
+          : undefined;
       const billing: BillingMetadata = {
         ...(req.body.__agentInterop
           ? { endpoint: "agent" as const, jobId }
@@ -776,6 +789,11 @@ export async function scrapeController(
             })
           : undefined;
       if (tools) markAlexandriaActivity(req.auth.team_id);
+      if (domainProviders)
+        res.locals.agentHintDomainProviders = await domainProvidersWithin(
+          domainProviders,
+          DOMAIN_PROVIDER_HINT_GRACE_MS,
+        );
 
       return res.status(200).json({
         success: true,

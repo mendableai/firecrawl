@@ -16,7 +16,7 @@ import {
 import { keylessSignupSurface } from "../lib/keyless-signup-link";
 import { logger } from "../lib/logger";
 
-function agentHintsRequested(req: Request): boolean {
+export function agentHintsRequested(req: Request): boolean {
   return req.get("X-Firecrawl-Agent-Hints")?.trim().toLowerCase() === "true";
 }
 
@@ -35,6 +35,7 @@ function agentHintsFor(
     remainingCredits: res.locals.agentCreditsRemaining,
     canUseMapAndCrawl: !!teamId && !teamId.startsWith("preview_keyless_"),
     canUseInteract: config.USE_DB_AUTHENTICATION === true,
+    domainProviders: res.locals.agentHintDomainProviders,
   };
   const rules = provider?.settled ? provider.rules : [];
   const { hints, providerHintIds } = mergeAgentHints(

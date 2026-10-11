@@ -14,6 +14,8 @@ export interface AgentHintSignalContext {
   remainingCredits?: number;
   canUseMapAndCrawl?: boolean;
   canUseInteract?: boolean;
+  /** Alexandria providers covering the page's host, when that lookup succeeded in time; undefined when it was skipped, late or failed. */
+  domainProviders?: string[];
 }
 
 export type AgentHintSignalValue = string | number | boolean | string[];
@@ -229,6 +231,12 @@ export function computeAgentHintSignals(
   );
 
   addPageSignals(signals, response, object(data.metadata));
+
+  if (context.domainProviders) {
+    signals.set("alexandria_provider_count", context.domainProviders.length);
+    signals.set("alexandria_providers", context.domainProviders);
+    setDefined(signals, "alexandria_provider", context.domainProviders[0]);
+  }
 
   const web = Array.isArray(response.data)
     ? response.data
