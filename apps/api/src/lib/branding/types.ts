@@ -68,6 +68,8 @@ export interface BrandingLLMInput {
     href?: string;
     source: string;
     logoSvgScore?: number;
+    /** The colors the logo is drawn in, most used first, when readable. */
+    colors?: Array<{ color: string; share: number }>;
   }>;
   brandName?: string;
   /** Full page title (e.g. "AI Innovation Workspace | Miro") — LLM infers brand from this. */
@@ -184,6 +186,8 @@ export interface BrandingScriptReturn {
     href?: string;
     source: string;
     logoSvgScore?: number;
+    /** The colors the logo is drawn in, most used first, when readable. */
+    colors?: Array<{ color: string; share: number }>;
   }>;
   brandName?: string;
   /** Full page title (e.g. "AI Innovation Workspace | Miro") — LLM can infer brand from this. */

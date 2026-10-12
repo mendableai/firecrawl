@@ -812,6 +812,39 @@ describe("Jev request building", () => {
     ]);
   });
 
+  it("offers the likeliest logo's colors, labelled as the logo's", () => {
+    const input = baseInput(new CostTracking());
+    input.logoCandidates = [
+      { ...MENU_ICON, colors: [{ color: "#FF0000", share: 1 }] },
+      {
+        ...LOGO,
+        colors: [
+          { color: "#0E7E4E", share: 0.7 },
+          { color: "#6D28D9", share: 0.3 },
+        ],
+      },
+    ];
+    input.heuristicLogoPick = {
+      selectedIndexInFilteredList: 1,
+      confidence: 0.9,
+      reasoning: "header home link",
+    };
+
+    const request = buildJevRequest(input);
+    const usage = (hex: string) =>
+      request.colors.find(c => c.hex === hex)?.usage ?? [];
+
+    expect(usage("#0E7E4E")).toEqual(["color of the logo (70% of it)"]);
+    // A color in both the logo and a button carries both.
+    expect(usage("#6D28D9")).toEqual(
+      expect.arrayContaining([
+        "color of the logo (30% of it)",
+        'background of button "Get started"',
+      ]),
+    );
+    expect(request.colors.map(c => c.hex)).not.toContain("#FF0000");
+  });
+
   it("sends only well-formed Unicode text", () => {
     // "𝐁" (U+1D401) is a surrogate pair. The branding script truncates button
     // text by code unit, which can leave its first half alone at the end.
