@@ -121,3 +121,42 @@ describe("text color heuristic", () => {
     expect(profile.colors?.textPrimary).toBe("#212121");
   });
 });
+
+describe("browser link colors", () => {
+  it("never picks the default link blue as a brand or text color", () => {
+    // Unstyled links in a footer or skip-nav, drawn in the browser's blue.
+    const links = Array.from({ length: 12 }, (_, i) =>
+      snap({ tag: "a", text: `Link ${i}`, textColor: "rgb(0, 0, 238)" }),
+    );
+    const visited = Array.from({ length: 4 }, (_, i) =>
+      snap({ tag: "a", text: `Visited ${i}`, textColor: "rgb(85, 26, 139)" }),
+    );
+    const cta = snap({
+      tag: "a",
+      text: "Book a table",
+      textColor: "rgb(255, 255, 255)",
+      background: "rgb(200, 37, 64)",
+      isButton: true,
+      w: 180,
+      h: 48,
+    });
+    const paragraphs = Array.from({ length: 3 }, (_, i) =>
+      snap({ text: `Paragraph ${i}`, textColor: "rgb(33, 33, 33)" }),
+    );
+
+    const profile = processRawBranding(
+      raw([...links, ...visited, cta, ...paragraphs], {
+        background: "rgb(255, 255, 255)",
+        scheme: "light",
+      }),
+    );
+
+    const picked = Object.values(profile.colors ?? {}).map(c =>
+      String(c).toUpperCase(),
+    );
+    expect(picked).not.toContain("#0000EE");
+    expect(picked).not.toContain("#551A8B");
+    expect(profile.colors?.primary).toBe("#C82540");
+    expect(profile.colors?.textPrimary).toBe("#212121");
+  });
+});

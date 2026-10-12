@@ -1,6 +1,7 @@
 import { BrandingProfile } from "../../types/branding";
 import {
   contrastYIQ,
+  isBrowserLinkColor,
   isGrayish,
   isNearBlack,
   pickBrandPrimary,
@@ -117,7 +118,7 @@ function inferPalette(
 ) {
   const freq = new Map<string, number>();
   const bump = (hex: string | null, weight = 1) => {
-    if (!hex) return;
+    if (!hex || isBrowserLinkColor(hex)) return;
     freq.set(hex, (freq.get(hex) || 0) + weight);
   };
 
@@ -192,7 +193,9 @@ function inferPalette(
       continue;
     }
     const hex = hexify(s.colors.text, pageBackground);
-    if (hex) textVotes.set(hex, (textVotes.get(hex) || 0) + 1);
+    if (hex && !isBrowserLinkColor(hex)) {
+      textVotes.set(hex, (textVotes.get(hex) || 0) + 1);
+    }
   }
   const readableText = Array.from(textVotes.entries())
     .sort((x, y) => y[1] - x[1])
