@@ -322,12 +322,17 @@ describe("browser link colors from the model", () => {
     const merged = mergeBrandingResults(
       {
         colorScheme: "light",
-        colors: { primary: "#C82540", accent: "#F9B200" },
+        colors: {
+          primary: "#C82540",
+          accent: "#F9B200",
+          secondary: "#2E7D32",
+        },
       },
       {
         ...emptyLlm,
         colorRoles: {
           primaryColor: "#0000ee",
+          secondaryColor: "#0000EE",
           accentColor: "#551A8B",
           backgroundColor: "#FFFFFF",
           textPrimary: "#212121",
@@ -338,5 +343,6 @@ describe("browser link colors from the model", () => {
     );
     expect(merged.colors?.primary).toBe("#C82540");
     expect(merged.colors?.accent).toBe("#F9B200");
+    expect(merged.colors?.secondary).toBe("#2E7D32");
   });
 });
