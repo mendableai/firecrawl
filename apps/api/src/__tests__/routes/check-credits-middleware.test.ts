@@ -1,5 +1,16 @@
 import type { MockedFunction } from "vitest";
 import type { NextFunction } from "express";
+import { logger } from "../../lib/logger";
+
+vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  },
+}));
 
 vi.mock("../../services/autumn/autumn.service", () => ({
   autumnService: {
@@ -109,6 +120,10 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
 
     expect(res.status).toHaveBeenCalledWith(402);
     expect(res.locals.agentCreditsRemaining).toBe(0);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.not.objectContaining({ request: expect.anything() }),
+    );
   });
 
   it("adjusts crawl limit down when Autumn denies but some credits remain", async () => {
@@ -122,6 +137,10 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
     expect(res.status).not.toHaveBeenCalled();
     expect(res.locals.agentCreditsRemaining).toBe(5);
     expect(req.body.limit).toBe(5);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Adjusting limit to remaining credits",
+      expect.not.objectContaining({ request: expect.anything() }),
+    );
     expect(checkCreditsMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         value: 5,
@@ -234,6 +253,52 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
       }),
     );
   });
+});
+
+describe("checkCreditsMiddleware – agent-key denials", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function buildSponsoredReq(status: "blocked" | "pending") {
+    return buildReq({
+      acuc: {
+        team_id: "team_test",
+        api_key_id: 42,
+        _agentSponsor: {
+          status,
+          verification_deadline: new Date(Date.now() - 1000).toISOString(),
+          email: "owner@example.com",
+        },
+      },
+    });
+  }
+
+  it.each([
+    ["blocked", "agent_key_blocked"],
+    ["pending", "agent_key_verification_expired"],
+  ] as const)(
+    "logs a %s agent key as auth/denied before the 403",
+    async (status, reason) => {
+      const { res } = await runMiddleware(buildSponsoredReq(status));
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+      expect(logger.warn).toHaveBeenCalledWith("Request denied", {
+        canonicalLog: "auth/denied",
+        reason,
+        status: 403,
+        method: undefined,
+        route: "/v1/crawl",
+        teamId: "team_test",
+        apiKeyId: 42,
+      });
+      expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain(
+        "owner@example.com",
+      );
+      expect(checkCreditsMock).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("checkCreditsMiddleware – unverified agent-key 50-credit cap", () => {
