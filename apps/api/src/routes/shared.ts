@@ -199,11 +199,6 @@ export function checkCreditsMiddleware(
         return next();
       }
 
-      // Keep the authoritative balance available to opt-in response guidance.
-      // `req.account.remainingCredits` deliberately becomes Infinity when
-      // Autumn allows overage, so it cannot carry this informational signal.
-      res.locals.agentCreditsRemaining = autumnResult.remaining;
-
       const success = autumnResult.allowed;
       // When Autumn allows the request (including overage), don't let a
       // small remaining balance clamp downstream limits (e.g. crawl).
@@ -261,7 +256,6 @@ export function checkCreditsMiddleware(
           !res.headersSent &&
           req.auth.team_id !== "8c528896-7882-4587-a4b6-768b721b0b53"
         ) {
-          res.locals.insufficientCredits = true;
           return res.status(402).json({
             success: false,
             error:

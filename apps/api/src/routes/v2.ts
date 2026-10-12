@@ -1,7 +1,3 @@
-import {
-  agentHintsMiddleware,
-  agentHintsProviderMiddleware,
-} from "../middlewares/agent-hints";
 import express from "express";
 import multer from "multer";
 import { config } from "../config";
@@ -193,13 +189,11 @@ registerMcpActionLogReadRoute(
 
 v2Router.post(
   "/search",
-  agentHintsMiddleware("search"),
   researchCategoryNoticeMiddleware,
   authMiddleware(RateLimiterMode.Search, {
     allowKeyless: true,
     allowAgentManagedKey: true,
   }),
-  agentHintsProviderMiddleware("search"),
   countryCheck,
   checkCreditsMiddleware(undefined, SEARCH_CREDITS_FEATURE_ID),
   blocklistMiddleware,
@@ -241,9 +235,7 @@ v2Router.put(
 
 v2Router.post(
   "/parse",
-  agentHintsMiddleware("parse"),
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
-  agentHintsProviderMiddleware("parse"),
   countryCheck,
   checkCreditsMiddleware(1),
   parsePayloadMiddleware,
@@ -252,12 +244,10 @@ v2Router.post(
 
 v2Router.post(
   "/scrape",
-  agentHintsMiddleware("scrape"),
   authMiddleware(RateLimiterMode.Scrape, {
     allowKeyless: true,
     allowAgentManagedKey: true,
   }),
-  agentHintsProviderMiddleware("scrape"),
   countryCheck,
   checkCreditsMiddleware(1),
   scrapeBlocklistMiddleware,
@@ -296,9 +286,7 @@ v2Router.post(
 
 v2Router.post(
   "/map",
-  agentHintsMiddleware("map"),
   authMiddleware(RateLimiterMode.Map),
-  agentHintsProviderMiddleware("map"),
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(mapController),

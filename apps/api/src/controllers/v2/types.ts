@@ -1630,7 +1630,6 @@ export type VideoItem = {
 };
 
 export type ErrorResponse = {
-  agent_hints?: string[];
   success: false;
   code?: ErrorCodes;
   error: string;
@@ -1643,7 +1642,6 @@ export type ScrapeResponse =
   | ErrorResponse
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: Document & {
         tools?: import("../../services/alexandria/contracts").DiscoveredTool[];
@@ -2009,7 +2007,6 @@ export type MapResponse =
   | ErrorResponse
   | {
       success: true;
-      agent_hints?: string[];
       id: string;
       links?: MapDocument[];
       warning?: string;
@@ -2772,7 +2769,6 @@ export type SearchResponse =
   | ErrorResponse
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: Document[];
       creditsUsed: number;
@@ -2780,7 +2776,6 @@ export type SearchResponse =
     }
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: import("../../lib/entities").SearchV2Response;
       creditsUsed: number;
@@ -2788,7 +2783,6 @@ export type SearchResponse =
     }
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: import("../../lib/entities").SearchV2Response;
       scrapeIds: {
