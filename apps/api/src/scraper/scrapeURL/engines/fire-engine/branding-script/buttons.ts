@@ -77,10 +77,19 @@ const getScreenBlocks = (): ScreenBlock[] => {
   return screenBlocks;
 };
 
+/**
+ * An offset within something as tall as the window. Offsets set in pixels
+ * (normal flow, `top: 80px`) are kept; offsets that come from the window's
+ * height (centered, pinned to the bottom) scale with it.
+ */
+const toScreenOffset = (offset: number): number =>
+  offset < 0.3 * window.innerHeight
+    ? offset
+    : (offset * SCREEN_PX) / window.innerHeight;
+
 /** A page position in the tall window, mapped to a page of real screens. */
 const toScreenPosition = (top: number): number => {
-  const windowHeight = window.innerHeight;
-  const scale = SCREEN_PX / windowHeight;
+  const scale = SCREEN_PX / window.innerHeight;
   let removed = 0;
   let end = -Infinity;
   for (const block of getScreenBlocks()) {
@@ -88,14 +97,7 @@ const toScreenPosition = (top: number): number => {
     end = block.top + block.height;
     if (top < block.top) break;
     if (top < end) {
-      // Content in normal flow at the block's top keeps its offset; content
-      // placed by the block's size (centered, pinned to the bottom) scales.
-      const offset = top - block.top;
-      return (
-        block.top -
-        removed +
-        (offset < 0.3 * windowHeight ? offset : offset * scale)
-      );
+      return block.top - removed + toScreenOffset(top - block.top);
     }
     removed += block.height * (1 - scale);
   }
@@ -105,9 +107,7 @@ const toScreenPosition = (top: number): number => {
 /** Distance from the top of the page, or of the screen for fixed/sticky elements. */
 export const pageTop = (el: Element, rect: DOMRect): number => {
   if (isViewportAnchored(el)) {
-    return isTallWindow()
-      ? (rect.top * SCREEN_PX) / window.innerHeight
-      : rect.top;
+    return isTallWindow() ? toScreenOffset(rect.top) : rect.top;
   }
   const top = rect.top + (window.scrollY || 0);
   return isTallWindow() ? toScreenPosition(top) : top;

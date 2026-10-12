@@ -127,6 +127,9 @@ describe("branding script button detection", () => {
        </section>
        <div style="position: fixed" data-top="50000" data-w="600" data-h="300">
          <button data-top="50100">Accept</button>
+       </div>
+       <div style="position: fixed" data-top="900" data-w="600" data-h="60">
+         <button data-top="900">Chat with us</button>
        </div>`,
       0,
       100_000,
@@ -136,5 +139,7 @@ describe("branding script button detection", () => {
     expect(byText(snaps, "Start free trial")?.position.top).toBeCloseTo(540, 0);
     expect(byText(snaps, "Read the docs")?.position.top).toBeCloseTo(1480, 0);
     expect(byText(snaps, "Accept")?.position.top).toBeCloseTo(541, 0);
+    // Fixed in pixels, not by the window's height: kept as is.
+    expect(byText(snaps, "Chat with us")?.position.top).toBe(900);
   });
 });
