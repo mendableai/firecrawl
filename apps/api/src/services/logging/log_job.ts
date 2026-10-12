@@ -1412,3 +1412,24 @@ async function logDeepResearchInternal(deepResearch: LoggedDeepResearch) {
     await saveDeepResearchToGCS(deepResearch, logger);
   }
 }
+
+type LoggedMcpActionLog = {
+  id: string;
+  team_id: string;
+  request_id: string;
+  [field: string]: unknown;
+};
+
+/**
+ * One hosted MCP tool call from the internal action-log ingest. `id` is the
+ * MCP request id, so a retried delivery collapses into the first one.
+ */
+export async function logMcpActionLog(action: LoggedMcpActionLog) {
+  const logger = _logger.child({
+    module: "log_job",
+    method: "logMcpActionLog",
+    requestId: action.request_id,
+    teamId: action.team_id,
+  });
+  await robustInsert("mcp_action_logs", action, logger);
+}

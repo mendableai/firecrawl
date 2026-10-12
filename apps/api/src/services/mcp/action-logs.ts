@@ -1,7 +1,8 @@
-import { and, desc, eq, gt, lt, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { authCreditUsageChunkFromTeam } from "../../db/rpc";
-import { logger } from "../../lib/logger";
+import { clickhouseClient } from "../../lib/clickhouse-client";
+import { logMcpActionLog } from "../logging/log_job";
 
 const STATUSES = ["success", "error"] as const;
 const AUTH_TYPES = ["oauth", "api-key"] as const;
@@ -18,7 +19,6 @@ const SECRET_PATTERN =
 const SECRET_PATTERN_ALL = new RegExp(SECRET_PATTERN.source, "gi");
 const OBJECTIVE_MAX_LENGTH = 1000;
 const RETENTION_DAYS = 30;
-const CLEANUP_BATCH_SIZE = 500;
 const ALLOWED_FIELDS = new Set([
   "team_id",
   "user_id",
@@ -39,6 +39,7 @@ const ALLOWED_FIELDS = new Set([
 
 export class McpActionLogValidationError extends Error {}
 export class McpActionLogAuthorizationError extends Error {}
+export class McpActionLogUnavailableError extends Error {}
 
 function invalid(message: string): never {
   throw new McpActionLogValidationError(message);
@@ -97,7 +98,7 @@ function objective(value: unknown) {
   return normalized || null;
 }
 
-type McpActionLogInput = {
+export type McpActionLogInput = {
   team_id: string;
   user_id: string | null;
   api_key_id: string | null;
@@ -112,6 +113,22 @@ type McpActionLogInput = {
   resource: string;
   objective: string | null;
   api_job_id: string | null;
+};
+
+type McpActionLogRow = {
+  id: string;
+  user_id: string | null;
+  api_key_id: string | null;
+  oauth_client_id: string | null;
+  auth_type: string;
+  tool_name: string;
+  status: string;
+  request_id: string;
+  client_name: string | null;
+  client_version: string | null;
+  error_class: string | null;
+  resource: string;
+  created_at: string;
 };
 
 export function normalizeMcpActionLogInput(
@@ -219,101 +236,9 @@ export async function resolveMcpActionLogTeamPolicy(db: any, teamId: string) {
   return { flags: rows[0].flags ?? null };
 }
 
-async function cleanupExpiredMcpActionLogs(db: any) {
-  await db.execute(sql`
-    with expired as (
-      select id from mcp_action_logs
-      where expires_at <= now()
-      order by expires_at asc
-      limit ${CLEANUP_BATCH_SIZE}
-    )
-    delete from mcp_action_logs
-    where id in (select id from expired)
-  `);
-}
-
-export async function purgeMcpActionLogsForTeam(db: any, teamId: string) {
-  await db
-    .delete(schema.mcp_action_logs)
-    .where(eq(schema.mcp_action_logs.team_id, teamId));
-}
-
-type RetentionTimer = {
-  unref?: () => void;
-};
-
-export function startMcpActionLogRetentionWorker(options: {
-  db: any;
-  intervalMs?: number;
-  setIntervalFn?: (callback: () => void, intervalMs: number) => RetentionTimer;
-  clearIntervalFn?: (timer: RetentionTimer) => void;
-}) {
-  const intervalMs = options.intervalMs ?? 5 * 60 * 1000;
-  const setIntervalFn =
-    options.setIntervalFn ?? ((callback, ms) => setInterval(callback, ms));
-  const clearIntervalFn =
-    options.clearIntervalFn ??
-    (timer => clearInterval(timer as NodeJS.Timeout));
-  let running = false;
-
-  const run = async () => {
-    if (running) return;
-    running = true;
-    try {
-      await cleanupExpiredMcpActionLogs(options.db);
-    } catch (error) {
-      logger.warn("Failed to clean up expired MCP action logs", { error });
-    } finally {
-      running = false;
-    }
-  };
-
-  const timer = setIntervalFn(() => void run(), intervalMs);
-  timer.unref?.();
-  const ready = run();
-
-  return {
-    ready,
-    run,
-    stop: () => clearIntervalFn(timer),
-  };
-}
-
-export function startMcpActionLogRetentionWorkerIfEnabled(options: {
-  enabled: boolean;
-  db: any;
-  intervalMs?: number;
-  setIntervalFn?: (callback: () => void, intervalMs: number) => RetentionTimer;
-  clearIntervalFn?: (timer: RetentionTimer) => void;
-}) {
-  if (!options.enabled) return null;
-  return startMcpActionLogRetentionWorker(options);
-}
-
-export async function recordMcpActionLog(db: any, input: McpActionLogInput) {
-  const expiresAt = new Date(
-    Date.now() + RETENTION_DAYS * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const rows = await db
-    .insert(schema.mcp_action_logs)
-    .values({
-      ...input,
-      api_key_id:
-        input.api_key_id === null
-          ? null
-          : sql`cast(${input.api_key_id} as bigint)`,
-      expires_at: expiresAt,
-    })
-    .onConflictDoNothing({
-      target: [
-        schema.mcp_action_logs.team_id,
-        schema.mcp_action_logs.request_id,
-      ],
-    })
-    .returning({ id: schema.mcp_action_logs.id });
-  return rows[0]
-    ? { disposition: "stored" as const, id: rows[0].id }
-    : { disposition: "duplicate" as const, id: null };
+export async function recordMcpActionLog(input: McpActionLogInput) {
+  await logMcpActionLog({ id: input.request_id, ...input });
+  return { disposition: "accepted" as const, id: input.request_id };
 }
 
 export async function authorizeMcpActionLogViewer(
@@ -369,16 +294,12 @@ export async function authorizeMcpActionLogViewer(
   return { userId: ownerId, role };
 }
 
-export function encodeMcpActionLogCursor(row: {
-  created_at: Date | string;
+function encodeMcpActionLogCursor(row: {
+  created_at: string;
   id: string;
 }) {
-  const createdAt =
-    row.created_at instanceof Date
-      ? row.created_at.toISOString()
-      : row.created_at;
   return Buffer.from(
-    JSON.stringify({ created_at: createdAt, id: row.id }),
+    JSON.stringify({ created_at: row.created_at, id: row.id }),
   ).toString("base64url");
 }
 
@@ -401,56 +322,31 @@ export function decodeMcpActionLogCursor(cursor: string) {
 }
 
 export async function listMcpActionLogs(
-  db: any,
   teamId: string,
   options: { limit?: number; cursor?: string | null } = {},
 ) {
+  if (!clickhouseClient) {
+    throw new McpActionLogUnavailableError(
+      "MCP action log storage is unavailable",
+    );
+  }
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
   const cursor = options.cursor
     ? decodeMcpActionLogCursor(options.cursor)
     : null;
-  const cursorClause = cursor
-    ? or(
-        lt(schema.mcp_action_logs.created_at, cursor.created_at),
-        and(
-          eq(schema.mcp_action_logs.created_at, cursor.created_at),
-          lt(schema.mcp_action_logs.id, cursor.id),
-        ),
-      )
-    : undefined;
-  const rows = await db
-    .select({
-      id: schema.mcp_action_logs.id,
-      user_id: schema.mcp_action_logs.user_id,
-      // API-key identifiers are bigint in Postgres. Read them as text so the
-      // JSON boundary never rounds values beyond JavaScript's safe integer range.
-      api_key_id: sql<
-        string | null
-      >`${schema.mcp_action_logs.api_key_id}::text`,
-      oauth_client_id: schema.mcp_action_logs.oauth_client_id,
-      auth_type: schema.mcp_action_logs.auth_type,
-      tool_name: schema.mcp_action_logs.tool_name,
-      status: schema.mcp_action_logs.status,
-      request_id: schema.mcp_action_logs.request_id,
-      client_name: schema.mcp_action_logs.client_name,
-      client_version: schema.mcp_action_logs.client_version,
-      error_class: schema.mcp_action_logs.error_class,
-      resource: schema.mcp_action_logs.resource,
-      created_at: schema.mcp_action_logs.created_at,
-    })
-    .from(schema.mcp_action_logs)
-    .where(
-      and(
-        eq(schema.mcp_action_logs.team_id, teamId),
-        gt(schema.mcp_action_logs.expires_at, new Date().toISOString()),
-        cursorClause,
-      ),
-    )
-    .orderBy(
-      desc(schema.mcp_action_logs.created_at),
-      desc(schema.mcp_action_logs.id),
-    )
-    .limit(limit + 1);
+  const result = await clickhouseClient.query({
+    // The explicit column list is the team-readable contract: objective and
+    // api_job_id stay out of it. Filters name `log.` columns because the
+    // formatted created_at alias would otherwise shadow the stored value.
+    query: `SELECT id, user_id, toString(log.api_key_id) AS api_key_id, oauth_client_id, auth_type, tool_name, status, request_id, client_name, client_version, error_class, resource, formatDateTime(log.created_at, '%Y-%m-%dT%H:%i:%S.%fZ', 'UTC') AS created_at FROM mcp_action_logs AS log FINAL WHERE log.team_id = {teamId: UUID} AND log.created_at > now64(9) - INTERVAL ${RETENTION_DAYS} DAY${cursor ? " AND (log.created_at, log.id) < (parseDateTime64BestEffort({before: String}, 9), {beforeId: UUID})" : ""} ORDER BY log.created_at DESC, log.id DESC LIMIT {limit: UInt32}`,
+    query_params: {
+      teamId,
+      limit: limit + 1,
+      ...(cursor ? { before: cursor.created_at, beforeId: cursor.id } : {}),
+    },
+    format: "JSONEachRow",
+  });
+  const rows = await result.json<McpActionLogRow>();
   return {
     data: rows.slice(0, limit),
     nextCursor:
