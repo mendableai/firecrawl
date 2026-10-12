@@ -63,6 +63,15 @@ export function isUsableBrandPrimary(
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
+// What browsers draw unstyled links in (unvisited, visited). A page that shows
+// them never chose them, so they say nothing about the brand.
+const BROWSER_LINK_COLORS = new Set(["#0000EE", "#551A8B"]);
+
+export function isBrowserLinkColor(value?: string | null): boolean {
+  const hex = normalizeRoleHex(value);
+  return !!hex && BROWSER_LINK_COLORS.has(hex);
+}
+
 /** Accept #RGB / #RRGGBB; reject names like "navy" so they cannot overwrite heuristics. */
 export function normalizeRoleHex(value?: string | null): string | undefined {
   if (!value) return undefined;

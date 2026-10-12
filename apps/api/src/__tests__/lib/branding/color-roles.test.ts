@@ -316,3 +316,33 @@ describe("monochrome brands", () => {
     expect(merged.colors?.primary).toBe("#1ED760");
   });
 });
+
+describe("browser link colors from the model", () => {
+  it("keeps the heuristic colors when the model answers with the default link blue", () => {
+    const merged = mergeBrandingResults(
+      {
+        colorScheme: "light",
+        colors: {
+          primary: "#C82540",
+          accent: "#F9B200",
+          secondary: "#2E7D32",
+        },
+      },
+      {
+        ...emptyLlm,
+        colorRoles: {
+          primaryColor: "#0000ee",
+          secondaryColor: "#0000EE",
+          accentColor: "#551A8B",
+          backgroundColor: "#FFFFFF",
+          textPrimary: "#212121",
+          confidence: 0.9,
+        },
+      },
+      [],
+    );
+    expect(merged.colors?.primary).toBe("#C82540");
+    expect(merged.colors?.accent).toBe("#F9B200");
+    expect(merged.colors?.secondary).toBe("#2E7D32");
+  });
+});
