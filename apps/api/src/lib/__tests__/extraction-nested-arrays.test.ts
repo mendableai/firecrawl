@@ -209,6 +209,117 @@ for (const [mix, transform, deduplicate, merge] of [
         }
       });
     }
+    for (const [label, items] of [
+      [
+        "anyOf",
+        {
+          anyOf: [
+            { type: "array", items: { type: "number" } },
+            { type: "string" },
+          ],
+        },
+      ],
+      [
+        "oneOf",
+        {
+          oneOf: [
+            { type: "array", items: { type: "number" } },
+            { type: "null" },
+          ],
+        },
+      ],
+      [
+        "nested combinators",
+        {
+          anyOf: [
+            {
+              oneOf: [
+                { type: "array", items: { type: "number" } },
+                { type: "string" },
+              ],
+            },
+            { type: "null" },
+          ],
+        },
+      ],
+      [
+        "tuple combinators",
+        [
+          {
+            anyOf: [
+              { type: "array", items: { type: "number" } },
+              { type: "string" },
+            ],
+          },
+        ],
+      ],
+    ] as const) {
+      it(`preserves matrix rows through valid ${label} item combinators`, async () => {
+        const schema = {
+          type: "object",
+          properties: { matrix: { type: "array", items } },
+        };
+        const completions = [
+          {
+            matrix: [
+              [1, 2],
+              [1, 2],
+            ],
+          },
+          { matrix: [[3, 4]] },
+        ];
+        const validate = new Ajv({ strictTuples: false }).compile(schema);
+        expect(completions.every(completion => validate(completion))).toBe(
+          true,
+        );
+        const expected = {
+          matrix: [
+            [1, 2],
+            [1, 2],
+            [3, 4],
+          ],
+        };
+        expect(await mix(schema, {}, expected)).toEqual(expected);
+        const transformed = transform(schema, completions);
+        const result = await mix(
+          schema,
+          {},
+          merge(deduplicateForSchema(transformed, schema)),
+        );
+        expect(validate(result)).toBe(true);
+        expect(result).toEqual(expected);
+      });
+    }
+    for (const items of [
+      { anyOf: [{ type: "string" }, { type: "null" }] },
+      { oneOf: [{ type: "string" }, { type: "null" }] },
+      {
+        type: "string",
+        anyOf: [
+          { type: "array", items: { type: "number" } },
+          { type: "string" },
+        ],
+      },
+      {
+        type: "string",
+        oneOf: [
+          { type: "array", items: { type: "number" } },
+          { type: "string" },
+        ],
+      },
+    ]) {
+      it(`flattens scalar wrappers with non-array or type-constrained combinators ${JSON.stringify(items)}`, async () => {
+        const schema = {
+          type: "object",
+          properties: { values: { type: "array", items } },
+        };
+        const expected = { values: ["a", "b"] };
+        expect(new Ajv().compile(schema)(expected)).toBe(true);
+        expect(await mix(schema, {}, { values: [["a"], ["b"]] })).toEqual(
+          expected,
+        );
+      });
+    }
     it("retains scalar rank through the same completion producer pipeline", async () => {
       const schema = {
         type: "object",

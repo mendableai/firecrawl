@@ -29,12 +29,25 @@ export async function mixSchemaObjects(
       ) {
         // Preserve nested array values; flatten only scalar/object chunk wrappers.
         const items = schema.properties[key].items;
-        const allowsArrayValues = (item: any): boolean =>
-          item &&
-          typeof item === "object" &&
-          (item.type === "array" ||
-            (Array.isArray(item.type) && item.type.includes("array")) ||
-            (item.type === undefined && item.items !== undefined));
+        const allowsArrayValues = (item: any): boolean => {
+          if (!item || typeof item !== "object" || Array.isArray(item))
+            return false;
+          // An explicit non-array type still constrains combinator branches.
+          if (
+            item.type !== undefined &&
+            item.type !== "array" &&
+            !(Array.isArray(item.type) && item.type.includes("array"))
+          )
+            return false;
+          return (
+            item.type !== undefined ||
+            item.items !== undefined ||
+            [item.anyOf, item.oneOf].some(
+              branches =>
+                Array.isArray(branches) && branches.some(allowsArrayValues),
+            )
+          );
+        };
         const nested = Array.isArray(items)
           ? items.some(allowsArrayValues)
           : allowsArrayValues(items);
