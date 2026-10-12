@@ -108,6 +108,7 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
     expect(res.status).not.toHaveBeenCalled();
     expect(req.account.remainingCredits).toBe(Infinity);
     expect(res.locals.agentCreditsRemaining).toBe(0);
+    expect(res.locals.insufficientCredits).toBeUndefined();
     // request body limit must NOT have been clamped down to 0
     expect(req.body.limit).toBe(100);
   });
@@ -120,6 +121,7 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
 
     expect(res.status).toHaveBeenCalledWith(402);
     expect(res.locals.agentCreditsRemaining).toBe(0);
+    expect(res.locals.insufficientCredits).toBe(true);
     expect(logger.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.not.objectContaining({ request: expect.anything() }),

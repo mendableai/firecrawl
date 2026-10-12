@@ -1,4 +1,5 @@
 import express from "express";
+import { performance } from "node:perf_hooks";
 import request from "supertest";
 import { config } from "../../config";
 import type { AgentHintRule } from "../../lib/agent-hint-rules";
@@ -337,7 +338,22 @@ const EXCERPT_BODY = {
   data: { web: [{ url: "https://example.com", description: "excerpt" }] },
 };
 
-function holderAppFor(holder: ProviderHintsHolder | undefined, body: object) {
+type TestHolder = Omit<ProviderHintsHolder, "ready" | "startedAt"> &
+  Partial<Pick<ProviderHintsHolder, "ready" | "startedAt">>;
+
+function holderAppFor(
+  holder: TestHolder | undefined,
+  body: object,
+  {
+    status = 200,
+    insufficientCredits = false,
+    remainingCredits,
+  }: {
+    status?: number;
+    insufficientCredits?: boolean;
+    remainingCredits?: number;
+  } = {},
+) {
   const app = express();
   app.use(express.json());
   app.post(
@@ -345,11 +361,17 @@ function holderAppFor(holder: ProviderHintsHolder | undefined, body: object) {
     agentHintsMiddleware("search"),
     (req, res, next) => {
       (req as any).auth = { team_id: "account-team" };
+      if (holder) {
+        holder.ready ??= Promise.resolve();
+        holder.startedAt ??= Date.now();
+      }
       res.locals.agentHintsProvider = holder;
+      if (insufficientCredits) res.locals.insufficientCredits = true;
+      res.locals.agentCreditsRemaining = remainingCredits;
       next();
     },
     (_req, res) => {
-      res.json(body);
+      res.status(status).json(body);
     },
   );
   return app;
@@ -719,5 +741,148 @@ describe("agent hints provider middleware", () => {
       { timeout: 3000, interval: 50 },
     );
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("insufficient-credits refusals and a pending provider lookup", () => {
+  // Timing assertions use a wide margin between "waited for the bound" and
+  // "did not wait": a long bound (LONG) that a correct response never reaches,
+  // or a short one (SHORT) checked only from below, so scheduling delay under
+  // load cannot fail a correct response.
+  const LONG = 10_000;
+  const SHORT = 60;
+  const REFUSAL = { success: false, error: "Insufficient credits." };
+  const CREDIT_RULES: AgentHintRule[] = [
+    {
+      id: "out",
+      group: "credits",
+      when: [
+        { signal: "success", op: "eq", value: false },
+        { signal: "remaining_credits", op: "lt", value: 1 },
+      ],
+      text: "Out of credits.",
+    },
+    {
+      id: "low",
+      group: "credits",
+      when: [{ signal: "remaining_credits", op: "lt", value: 100 }],
+      text: "Low on credits.",
+    },
+  ];
+  const originalTimeout = config.AGENT_HINTS_PROVIDER_TIMEOUT_MS;
+
+  beforeEach(() => {
+    config.AGENT_HINTS_PROVIDER_TIMEOUT_MS = LONG;
+  });
+
+  afterAll(() => {
+    config.AGENT_HINTS_PROVIDER_TIMEOUT_MS = originalTimeout;
+  });
+
+  /** A lookup that settles with CREDIT_RULES after `ms`, or never. */
+  function pendingHolder(ms?: number): TestHolder {
+    const holder: TestHolder = {
+      settled: false,
+      hints: [],
+      rules: [],
+      startedAt: Date.now(),
+    };
+    holder.ready = new Promise<void>(resolve => {
+      if (ms === undefined) return;
+      setTimeout(() => {
+        holder.rules = CREDIT_RULES;
+        holder.settled = true;
+        resolve();
+      }, ms);
+    });
+    return holder;
+  }
+
+  async function timed(app: express.Express) {
+    const started = performance.now();
+    const response = await request(app)
+      .post("/")
+      .set("X-Firecrawl-Agent-Hints", "true")
+      .send({});
+    return { response, ms: performance.now() - started };
+  }
+
+  const REFUSED = {
+    status: 402,
+    insufficientCredits: true,
+    remainingCredits: 0,
+  };
+
+  it("waits for a lookup that settles within the bound and adds its hints", async () => {
+    const { response, ms } = await timed(
+      holderAppFor(pendingHolder(15), REFUSAL, REFUSED),
+    );
+    expect(response.statusCode).toBe(402);
+    expect(response.body).toEqual({
+      ...REFUSAL,
+      agent_hints: ["Out of credits."],
+    });
+    expect(ms).toBeLessThan(LONG / 2);
+  });
+
+  it("sends the refusal at the bound without hints when the lookup is slower", async () => {
+    config.AGENT_HINTS_PROVIDER_TIMEOUT_MS = SHORT;
+    const { response, ms } = await timed(
+      holderAppFor(pendingHolder(), REFUSAL, REFUSED),
+    );
+    expect(response.statusCode).toBe(402);
+    expect(response.body).toEqual(REFUSAL);
+    expect(ms).toBeGreaterThanOrEqual(SHORT - 5);
+  });
+
+  it("counts the bound from when the lookup started", async () => {
+    const holder = pendingHolder();
+    holder.startedAt = Date.now() - (LONG - 20);
+    const { response, ms } = await timed(
+      holderAppFor(holder, REFUSAL, REFUSED),
+    );
+    expect(response.body).toEqual(REFUSAL);
+    expect(ms).toBeLessThan(LONG / 2);
+  });
+
+  it("does not delay a successful response while the lookup is pending", async () => {
+    const body = { success: true, data: {} };
+    const { response, ms } = await timed(
+      holderAppFor(pendingHolder(), body, { remainingCredits: 5 }),
+    );
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual(body);
+    expect(ms).toBeLessThan(LONG / 2);
+  });
+
+  it("does not delay other refusals while the lookup is pending", async () => {
+    const { response, ms } = await timed(
+      holderAppFor(pendingHolder(), REFUSAL, {
+        status: 402,
+        remainingCredits: 0,
+      }),
+    );
+    expect(response.body).toEqual(REFUSAL);
+    expect(ms).toBeLessThan(LONG / 2);
+  });
+
+  it("does not wait when the lookup has already settled", async () => {
+    const { response, ms } = await timed(
+      holderAppFor(
+        {
+          settled: true,
+          hints: [],
+          rules: CREDIT_RULES,
+          ready: new Promise(() => {}),
+        },
+        REFUSAL,
+        REFUSED,
+      ),
+    );
+    expect(response.body).toEqual({
+      ...REFUSAL,
+      agent_hints: ["Out of credits."],
+    });
+    expect(ms).toBeLessThan(LONG / 2);
   });
 });
