@@ -346,3 +346,41 @@ describe("browser link colors from the model", () => {
     expect(merged.colors?.secondary).toBe("#2E7D32");
   });
 });
+
+describe("near-white primaries", () => {
+  it("keeps the brand color when the model answers with a pale section background", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: { primary: "#533AFD" } },
+      {
+        ...emptyLlm,
+        colorRoles: {
+          primaryColor: "#E5EDF5",
+          accentColor: "#533AFD",
+          backgroundColor: "#FFFFFF",
+          textPrimary: "#0A2540",
+          confidence: 0.9,
+        },
+      },
+      [],
+    );
+    expect(merged.colors?.primary).toBe("#533AFD");
+  });
+
+  it("skips a pale tint when picking the primary on a light page", () => {
+    expect(
+      pickBrandPrimary(["#F0F6FF", "#0056D2", "#FFFFFF"], {
+        background: "#FFFFFF",
+        colorScheme: "light",
+      }),
+    ).toBe("#0056D2");
+  });
+
+  it("keeps a light brand color on a dark page", () => {
+    expect(
+      pickBrandPrimary(["#E7DBFF", "#0A0A0A"], {
+        background: "#0A0A0A",
+        colorScheme: "dark",
+      }),
+    ).toBe("#E7DBFF");
+  });
+});
