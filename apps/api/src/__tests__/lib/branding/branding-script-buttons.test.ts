@@ -5,7 +5,7 @@ import { getBrandingScript } from "../../../scraper/scrapeURL/engines/fire-engin
 
 // jsdom has no layout: elements get a box from data-top / data-w / data-h, and
 // anything without data-top has an empty box (not visible).
-function scan(body: string, scrollY = 0) {
+function scan(body: string, scrollY = 0, innerHeight = 1080) {
   const dom = new JSDOM(
     `<html><head><title>Acme</title></head><body>${body}</body></html>`,
     { runScripts: "outside-only", url: "https://acme.test/" },
@@ -39,6 +39,7 @@ function scan(body: string, scrollY = 0) {
     };
   };
   Object.defineProperty(window, "scrollY", { value: scrollY });
+  Object.defineProperty(window, "innerHeight", { value: innerHeight });
   const result = window.eval(getBrandingScript());
   return result.branding.snapshots as Array<{
     text: string;
@@ -111,5 +112,34 @@ describe("branding script button detection", () => {
 
     expect(byText(snaps, "Sign up")?.position.top).toBe(10);
     expect(byText(snaps, "Read more")?.position.top).toBe(900);
+  });
+
+  it("reports positions in a very tall window as they would be on a screen", () => {
+    // Branding scrapes render 100,000px tall: a hero sized to the window is
+    // that tall, with its centered button halfway down.
+    const snaps = scan(
+      `<section data-top="0" data-w="1920" data-h="100000">
+         <button data-top="40">Log in</button>
+         <button data-top="50000">Start free trial</button>
+       </section>
+       <section data-top="100000" data-w="1920" data-h="2000">
+         <button data-top="100400">Read the docs</button>
+       </section>
+       <div style="position: fixed" data-top="50000" data-w="600" data-h="300">
+         <button data-top="50100">Accept</button>
+       </div>
+       <div style="position: fixed" data-top="900" data-w="600" data-h="60">
+         <button data-top="900">Chat with us</button>
+       </div>`,
+      0,
+      100_000,
+    );
+
+    expect(byText(snaps, "Log in")?.position.top).toBe(40);
+    expect(byText(snaps, "Start free trial")?.position.top).toBeCloseTo(540, 0);
+    expect(byText(snaps, "Read the docs")?.position.top).toBeCloseTo(1480, 0);
+    expect(byText(snaps, "Accept")?.position.top).toBeCloseTo(541, 0);
+    // Fixed in pixels, not by the window's height: kept as is.
+    expect(byText(snaps, "Chat with us")?.position.top).toBe(900);
   });
 });

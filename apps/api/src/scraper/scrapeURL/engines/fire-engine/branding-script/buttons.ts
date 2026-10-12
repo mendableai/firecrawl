@@ -42,9 +42,76 @@ export const isViewportAnchored = (el: Element): boolean => {
   return false;
 };
 
+// Branding scrapes render in a very tall window (100,000px), which stretches
+// anything sized to the window: a hero with `min-height: 100vh` is 100,000px
+// tall, with its centered button 50,000px down. In such a window, positions
+// are reported as they would be on a screen of this height.
+const SCREEN_PX = 1080;
+const isTallWindow = (): boolean => window.innerHeight > 10 * SCREEN_PX;
+
+type ScreenBlock = { top: number; height: number };
+let screenBlocks: ScreenBlock[] | null = null;
+
+/** The outermost elements sized to the window: on a real screen, one screen tall. */
+const getScreenBlocks = (): ScreenBlock[] => {
+  if (screenBlocks) return screenBlocks;
+  const windowHeight = window.innerHeight;
+  const blocks: ScreenBlock[] = [];
+  const queue: Element[] = document.body
+    ? Array.from(document.body.children)
+    : [];
+  // Only elements at least half the window tall can contain a block.
+  for (let i = 0; i < queue.length && i < 2000; i++) {
+    const rect = queue[i].getBoundingClientRect();
+    if (rect.height < windowHeight / 2) continue;
+    if (rect.height <= windowHeight * 1.01) {
+      blocks.push({
+        top: rect.top + (window.scrollY || 0),
+        height: rect.height,
+      });
+    } else {
+      queue.push(...Array.from(queue[i].children));
+    }
+  }
+  screenBlocks = blocks.sort((a, b) => a.top - b.top);
+  return screenBlocks;
+};
+
+/**
+ * An offset within something as tall as the window. Offsets set in pixels
+ * (normal flow, `top: 80px`) are kept; offsets that come from the window's
+ * height (centered, pinned to the bottom) scale with it.
+ */
+const toScreenOffset = (offset: number): number =>
+  offset < 0.3 * window.innerHeight
+    ? offset
+    : (offset * SCREEN_PX) / window.innerHeight;
+
+/** A page position in the tall window, mapped to a page of real screens. */
+const toScreenPosition = (top: number): number => {
+  const scale = SCREEN_PX / window.innerHeight;
+  let removed = 0;
+  let end = -Infinity;
+  for (const block of getScreenBlocks()) {
+    if (block.top < end) continue; // inside an earlier block
+    end = block.top + block.height;
+    if (top < block.top) break;
+    if (top < end) {
+      return block.top - removed + toScreenOffset(top - block.top);
+    }
+    removed += block.height * (1 - scale);
+  }
+  return top - removed;
+};
+
 /** Distance from the top of the page, or of the screen for fixed/sticky elements. */
-export const pageTop = (el: Element, rect: DOMRect): number =>
-  isViewportAnchored(el) ? rect.top : rect.top + (window.scrollY || 0);
+export const pageTop = (el: Element, rect: DOMRect): number => {
+  if (isViewportAnchored(el)) {
+    return isTallWindow() ? toScreenOffset(rect.top) : rect.top;
+  }
+  const top = rect.top + (window.scrollY || 0);
+  return isTallWindow() ? toScreenPosition(top) : top;
+};
 
 /** The first opaque background behind an element (its ancestors'), white if none. */
 const getBackgroundBehind = (el: Element): string => {
