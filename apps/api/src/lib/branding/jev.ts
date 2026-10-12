@@ -174,6 +174,14 @@ function collectColors(input: BrandingLLMInput): ColorCandidate[] {
   for (const [role, value] of Object.entries(input.jsAnalysis.colors ?? {})) {
     add(value, `heuristic guess for ${role}`);
   }
+  // The likeliest logo's own colors: the brand color is usually among them.
+  const logos = input.logoCandidates ?? [];
+  const logo =
+    logos[input.heuristicLogoPick?.selectedIndexInFilteredList ?? -1] ??
+    logos[0];
+  for (const { color, share } of logo?.colors ?? []) {
+    add(color, `color of the logo (${Math.round(share * 100)}% of it)`);
+  }
   for (const candidate of input.backgroundCandidates ?? []) {
     add(candidate.color, `page background candidate (${candidate.source})`);
   }
