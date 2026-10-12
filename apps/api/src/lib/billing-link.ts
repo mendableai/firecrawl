@@ -21,6 +21,9 @@ import { logger } from "./logger";
 //   A token is valid only if the 27 check bits decrypt to zero, so a forged or
 //   mistyped token passes with odds of about 1 in 134 million per key.
 //   Reserved surface or reason codes decode to null (a newer issuer).
+//   Tokens do not expire, like keyless signup tokens: the web app only opens an
+//   org's billing after checking membership, and removing a key revokes every
+//   token made with it.
 //
 // Keys: BILLING_LINK_KEYS, comma-separated base64 16-byte AES keys. The first
 // encrypts; decryption tries each in turn, so a rotated-out key keeps its links

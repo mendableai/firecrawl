@@ -13,7 +13,12 @@ import {
   providerTeamId,
   type ProviderHintsHolder,
 } from "../lib/agent-hints-provider";
-import { billingLink } from "../lib/billing-link";
+import {
+  billingFallbackUrl,
+  billingLink,
+  type BillingLinkReason,
+} from "../lib/billing-link";
+import { trackBillingLinkShown } from "../lib/billing-link-analytics";
 import { keylessSignupSurface } from "../lib/keyless-signup-link";
 import { logger } from "../lib/logger";
 
@@ -32,24 +37,22 @@ function agentHintsFor(
     res.locals.agentHintsProvider;
   const orgId = (req as RequestWithMaybeAuth).auth?.org_id;
   const remainingCredits = res.locals.agentCreditsRemaining;
+  const surface = keylessSignupSurface(req);
+  const reason: BillingLinkReason =
+    res.locals.insufficientCredits === true ? "out_of_credits" : "low_credits";
+  const link =
+    orgId &&
+    teamId &&
+    !teamId.startsWith("preview_keyless_") &&
+    typeof remainingCredits === "number" &&
+    Number.isFinite(remainingCredits)
+      ? billingLink(orgId, surface, reason)
+      : undefined;
   const context = {
     endpoint,
     response: body,
     remainingCredits,
-    billingLink:
-      orgId &&
-      teamId &&
-      !teamId.startsWith("preview_keyless_") &&
-      typeof remainingCredits === "number" &&
-      Number.isFinite(remainingCredits)
-        ? billingLink(
-            orgId,
-            keylessSignupSurface(req),
-            res.locals.insufficientCredits === true
-              ? "out_of_credits"
-              : "low_credits",
-          )
-        : undefined,
+    billingLink: link,
     canUseMapAndCrawl: !!teamId && !teamId.startsWith("preview_keyless_"),
     canUseInteract: config.USE_DB_AUTHENTICATION === true,
     domainProviders: res.locals.agentHintDomainProviders,
@@ -61,6 +64,15 @@ function agentHintsFor(
       : [],
     provider?.settled && body.success === true ? provider.hints : [],
   );
+  if (orgId && link && hints.some(hint => hint.includes(link))) {
+    trackBillingLinkShown({
+      orgId,
+      surface,
+      reason,
+      httpStatus: res.statusCode,
+      tokenLink: link !== billingFallbackUrl(surface, reason),
+    });
+  }
   if (providerHintIds.length > 0) {
     logger.info("Served external agent hints", {
       module: "agent-hints-provider",

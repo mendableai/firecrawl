@@ -10,6 +10,7 @@ import {
   getProviderHints,
   type ProviderHintsHolder,
 } from "../../lib/agent-hints-provider";
+import { trackBillingLinkShown } from "../../lib/billing-link-analytics";
 import {
   agentHintsMiddleware,
   agentHintsProviderMiddleware,
@@ -31,6 +32,9 @@ vi.mock("../../lib/agent-hint-signals", async importOriginal => {
     computeAgentHintSignals: vi.fn(actual.computeAgentHintSignals),
   };
 });
+vi.mock("../../lib/billing-link-analytics", () => ({
+  trackBillingLinkShown: vi.fn(),
+}));
 vi.mock("../../lib/agent-hints-provider", async importOriginal => {
   const actual =
     await importOriginal<typeof import("../../lib/agent-hints-provider")>();
@@ -897,9 +901,11 @@ describe("billing link signal", () => {
 
   afterEach(() => {
     config.BILLING_LINK_KEYS = originalKeys;
+    vi.mocked(trackBillingLinkShown).mockClear();
   });
 
   function linkApp({
+    rules = LINK_RULES,
     teamId = "account-team",
     orgId = ORG as string | null,
     remainingCredits = 0 as number | null,
@@ -915,7 +921,7 @@ describe("billing link signal", () => {
       res.locals.agentHintsProvider = {
         settled: true,
         hints: [],
-        rules: LINK_RULES,
+        rules,
         ready: Promise.resolve(),
         startedAt: Date.now(),
       };
@@ -939,6 +945,38 @@ describe("billing link signal", () => {
     ]);
   });
 
+  it("records the link as shown only when a hint renders it", async () => {
+    config.BILLING_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
+    await linkApp({ insufficientCredits: true });
+    expect(trackBillingLinkShown).toHaveBeenCalledExactlyOnceWith({
+      orgId: ORG,
+      surface: "mcp",
+      reason: "out_of_credits",
+      httpStatus: 402,
+      tokenLink: true,
+    });
+
+    vi.mocked(trackBillingLinkShown).mockClear();
+    const plain = await linkApp({
+      insufficientCredits: true,
+      rules: [{ id: "plain", when: [], text: "Out of credits." }],
+    });
+    expect(plain.body.agent_hints).toEqual(["Out of credits."]);
+    expect(trackBillingLinkShown).not.toHaveBeenCalled();
+  });
+
+  it("records a fallback link as shown with its link type", async () => {
+    config.BILLING_LINK_KEYS = undefined;
+    await linkApp({ remainingCredits: 40, origin: "cli" });
+    expect(trackBillingLinkShown).toHaveBeenCalledExactlyOnceWith({
+      orgId: ORG,
+      surface: "cli",
+      reason: "low_credits",
+      httpStatus: 200,
+      tokenLink: false,
+    });
+  });
+
   it("uses the attributed settings link without a key", async () => {
     config.BILLING_LINK_KEYS = undefined;
     const response = await linkApp({
@@ -959,5 +997,6 @@ describe("billing link signal", () => {
     config.BILLING_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
     const response = await linkApp(overrides as any);
     expect(response.body).toEqual({ success: false });
+    expect(trackBillingLinkShown).not.toHaveBeenCalled();
   });
 });
