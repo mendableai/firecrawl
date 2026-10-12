@@ -11,9 +11,11 @@ import { logger } from "./logger";
  * Optional external agent hints provider. When AGENT_HINTS_PROVIDER_URL is
  * set, hint-enabled requests ask a separate HTTP service for additional
  * guidance: finished hints and response guidance rules. The lookup starts
- * after auth and is never awaited: the response only uses provider data that
- * has already arrived (or is cached) by the time it is sent. Every failure
- * means "no provider hints and no rules".
+ * after auth and is not awaited, with one exception: an insufficient-credits
+ * refusal waits for an in-flight lookup, bounded by the provider timeout,
+ * because it is sent before the lookup could otherwise return. Every other
+ * response only uses provider data that has already arrived (or is cached) by
+ * the time it is sent. Every failure means "no provider hints and no rules".
  */
 export type ProviderHint = { id: string; text: string };
 
@@ -22,6 +24,10 @@ export type ProviderHintsHolder = {
   settled: boolean;
   hints: ProviderHint[];
   rules: AgentHintRule[];
+  /** Resolves once settled; never rejects. */
+  ready: Promise<void>;
+  /** When the lookup started (Date.now()); it settles within the provider timeout of this. */
+  startedAt: number;
 };
 
 export type AgentHintsProviderContext = {
@@ -207,18 +213,24 @@ export function getProviderHints(
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);
   }
-  const entry: CacheEntry = {
-    holder: { settled: false, hints: [], rules: [] },
-    expiresAt: Infinity,
+  const holder: ProviderHintsHolder = {
+    settled: false,
+    hints: [],
+    rules: [],
+    ready: Promise.resolve(),
+    startedAt: now,
   };
+  const entry: CacheEntry = { holder, expiresAt: Infinity };
   cache.set(key, entry);
-  void fetchProviderHints(url, context).then(({ hints, rules, ttlMs }) => {
-    entry.holder.hints = hints;
-    entry.holder.rules = rules;
-    entry.holder.settled = true;
-    entry.expiresAt = Date.now() + ttlMs;
-  });
-  return entry.holder;
+  holder.ready = fetchProviderHints(url, context).then(
+    ({ hints, rules, ttlMs }) => {
+      holder.hints = hints;
+      holder.rules = rules;
+      holder.settled = true;
+      entry.expiresAt = Date.now() + ttlMs;
+    },
+  );
+  return holder;
 }
 
 /**

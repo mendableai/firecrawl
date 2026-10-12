@@ -110,9 +110,27 @@ describe("external agent hints provider", () => {
 
   it("returns an unsettled holder immediately and fills it once the provider answers", async () => {
     const holder = getProviderHints(context());
-    expect(holder).toEqual({ settled: false, hints: [], rules: [] });
+    expect(holder).toEqual({
+      settled: false,
+      hints: [],
+      rules: [],
+      ready: expect.any(Promise),
+      startedAt: expect.any(Number),
+    });
     await settle(holder);
     expect(holder!.hints).toEqual([{ id: "h1", text: "Provider hint." }]);
+  });
+
+  it("resolves ready only once the holder is settled, also on failure", async () => {
+    const holder = getProviderHints(context());
+    await holder!.ready;
+    expect(holder!.settled).toBe(true);
+    expect(holder!.hints).toEqual([{ id: "h1", text: "Provider hint." }]);
+
+    handler = reply(500, "nope");
+    const failed = getProviderHints(context());
+    await failed!.ready;
+    expect(failed).toMatchObject({ settled: true, hints: [], rules: [] });
   });
 
   it("sends exactly the contract fields and never the API key", async () => {
