@@ -1,4 +1,4 @@
-import { recordError } from "./helpers";
+import { getComputedStyleCached, recordError } from "./helpers";
 
 export interface LogoColor {
   /** #RRGGBB */
@@ -67,6 +67,24 @@ const ranked = (weights: Map<string, number>): LogoColor[] => {
     .slice(0, MAX_COLORS);
 };
 
+// Definitions, clip paths and masks shape the logo but aren't painted. Tag
+// names compared in lowercase: selectors match camel-case SVG names unevenly.
+const UNPAINTED = new Set([
+  "defs",
+  "clippath",
+  "mask",
+  "symbol",
+  "pattern",
+  "marker",
+]);
+
+const isUnpainted = (shape: Element, svg: Element): boolean => {
+  for (let n = shape.parentElement; n && n !== svg; n = n.parentElement) {
+    if (UNPAINTED.has(n.localName.toLowerCase())) return true;
+  }
+  return false;
+};
+
 /** Fill and stroke colors of an inline SVG's shapes, weighted by their area. */
 const svgColors = (svg: SVGSVGElement): LogoColor[] => {
   const weights = new Map<string, number>();
@@ -74,7 +92,8 @@ const svgColors = (svg: SVGSVGElement): LogoColor[] => {
     "path, rect, circle, ellipse, polygon, polyline, line, text, use",
   );
   shapes.forEach(shape => {
-    const cs = getComputedStyle(shape);
+    if (isUnpainted(shape, svg)) return;
+    const cs = getComputedStyleCached(shape);
     if (cs.display === "none" || cs.visibility === "hidden") return;
     if (parseFloat(cs.opacity) < 0.5) return;
     let area = 1;
@@ -91,7 +110,8 @@ const svgColors = (svg: SVGSVGElement): LogoColor[] => {
       weights.set(hex, (weights.get(hex) ?? 0) + weight);
     };
     if (parseFloat(cs.fillOpacity) >= 0.5) add(cs.fill, area);
-    if (parseFloat(cs.strokeWidth) > 0) add(cs.stroke, area * 0.1);
+    if (parseFloat(cs.strokeWidth) > 0 && parseFloat(cs.strokeOpacity) >= 0.5)
+      add(cs.stroke, area * 0.1);
   });
   return ranked(weights);
 };
@@ -149,6 +169,16 @@ export const getLogoColors = (el: Element): LogoColor[] => {
   try {
     if (el instanceof SVGSVGElement) return svgColors(el);
     if (el instanceof HTMLImageElement) return imageColors(el);
+    // A logo drawn as a CSS background: read the image when the browser
+    // already has it (an image it still has to load reads as nothing).
+    const url = getComputedStyleCached(el).backgroundImage.match(
+      /url\(["']?([^"')]+)["']?\)/,
+    )?.[1];
+    if (url) {
+      const img = new Image();
+      img.src = url;
+      return imageColors(img);
+    }
   } catch (e) {
     recordError("getLogoColors", e);
   }

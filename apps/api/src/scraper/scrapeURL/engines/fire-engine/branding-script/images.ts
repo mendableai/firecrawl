@@ -1404,12 +1404,25 @@ export const findImages = (): FindImagesResult => {
     }
   }
 
-  // Only the leading candidates: reading colors means painting each one.
-  uniqueCandidates.slice(0, LOGO_COLOR_CANDIDATES).forEach(candidate => {
-    const el = candidateElements.get(candidate);
-    const colors = el ? getLogoColors(el) : [];
-    if (colors.length > 0) candidate.colors = colors;
-  });
+  // Only the likeliest candidates (roughly the server's ranking in
+  // logo-selector): reading colors means painting each one.
+  const likelihood = (c: LogoCandidate): number =>
+    (c.indicators.hrefMatch ? 40 : 0) +
+    (c.indicators.inHeader ? 30 : 0) +
+    (c.location === "header" ? 20 : 0) +
+    (c.isVisible ? 15 : 0) +
+    (c.indicators.classMatch ? 10 : 0) +
+    (c.indicators.srcMatch ? 10 : 0) +
+    (c.indicators.altMatch ? 5 : 0) +
+    (c.source === "document.images" ? 15 : 0);
+  [...uniqueCandidates]
+    .sort((a, b) => likelihood(b) - likelihood(a))
+    .slice(0, LOGO_COLOR_CANDIDATES)
+    .forEach(candidate => {
+      const el = candidateElements.get(candidate);
+      const colors = el ? getLogoColors(el) : [];
+      if (colors.length > 0) candidate.colors = colors;
+    });
 
   return { images: imgs, logoCandidates: uniqueCandidates };
 };

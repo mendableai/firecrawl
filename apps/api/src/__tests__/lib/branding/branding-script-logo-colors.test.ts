@@ -63,6 +63,23 @@ describe("branding script logo colors", () => {
     );
   });
 
+  it("counts only painted shapes: not definitions, clip paths or invisible strokes", () => {
+    const candidates = logoCandidates(
+      `<header data-top="0" data-w="1200" data-h="64">
+         <a href="/" data-top="16" aria-label="Acme home">
+           <svg data-top="16" data-w="120" data-h="32" viewBox="0 0 120 32" aria-label="Acme logo">
+             <defs><path id="unused" d="M0 0h10v10H0z" style="fill: rgb(255, 0, 0)"></path></defs>
+             <clipPath id="clip"><rect width="120" height="32" style="fill: rgb(0, 255, 0)"></rect></clipPath>
+             <path d="M0 0h120v32H0z" style="fill: rgb(14, 126, 78); stroke: rgb(0, 0, 255); stroke-width: 2; stroke-opacity: 0"></path>
+           </svg>
+         </a>
+       </header>`,
+    );
+
+    const logo = candidates.find(c => c.colors);
+    expect(logo?.colors).toEqual([{ color: "#0E7E4E", share: 1 }]);
+  });
+
   it("leaves colors out when they can't be read", () => {
     // jsdom can't paint images, like a cross-origin logo in a browser.
     const candidates = logoCandidates(
