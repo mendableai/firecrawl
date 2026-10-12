@@ -42,8 +42,9 @@ export function captureOncePerDay(input: {
       );
       if (!sent) await redisRateLimitClient.del(input.dedupeKey);
     } catch (error) {
-      logger.debug(`${input.event} capture failed`, {
+      logger.debug("Once-per-day event capture failed", {
         module: input.module,
+        event: input.event,
         error,
       });
     }
