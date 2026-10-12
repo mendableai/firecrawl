@@ -400,6 +400,13 @@ describe("MCP action log contract", () => {
     expect(columns).not.toContain("api_job_id");
   });
 
+  it("reports storage as unavailable when the read fails", async () => {
+    ch.client = { query: vi.fn().mockRejectedValue(new Error("timeout")) };
+    await expect(listMcpActionLogs(TEAM_ID)).rejects.toThrow(
+      "MCP action log storage is unavailable",
+    );
+  });
+
   it("reports storage as unavailable without ClickHouse", async () => {
     ch.client = null;
     await expect(listMcpActionLogs(TEAM_ID)).rejects.toThrow(

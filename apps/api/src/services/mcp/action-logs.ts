@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { authCreditUsageChunkFromTeam } from "../../db/rpc";
 import { clickhouseClient } from "../../lib/clickhouse-client";
+import { logger } from "../../lib/logger";
 import { logMcpActionLog } from "../logging/log_job";
 
 const STATUSES = ["success", "error"] as const;
@@ -294,10 +295,7 @@ export async function authorizeMcpActionLogViewer(
   return { userId: ownerId, role };
 }
 
-function encodeMcpActionLogCursor(row: {
-  created_at: string;
-  id: string;
-}) {
+function encodeMcpActionLogCursor(row: { created_at: string; id: string }) {
   return Buffer.from(
     JSON.stringify({ created_at: row.created_at, id: row.id }),
   ).toString("base64url");
@@ -334,19 +332,27 @@ export async function listMcpActionLogs(
   const cursor = options.cursor
     ? decodeMcpActionLogCursor(options.cursor)
     : null;
-  const result = await clickhouseClient.query({
-    // The explicit column list is the team-readable contract: objective and
-    // api_job_id stay out of it. Filters name `log.` columns because the
-    // formatted created_at alias would otherwise shadow the stored value.
-    query: `SELECT id, user_id, toString(log.api_key_id) AS api_key_id, oauth_client_id, auth_type, tool_name, status, request_id, client_name, client_version, error_class, resource, formatDateTime(log.created_at, '%Y-%m-%dT%H:%i:%S.%fZ', 'UTC') AS created_at FROM mcp_action_logs AS log FINAL WHERE log.team_id = {teamId: UUID} AND log.created_at > now64(9) - INTERVAL ${RETENTION_DAYS} DAY${cursor ? " AND (log.created_at, log.id) < (parseDateTime64BestEffort({before: String}, 9), {beforeId: UUID})" : ""} ORDER BY log.created_at DESC, log.id DESC LIMIT {limit: UInt32}`,
-    query_params: {
-      teamId,
-      limit: limit + 1,
-      ...(cursor ? { before: cursor.created_at, beforeId: cursor.id } : {}),
-    },
-    format: "JSONEachRow",
-  });
-  const rows = await result.json<McpActionLogRow>();
+  let rows: McpActionLogRow[];
+  try {
+    const result = await clickhouseClient.query({
+      // The explicit column list is the team-readable contract: objective and
+      // api_job_id stay out of it. Filters name `log.` columns because the
+      // formatted created_at alias would otherwise shadow the stored value.
+      query: `SELECT id, user_id, toString(log.api_key_id) AS api_key_id, oauth_client_id, auth_type, tool_name, status, request_id, client_name, client_version, error_class, resource, formatDateTime(log.created_at, '%Y-%m-%dT%H:%i:%S.%fZ', 'UTC') AS created_at FROM mcp_action_logs AS log FINAL WHERE log.team_id = {teamId: UUID} AND log.created_at > now64(9) - INTERVAL ${RETENTION_DAYS} DAY${cursor ? " AND (log.created_at, log.id) < (parseDateTime64BestEffort({before: String}, 9), {beforeId: UUID})" : ""} ORDER BY log.created_at DESC, log.id DESC LIMIT {limit: UInt32}`,
+      query_params: {
+        teamId,
+        limit: limit + 1,
+        ...(cursor ? { before: cursor.created_at, beforeId: cursor.id } : {}),
+      },
+      format: "JSONEachRow",
+    });
+    rows = await result.json<McpActionLogRow>();
+  } catch (error) {
+    logger.warn("Failed to read MCP action logs", { error });
+    throw new McpActionLogUnavailableError(
+      "MCP action log storage is unavailable",
+    );
+  }
   return {
     data: rows.slice(0, limit),
     nextCursor:

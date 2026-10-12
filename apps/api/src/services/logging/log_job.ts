@@ -1422,9 +1422,21 @@ type LoggedMcpActionLog = {
 
 /**
  * One hosted MCP tool call from the internal action-log ingest. `id` is the
- * MCP request id, so a retried delivery collapses into the first one.
+ * MCP request id, so retried deliveries collapse into one row.
  */
 export async function logMcpActionLog(action: LoggedMcpActionLog) {
+  return withLogSpan(
+    {
+      operation: "mcp_action",
+      table: "mcp_action_logs",
+      id: action.id,
+      requestId: action.request_id,
+    },
+    () => logMcpActionLogInternal(action),
+  );
+}
+
+async function logMcpActionLogInternal(action: LoggedMcpActionLog) {
   const logger = _logger.child({
     module: "log_job",
     method: "logMcpActionLog",

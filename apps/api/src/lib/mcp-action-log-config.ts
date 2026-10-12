@@ -2,6 +2,7 @@ type McpActionLogConfigInput = {
   MCP_ACTION_LOG_STORAGE_ENABLED?: boolean;
   MCP_ACTION_LOG_WRITES_ENABLED?: boolean;
   MCP_ACTION_LOG_SECRET?: string;
+  PUBSUB_CREDENTIALS?: string;
   USE_DB_AUTHENTICATION?: boolean;
 };
 
@@ -37,6 +38,15 @@ export function getMcpActionLogConfigErrors(config: McpActionLogConfigInput) {
       path: "MCP_ACTION_LOG_SECRET",
       message:
         "MCP action log writes require a non-empty MCP_ACTION_LOG_SECRET",
+    });
+  }
+  if (
+    config.MCP_ACTION_LOG_WRITES_ENABLED === true &&
+    !config.PUBSUB_CREDENTIALS?.trim()
+  ) {
+    errors.push({
+      path: "PUBSUB_CREDENTIALS",
+      message: "MCP action log writes require the job-log publisher",
     });
   }
   return errors;
