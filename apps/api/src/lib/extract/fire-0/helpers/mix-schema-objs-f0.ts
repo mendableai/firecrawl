@@ -41,6 +41,13 @@ export async function mixSchemaObjects_F0(
             !(Array.isArray(item.type) && item.type.includes("array"))
           )
             return false;
+          if (Object.hasOwn(item, "const") && !Array.isArray(item.const))
+            return false;
+          if (
+            Array.isArray(item.enum) &&
+            !item.enum.some((value: any) => Array.isArray(value))
+          )
+            return false;
           return (
             [item.anyOf, item.oneOf].every(
               branches =>
@@ -60,6 +67,9 @@ export async function mixSchemaObjects_F0(
           return (
             item.type !== undefined ||
             item.items !== undefined ||
+            Array.isArray(item.const) ||
+            (Array.isArray(item.enum) &&
+              item.enum.some((value: any) => Array.isArray(value))) ||
             [item.anyOf, item.oneOf, item.allOf].some(
               branches =>
                 Array.isArray(branches) && branches.some(allowsArrayValues),

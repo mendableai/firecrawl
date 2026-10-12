@@ -366,6 +366,87 @@ for (const [mix, transform, deduplicate, merge] of [
         );
       });
     }
+    for (const [label, constraint, values] of [
+      ["scalar const", { const: "a" }, ["a", "a"]],
+      ["scalar enum", { enum: ["a", "b"] }, ["a", "b"]],
+      ["null const", { const: null }, [null, null]],
+      ["object enum", { enum: [{ id: 1 }, { id: 2 }] }, [{ id: 1 }, { id: 2 }]],
+    ] as const) {
+      it(`flattens valid scalar wrappers narrowed by allOf ${label}`, async () => {
+        const schema = {
+          type: "object",
+          properties: {
+            values: {
+              type: "array",
+              items: {
+                allOf: [{ anyOf: [{ type: "array" }, {}] }, constraint],
+              },
+            },
+          },
+        };
+        const expected = { values };
+        const validate = new Ajv().compile(schema);
+        expect(validate(expected)).toBe(true);
+        const wrapped = { values: values.map(value => [value]) };
+        expect(validate(wrapped)).toBe(false);
+        const result = await mix(schema, {}, wrapped);
+        expect(result).toEqual(expected);
+        expect(validate(result)).toBe(true);
+      });
+    }
+    for (const [label, constraint, values] of [
+      [
+        "array const",
+        { const: [1, 2] },
+        [
+          [1, 2],
+          [1, 2],
+        ],
+      ],
+      [
+        "array enum",
+        {
+          enum: [
+            [1, 2],
+            [3, 4],
+          ],
+        },
+        [
+          [1, 2],
+          [3, 4],
+        ],
+      ],
+      ["mixed enum", { enum: [[1, 2], "a"] }, [[1, 2], "a"]],
+    ] as const) {
+      for (const intersected of [false, true]) {
+        it(`preserves valid ${label} rank ${intersected ? "inside allOf" : "directly"}`, async () => {
+          const schema = {
+            type: "object",
+            properties: {
+              values: {
+                type: "array",
+                items: intersected ? { allOf: [constraint, {}] } : constraint,
+              },
+            },
+          };
+          const completions = values.map(value => ({ values: [value] }));
+          const expected = { values };
+          const validate = new Ajv().compile(schema);
+          expect(completions.every(completion => validate(completion))).toBe(
+            true,
+          );
+          expect(await mix(schema, {}, expected)).toEqual(expected);
+          const transformed = transform(schema, completions);
+          const result = await mix(
+            schema,
+            {},
+            merge(deduplicateForSchema(transformed, schema)),
+          );
+          expect(result).toEqual(expected);
+          expect(validate(result)).toBe(true);
+        });
+      }
+    }
     it("retains scalar rank through the same completion producer pipeline", async () => {
       const schema = {
         type: "object",
