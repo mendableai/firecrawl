@@ -32,6 +32,25 @@ export function isNearBlack(hex: string): boolean {
   return contrastYIQ(hex) < 40 && max < 140;
 }
 
+/** Near-black with no hue: a monochrome brand's black, not navy chrome. */
+export function isNeutralDark(hex: string): boolean {
+  const h = hex.replace("#", "");
+  if (h.length < 6) return false;
+  const channels = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  return isNearBlack(hex) && Math.max(...channels) - Math.min(...channels) < 30;
+}
+
+/** Straight-line RGB distance; Infinity unless both are #RRGGBB. */
+export function colorDistance(a?: string | null, b?: string | null): number {
+  const x = normalizeRoleHex(a);
+  const y = normalizeRoleHex(b);
+  if (!x || !y || x.length !== 7 || y.length !== 7) return Infinity;
+  const channels = (hex: string) =>
+    [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const [p, q] = [channels(x), channels(y)];
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+}
+
 /** Chromatic brand color — not gray chrome, and not a near-black nav on light pages. */
 export function isUsableBrandPrimary(
   hex: string,

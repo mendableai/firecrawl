@@ -1,5 +1,7 @@
 import { BrandingProfile } from "../../types/branding";
 import {
+  colorDistance,
+  isNeutralDark,
   isUsableBrandPrimary,
   normalizeRoleHex,
   shouldApplyLlmColorRoles,
@@ -316,6 +318,34 @@ export function mergeBrandingResults(
         confidence: llm.colorRoles.confidence,
       };
     }
+  }
+
+  // Monochrome brands (black logo and calls to action, color only in links or
+  // artwork) have black as their primary color, which the chrome filters above
+  // reject on light pages. A near-black primary button is that signal, unless
+  // the chosen color also fills a button, as when a brand pairs a black call to
+  // action with colored ones.
+  const primaryFill = normalizeRoleHex(
+    merged.components?.buttonPrimary?.background,
+  );
+  const primaryColor = normalizeRoleHex(merged.colors?.primary);
+  if (
+    merged.colorScheme !== "dark" &&
+    primaryFill &&
+    isNeutralDark(primaryFill) &&
+    primaryColor &&
+    primaryColor !== primaryFill &&
+    !buttonSnapshots.some(
+      b =>
+        colorDistance(b.background, primaryColor) < 40 ||
+        colorDistance(b.borderColor, primaryColor) < 40,
+    )
+  ) {
+    merged.colors = {
+      ...merged.colors,
+      primary: primaryFill,
+      accent: merged.colors?.accent ?? primaryColor,
+    };
   }
 
   if (llm.personality) {
