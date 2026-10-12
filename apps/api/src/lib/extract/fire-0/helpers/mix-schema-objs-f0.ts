@@ -27,10 +27,18 @@ export async function mixSchemaObjects_F0(
         schema.properties[key].type === "array" &&
         Array.isArray(multiResult[key])
       ) {
-        // If the property is an array, flatten the arrays from multiResult
-        result[key] = schema.properties[key].items?.type === "array"
-          ? [...multiResult[key]]
-          : multiResult[key].flat();
+        // Preserve nested array values; flatten only scalar/object chunk wrappers.
+        const items = schema.properties[key].items;
+        const allowsArrayValues = (item: any): boolean =>
+          item &&
+          typeof item === "object" &&
+          (item.type === "array" ||
+            (Array.isArray(item.type) && item.type.includes("array")) ||
+            (item.type === undefined && item.items !== undefined));
+        const nested = Array.isArray(items)
+          ? items.some(allowsArrayValues)
+          : allowsArrayValues(items);
+        result[key] = nested ? [...multiResult[key]] : multiResult[key].flat();
       } else if (singleResult.hasOwnProperty(key)) {
         result[key] = singleResult[key];
       } else if (multiResult.hasOwnProperty(key)) {

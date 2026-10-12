@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import Ajv from "ajv";
+import { dereferenceSchema } from "../extract/helpers/dereference-schema";
 import { mixSchemaObjects } from "../extract/helpers/mix-schema-objs";
 import { mixSchemaObjects_F0 } from "../extract/fire-0/helpers/mix-schema-objs-f0";
 import { transformArrayToObject } from "../extract/helpers/transform-array-to-obj";
@@ -9,13 +10,42 @@ import { deduplicateObjectsArray_F0 } from "../extract/fire-0/helpers/deduplicat
 import { mergeNullValObjs } from "../extract/helpers/merge-null-val-objs";
 import { mergeNullValObjs_F0 } from "../extract/fire-0/helpers/merge-null-val-objs-f0";
 for (const [mix, transform, deduplicate, merge] of [
-  [mixSchemaObjects, transformArrayToObject, deduplicateObjectsArray, mergeNullValObjs],
-  [mixSchemaObjects_F0, transformArrayToObject_F0, deduplicateObjectsArray_F0, mergeNullValObjs_F0],
+  [
+    mixSchemaObjects,
+    transformArrayToObject,
+    deduplicateObjectsArray,
+    mergeNullValObjs,
+  ],
+  [
+    mixSchemaObjects_F0,
+    transformArrayToObject_F0,
+    deduplicateObjectsArray_F0,
+    mergeNullValObjs_F0,
+  ],
 ] as const) {
+  // Keep the original one-argument consumer callable in the before run. Its
+  // missing schema-aware behavior must fail the assertion, not TypeScript build.
+  const deduplicateForSchema: (
+    values: { [key: string]: any[] },
+    schema?: any,
+  ) => { [key: string]: any[] } = deduplicate;
   describe(mix.name, () => {
     it("preserves schema-declared arrays of arrays", async () => {
-      const schema = { type: "object", properties: { matrix: { type: "array", items: { type: "array", items: { type: "number" } } } } };
-      const data = { matrix: [[1, 2], [3, 4]] };
+      const schema = {
+        type: "object",
+        properties: {
+          matrix: {
+            type: "array",
+            items: { type: "array", items: { type: "number" } },
+          },
+        },
+      };
+      const data = {
+        matrix: [
+          [1, 2],
+          [3, 4],
+        ],
+      };
       const validate = new Ajv().compile(schema);
       expect(validate(data)).toBe(true);
       const result = await mix(schema, {}, data);
@@ -23,29 +53,179 @@ for (const [mix, transform, deduplicate, merge] of [
       expect(result).toEqual(data);
     });
     it("preserves nested object matrix fields", async () => {
-      const schema = { properties: { nested: { type: "object", properties: { matrix: { type: "array", items: { type: "array", items: { type: "string" } } } } } } };
+      const schema = {
+        properties: {
+          nested: {
+            type: "object",
+            properties: {
+              matrix: {
+                type: "array",
+                items: { type: "array", items: { type: "string" } },
+              },
+            },
+          },
+        },
+      };
       const data = { nested: { matrix: [["a"], ["b"]] } };
       expect(await mix(schema, {}, data)).toEqual(data);
     });
     it("retains matrix rank through the extraction completion producer pipeline", async () => {
-      const schema = { type: "object", properties: { matrix: { type: "array", items: { type: "array", items: { type: "number" } } } } };
+      const schema = {
+        type: "object",
+        properties: {
+          matrix: {
+            type: "array",
+            items: { type: "array", items: { type: "number" } },
+          },
+        },
+      };
       const completions = [{ matrix: [[1, 2]] }, { matrix: [[3, 4]] }];
       const validate = new Ajv().compile(schema);
       expect(completions.every(completion => validate(completion))).toBe(true);
       const transformed = transform(schema, completions);
-      expect(transformed).toEqual({ matrix: [[1, 2], [3, 4]] });
-      const result = await mix(schema, {}, merge(deduplicate(transformed)));
+      expect(transformed).toEqual({
+        matrix: [
+          [1, 2],
+          [3, 4],
+        ],
+      });
+      const result = await mix(
+        schema,
+        {},
+        merge(deduplicateForSchema(transformed, schema)),
+      );
       expect(validate(result)).toBe(true);
-      expect(result).toEqual({ matrix: [[1, 2], [3, 4]] });
+      expect(result).toEqual({
+        matrix: [
+          [1, 2],
+          [3, 4],
+        ],
+      });
     });
+    for (const uniqueItems of [false, true]) {
+      it(`preserves repeated matrix rows according to uniqueItems=${uniqueItems}`, async () => {
+        const schema = {
+          type: "object",
+          properties: {
+            matrix: {
+              type: "array",
+              uniqueItems,
+              items: { type: "array", items: { type: "number" } },
+            },
+          },
+        };
+        const transformed = transform(schema, [
+          {
+            matrix: [
+              [1, 2],
+              [1, 2],
+            ],
+          },
+        ]);
+        const expected = {
+          matrix: uniqueItems
+            ? [[1, 2]]
+            : [
+                [1, 2],
+                [1, 2],
+              ],
+        };
+        expect(transformed).toEqual(expected);
+        const result = await mix(
+          schema,
+          {},
+          merge(deduplicateForSchema(transformed, schema)),
+        );
+        expect(result).toEqual(expected);
+        expect(new Ajv().compile(schema)(result)).toBe(true);
+      });
+    }
+    for (const items of [
+      [{ type: "array", items: { type: "number" } }],
+      { items: { type: "number" } },
+      { type: ["array", "null"], items: { type: "number" } },
+    ]) {
+      it(`preserves non-plain matrix item declarations ${JSON.stringify(items)}`, async () => {
+        const schema = {
+          type: "object",
+          properties: { matrix: { type: "array", items } },
+        };
+        const data = {
+          matrix: [
+            [1, 2],
+            [3, 4],
+          ],
+        };
+        expect(await mix(schema, {}, data)).toEqual(data);
+      });
+    }
+    for (const [itemSchema, values] of [
+      [{ type: "string" }, ["a", "b"]],
+      [{ type: "string", items: { type: "number" } }, ["a", "b"]],
+      [
+        { type: "object", properties: { value: { type: "string" } } },
+        [{ value: "a" }, { value: "b" }],
+      ],
+      [
+        {
+          type: "object",
+          items: { type: "number" },
+          properties: { value: { type: "string" } },
+        },
+        [{ value: "a" }, { value: "b" }],
+      ],
+      [
+        { type: "array", items: { type: "number" } },
+        [
+          [1, 2],
+          [3, 4],
+        ],
+      ],
+    ] as const) {
+      it(`derives rank from resolved local definitions for ${itemSchema.type} items`, async () => {
+        const root = {
+          type: "object",
+          properties: {
+            values: { type: "array", items: { $ref: "#/$defs/Item" } },
+          },
+          $defs: { Item: itemSchema },
+        };
+        // The real F0 extraction consumer dereferences before splitting and
+        // transforming; the resulting item schema supplies the actual rank.
+        const schema = await dereferenceSchema(root);
+        const completions = [{ values: [values[0]] }, { values: [values[1]] }];
+        const transformed = transform(schema, completions);
+        const result = await mix(
+          schema,
+          {},
+          merge(deduplicateForSchema(transformed, schema)),
+        );
+        expect(result).toEqual({ values });
+        expect(new Ajv().compile(root)(result)).toBe(true);
+        if (itemSchema.type !== "array") {
+          expect(
+            await mix(schema, {}, { values: [[values[0]], [values[1]]] }),
+          ).toEqual({ values });
+        }
+      });
+    }
     it("retains scalar rank through the same completion producer pipeline", async () => {
-      const schema = { type: "object", properties: { values: { type: "array", items: { type: "number" } } } };
+      const schema = {
+        type: "object",
+        properties: { values: { type: "array", items: { type: "number" } } },
+      };
       const transformed = transform(schema, [{ values: [1] }, { values: [2] }]);
-      expect(await mix(schema, {}, merge(deduplicate(transformed)))).toEqual({ values: [1, 2] });
+      expect(
+        await mix(schema, {}, merge(deduplicateForSchema(transformed, schema))),
+      ).toEqual({ values: [1, 2] });
     });
     it("continues flattening chunk wrappers for scalar-item arrays", async () => {
-      const schema = { properties: { values: { type: "array", items: { type: "number" } } } };
-      expect(await mix(schema, {}, { values: [[1], [2]] })).toEqual({ values: [1, 2] });
+      const schema = {
+        properties: { values: { type: "array", items: { type: "number" } } },
+      };
+      expect(await mix(schema, {}, { values: [[1], [2]] })).toEqual({
+        values: [1, 2],
+      });
     });
   });
 }
