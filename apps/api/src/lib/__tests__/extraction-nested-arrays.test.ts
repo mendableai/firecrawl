@@ -243,6 +243,40 @@ for (const [mix, transform, deduplicate, merge] of [
         },
       ],
       [
+        "allOf",
+        {
+          allOf: [
+            { type: "array", items: { type: "number" } },
+            { minItems: 1 },
+          ],
+        },
+      ],
+      [
+        "allOf with nested anyOf",
+        {
+          allOf: [
+            {
+              anyOf: [
+                { type: "array", items: { type: "number" } },
+                { type: "null" },
+              ],
+            },
+            { minItems: 1 },
+          ],
+        },
+      ],
+      [
+        "tuple allOf",
+        [
+          {
+            allOf: [
+              { type: "array", items: { type: "number" } },
+              { minItems: 1 },
+            ],
+          },
+        ],
+      ],
+      [
         "tuple combinators",
         [
           {
@@ -291,6 +325,18 @@ for (const [mix, transform, deduplicate, merge] of [
       });
     }
     for (const items of [
+      { allOf: [{ type: "string" }, { minLength: 1 }] },
+      {
+        allOf: [
+          {
+            anyOf: [
+              { type: "array", items: { type: "number" } },
+              { type: "string" },
+            ],
+          },
+          { type: "string" },
+        ],
+      },
       { anyOf: [{ type: "string" }, { type: "null" }] },
       { oneOf: [{ type: "string" }, { type: "null" }] },
       {
