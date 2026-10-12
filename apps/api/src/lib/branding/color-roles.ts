@@ -51,13 +51,24 @@ export function colorDistance(a?: string | null, b?: string | null): number {
   return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 }
 
-/** Chromatic brand color — not gray chrome, and not a near-black nav on light pages. */
+/**
+ * Nearly white, whatever its tint (#E5EDF5, #F2E8E1): on a light page that is
+ * a section background, not a brand color.
+ */
+export function isPale(hex: string): boolean {
+  const h = hex.replace("#", "");
+  if (h.length < 6) return false;
+  const channels = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  return (Math.max(...channels) + Math.min(...channels)) / 2 / 255 > 0.9;
+}
+
+/** Chromatic brand color — not gray chrome, and not near-black or near-white chrome on light pages. */
 export function isUsableBrandPrimary(
   hex: string,
   colorScheme?: "light" | "dark",
 ): boolean {
   if (isGrayish(hex)) return false;
-  if (colorScheme !== "dark" && isNearBlack(hex)) return false;
+  if (colorScheme !== "dark" && (isNearBlack(hex) || isPale(hex))) return false;
   return true;
 }
 
@@ -102,7 +113,7 @@ export function pickBrandPrimary(
 
   const chromatic = ranked.find(h => {
     if (skip.has(h) || isGrayish(h)) return false;
-    if (lightPage && isNearBlack(h)) return false;
+    if (lightPage && (isNearBlack(h) || isPale(h))) return false;
     return true;
   });
   if (chromatic) return chromatic;
