@@ -887,3 +887,77 @@ describe("insufficient-credits refusals and a pending provider lookup", () => {
     expect(ms).toBeLessThan(40);
   });
 });
+
+describe("billing link signal", () => {
+  const ORG = "3f2c8a1e-5b7d-4c90-9e21-6a4b8d0f1c37";
+  const LINK_RULES: AgentHintRule[] = [
+    { id: "link", when: [], text: "Billing: {billing_link}" },
+  ];
+  const originalKeys = config.BILLING_LINK_KEYS;
+
+  afterEach(() => {
+    config.BILLING_LINK_KEYS = originalKeys;
+  });
+
+  function linkApp({
+    teamId = "account-team",
+    orgId = ORG as string | null,
+    remainingCredits = 0 as number | null,
+    insufficientCredits = false,
+    origin = "mcp",
+  } = {}) {
+    const app = express();
+    app.use(express.json());
+    app.post("/", agentHintsMiddleware("scrape"), (req, res) => {
+      (req as any).auth = { team_id: teamId, org_id: orgId };
+      res.locals.agentCreditsRemaining = remainingCredits;
+      if (insufficientCredits) res.locals.insufficientCredits = true;
+      res.locals.agentHintsProvider = {
+        settled: true,
+        hints: [],
+        rules: LINK_RULES,
+        ready: Promise.resolve(),
+        startedAt: Date.now(),
+      };
+      res.status(insufficientCredits ? 402 : 200).json({ success: false });
+    });
+    return request(app)
+      .post("/")
+      .set("X-Firecrawl-Agent-Hints", "true")
+      .send({ origin });
+  }
+
+  it("gives a keyed team its tokenised link, with the refusal as the reason", async () => {
+    config.BILLING_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
+    const refused = await linkApp({ insufficientCredits: true });
+    expect(refused.body.agent_hints).toEqual([
+      "Billing: https://www.firecrawl.dev/billing/vrjqes19bwvsjm86fprvnjxhve0ry5r2",
+    ]);
+    const low = await linkApp({ remainingCredits: 40 });
+    expect(low.body.agent_hints).toEqual([
+      "Billing: https://www.firecrawl.dev/billing/3npvx9qjwnah0fepvcfb54e5vrs69xa3",
+    ]);
+  });
+
+  it("uses the attributed settings link without a key", async () => {
+    config.BILLING_LINK_KEYS = undefined;
+    const response = await linkApp({
+      insufficientCredits: true,
+      origin: "cli",
+    });
+    expect(response.body.agent_hints).toEqual([
+      "Billing: https://www.firecrawl.dev/app/settings?tab=billing&utm_source=agent_hints&utm_medium=cli&utm_campaign=out_of_credits",
+    ]);
+  });
+
+  it.each([
+    ["a keyless team", { teamId: "preview_keyless_abc" }],
+    ["no org", { orgId: null }],
+    ["no reported balance", { remainingCredits: null }],
+    ["an unlimited balance", { remainingCredits: Infinity }],
+  ])("gives no link for %s", async (_name, overrides) => {
+    config.BILLING_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
+    const response = await linkApp(overrides as any);
+    expect(response.body).toEqual({ success: false });
+  });
+});

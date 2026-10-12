@@ -13,6 +13,7 @@ import {
   providerTeamId,
   type ProviderHintsHolder,
 } from "../lib/agent-hints-provider";
+import { billingLink } from "../lib/billing-link";
 import { keylessSignupSurface } from "../lib/keyless-signup-link";
 import { logger } from "../lib/logger";
 
@@ -29,10 +30,26 @@ function agentHintsFor(
   const teamId = (req as RequestWithMaybeAuth).auth?.team_id;
   const provider: ProviderHintsHolder | undefined =
     res.locals.agentHintsProvider;
+  const orgId = (req as RequestWithMaybeAuth).auth?.org_id;
+  const remainingCredits = res.locals.agentCreditsRemaining;
   const context = {
     endpoint,
     response: body,
-    remainingCredits: res.locals.agentCreditsRemaining,
+    remainingCredits,
+    billingLink:
+      orgId &&
+      teamId &&
+      !teamId.startsWith("preview_keyless_") &&
+      typeof remainingCredits === "number" &&
+      Number.isFinite(remainingCredits)
+        ? billingLink(
+            orgId,
+            keylessSignupSurface(req),
+            res.locals.insufficientCredits === true
+              ? "out_of_credits"
+              : "low_credits",
+          )
+        : undefined,
     canUseMapAndCrawl: !!teamId && !teamId.startsWith("preview_keyless_"),
     canUseInteract: config.USE_DB_AUTHENTICATION === true,
     domainProviders: res.locals.agentHintDomainProviders,

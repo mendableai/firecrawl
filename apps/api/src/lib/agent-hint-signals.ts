@@ -14,6 +14,8 @@ export interface AgentHintSignalContext {
   remainingCredits?: number;
   canUseMapAndCrawl?: boolean;
   canUseInteract?: boolean;
+  /** The account's billing link for credit guidance; keyed teams with a balance only. */
+  billingLink?: string;
   /** Alexandria providers covering the page's host, when that lookup succeeded in time; undefined when it was skipped, late or failed. */
   domainProviders?: string[];
 }
@@ -229,6 +231,7 @@ export function computeAgentHintSignals(
     "remaining_credits",
     finiteNumber(context.remainingCredits),
   );
+  setDefined(signals, "billing_link", context.billingLink);
 
   addPageSignals(signals, response, object(data.metadata));
 

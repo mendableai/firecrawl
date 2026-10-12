@@ -147,6 +147,22 @@ const configSchema = z.object({
         "KEYLESS_SIGNUP_LINK_KEYS must be comma-separated base64 16-byte keys",
       ),
   ),
+  // AES-128 keys for billing link tokens (www.firecrawl.dev/billing/<token>)
+  // in credit guidance: comma-separated base64, 16 bytes each. The first
+  // encrypts; every key is tried to decrypt, so keep a rotated-out key listed
+  // while its links live. Must match firecrawl-web's BILLING_LINK_KEYS. Unset
+  // sends the billing settings link with attribution instead.
+  BILLING_LINK_KEYS: emptyStringAsUndefined(
+    z
+      .string()
+      .refine(
+        value =>
+          value
+            .split(",")
+            .every(key => /^[A-Za-z0-9+/]{21}[AQgw]==$/.test(key.trim())),
+        "BILLING_LINK_KEYS must be comma-separated base64 16-byte keys",
+      ),
+  ),
   // Dedicated signer/verifier secret for short-lived MCP delegated credentials.
   // Keep separate from KEYLESS_PROXY_SECRET because delegated credentials can
   // authorize billed requests for a managed OAuth connection.
