@@ -6,9 +6,8 @@ const mocks = vi.hoisted(() => ({
   replicaDb: { name: "replica" },
   normalize: vi.fn((body: any) => body),
   validate: vi.fn(),
-  record: vi.fn().mockResolvedValue({ disposition: "stored", id: "log-id" }),
+  record: vi.fn().mockResolvedValue({ disposition: "accepted", id: "log-id" }),
   policy: vi.fn(),
-  purge: vi.fn(),
   authorize: vi.fn(),
   list: vi.fn().mockResolvedValue({ data: [], nextCursor: null }),
 }));
@@ -17,6 +16,8 @@ vi.mock("../../db/connection", () => ({
   db: mocks.primaryDb,
   dbRr: mocks.replicaDb,
 }));
+vi.mock("../logging/log_job", () => ({ logMcpActionLog: vi.fn() }));
+vi.mock("../../lib/clickhouse-client", () => ({ clickhouseClient: null }));
 vi.mock("./action-logs", async importOriginal => {
   const actual = await importOriginal<typeof import("./action-logs")>();
   return {
@@ -25,7 +26,6 @@ vi.mock("./action-logs", async importOriginal => {
     validateMcpActionLogActor: mocks.validate,
     recordMcpActionLog: mocks.record,
     resolveMcpActionLogTeamPolicy: mocks.policy,
-    purgeMcpActionLogsForTeam: mocks.purge,
     authorizeMcpActionLogViewer: mocks.authorize,
     listMcpActionLogs: mocks.list,
   };
@@ -35,7 +35,10 @@ import {
   ingestMcpActionLogController,
   listMcpActionLogsController,
 } from "../../controllers/v2/mcp-action-logs";
-import { McpActionLogAuthorizationError } from "./action-logs";
+import {
+  McpActionLogAuthorizationError,
+  McpActionLogUnavailableError,
+} from "./action-logs";
 
 function response() {
   const res: any = {};
@@ -49,7 +52,7 @@ describe("MCP action log controllers", () => {
     vi.clearAllMocks();
     mocks.policy.mockResolvedValue({ flags: null });
     config.MCP_ACTION_LOG_STORAGE_ENABLED = true;
-    mocks.record.mockResolvedValue({ disposition: "stored", id: "log-id" });
+    mocks.record.mockResolvedValue({ disposition: "accepted", id: "log-id" });
     mocks.list.mockResolvedValue({ data: [], nextCursor: null });
   });
 
@@ -62,7 +65,6 @@ describe("MCP action log controllers", () => {
     );
     expect(mocks.validate).toHaveBeenCalledTimes(1);
     expect(mocks.policy).toHaveBeenCalledWith(mocks.primaryDb, "team");
-    expect(mocks.purge).toHaveBeenCalledWith(mocks.primaryDb, "team");
     expect(mocks.record).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(202);
     expect(res.json).toHaveBeenCalledWith(
@@ -88,8 +90,33 @@ describe("MCP action log controllers", () => {
       res,
     );
     expect(mocks.validate).toHaveBeenCalledTimes(1);
-    expect(mocks.record).toHaveBeenCalledTimes(1);
+    expect(mocks.record).toHaveBeenCalledWith({ team_id: "team" });
     expect(res.status).toHaveBeenCalledWith(202);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ disposition: "accepted", id: "log-id" }),
+    );
+  });
+
+  it("fails the delivery when the log cannot be published", async () => {
+    mocks.record.mockRejectedValueOnce(new Error("publish failed"));
+    const res = response();
+    await ingestMcpActionLogController(
+      { body: { team_id: "team" } } as any,
+      res,
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it("reports listing as unavailable when storage is not configured", async () => {
+    mocks.list.mockRejectedValueOnce(
+      new McpActionLogUnavailableError("MCP action log storage is unavailable"),
+    );
+    const res = response();
+    await listMcpActionLogsController(
+      { auth: { team_id: "team" }, acuc: { api_key_id: 42 }, query: {} } as any,
+      res,
+    );
+    expect(res.status).toHaveBeenCalledWith(503);
   });
 
   it("authorizes listing from the authenticated API key id", async () => {
@@ -104,11 +131,7 @@ describe("MCP action log controllers", () => {
     );
     expect(mocks.authorize).toHaveBeenCalledWith(mocks.primaryDb, "team", 42);
     expect(mocks.policy).toHaveBeenCalledWith(mocks.primaryDb, "team");
-    expect(mocks.list).toHaveBeenCalledWith(
-      mocks.replicaDb,
-      "team",
-      expect.any(Object),
-    );
+    expect(mocks.list).toHaveBeenCalledWith("team", expect.any(Object));
   });
 
   it("prefers the exact bigint API-key ID when authentication provides it", async () => {
@@ -176,7 +199,6 @@ describe("MCP action log controllers", () => {
       res,
     );
     expect(mocks.authorize).toHaveBeenCalledTimes(1);
-    expect(mocks.purge).toHaveBeenCalledWith(mocks.primaryDb, "team");
     expect(mocks.list).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
       success: true,
