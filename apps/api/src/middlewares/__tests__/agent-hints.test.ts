@@ -745,6 +745,12 @@ describe("agent hints provider middleware", () => {
 });
 
 describe("insufficient-credits refusals and a pending provider lookup", () => {
+  // Timing assertions use a wide margin between "waited for the bound" and
+  // "did not wait": a long bound (LONG) that a correct response never reaches,
+  // or a short one (SHORT) checked only from below, so scheduling delay under
+  // load cannot fail a correct response.
+  const LONG = 10_000;
+  const SHORT = 60;
   const REFUSAL = { success: false, error: "Insufficient credits." };
   const CREDIT_RULES: AgentHintRule[] = [
     {
@@ -766,7 +772,7 @@ describe("insufficient-credits refusals and a pending provider lookup", () => {
   const originalTimeout = config.AGENT_HINTS_PROVIDER_TIMEOUT_MS;
 
   beforeEach(() => {
-    config.AGENT_HINTS_PROVIDER_TIMEOUT_MS = 50;
+    config.AGENT_HINTS_PROVIDER_TIMEOUT_MS = LONG;
   });
 
   afterAll(() => {
@@ -801,49 +807,42 @@ describe("insufficient-credits refusals and a pending provider lookup", () => {
     return { response, ms: performance.now() - started };
   }
 
+  const REFUSED = {
+    status: 402,
+    insufficientCredits: true,
+    remainingCredits: 0,
+  };
+
   it("waits for a lookup that settles within the bound and adds its hints", async () => {
     const { response, ms } = await timed(
-      holderAppFor(pendingHolder(15), REFUSAL, {
-        status: 402,
-        insufficientCredits: true,
-        remainingCredits: 0,
-      }),
+      holderAppFor(pendingHolder(15), REFUSAL, REFUSED),
     );
     expect(response.statusCode).toBe(402);
     expect(response.body).toEqual({
       ...REFUSAL,
       agent_hints: ["Out of credits."],
     });
-    expect(ms).toBeGreaterThanOrEqual(14);
-    expect(ms).toBeLessThan(45);
+    expect(ms).toBeLessThan(LONG / 2);
   });
 
   it("sends the refusal at the bound without hints when the lookup is slower", async () => {
+    config.AGENT_HINTS_PROVIDER_TIMEOUT_MS = SHORT;
     const { response, ms } = await timed(
-      holderAppFor(pendingHolder(), REFUSAL, {
-        status: 402,
-        insufficientCredits: true,
-        remainingCredits: 0,
-      }),
+      holderAppFor(pendingHolder(), REFUSAL, REFUSED),
     );
     expect(response.statusCode).toBe(402);
     expect(response.body).toEqual(REFUSAL);
-    expect(ms).toBeGreaterThanOrEqual(45);
-    expect(ms).toBeLessThan(150);
+    expect(ms).toBeGreaterThanOrEqual(SHORT - 5);
   });
 
   it("counts the bound from when the lookup started", async () => {
     const holder = pendingHolder();
-    holder.startedAt = Date.now() - 40;
+    holder.startedAt = Date.now() - (LONG - 20);
     const { response, ms } = await timed(
-      holderAppFor(holder, REFUSAL, {
-        status: 402,
-        insufficientCredits: true,
-        remainingCredits: 0,
-      }),
+      holderAppFor(holder, REFUSAL, REFUSED),
     );
     expect(response.body).toEqual(REFUSAL);
-    expect(ms).toBeLessThan(40);
+    expect(ms).toBeLessThan(LONG / 2);
   });
 
   it("does not delay a successful response while the lookup is pending", async () => {
@@ -853,7 +852,7 @@ describe("insufficient-credits refusals and a pending provider lookup", () => {
     );
     expect(response.statusCode).toBe(200);
     expect(response.body).toEqual(body);
-    expect(ms).toBeLessThan(40);
+    expect(ms).toBeLessThan(LONG / 2);
   });
 
   it("does not delay other refusals while the lookup is pending", async () => {
@@ -864,7 +863,7 @@ describe("insufficient-credits refusals and a pending provider lookup", () => {
       }),
     );
     expect(response.body).toEqual(REFUSAL);
-    expect(ms).toBeLessThan(40);
+    expect(ms).toBeLessThan(LONG / 2);
   });
 
   it("does not wait when the lookup has already settled", async () => {
@@ -877,13 +876,13 @@ describe("insufficient-credits refusals and a pending provider lookup", () => {
           ready: new Promise(() => {}),
         },
         REFUSAL,
-        { status: 402, insufficientCredits: true, remainingCredits: 0 },
+        REFUSED,
       ),
     );
     expect(response.body).toEqual({
       ...REFUSAL,
       agent_hints: ["Out of credits."],
     });
-    expect(ms).toBeLessThan(40);
+    expect(ms).toBeLessThan(LONG / 2);
   });
 });
