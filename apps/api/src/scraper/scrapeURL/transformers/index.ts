@@ -648,6 +648,7 @@ const transformerStack: Transformer[] = [
 
 const llmTransformers: ReadonlySet<Transformer> = new Set<Transformer>([
   performCleanContent,
+  performPromptInjectionGuard,
   performLLMExtract,
   performDeterministicJson,
   performSummary,
@@ -683,12 +684,13 @@ export async function executeTransformers(
   if (
     isRawPdf &&
     (meta.options.onlyCleanContent ||
+      meta.options.checkPromptInjection ||
       rawPdfLlmFormats.some(type =>
         hasFormatOfType(meta.options.formats, type),
       ))
   ) {
     document.warning =
-      'PDF parsing is disabled by `parsers: []`, so this PDF\'s content is raw base64 and was not sent to the LLM; json, summary, query and onlyCleanContent output were skipped. Add "pdf" to `parsers` (or omit `parsers`) to run them on the parsed PDF text.' +
+      'PDF parsing is disabled, so this PDF\'s content is raw base64 and was not sent to the LLM; json, deterministicJson, summary, question, highlights, query, onlyCleanContent and checkPromptInjection were skipped. Enable parsing with `parsePDF: true` (v1) or add "pdf" to `parsers` (v2).' +
       (document.warning ? " " + document.warning : "");
   }
 

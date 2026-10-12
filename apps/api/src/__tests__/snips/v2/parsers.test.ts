@@ -2,6 +2,7 @@ import {
   ALLOW_TEST_SUITE_WEBSITE,
   describeIf,
   HAS_AI,
+  TEST_PRODUCTION,
   TEST_SUITE_WEBSITE,
 } from "../lib";
 import { scrape, scrapeRaw, scrapeTimeout, idmux, Identity } from "./lib";
@@ -496,7 +497,7 @@ describeIf(ALLOW_TEST_SUITE_WEBSITE)("Parsers parameter tests", () => {
 
         expect(response.markdown).toContain("JVBER");
         expect(response.summary).toBeUndefined();
-        expect(response.warning).toContain("parsers: []");
+        expect(response.warning).toContain("PDF parsing is disabled");
       },
       scrapeTimeout * 2,
     );
@@ -523,12 +524,12 @@ describeIf(ALLOW_TEST_SUITE_WEBSITE)("Parsers parameter tests", () => {
         );
 
         expect(response.json).toBeUndefined();
-        expect(response.warning).toContain("parsers: []");
+        expect(response.warning).toContain("PDF parsing is disabled");
       },
       scrapeTimeout * 2,
     );
 
-    describeIf(HAS_AI)("with PDF parsing enabled", () => {
+    describeIf(TEST_PRODUCTION || HAS_AI)("with PDF parsing enabled", () => {
       it.concurrent(
         "still summarizes the parsed PDF text",
         async () => {
@@ -542,7 +543,9 @@ describeIf(ALLOW_TEST_SUITE_WEBSITE)("Parsers parameter tests", () => {
           );
 
           expect(response.summary).toBeDefined();
-          expect(response.warning ?? "").not.toContain("parsers: []");
+          expect(response.warning ?? "").not.toContain(
+            "PDF parsing is disabled",
+          );
         },
         scrapeTimeout * 2,
       );
