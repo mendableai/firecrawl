@@ -552,7 +552,7 @@ Authorization: Bearer YOUR_API_KEY`;
 }
 
 function keylessSuspiciousIpMessage(signupUrl: string): string {
-  return `Unfortunately, your IP address looks suspicious, so Firecrawl can't be used without an API key from here. Sign up for a free API key at ${signupUrl} for 1000 credits and higher rate limits for free. (If you're an agent, you can also use https://firecrawl.dev/auth.md)`;
+  return `Unfortunately, your IP address looks like a VPN or proxy, so Firecrawl can't be used without an API key from here. Sign up with Google or GitHub at ${signupUrl} for a free API key with 1000 credits and higher rate limits. (If you're an agent, you can also use https://firecrawl.dev/auth.md)`;
 }
 
 /**
