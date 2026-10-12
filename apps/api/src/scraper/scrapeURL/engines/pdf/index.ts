@@ -916,6 +916,8 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       }
     }
 
+    const parsedEmpty = result !== null && !result.markdown?.trim();
+
     // Final fallback to PdfParse (skipped when Fire PDF is forced).
     if (!result && !forceFirePDF) {
       result = await scrapePDFWithParsePDF(
@@ -934,6 +936,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       statusCode: response.status,
       html: result?.html ?? "",
       markdown: result?.markdown ?? "",
+      ...(parsedEmpty ? { parsedEmpty: true } : {}),
       ...(includePageMarkdown && result?.pageMarkdown
         ? {
             pages: result.pageMarkdown.map(page => ({
