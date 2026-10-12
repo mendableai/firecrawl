@@ -28,8 +28,6 @@ import { v2Router } from "./routes/v2";
 import { exchangeRouter } from "./routes/exchange";
 import { labsRouter } from "./routes/labs";
 import { registerMcpActionLogIngestRoute } from "./routes/mcp-action-logs";
-import { startMcpActionLogRetentionWorkerIfEnabled } from "./services/mcp/action-logs";
-import { db } from "./db/connection";
 import { nuqShutdown } from "./services/worker/nuq";
 import { getErrorContactMessage } from "./lib/deployment";
 import { initializeBlocklist } from "./scraper/WebScraper/utils/blocklist";
@@ -154,10 +152,6 @@ async function startServer(port = DEFAULT_PORT) {
     throw error;
   }
 
-  const mcpActionLogRetention = startMcpActionLogRetentionWorkerIfEnabled({
-    enabled: config.MCP_ACTION_LOG_STORAGE_ENABLED,
-    db,
-  });
   const server = app.listen(Number(port), HOST, (error?: Error) => {
     if (error) {
       logger.error("Failed to start HTTP server", { error, port, host: HOST });
@@ -169,7 +163,6 @@ async function startServer(port = DEFAULT_PORT) {
 
   const exitHandler = async () => {
     logger.info("SIGTERM signal received: closing HTTP server");
-    mcpActionLogRetention?.stop();
     if (config.IS_KUBERNETES) {
       // Account for GCE load balancer drain timeout
       logger.info("Waiting 60s for GCE load balancer drain timeout");
