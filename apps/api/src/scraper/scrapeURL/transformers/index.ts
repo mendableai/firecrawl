@@ -1,6 +1,6 @@
 import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { Meta } from "..";
-import { Document } from "../../../controllers/v2/types";
+import { Document, shouldParsePDF } from "../../../controllers/v2/types";
 import { htmlTransform } from "../lib/removeUnwantedElements";
 import { extractLinks } from "../lib/extractLinks";
 import { isMarkdownContentType } from "../lib/extractLinksFromMarkdown";
@@ -646,6 +646,24 @@ const transformerStack: Transformer[] = [
   coerceFieldsToFormats,
 ];
 
+const llmTransformers: ReadonlySet<Transformer> = new Set<Transformer>([
+  performCleanContent,
+  performLLMExtract,
+  performDeterministicJson,
+  performSummary,
+  performQuery,
+  performAgent,
+]);
+
+const rawPdfLlmFormats = [
+  "json",
+  "deterministicJson",
+  "summary",
+  "question",
+  "highlights",
+  "query",
+] as const;
+
 export async function executeTransformers(
   meta: Meta,
   document: Document,
@@ -660,9 +678,26 @@ export async function executeTransformers(
     return coerceFieldsToFormats(meta, document);
   }
 
+  const isRawPdf =
+    meta.winnerEngine === "pdf" && !shouldParsePDF(meta.options.parsers);
+  if (
+    isRawPdf &&
+    (meta.options.onlyCleanContent ||
+      rawPdfLlmFormats.some(type =>
+        hasFormatOfType(meta.options.formats, type),
+      ))
+  ) {
+    document.warning =
+      'PDF parsing is disabled by `parsers: []`, so this PDF\'s content is raw base64 and was not sent to the LLM; json, summary, query and onlyCleanContent output were skipped. Add "pdf" to `parsers` (or omit `parsers`) to run them on the parsed PDF text.' +
+      (document.warning ? " " + document.warning : "");
+  }
+
   const executions: [string, number][] = [];
 
   for (const transformer of transformerStack) {
+    if (isRawPdf && llmTransformers.has(transformer)) {
+      continue;
+    }
     const _meta = {
       ...meta,
       logger: meta.logger.child({
