@@ -251,3 +251,68 @@ describe("processRawBranding primary", () => {
     expect(profile.colors?.primary).toBe("#635BFF");
   });
 });
+
+describe("monochrome brands", () => {
+  const button = (background: string, textColor: string, index: number) => ({
+    index,
+    text: `Button ${index}`,
+    html: "",
+    classes: "",
+    background,
+    textColor,
+  });
+  const llmPicking = (primaryColor: string) => ({
+    ...emptyLlm,
+    buttonClassification: {
+      primaryButtonIndex: 0,
+      primaryButtonReasoning: "n/a",
+      secondaryButtonIndex: -1,
+      secondaryButtonReasoning: "n/a",
+      confidence: 0.9,
+    },
+    colorRoles: {
+      primaryColor,
+      accentColor: "",
+      backgroundColor: "#FFFFFF",
+      textPrimary: "#171717",
+      confidence: 0.8,
+    },
+  });
+
+  it("uses the black call to action when the chosen color is only a link color", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      llmPicking("#0072F5"),
+      [button("#171717", "#FFFFFF", 0), button("#FFFFFF", "#171717", 1)],
+    );
+    expect(merged.colors?.primary).toBe("#171717");
+    expect(merged.colors?.accent).toBe("#0072F5");
+  });
+
+  it("keeps a color that also fills a button", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      llmPicking("#0071E3"),
+      [button("#000000", "#FFFFFF", 0), button("#0071E3", "#FFFFFF", 1)],
+    );
+    expect(merged.colors?.primary).toBe("#0071E3");
+  });
+
+  it("keeps a navy call to action from replacing the brand color", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      llmPicking("#635BFF"),
+      [button("#0A2540", "#FFFFFF", 0)],
+    );
+    expect(merged.colors?.primary).toBe("#635BFF");
+  });
+
+  it("leaves dark pages alone", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "dark", colors: {} },
+      llmPicking("#1ED760"),
+      [button("#111111", "#FFFFFF", 0)],
+    );
+    expect(merged.colors?.primary).toBe("#1ED760");
+  });
+});
