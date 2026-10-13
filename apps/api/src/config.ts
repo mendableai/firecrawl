@@ -380,7 +380,12 @@ const configSchema = z.object({
       .refine(isEd25519PrivateKey, "must be an Ed25519 private key in PEM"),
   ),
   WEB_BOT_AUTH_SIGNATURE_AGENT: emptyStringAsUndefined(
-    z.url({ protocol: /^https$/ }),
+    z
+      .url({ protocol: /^https$/ })
+      .refine(
+        value => new URL(value).origin === value,
+        "must be a bare https origin",
+      ),
   ),
   WEB_BOT_AUTH_TEAM_IDS: delimitedList(",").optional(),
 
