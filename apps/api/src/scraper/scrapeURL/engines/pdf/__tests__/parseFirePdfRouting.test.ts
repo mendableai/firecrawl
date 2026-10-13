@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { detectPdf, processPdf } from "@mendable/firecrawl-rs";
@@ -51,11 +51,14 @@ function setConfig(
   Object.assign(config as any, overrides);
 }
 
+const tempDirs: string[] = [];
+
 async function makeMeta(
   internalOptions: Record<string, unknown>,
   parsers: unknown[] = ["pdf"],
 ) {
   const dir = await mkdtemp(path.join(tmpdir(), "parse-fire-pdf-"));
+  tempDirs.push(dir);
   const filePath = path.join(dir, "doc.pdf");
   await writeFile(filePath, "%PDF-1.7\n%test\n");
   const logger: any = {
@@ -127,6 +130,12 @@ describe("PDF routing for /v2/parse", () => {
       markdown: "pdf-parse",
       html: "<p>pdf-parse</p>",
     });
+  });
+
+  afterEach(async () => {
+    await Promise.all(
+      tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })),
+    );
   });
 
   afterAll(() => {
