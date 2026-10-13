@@ -1123,7 +1123,17 @@ export async function scrapeURLWithEngine(
       ? meta.options
       : {
           ...meta.options,
-          headers: { ...meta.options.headers, ...signatureHeaders },
+          headers: {
+            ...Object.fromEntries(
+              Object.entries(meta.options.headers ?? {}).filter(
+                ([name]) =>
+                  !["signature-agent", "signature-input", "signature"].includes(
+                    name.toLowerCase(),
+                  ),
+              ),
+            ),
+            ...signatureHeaders,
+          },
         };
 
   const _meta = {

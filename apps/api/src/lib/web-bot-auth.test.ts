@@ -8,8 +8,7 @@ const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 Object.assign(config, {
   WEB_BOT_AUTH_PRIVATE_KEY: privateKey
     .export({ format: "pem", type: "pkcs8" })
-    .toString()
-    .replace(/\n/g, "\\n"),
+    .toString(),
   WEB_BOT_AUTH_SIGNATURE_AGENT: "https://api.firecrawl.dev",
   WEB_BOT_AUTH_TEAM_IDS: ["alexandria-team"],
 });

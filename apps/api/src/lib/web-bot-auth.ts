@@ -28,12 +28,7 @@ function signingKey(): SigningKey | null {
   if (!config.WEB_BOT_AUTH_PRIVATE_KEY || !config.WEB_BOT_AUTH_SIGNATURE_AGENT)
     return (cachedKey = null);
 
-  const privateKey = createPrivateKey(
-    config.WEB_BOT_AUTH_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  );
-  if (privateKey.asymmetricKeyType !== "ed25519") {
-    throw new Error("WEB_BOT_AUTH_PRIVATE_KEY must be an Ed25519 private key");
-  }
+  const privateKey = createPrivateKey(config.WEB_BOT_AUTH_PRIVATE_KEY);
   const { x } = createPublicKey(privateKey).export({ format: "jwk" });
   const jwk = { kty: "OKP", crv: "Ed25519", x: x! } as const;
   // RFC 7638 thumbprint: required members only, in lexicographic order.
