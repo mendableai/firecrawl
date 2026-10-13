@@ -15,6 +15,7 @@ use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use tracing::field::{Field, Visit};
 use tracing::{Event, span};
 use tracing_subscriber::Layer;
+use tracing_subscriber::filter::{FilterExt, filter_fn};
 use tracing_subscriber::layer::Context as LayerContext;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
@@ -189,16 +190,22 @@ pub fn init_telemetry() {
       tracing_opentelemetry::layer().with_tracer(tracer)
     });
 
-    let filter =
-      EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    // ZDR is marked on the scrape_url span, so it must exist whatever RUST_LOG says.
+    let filter = EnvFilter::try_from_default_env()
+      .unwrap_or_else(|_| EnvFilter::new("info"))
+      .or(filter_fn(|meta| {
+        meta.is_span() && meta.name() == "scrape_url"
+      }));
 
     // Installed even without an exporter: the panic hook reads ZdrLayer's marker.
     let _ = tracing_subscriber::registry()
-      .with(filter)
-      // Marks ZDR spans and vetoes ZDR log events for every downstream layer.
-      .with(ZdrLayer)
-      .with(fmt::layer().with_writer(std::io::stderr))
-      .with(otel_layer)
+      .with(
+        // Marks ZDR spans and vetoes ZDR log events for every downstream layer.
+        ZdrLayer
+          .and_then(fmt::layer().with_writer(std::io::stderr))
+          .and_then(otel_layer)
+          .with_filter(filter),
+      )
       .try_init();
   });
 }
