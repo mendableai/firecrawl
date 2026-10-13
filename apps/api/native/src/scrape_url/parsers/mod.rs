@@ -33,7 +33,7 @@ pub async fn parse_engine_result(
 ) -> Result<Document, ScrapeURLError> {
   let document = if pdf::has_pdf_signal(&result) {
     tracing::Span::current().record("parser", "pdf");
-    pdf::parse_pdf(meta, result, None).await
+    pdf::parse_pdf(meta, result, meta.deadline).await
   } else if document::has_document_signal(&result) {
     tracing::Span::current().record("parser", "document");
     document::parse_document(meta, result)

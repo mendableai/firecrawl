@@ -20,7 +20,7 @@ pub struct MaxAgeRow {
   pub max_age: Option<i32>,
 }
 
-#[derive(Debug, FromRow, Deserialize, Serialize)]
+#[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 pub struct IndexEntry {
   pub id: Uuid,
   pub created_at: DateTime<Utc>,
@@ -84,7 +84,7 @@ impl IndexDb {
         .bind(domain_hash)
         .persistent(false)
         .fetch_optional(&mut *tx)
-        .await?; // TODO: timeout
+        .await?;
     tx.commit().await?;
     Ok(row.and_then(|x| x.max_age))
   }
@@ -125,7 +125,7 @@ impl IndexDb {
       .bind(filter.min_age)
       .persistent(false)
       .fetch_all(&mut *tx)
-      .await?; // TODO: timeout
+      .await?;
     tx.commit().await?;
     Ok(entries)
   }

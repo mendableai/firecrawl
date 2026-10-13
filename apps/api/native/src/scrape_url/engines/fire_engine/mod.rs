@@ -1,17 +1,11 @@
-use std::{
-  sync::{LazyLock, OnceLock},
-  time::Duration,
-};
+use std::sync::{LazyLock, OnceLock};
 
 use regex::Regex;
-use tracing::{Instrument, instrument};
+use tracing::instrument;
 
 use self::{
   actions::FireEngineActionResultKind,
-  scrape::{
-    FireEngineProfile, FireEngineScrapeRequest, FireEngineScrapeRequestEngine,
-    FireEngineScrapeResponse,
-  },
+  scrape::{FireEngineProfile, FireEngineScrapeRequest, FireEngineScrapeRequestEngine},
 };
 use super::super::{
   actions::{Action, InternalAction, InternalActionMetadata, WaitAction},
@@ -32,6 +26,7 @@ mod actions;
 mod check_status;
 mod delete;
 mod file;
+mod poll;
 mod scrape;
 
 static FIRE_ENGINE_BETA_URL: LazyLock<Option<String>> = LazyLock::new(|| {
@@ -61,6 +56,8 @@ impl FireEngine {
     skip(self, meta),
     fields(
       fire_engine.job_id = tracing::field::Empty,
+      fire_engine.job_abandoned = tracing::field::Empty,
+      deadline.remaining_ms = tracing::field::Empty,
       javascript_return.parse_error = tracing::field::Empty,
     ),
     err
@@ -119,6 +116,8 @@ impl FireEngine {
     }
 
     let had_actions = !actions.is_empty();
+    let remaining_ms = meta.remaining_ms();
+    tracing::Span::current().record("deadline.remaining_ms", remaining_ms);
 
     let request = FireEngineScrapeRequest {
       url: meta.get_url(),
@@ -131,7 +130,7 @@ impl FireEngine {
       priority: meta.internal_options.priority,
       geolocation: &meta.options.location,
       mobile: meta.options.mobile,
-      timeout: 300000, // TODO: timeout
+      timeout: remaining_ms.unwrap_or(300000),
       disable_smart_wait_cache: meta.internal_options.disable_smart_wait_cache,
       mobile_proxy: proxy == ScrapeProxy::Enhanced,
       auto_proxy: meta.options.proxy == ProxyMode::Auto,
@@ -168,37 +167,7 @@ impl FireEngine {
     };
 
     let scrape = self.call_scrape(request).await?;
-
-    let (job_id, result) = match scrape {
-      FireEngineScrapeResponse::Completed(x) => (x.job_id.clone(), Ok(x)),
-      FireEngineScrapeResponse::Processing(x) => loop {
-        match self.call_check_status(&x.job_id).await? {
-          FireEngineScrapeResponse::Completed(y) => break (Some(x.job_id), Ok(y)),
-          FireEngineScrapeResponse::Processing(_) => {
-            tokio::time::sleep(Duration::from_millis(500)).await;
-          }
-          FireEngineScrapeResponse::Failed(e) => break (Some(x.job_id.clone()), Err(e)),
-        }
-      },
-      FireEngineScrapeResponse::Failed(e) => (None, Err(e)),
-    };
-
-    if let Some(job_id) = &job_id {
-      tracing::Span::current().record("fire_engine.job_id", job_id.as_str());
-    }
-
-    // Dispatch delete if deleting the job is our responsibility
-    if let Some(job_id) = job_id {
-      let self2 = self.clone();
-      tokio::task::spawn(
-        async move {
-          let _ = self2.call_delete(&job_id).await;
-        }
-        .instrument(tracing::Span::current()),
-      );
-    }
-
-    let result = match result {
+    let result = match self.finish_job(scrape).await? {
       Ok(x)
         if x.page_status_code == 415
           && let Some(page_error) = x.page_error.to_owned()

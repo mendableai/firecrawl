@@ -1,5 +1,10 @@
-use std::collections::HashSet;
+use std::{
+  collections::HashSet,
+  sync::{Arc, Mutex},
+  time::Duration,
+};
 
+use tokio::time::Instant;
 use url::Url;
 
 use super::feature_flags::FeatureFlag;
@@ -7,6 +12,7 @@ use super::feature_flags::build_feature_flags;
 use super::options::{InternalOptions, ScrapeOptions};
 use super::raw_page::BrowserCookie;
 use super::rewrite_url::rewrite_url;
+use super::timeout::LargePdfProcessing;
 
 pub struct Meta {
   pub id: String,
@@ -16,13 +22,15 @@ pub struct Meta {
   pub options: ScrapeOptions,
   pub internal_options: InternalOptions,
   // logger:
-  // abort:
+  /// When the scrape runs out of time; `None` when no `timeout` was given.
+  pub deadline: Option<Instant>,
   pub feature_flags: HashSet<FeatureFlag>,
   // cost_tracking:
   // winner_engine:
-  // abort_handle:
   /// Cookies the engine returned, for the YouTube, audio and video transformers.
   pub audio_cookies: Vec<BrowserCookie>,
+  /// Shared so the timeout error can read it after the scrape future is dropped.
+  pub large_pdf_processing: Arc<Mutex<Option<LargePdfProcessing>>>,
   // warnings:
 }
 
@@ -35,8 +43,6 @@ impl Meta {
     internal_options: InternalOptions,
     // cost_tracking:
   ) -> Self {
-    // TODO: abortController + abortHandle, figure out how aborts will work in general
-
     // NOTE: isn't this fixed by rafa?
     // let ff = build_feature_flags(&options, &internal_options);
     // if internal_options.zero_data_retention {
@@ -54,11 +60,27 @@ impl Meta {
       team_id,
       rewritten_url: rewrite_url(&url),
       url,
+      deadline: options
+        .timeout
+        .and_then(|ms| Instant::now().checked_add(Duration::from_millis(ms))),
       feature_flags: build_feature_flags(&options, &internal_options),
       options,
       internal_options,
       audio_cookies: Vec::new(),
+      large_pdf_processing: Arc::default(),
     }
+  }
+
+  /// Milliseconds left before the deadline, like TS `scrapeTimeout()`.
+  pub fn remaining_ms(&self) -> Option<u64> {
+    self.deadline.map(|deadline| {
+      u64::try_from(
+        deadline
+          .saturating_duration_since(Instant::now())
+          .as_millis(),
+      )
+      .unwrap_or(u64::MAX)
+    })
   }
 
   pub fn get_url(&self) -> &Url {

@@ -1,12 +1,12 @@
 use std::{fmt::Debug, time::Duration};
 
 use chrono::{DateTime, Utc};
-use redis::{AsyncTypedCommands, aio::MultiplexedConnection};
+use redis::{AsyncTypedCommands, RedisResult, aio::MultiplexedConnection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use tokio::sync::{Mutex, OnceCell};
-use tracing::instrument;
+use tracing::{Span, field::Empty, instrument};
 use uuid::Uuid;
 
 use super::super::error::ScrapeURLError;
@@ -17,7 +17,20 @@ use super::{
 
 static INDEX_CACHE: OnceCell<Option<Mutex<MultiplexedConnection>>> = OnceCell::const_new();
 
+/// A read slower than this counts as no answer, so the lookup falls back to Postgres.
+const READ_TIMEOUT: Duration = Duration::from_millis(150);
+
+#[derive(Clone, Copy)]
 pub struct IndexCache(&'static Mutex<MultiplexedConnection>);
+
+/// `None` when the read timed out; records `timed_out` on the current span.
+async fn read_with_timeout<T>(
+  read: impl Future<Output = RedisResult<T>>,
+) -> Result<Option<T>, ScrapeURLError> {
+  let result = tokio::time::timeout(READ_TIMEOUT, read).await;
+  Span::current().record("timed_out", result.is_err());
+  Ok(result.ok().transpose()?)
+}
 
 impl Debug for IndexCache {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -120,15 +133,18 @@ impl IndexCache {
     )
   }
 
-  #[instrument(name = "IndexCache::get_max_age", err)]
+  #[instrument(name = "IndexCache::get_max_age", fields(timed_out = Empty), err)]
   pub async fn get_max_age(&self, domain_hash: &[u8]) -> Result<Option<i32>, ScrapeURLError> {
-    let unparsed = {
-      // TODO: timeout
+    let Some(unparsed) = read_with_timeout(async {
       let mut index_cache = self.0.lock().await;
 
       index_cache
         .get(format!("idxma:{}", hex::encode(domain_hash)))
-        .await?
+        .await
+    })
+    .await?
+    else {
+      return Ok(None);
     };
 
     Ok(
@@ -142,7 +158,6 @@ impl IndexCache {
   #[instrument(name = "IndexCache::set_max_age", err)]
   pub async fn set_max_age(&self, domain_hash: &[u8], max_age: i32) -> Result<(), ScrapeURLError> {
     let mut index_cache = self.0.lock().await;
-    // TODO: timeout
     index_cache
       .set_ex(
         format!("idxma:{}", hex::encode(domain_hash)),
@@ -155,7 +170,7 @@ impl IndexCache {
     Ok(())
   }
 
-  #[instrument(name = "IndexCache::_get_negative_hit", err)]
+  #[instrument(name = "IndexCache::_get_negative_hit", fields(timed_out = Empty), err)]
   async fn _get_negative_hit(
     &self,
     variant: &IndexEntryVariant,
@@ -163,11 +178,14 @@ impl IndexCache {
   ) -> Result<bool, ScrapeURLError> {
     let key = variant.to_redis_negative_key();
 
-    let unparsed = {
-      // TODO: timeout
+    let Some(unparsed) = read_with_timeout(async {
       let mut index_cache = self.0.lock().await;
 
-      index_cache.get(&key).await?
+      index_cache.get(&key).await
+    })
+    .await?
+    else {
+      return Ok(false);
     };
 
     let parsed: Option<IndexNegativeCacheEntry> = unparsed
@@ -186,7 +204,7 @@ impl IndexCache {
     )
   }
 
-  #[instrument(name = "IndexCache::get_entries", err)]
+  #[instrument(name = "IndexCache::get_entries", fields(timed_out = Empty), err)]
   pub async fn get_entries(
     &self,
     variant: &IndexEntryVariant,
@@ -194,11 +212,14 @@ impl IndexCache {
   ) -> Result<IndexCacheResult, ScrapeURLError> {
     let key = variant.to_redis_key();
 
-    let unparsed = {
-      // TODO: timeout
+    let Some(unparsed) = read_with_timeout(async {
       let mut index_cache = self.0.lock().await;
 
-      index_cache.hgetall(&key).await?
+      index_cache.hgetall(&key).await
+    })
+    .await?
+    else {
+      return Ok(IndexCacheResult::Miss);
     };
 
     let mut parsed = unparsed
@@ -234,7 +255,6 @@ impl IndexCache {
       .collect::<Result<Vec<_>, _>>()?;
 
     let hlen: i32 = {
-      // TODO: timeout
       let mut index_cache = self.0.lock().await;
 
       redis::pipe()
@@ -251,7 +271,6 @@ impl IndexCache {
 
     if hlen > 32 {
       let unparsed = {
-        // TODO: timeout
         let mut index_cache = self.0.lock().await;
 
         index_cache.hgetall(&key).await?
@@ -266,7 +285,6 @@ impl IndexCache {
       let to_delete: Vec<String> = parsed.into_iter().skip(32).map(|(id, _)| id).collect();
 
       {
-        // TODO: timeout
         let mut index_cache = self.0.lock().await;
 
         index_cache.hdel(&key, to_delete.as_slice()).await?;
@@ -285,7 +303,6 @@ impl IndexCache {
     let key = variant.to_redis_key();
 
     {
-      // TODO: timeout
       let mut index_cache = self.0.lock().await;
 
       index_cache.hdel(&key, id.to_string()).await?;
@@ -304,7 +321,6 @@ impl IndexCache {
     let key = variant.to_redis_negative_key();
 
     {
-      // TODO: timeout
       let mut index_cache = self.0.lock().await;
 
       index_cache

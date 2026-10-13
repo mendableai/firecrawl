@@ -9,6 +9,7 @@ use self::{
   poll::PollPlan,
   result::{AbandonGuard, JobProgress},
 };
+use super::super::super::super::timeout::LargePdfProcessing;
 use super::{
   FallbackReason, FirePdfClient, FirePdfError, FirePdfJobOptions, FirePdfResult, io,
   schedule::{
@@ -55,6 +56,20 @@ struct JobPlan<'a> {
   job_deadline_at_ms: i64,
   polling_deadline: i64,
   submit_time: i64,
+}
+
+impl JobPlan<'_> {
+  /// This job as a large-PDF job that keeps running if the scrape times out.
+  fn large_pdf(&self, pages_estimate: u32, last_status: &'static str) -> LargePdfProcessing {
+    LargePdfProcessing {
+      job_scrape_id: self.job_scrape_id.to_string(),
+      pages_estimate,
+      submitted_at_ms: self.submit_time,
+      job_deadline_at_ms: self.wire_input.is_some().then_some(self.job_deadline_at_ms),
+      last_status,
+      server_estimate: None,
+    }
+  }
 }
 
 impl FirePdfClient<'_> {
@@ -201,12 +216,17 @@ impl FirePdfClient<'_> {
     let (error, maybe_accepted) = match attempt {
       Ok(done) => {
         guard.disarm();
+        self.track_large_pdf(None);
         return Ok(done);
       }
       Err(failure) => failure,
     };
     let job_already_terminal =
       matches!(&error, FirePdfError::Async(reason) if reason.is_terminal());
+    if job_already_terminal || progress.terminal_reached {
+      // The job is over, so a timeout must not say processing continues.
+      self.track_large_pdf(None);
+    }
     if plan.is_inline
       && (progress.submission_accepted || maybe_accepted)
       && !progress.terminal_reached
@@ -219,6 +239,12 @@ impl FirePdfClient<'_> {
     Err(error)
   }
 
+  fn track_large_pdf(&self, current: Option<LargePdfProcessing>) {
+    if let Ok(mut slot) = self.request.large_pdf_processing.lock() {
+      *slot = current;
+    }
+  }
+
   /// The error carries whether the submit may have been accepted without a valid answer.
   async fn drive_steps(
     &self,
@@ -228,13 +254,20 @@ impl FirePdfClient<'_> {
     progress: &mut JobProgress,
   ) -> Result<(OcrDocument, Option<u32>), (FirePdfError, bool)> {
     let (already_done, initial_delay) = match &plan.wire_input {
-      None => (false, None),
+      None => {
+        self.track_large_pdf(Some(plan.large_pdf(options.pages_estimate, "running")));
+        (false, None)
+      }
       Some(wire) => {
         let submit = self
           .submit_job(wire, options, &plan.deadline_at)
           .await
           .map_err(|f| (f.error, f.maybe_accepted))?;
         progress.submission_accepted = true;
+        // A by-reference job keeps running if this scrape is abandoned.
+        if !plan.is_inline && !submit.already_done {
+          self.track_large_pdf(Some(plan.large_pdf(options.pages_estimate, "queued")));
+        }
         (submit.already_done, submit.retry_after_ms)
       }
     };

@@ -4,13 +4,18 @@ use super::super::super::error::ScrapeURLError;
 use super::{FireEngine, client};
 
 impl FireEngine {
-  #[instrument(name = "FireEngine::call_delete", skip(self), err)]
+  #[instrument(
+    name = "FireEngine::call_delete",
+    skip(self),
+    fields(response.status = tracing::field::Empty),
+    err
+  )]
   pub(super) async fn call_delete(&self, job_id: &str) -> Result<(), ScrapeURLError> {
-    // TODO: timeout
-    client()?
+    let res = client()?
       .delete(format!("{}/scrape/{}", self.url, job_id))
       .send()
       .await?;
+    tracing::Span::current().record("response.status", res.status().as_u16());
     Ok(())
   }
 }
