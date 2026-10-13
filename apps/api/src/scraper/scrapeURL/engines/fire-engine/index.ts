@@ -425,6 +425,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
             {
               type: "executeJavascript" as const,
               script: getBrandingScript(),
+              realViewport: true,
               metadata: { __firecrawl_internal: true },
             },
           ]
