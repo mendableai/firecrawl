@@ -113,6 +113,21 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
     expect(req.body.limit).toBe(100);
   });
 
+  it("leaves the balance signal unset for a balance that never runs out", async () => {
+    checkCreditsMock.mockResolvedValue({
+      allowed: true,
+      remaining: 0,
+      unlimited: true,
+    });
+
+    const req = buildReq();
+    const { res } = await runMiddleware(req);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(req.account.remainingCredits).toBe(Infinity);
+    expect(res.locals.agentCreditsRemaining).toBeUndefined();
+  });
+
   it("blocks with 402 when Autumn denies and no remaining credits", async () => {
     checkCreditsMock.mockResolvedValue({ allowed: false, remaining: 0 });
 

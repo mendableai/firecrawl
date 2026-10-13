@@ -591,7 +591,7 @@ describe("checkCredits", () => {
       properties: { source: "checkCreditsMiddleware" },
     });
 
-    expect(result).toEqual({ allowed: true, remaining: 500 });
+    expect(result).toEqual({ allowed: true, remaining: 500, unlimited: false });
     expect(mockCheck).toHaveBeenCalledWith(
       expect.objectContaining({
         customerId: "org-1",
@@ -618,7 +618,28 @@ describe("checkCredits", () => {
       orgId: "org-1",
       value: 10,
     });
-    expect(result).toEqual({ allowed: false, remaining: 0 });
+    expect(result).toEqual({ allowed: false, remaining: 0, unlimited: false });
+  });
+
+  it.each([
+    ["an unlimited balance", { unlimited: true, overageAllowed: false }],
+    [
+      "overage billed past the balance",
+      { unlimited: false, overageAllowed: true },
+    ],
+  ])("reports %s as unlimited", async (_label, balance) => {
+    mockCheck.mockResolvedValue({
+      allowed: true,
+      customerId: "org-1",
+      balance: { remaining: 0, ...balance },
+    });
+    const svc = makeService();
+    const result = await svc.checkCredits({
+      teamId: "team-1",
+      orgId: "org-1",
+      value: 1,
+    });
+    expect(result).toEqual({ allowed: true, remaining: 0, unlimited: true });
   });
 
   it("checks against SEARCH_CREDITS when featureId is provided", async () => {
@@ -2067,7 +2088,7 @@ describe("the org the caller supplies", () => {
       value: 42,
     });
 
-    expect(result).toEqual({ allowed: true, remaining: 0 });
+    expect(result).toEqual({ allowed: true, remaining: 0, unlimited: false });
     expect(mockCheck).toHaveBeenCalledWith(
       expect.objectContaining({ customerId: CALLER_ORG, entityId: "team-1" }),
     );

@@ -495,6 +495,8 @@ export class AutumnService {
   }: TrackCreditsParams): Promise<{
     allowed: boolean;
     remaining: number;
+    /** The balance never runs out: unlimited, or overage billed past it. */
+    unlimited?: boolean;
   } | null> {
     if (!autumnClient || this.isPreviewTeam(teamId)) {
       return null;
@@ -542,6 +544,8 @@ export class AutumnService {
       });
 
       const remaining = balance?.remaining ?? 0;
+      const unlimited =
+        balance?.unlimited === true || balance?.overageAllowed === true;
 
       logger.debug("Autumn checkCredits completed", {
         customerId,
@@ -550,8 +554,9 @@ export class AutumnService {
         value,
         allowed,
         remaining,
+        unlimited,
       });
-      return { allowed, remaining };
+      return { allowed, remaining, unlimited };
     } catch (error) {
       logger.error(
         "Autumn checkCredits failed — billing API may be unavailable, falling back",

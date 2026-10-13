@@ -70,7 +70,7 @@ describe("AutumnService resolves no org of its own", () => {
       value: 42,
     });
 
-    expect(result).toEqual({ allowed: true, remaining: 0 });
+    expect(result).toEqual({ allowed: true, remaining: 0, unlimited: false });
     expect(mockCheck).toHaveBeenCalledWith(
       expect.objectContaining({ customerId: CALLER_ORG, entityId: "team-1" }),
     );
