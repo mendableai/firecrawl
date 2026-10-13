@@ -358,6 +358,17 @@ const configSchema = z.object({
   FIRE_EXCHANGE_URL: z.url().optional(),
   EXCHANGE_INTERNAL_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
 
+  // Cloudflare Web Bot Auth (lib/web-bot-auth.ts): scrapes from
+  // WEB_BOT_AUTH_TEAM_IDS (the Exchange's crawler team) are signed with this
+  // Ed25519 PEM key, and the API serves its key directory at
+  // /.well-known/http-message-signatures-directory. The agent is the https
+  // origin that directory is served from.
+  WEB_BOT_AUTH_PRIVATE_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
+  WEB_BOT_AUTH_SIGNATURE_AGENT: emptyStringAsUndefined(
+    z.url({ protocol: /^https$/ }),
+  ),
+  WEB_BOT_AUTH_TEAM_IDS: delimitedList(",").optional(),
+
   // Fire Engine
   FIRE_ENGINE_BETA_URL: z.string().optional(),
   FIRE_ENGINE_STAGING_URL: z.string().optional(),
