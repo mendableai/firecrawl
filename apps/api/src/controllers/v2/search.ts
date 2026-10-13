@@ -146,6 +146,7 @@ async function searchControllerInner(
   try {
     const rawOrigin =
       typeof req.body?.origin === "string" ? req.body.origin : undefined;
+    delete (req.body as Record<string, unknown>)?.objective;
     req.body = searchRequestSchema.parse(req.body);
 
     const wantsTools = req.body.sources.some(

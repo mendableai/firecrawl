@@ -51,17 +51,14 @@ describe("searchRequestSchema highlights", () => {
     expect(request.highlights).toBe(false);
   });
 
-  it("accepts optional agent task context without changing search defaults", () => {
+  it("accepts optional client model without changing search defaults", () => {
     const request = searchRequestSchema.parse({
       query: "React memo docs",
-      objective:
-        "  Find official guidance on preventing unnecessary rerenders  ",
       clientModel: "  claude-sonnet-4-6  ",
     });
 
     expect(request).toMatchObject({
       query: "React memo docs",
-      objective: "Find official guidance on preventing unnecessary rerenders",
       clientModel: "claude-sonnet-4-6",
       limit: 10,
     });
@@ -71,9 +68,6 @@ describe("searchRequestSchema highlights", () => {
   });
 
   it.each([
-    { objective: " " },
-    { objective: "x".repeat(5001) },
-    { objective: null },
     { clientModel: " " },
     { clientModel: "x".repeat(129) },
     { clientModel: 42 },
@@ -84,8 +78,18 @@ describe("searchRequestSchema highlights", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data?.objective).toBeUndefined();
+    expect(result.data).not.toHaveProperty("objective");
     expect(result.data?.clientModel).toBeUndefined();
     expect(result.data?.limit).toBe(10);
   });
+
+  it.each(["Find official rerender guidance", " ", "x".repeat(5001), null])(
+    "rejects objective on search requests: %j",
+    objective => {
+      expect(
+        searchRequestSchema.safeParse({ query: "React memo docs", objective })
+          .success,
+      ).toBe(false);
+    },
+  );
 });

@@ -39,15 +39,13 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
   it.concurrent(
     "records feedback and refunds 1 credit on first submission",
     async () => {
-      const raw = await searchRawFull(
-        {
-          query: "firecrawl",
-          objective: "Find official Firecrawl information",
-          clientModel: "claude-sonnet-4-6",
-          limit: 3,
-        },
-        identity,
-      );
+      const body = {
+        query: "firecrawl",
+        objective: "Find official Firecrawl information",
+        clientModel: "claude-sonnet-4-6",
+        limit: 3,
+      };
+      const raw = await searchRawFull(body, identity);
       expect(raw.statusCode).toBe(200);
       expect(typeof raw.body.id).toBe("string");
       expect((raw.body.data?.web ?? []).length).toBeGreaterThan(0);
@@ -66,9 +64,9 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
         else await new Promise(resolve => setTimeout(resolve, 1000));
       }
       expect(searchRow?.options).toMatchObject({
-        objective: "Find official Firecrawl information",
         clientModel: "claude-sonnet-4-6",
       });
+      expect(searchRow?.options).not.toHaveProperty("objective");
 
       const result = await searchFeedback(
         raw.body.id,
