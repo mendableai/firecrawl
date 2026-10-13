@@ -216,14 +216,13 @@ impl FirePdfClient<'_> {
     let (error, maybe_accepted) = match attempt {
       Ok(done) => {
         guard.disarm();
-        self.track_large_pdf(None);
         return Ok(done);
       }
       Err(failure) => failure,
     };
     let job_already_terminal =
       matches!(&error, FirePdfError::Async(reason) if reason.is_terminal());
-    if job_already_terminal || progress.terminal_reached {
+    if job_already_terminal {
       // The job is over, so a timeout must not say processing continues.
       self.track_large_pdf(None);
     }
@@ -291,6 +290,8 @@ impl FirePdfClient<'_> {
         .map_err(|e| (e, false))?
     };
     progress.terminal_reached = true;
+    // Cleared before the fetch, which the deadline may drop.
+    self.track_large_pdf(None);
 
     guard.phase = "result";
     guard.cancel = None;
