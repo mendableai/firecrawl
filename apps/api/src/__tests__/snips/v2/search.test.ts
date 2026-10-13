@@ -36,30 +36,31 @@ describeIf(TEST_PRODUCTION || HAS_SEARCH || HAS_PROXY)("Search tests", () => {
   );
 
   it.concurrent(
-    "accepts optional agent task context",
+    "ignores legacy client model on search requests",
     async () => {
-      const res = await search(
-        {
-          query: "firecrawl documentation",
-          objective: "Find official Firecrawl API documentation",
-          clientModel: "claude-sonnet-4-6",
-          limit: 1,
-        },
-        identity,
-      );
+      const body = {
+        query: "firecrawl documentation",
+        clientModel: "claude-sonnet-4-6",
+        limit: 1,
+      };
+      const res = await search(body, identity);
       expect(res.web?.length).toBeGreaterThan(0);
     },
     60000,
   );
 
   it.concurrent(
-    "ignores invalid agent task context instead of failing the search",
+    "ignores legacy objective on search requests",
     async () => {
-      const res = await search(
-        { query: "firecrawl", objective: "x".repeat(5001), limit: 1 },
-        identity,
-      );
-      expect(res.web?.length).toBeGreaterThan(0);
+      const body = {
+        query: "firecrawl",
+        objective: "Find official documentation",
+        limit: 1,
+      };
+      const res = await searchRaw(body, identity);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.web?.length).toBeGreaterThan(0);
     },
     60000,
   );
