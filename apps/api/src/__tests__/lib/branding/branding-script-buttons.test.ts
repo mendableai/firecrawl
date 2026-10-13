@@ -115,8 +115,8 @@ describe("branding script button detection", () => {
   });
 
   it("reports positions in a very tall window as they would be on a screen", () => {
-    // Branding scrapes render 100,000px tall: a hero sized to the window is
-    // that tall, with its centered button halfway down.
+    // A hero sized to the window is as tall as it, with its centered button
+    // halfway down.
     const snaps = scan(
       `<section data-top="0" data-w="1920" data-h="100000">
          <button data-top="40">Log in</button>

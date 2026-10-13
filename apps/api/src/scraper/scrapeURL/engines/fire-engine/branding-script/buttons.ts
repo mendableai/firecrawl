@@ -42,10 +42,9 @@ export const isViewportAnchored = (el: Element): boolean => {
   return false;
 };
 
-// Branding scrapes render in a very tall window (100,000px), which stretches
-// anything sized to the window: a hero with `min-height: 100vh` is 100,000px
-// tall, with its centered button 50,000px down. In such a window, positions
-// are reported as they would be on a screen of this height.
+// In a window much taller than a screen, anything sized to the window
+// stretches with it. Positions are then reported as they would be on a screen
+// of this height.
 const SCREEN_PX = 1080;
 const isTallWindow = (): boolean => window.innerHeight > 10 * SCREEN_PX;
 
@@ -87,7 +86,7 @@ const toScreenOffset = (offset: number): number =>
     ? offset
     : (offset * SCREEN_PX) / window.innerHeight;
 
-/** A page position in the tall window, mapped to a page of real screens. */
+/** A page position in a tall window, mapped to a page of real screens. */
 const toScreenPosition = (top: number): number => {
   const scale = SCREEN_PX / window.innerHeight;
   let removed = 0;
