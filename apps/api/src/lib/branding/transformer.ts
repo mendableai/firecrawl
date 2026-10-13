@@ -2,6 +2,7 @@ import { processRawBranding } from "./processor";
 import { config } from "../../config";
 import { BrandingProfile } from "../../types/branding";
 import { enhanceBrandingWithLLM } from "./llm";
+import { CostLimitExceededError } from "../cost-tracking";
 import { Meta } from "../../scraper/scrapeURL";
 import { Document } from "../../controllers/v2/types";
 import { BrandingScriptReturn, ButtonSnapshot } from "./types";
@@ -11,6 +12,7 @@ import {
   getTopCandidatesForLLM,
 } from "./logo-selector";
 import { extractHeaderHtmlChunk } from "./extractHeaderHtmlChunk";
+import { hasFormatOfType } from "../format-utils";
 import {
   declaredLogoCandidate,
   pickDeclaredLogo,
@@ -156,6 +158,9 @@ export async function brandingTransformer(
             score += 30;
           }
 
+          // On the first screen of the page
+          if (typeof btn.top === "number" && btn.top < 1000) score += 40;
+
           return { btn, originalIdx: idx, score };
         })
         .sort((a, b) => b.score - a.score)
@@ -210,6 +215,8 @@ export async function brandingTransformer(
       scrapeId: meta.id,
       zeroDataRetention: meta.internalOptions.zeroDataRetention,
       teamFlags: meta.internalOptions.teamFlags,
+      mode: hasFormatOfType(meta.options.formats, "branding")?.mode,
+      costTracking: meta.costTracking,
       logger: meta.logger,
     });
 
@@ -414,6 +421,10 @@ export async function brandingTransformer(
       types: inputSnapshots.map((i: any) => i.type).slice(0, 10),
     });
   } catch (error) {
+    if (error instanceof CostLimitExceededError) {
+      throw error;
+    }
+
     meta.logger.error(
       "LLM branding enhancement failed, using JS analysis only",
       { error },
@@ -449,11 +460,12 @@ export async function brandingTransformer(
     });
   }
 
+  // Every `__` key (page snapshots, logo candidates, LLM reasoning and
+  // metadata) is internal; only teams debugging branding get them back.
   if (!isDebugBrandingEnabled(meta)) {
-    delete (brandingProfile as any).__button_snapshots;
-    delete (brandingProfile as any).__input_snapshots;
-    delete (brandingProfile as any).__logo_candidates;
-    delete (brandingProfile as any).__framework_hints;
+    for (const key of Object.keys(brandingProfile)) {
+      if (key.startsWith("__")) delete (brandingProfile as any)[key];
+    }
   }
 
   if (brandName) {

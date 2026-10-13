@@ -6,9 +6,8 @@ vi.mock("../../lib/logger", () => {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    child: vi.fn(),
+    child: (): any => logger,
   };
-  logger.child.mockReturnValue(logger);
   return { logger };
 });
 vi.mock("../logging/log_job", () => ({}));
@@ -21,8 +20,13 @@ vi.mock("../queue-jobs", () => ({}));
 vi.mock("../../controllers/v2/types", () => ({}));
 vi.mock("../webhook", () => ({}));
 vi.mock("./results", () => ({}));
-vi.mock("../notification/monitoring_email", () => ({}));
+vi.mock("../notification/monitoring_email", () => ({
+  sendMonitoringEmailSummary: vi.fn(),
+}));
 vi.mock("../notification/monitoring_slack", () => ({}));
+vi.mock("../notification/monitoring_in_app", () => ({
+  recordMonitorInAppNotification: vi.fn(),
+}));
 vi.mock("./types", () => ({}));
 vi.mock("./interest", () => ({
   trackMonitorCheckStartedInterest: async () => {},
@@ -42,6 +46,7 @@ vi.mock("./store", () => ({
   updateMonitorCheckIfStatus: vi.fn(),
   markMonitorRunning: vi.fn(),
   countMonitorCheckPages: vi.fn(),
+  listMonitorCheckPages: vi.fn(),
   calculateMonitorCheckActualCredits: vi.fn(),
   updateMonitorScheduleAfterRun: vi.fn(),
 }));
@@ -63,6 +68,8 @@ import { getACUCTeam } from "../../controllers/auth";
 import { autumnService } from "../autumn/autumn.service";
 import { getBillingQueue } from "../queue-service";
 import { redisEvictConnection } from "../redis";
+import { sendMonitoringEmailSummary } from "../notification/monitoring_email";
+import { recordMonitorInAppNotification } from "../notification/monitoring_in_app";
 
 function deferred() {
   let resolve!: () => void;
@@ -169,6 +176,33 @@ describe("monitor check finalization ownership", () => {
     }) as any);
   });
 
+  it("requests the persisted credit estimate and skips the check when its hold is denied", async () => {
+    current.status = "queued";
+    current.autumn_lock_id = null;
+    current.estimated_credits = 1009;
+    vi.mocked(autumnService.lockCredits).mockResolvedValue({
+      status: "denied",
+    });
+    await processMonitorCheckJob({
+      checkId: current.id,
+      monitorId: monitor.id,
+      teamId: monitor.team_id,
+    });
+    expect(autumnService.lockCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 1009,
+        lockId: "monitor_check-1",
+      }),
+    );
+    expect(current).toMatchObject({
+      status: "skipped_no_credits",
+      actual_credits: 0,
+      billing_status: "not_applicable",
+    });
+    expect(autumnService.finalizeCreditsLock).not.toHaveBeenCalled();
+    expect(bill).not.toHaveBeenCalled();
+  });
+
   it("settles and schedules a completed check once when another batch retained its running snapshot", async () => {
     await reconcileRunningMonitorChecks();
     await reconcileRunningMonitorChecks();
@@ -191,6 +225,37 @@ describe("monitor check finalization ownership", () => {
       expect.anything(),
     );
     expect(store.updateMonitorScheduleAfterRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("records the in-app notification even when the email channel throws", async () => {
+    const lockSet = vi
+      .mocked(redisEvictConnection.set)
+      .getMockImplementation()!;
+    vi.mocked(redisEvictConnection.set).mockImplementation(((
+      key: string,
+      ...rest: unknown[]
+    ) =>
+      key.startsWith("monitor-check-notify:")
+        ? Promise.resolve("OK")
+        : (lockSet as any)(key, ...rest)) as any);
+    vi.mocked(store.listMonitorCheckPages).mockResolvedValue([] as any);
+    vi.mocked(recordMonitorInAppNotification).mockResolvedValue({
+      attempted: true,
+      success: true,
+    });
+    vi.mocked(sendMonitoringEmailSummary).mockRejectedValue(
+      new Error("recipient lookup failed"),
+    );
+
+    await reconcileRunningMonitorChecks();
+
+    expect(sendMonitoringEmailSummary).toHaveBeenCalledTimes(1);
+    expect(recordMonitorInAppNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: expect.objectContaining({ id: "check-1" }),
+      }),
+    );
+    expect(current.status).toBe("completed");
   });
 
   it("uses the refreshed target state instead of completing an obsolete snapshot", async () => {
@@ -234,7 +299,9 @@ describe("monitor check finalization ownership", () => {
     const first = reconcileRunningMonitorChecks();
     await entered.promise;
     locks.delete(lockKey); // The second worker can acquire an expired lease.
-    await reconcileRunningMonitorChecks();
+    vi.resetModules();
+    const otherProcess = await import("./runner.js");
+    await otherProcess.reconcileRunningMonitorChecks();
     resume.resolve();
     await first;
     expect(autumnService.finalizeCreditsLock).toHaveBeenCalledTimes(1);

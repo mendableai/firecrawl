@@ -59,7 +59,9 @@ def browser(
     activity_ttl: Optional[int] = None,
     stream_web_view: Optional[bool] = None,
     record_session: Optional[bool] = None,
+    block_ads: Optional[bool] = None,
     profile: Optional[Dict[str, Any]] = None,
+    location: Optional[Dict[str, str]] = None,
 ) -> BrowserCreateResponse:
     """Create a new browser session.
 
@@ -69,8 +71,11 @@ def browser(
         activity_ttl: Inactivity TTL in seconds (10-3600)
         stream_web_view: Whether to enable webview streaming
         record_session: Whether to record the browser session (default ``True``)
+        block_ads: Block ads, trackers and cookie notices (default ``True``)
         profile: Profile config with ``name`` (str) and
             optional ``save_changes`` (bool, default ``True``)
+        location: ``{"country": "GB"}`` to browse from that country
+            (ISO 3166-1 alpha-2, default US)
 
     Returns:
         BrowserCreateResponse with session id and CDP URL
@@ -84,11 +89,15 @@ def browser(
         body["streamWebView"] = stream_web_view
     if record_session is not None:
         body["recordSession"] = record_session
+    if block_ads is not None:
+        body["blockAds"] = block_ads
     if profile is not None:
         body["profile"] = {
             "name": profile["name"],
             "saveChanges": profile.get("save_changes", True),
         }
+    if location is not None:
+        body["location"] = {"country": location["country"]}
 
     resp = client.post("/v2/browser", body)
     if not resp.ok:

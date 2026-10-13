@@ -37,7 +37,7 @@ import java.util.concurrent.ForkJoinPool;
 public class FirecrawlClient {
 
     private static final String DEFAULT_API_URL = "https://api.firecrawl.dev";
-    private static final String SDK_ORIGIN = "java-sdk@1.18.0";
+    private static final String SDK_ORIGIN = "java-sdk@1.18.4";
     private static final long DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final double DEFAULT_BACKOFF_FACTOR = 0.5;
@@ -103,7 +103,18 @@ public class FirecrawlClient {
             mergeOptions(body, options);
         }
         body.putIfAbsent("origin", SDK_ORIGIN);
-        return extractData(http.post("/v2/scrape", body, Map.class), Document.class);
+        Map raw = http.post("/v2/scrape", body, Map.class);
+        // Some scrape failures (e.g. SCRAPE_DNS_RESOLUTION_ERROR) arrive as HTTP 200 with success: false.
+        if (Boolean.FALSE.equals(raw.get("success"))) {
+            Object error = raw.get("error");
+            Object code = raw.get("code");
+            throw new FirecrawlException(
+                    error != null ? String.valueOf(error) : "Scrape failed",
+                    200,
+                    code != null ? String.valueOf(code) : null,
+                    raw.get("details"));
+        }
+        return extractData(raw, Document.class);
     }
 
     /**
@@ -247,6 +258,25 @@ public class FirecrawlClient {
                 ),
                 Document.class
         );
+    }
+
+    /**
+     * Lists the upload types accepted by {@link #parse(ParseFile, ParseOptions)}.
+     *
+     * @return the supported parse formats
+     */
+    public List<ParseFormat> getParseFormats() {
+        Map<?, ?> raw = http.get("/v2/parse/formats", Map.class);
+        Object data = raw.get("data");
+        Object formats = data instanceof Map<?, ?> ? ((Map<?, ?>) data).get("formats") : null;
+        if (!(formats instanceof List<?>)) {
+            return Collections.emptyList();
+        }
+        List<ParseFormat> result = new ArrayList<>();
+        for (Object item : (List<?>) formats) {
+            result.add(http.objectMapper.convertValue(item, ParseFormat.class));
+        }
+        return result;
     }
 
     // ================================================================
@@ -791,10 +821,26 @@ public class FirecrawlClient {
      * @return the browser session details
      */
     public BrowserCreateResponse browser(Integer ttl, Integer activityTtl, Boolean streamWebView) {
+        return browser(ttl, activityTtl, streamWebView, null);
+    }
+
+    /**
+     * Creates a new browser session that browses from a given country.
+     *
+     * @param ttl            total session lifetime in seconds (30-3600), or null for default
+     * @param activityTtl    idle timeout in seconds (10-3600), or null for default
+     * @param streamWebView  whether to enable live view streaming, or null for default
+     * @param country        ISO 3166-1 alpha-2 country code such as "GB", sent as
+     *                       {@code location.country}, or null for default (US)
+     * @return the browser session details
+     */
+    public BrowserCreateResponse browser(Integer ttl, Integer activityTtl, Boolean streamWebView,
+                                         String country) {
         Map<String, Object> body = new LinkedHashMap<>();
         if (ttl != null) body.put("ttl", ttl);
         if (activityTtl != null) body.put("activityTtl", activityTtl);
         if (streamWebView != null) body.put("streamWebView", streamWebView);
+        if (country != null) body.put("location", Map.of("country", country));
         return http.post("/v2/browser", body, BrowserCreateResponse.class);
     }
 
@@ -1008,6 +1054,15 @@ public class FirecrawlClient {
     }
 
     /**
+     * Asynchronously lists the upload types accepted by parse.
+     *
+     * @return a CompletableFuture that resolves to the supported parse formats
+     */
+    public CompletableFuture<List<ParseFormat>> getParseFormatsAsync() {
+        return CompletableFuture.supplyAsync(this::getParseFormats, asyncExecutor);
+    }
+
+    /**
      * Asynchronously crawls a website and waits for completion.
      *
      * @param url     the URL to crawl
@@ -1156,7 +1211,22 @@ public class FirecrawlClient {
      */
     public CompletableFuture<BrowserCreateResponse> browserAsync(Integer ttl, Integer activityTtl,
                                                                     Boolean streamWebView) {
-        return CompletableFuture.supplyAsync(() -> browser(ttl, activityTtl, streamWebView), asyncExecutor);
+        return browserAsync(ttl, activityTtl, streamWebView, null);
+    }
+
+    /**
+     * Asynchronously creates a new browser session that browses from a given country.
+     *
+     * @param ttl            total session lifetime in seconds, or null for default
+     * @param activityTtl    idle timeout in seconds, or null for default
+     * @param streamWebView  whether to enable live view streaming, or null for default
+     * @param country        ISO 3166-1 alpha-2 country code, or null for default (US)
+     * @return a CompletableFuture that resolves to the BrowserCreateResponse
+     */
+    public CompletableFuture<BrowserCreateResponse> browserAsync(Integer ttl, Integer activityTtl,
+                                                                    Boolean streamWebView, String country) {
+        return CompletableFuture.supplyAsync(() -> browser(ttl, activityTtl, streamWebView, country),
+                asyncExecutor);
     }
 
     /**

@@ -1,8 +1,10 @@
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   searchDeveloperCategory: vi.fn(),
+  searchGovCategory: vi.fn(),
   checkUrlsAgainstThreatPolicy: vi.fn(),
   discoverTools: vi.fn(),
+  removeExplicitResults: vi.fn(),
 }));
 
 vi.mock("./alexandria", () => ({
@@ -20,6 +22,15 @@ vi.mock("./developer", () => ({
         : category.type === "developer",
     ),
   searchDeveloperCategory: mocks.searchDeveloperCategory,
+}));
+vi.mock("./gov", () => ({
+  wantsGovCategory: (categories?: Array<string | { type: string }>) =>
+    (categories ?? []).some(category =>
+      typeof category === "string"
+        ? category === "gov"
+        : category.type === "gov",
+    ),
+  searchGovCategory: mocks.searchGovCategory,
 }));
 vi.mock("./scrape", () => ({
   getItemsToScrape: vi.fn(() => []),
@@ -41,6 +52,9 @@ vi.mock("../lib/threat-protection/request", () => ({
 }));
 vi.mock("../lib/scrape-billing", () => ({
   calculateThreatScanCredits: vi.fn(() => 0),
+}));
+vi.mock("./safe-search", () => ({
+  removeExplicitResults: mocks.removeExplicitResults,
 }));
 
 import { executeSearch } from "./execute";
@@ -116,6 +130,68 @@ it("mixed search bills only normal web results", async () => {
   expect(result.response.tools).toHaveLength(1);
 });
 
+describe("executeSearch safe search", () => {
+  const webResult = {
+    url: "https://example.com/",
+    title: "Example",
+    description: "An example page.",
+  };
+
+  it("bills and returns only the results the Jev filter keeps", async () => {
+    const safe = Array.from({ length: 10 }, (_, index) => ({
+      ...webResult,
+      url: `https://safe${index}.example/`,
+    }));
+    const explicit = { ...webResult, url: "https://nsfw.example/" };
+    mocks.search.mockResolvedValue({ web: [...safe, explicit] });
+    mocks.removeExplicitResults.mockImplementationOnce(async response => {
+      response.web = response.web.filter(
+        (result: { url: string }) => result.url !== explicit.url,
+      );
+    });
+
+    const result = await executeSearch(
+      { ...options([]), limit: 20, safe: true },
+      context,
+      logger,
+    );
+
+    expect(mocks.removeExplicitResults).toHaveBeenCalledWith(
+      expect.anything(),
+      20,
+      logger,
+      "team-1",
+    );
+    expect(result.response.web?.map(x => x.url)).toEqual(safe.map(x => x.url));
+    expect(result.totalResultsCount).toBe(10);
+    // 11 results would bill 4 credits; the 10 kept bill 2.
+    expect(result.searchCredits).toBe(2);
+  });
+
+  it("skips the Jev filter when safe is off or data must not be retained", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+
+    await executeSearch(options([]), context, logger);
+    await executeSearch(
+      { ...options([]), safe: true },
+      { ...context, zeroDataRetention: true },
+      logger,
+    );
+    await executeSearch(
+      { ...options([]), safe: true, enterprise: ["zdr"] },
+      context,
+      logger,
+    );
+    await executeSearch(
+      { ...options([]), safe: true, enterprise: ["anon"] },
+      context,
+      logger,
+    );
+
+    expect(mocks.removeExplicitResults).not.toHaveBeenCalled();
+  });
+});
+
 describe("executeSearch developer category", () => {
   it("returns sole developer-category results in web without running SERP", async () => {
     const result = await executeSearch(
@@ -127,15 +203,32 @@ describe("executeSearch developer category", () => {
     expect(mocks.search).not.toHaveBeenCalled();
     expect(result.response).toEqual({ web: [developerResult] });
     expect(result.response).not.toHaveProperty("developer");
-    expect(result.developerResultsCount).toBe(1);
+    expect(result.indexResultsCount).toBe(1);
   });
-
 
   it("filters blocked developer results via threat protection and renumbers", async () => {
     mocks.searchDeveloperCategory.mockResolvedValue([
-      { url: "https://ok.example/a", title: "A", description: "", position: 1, category: "developer" },
-      { url: "https://blocked.example/b", title: "B", description: "", position: 2, category: "developer" },
-      { url: "https://ok.example/c", title: "C", description: "", position: 3, category: "developer" },
+      {
+        url: "https://ok.example/a",
+        title: "A",
+        description: "",
+        position: 1,
+        category: "developer",
+      },
+      {
+        url: "https://blocked.example/b",
+        title: "B",
+        description: "",
+        position: 2,
+        category: "developer",
+      },
+      {
+        url: "https://ok.example/c",
+        title: "C",
+        description: "",
+        position: 3,
+        category: "developer",
+      },
     ]);
     mocks.checkUrlsAgainstThreatPolicy.mockResolvedValue({
       decisionsByUrl: new Map([
@@ -174,5 +267,35 @@ describe("executeSearch developer category", () => {
       categories: ["developer"],
     });
     expect(sole.success).toBe(true);
+  });
+});
+
+describe("executeSearch gov category", () => {
+  const govResult = {
+    url: "https://www.ecfr.gov/current/title-21/part-101",
+    title: "21 CFR Part 101",
+    description: "Food labeling",
+    position: 1,
+    category: "gov",
+  };
+
+  it("returns sole gov-category results in web without running SERP", async () => {
+    mocks.searchGovCategory.mockResolvedValue([govResult]);
+
+    const result = await executeSearch(
+      options([{ type: "gov" }]),
+      context,
+      logger,
+    );
+
+    expect(mocks.search).not.toHaveBeenCalled();
+    expect(mocks.searchDeveloperCategory).not.toHaveBeenCalled();
+    expect(mocks.searchGovCategory).toHaveBeenCalledWith(
+      { query: "retries", limit: 10, teamId: "team-1", timeout: 1_000 },
+      logger,
+    );
+    expect(result.response).toEqual({ web: [govResult] });
+    expect(result.indexResultsCount).toBe(1);
+    expect(result.searchCredits).toBe(0);
   });
 });

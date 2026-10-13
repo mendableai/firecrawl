@@ -6,7 +6,10 @@ import {
   generateSchemaFromPrompt,
 } from "../transformers/llmExtract";
 import { smartScrape } from "./smartScrape";
-import { checkForPromptInjection } from "./promptInjectionGuard";
+import {
+  checkForPromptInjection,
+  createPromptInjectionGuardLimiter,
+} from "./promptInjectionGuard";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
@@ -16,9 +19,10 @@ import {
   CostTracking,
 } from "../../../lib/cost-tracking";
 import { JsonExtractionContentTooLargeError } from "../error";
+import { toRootSchema, typeIncludes } from "../../../lib/openai-strict-schema";
 
 // ~2MB of markdown, well past typical page sizes -- caps worst-case JSON extraction cost/latency.
-const MAX_JSON_EXTRACTION_MARKDOWN_CHARS = 2_000_000;
+export const MAX_JSON_EXTRACTION_MARKDOWN_CHARS = 2_000_000;
 
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
@@ -241,10 +245,27 @@ const resolveRefs = (
   return resolved;
 };
 
+// generateCompletions nests a root array schema under an "items" property
+// (structured outputs need an object at the root); hand back the array itself,
+// as the SmartScrape wrapper's extractedData property always did.
+function unwrapRootArray(schema: any, extract: any): any {
+  if (
+    typeIncludes(toRootSchema(schema)?.type, "array") &&
+    extract &&
+    typeof extract === "object" &&
+    !Array.isArray(extract) &&
+    "items" in extract
+  ) {
+    return extract.items;
+  }
+  return extract;
+}
+
 export async function extractData({
   extractOptions,
   urls,
   useAgent,
+  checkPromptInjection,
   extractId,
   sessionId,
   scrapeId,
@@ -253,6 +274,8 @@ export async function extractData({
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
+  /** Scans the pages SmartScrape fetches; the page itself is scanned upstream. */
+  checkPromptInjection?: boolean;
   extractId?: string;
   sessionId?: string;
   scrapeId?: string;
@@ -266,6 +289,8 @@ export async function extractData({
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
   let costLimitExceededTokenUsage: number | null = null;
+  // Set when the prompt injection guard failed open on a SmartScrape page.
+  let promptInjectionScanIncomplete = false;
 
   if (
     extractOptions.markdown &&
@@ -350,7 +375,16 @@ export async function extractData({
     }
   }
 
-  const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
+  // The SmartScrape fields only matter when the agent can act on them.
+  // Without it, the user's schema goes to generateCompletions as-is (with no
+  // schema at all, the wrapper would require an extractedData property it
+  // doesn't have). Nested under the wrapper, a bare property map is turned
+  // into an object schema first, as generateCompletions does at the root.
+  const wrapForSmartScrape = useAgent && !!schema;
+  const schemaToUse = wrapForSmartScrape
+    ? prepareSmartScrapeSchema(toRootSchema(schema), logger, isSingleUrl)
+        .schemaToUse
+    : schema;
   const extractOptionsNewSchema = {
     ...extractOptions,
     options: { ...extractOptions.options, schema: schemaToUse },
@@ -365,18 +399,8 @@ export async function extractData({
     warning: string | undefined,
     totalUsage: TokenUsage | undefined;
 
-  // Runs concurrently with extraction; guard verdict is checked before `extract` is used.
-  const [guardSettled, generateSettled] = await Promise.allSettled([
-    extractOptions.options.checkPromptInjection
-      ? checkForPromptInjection({
-          markdown: extractOptions.markdown,
-          logger,
-          costTracking: extractOptions.costTrackingOptions.costTracking,
-          metadata,
-          zeroDataRetention: !!extractOptions.zeroDataRetention,
-        })
-      : Promise.resolve(),
-    generateCompletions({
+  try {
+    const completion = await generateCompletions({
       ...extractOptionsNewSchema,
       costTrackingOptions: {
         costTracking: extractOptions.costTrackingOptions.costTracking,
@@ -386,19 +410,11 @@ export async function extractData({
           description: "Check if using smartScrape is needed for this case",
         },
       },
-    }),
-  ]);
-
-  if (guardSettled.status === "rejected") {
-    throw guardSettled.reason;
-  }
-
-  if (generateSettled.status === "fulfilled") {
-    extract = generateSettled.value.extract;
-    warning = generateSettled.value.warning;
-    totalUsage = generateSettled.value.totalUsage;
-  } else {
-    const error = generateSettled.reason;
+    });
+    extract = completion.extract;
+    warning = completion.warning;
+    totalUsage = completion.totalUsage;
+  } catch (error) {
     if (error instanceof CostLimitExceededError) {
       throw error;
     }
@@ -416,7 +432,9 @@ export async function extractData({
     warning = `JSON extraction failed: ${reason.slice(0, 300)}`;
   }
 
-  let extractedData = extract?.extractedData;
+  let extractedData = wrapForSmartScrape
+    ? extract?.extractedData
+    : unwrapRootArray(schema, extract);
 
   // console.log("shouldUseSmartscrape", extract?.shouldUseSmartscrape);
   // console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
@@ -430,7 +448,7 @@ export async function extractData({
       providedExtractId: extractId,
     });
 
-    if (useAgent && extract?.shouldUseSmartscrape) {
+    if (wrapForSmartScrape && extract?.shouldUseSmartscrape) {
       // technically this should be checked upstream but might as well add another guard - Mogery
       if (extractOptions.zeroDataRetention) {
         throw new Error(
@@ -496,16 +514,23 @@ export async function extractData({
         ),
       );
       // console.log("markdowns", markdowns);
+      // Shared so the per-page scans below stay within one guard's
+      // concurrency limit instead of each bursting its own.
+      const guardLimiter = createPromptInjectionGuardLimiter();
       extractedData = await Promise.all(
         markdowns.map(async markdown => {
-          if (extractOptions.options.checkPromptInjection) {
-            await checkForPromptInjection({
+          if (checkPromptInjection) {
+            const scannedFully = await checkForPromptInjection({
               markdown,
               logger,
               costTracking: extractOptions.costTrackingOptions.costTracking,
-              metadata,
+              metadata: { ...metadata, scrapeId, extractId },
               zeroDataRetention: !!extractOptions.zeroDataRetention,
+              limiter: guardLimiter,
             });
+            if (!scannedFully) {
+              promptInjectionScanIncomplete = true;
+            }
           }
 
           const newExtractOptions = {
@@ -541,6 +566,13 @@ export async function extractData({
     } else {
       throw error;
     }
+  }
+
+  if (promptInjectionScanIncomplete) {
+    // The guard fee does not bill in this case (see scrape-billing.ts).
+    warning =
+      "The prompt injection check could not scan all of the page content, so part of it went to JSON extraction unchecked. The prompt injection check was not billed." +
+      (warning ? " " + warning : "");
   }
 
   return {

@@ -100,6 +100,15 @@ func (c *Client) Scrape(ctx context.Context, url string, opts *ScrapeOptions) (*
 		return nil, err
 	}
 
+	// Some scrape failures (e.g. SCRAPE_DNS_RESOLUTION_ERROR) arrive as HTTP 200 with success: false.
+	var envelope struct {
+		Success *bool `json:"success"`
+	}
+	if json.Unmarshal(raw, &envelope) == nil && envelope.Success != nil && !*envelope.Success {
+		msg, code, requiresAction := extractError(raw, 200)
+		return nil, &FirecrawlError{StatusCode: 200, ErrorCode: code, Message: msg, RequiresAction: requiresAction}
+	}
+
 	doc, err := extractDataAs[Document](raw)
 	if err != nil {
 		return nil, err
@@ -532,7 +541,7 @@ func (c *Client) GetMonitorCheck(ctx context.Context, monitorID, checkID string,
 
 // Search performs a web search.
 func (c *Client) Search(ctx context.Context, query string, opts *SearchOptions) (*SearchData, error) {
-	if query == "" {
+	if strings.TrimSpace(query) == "" {
 		return nil, &FirecrawlError{Message: "query is required"}
 	}
 	if opts != nil && opts.Limit != nil && *opts.Limit <= 0 {
@@ -554,6 +563,13 @@ func (c *Client) Search(ctx context.Context, query string, opts *SearchOptions) 
 	if err != nil {
 		return nil, err
 	}
+	var envelope struct {
+		Warning string `json:"warning"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return nil, err
+	}
+	data.Warning = envelope.Warning
 	return data, nil
 }
 
@@ -889,6 +905,9 @@ func (c *Client) Browser(ctx context.Context, opts *BrowserOptions) (*BrowserCre
 		if opts.StreamWebView != nil {
 			body["streamWebView"] = *opts.StreamWebView
 		}
+		if opts.Location != nil {
+			body["location"] = opts.Location
+		}
 	}
 
 	raw, err := c.http.post(ctx, "/v2/browser", body, nil)
@@ -1126,6 +1145,14 @@ type BrowserOptions struct {
 	TTL           *int
 	ActivityTTL   *int
 	StreamWebView *bool
+	// Location sets the country the session browses from (default US).
+	Location *BrowserLocation
+}
+
+// BrowserLocation selects a browser session's country.
+type BrowserLocation struct {
+	// Country is an ISO 3166-1 alpha-2 code, such as "GB".
+	Country string `json:"country"`
 }
 
 // BrowserExecuteParams holds optional parameters for browser code execution.

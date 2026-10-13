@@ -15,6 +15,8 @@ import {
   calculateScrapeCredits,
 } from "./scrape";
 import { searchDeveloperCategory, wantsDeveloperCategory } from "./developer";
+import { searchGovCategory, wantsGovCategory } from "./gov";
+import { removeExplicitResults } from "./safe-search";
 import {
   highlightsEnvReady,
   runIndexedSearchHighlights,
@@ -45,6 +47,7 @@ interface SearchOptions {
   scrapeOptions?: ScrapeOptions;
   highlights?: boolean;
   domainTools?: boolean;
+  toolDetail?: "compact" | "summary" | "full";
   timeout: number;
 }
 
@@ -65,26 +68,19 @@ interface SearchContext {
   keylessReserved?: boolean;
   /** Effective threat protection policy; blocked domains are removed from results entirely. */
   threatProtectionPolicy?: ThreatProtectionPolicy | null;
+  /** Set when the request legitimately opted out of Safe Mode at the controller. */
+  safeModeBypassed?: boolean;
 }
 
 interface SearchExecuteResult {
   toolsWarning?: string;
   response: SearchV2Response;
   totalResultsCount: number;
-  developerResultsCount: number;
+  indexResultsCount: number;
   searchCredits: number;
   scrapeCredits: number;
   totalCredits: number;
   shouldScrape: boolean;
-}
-
-function hasOnlyDeveloperCategory(categories?: CategoryOption[]): boolean {
-  if (!categories?.length) return false;
-  return categories.every(category =>
-    typeof category === "string"
-      ? category === "developer"
-      : category.type === "developer",
-  );
 }
 
 export async function executeSearch(
@@ -126,16 +122,22 @@ export async function executeSearch(
     },
   );
 
-  const wantsDeveloper = wantsDeveloperCategory(categories);
-  const developerResultsPromise = wantsDeveloper
-    ? searchDeveloperCategory(
+  // The developer and gov categories are each exclusive (schema-enforced) and
+  // are served from their own index instead of the web SERP.
+  const indexCategorySearch = wantsDeveloperCategory(categories)
+    ? searchDeveloperCategory
+    : wantsGovCategory(categories)
+      ? searchGovCategory
+      : null;
+  const indexResultsPromise = indexCategorySearch
+    ? indexCategorySearch(
         { query, limit, teamId, timeout: options.timeout },
         logger,
       )
     : null;
 
   const searchResponse =
-    (wantsTools && !searchTypes.length) || hasOnlyDeveloperCategory(categories)
+    (wantsTools && !searchTypes.length) || indexResultsPromise !== null
       ? ({} as SearchV2Response)
       : ((await search({
           query: searchQuery,
@@ -154,9 +156,7 @@ export async function executeSearch(
           includeDomains: options.includeDomains,
           excludeDomains: options.excludeDomains,
         })) as SearchV2Response);
-  let developerResults = developerResultsPromise
-    ? await developerResultsPromise
-    : [];
+  let indexResults = indexResultsPromise ? await indexResultsPromise : [];
 
   // Threat protection: remove blocked results entirely — before
   // slicing/counting, before scraping, and before returning. Checks are
@@ -170,7 +170,7 @@ export async function executeSearch(
       ...(searchResponse.web ?? []).map(x => x.url),
       ...(searchResponse.news ?? []).map(x => x.url),
       ...(searchResponse.images ?? []).map(x => x.url),
-      ...developerResults.map(x => x.url),
+      ...indexResults.map(x => x.url),
     ].filter((x): x is string => !!x);
 
     if (urlsToCheck.length > 0) {
@@ -196,8 +196,18 @@ export async function executeSearch(
           isAllowed(x.url),
         );
       }
-      developerResults = developerResults.filter(x => isAllowed(x.url));
+      indexResults = indexResults.filter(x => isAllowed(x.url));
     }
+  }
+
+  // The filter shares results with TypeSafe, so zero data retention and
+  // anonymous requests skip it.
+  if (
+    options.safe &&
+    !zeroDataRetention &&
+    !options.enterprise?.some(mode => mode === "zdr" || mode === "anon")
+  ) {
+    await removeExplicitResults(searchResponse, limit, logger, teamId);
   }
 
   if (searchResponse.web && searchResponse.web.length > 0) {
@@ -239,8 +249,8 @@ export async function executeSearch(
     totalResultsCount += searchResponse.news.length;
   }
 
-  const developerResultsCount = developerResults.length;
-  totalResultsCount += developerResultsCount;
+  const indexResultsCount = indexResults.length;
+  totalResultsCount += indexResultsCount;
   let toolsWarning: string | undefined;
 
   if (
@@ -250,6 +260,7 @@ export async function executeSearch(
   ) {
     const discovery = await discoverTools(
       {
+        toolDetail: options.toolDetail ?? "compact",
         teamId,
         limit,
         query: wantsTools ? query : undefined,
@@ -259,7 +270,7 @@ export async function executeSearch(
             : [
                 ...(searchResponse.web ?? []),
                 ...(searchResponse.news ?? []),
-                ...developerResults,
+                ...indexResults,
               ].flatMap(item => (item.url ? [item.url] : [])),
         timeoutMs: options.timeout,
       },
@@ -271,12 +282,17 @@ export async function executeSearch(
 
   const isZDR = options.enterprise?.includes("zdr");
   const creditsPerTenResults = isZDR ? 10 : 2;
+  // Gov index results are free; developer index results bill like web results.
+  const billableResultsCount =
+    indexCategorySearch === searchGovCategory
+      ? totalResultsCount - indexResultsCount
+      : totalResultsCount;
   // Threat protection scan fees ride on the search credits: they are part of
   // serving the search itself (every result domain is scanned before
   // filtering), so they bill against the same feature and show up in the
   // request's creditsUsed.
   const searchCredits =
-    Math.ceil(totalResultsCount / 10) * creditsPerTenResults +
+    Math.ceil(billableResultsCount / 10) * creditsPerTenResults +
     threatScanCredits;
   let scrapeCredits = 0;
 
@@ -305,6 +321,7 @@ export async function executeSearch(
         agentIndexOnly: context.agentIndexOnly,
         keylessReserved: context.keylessReserved,
         threatProtectionPolicy: threatPolicy ?? null,
+        safeModeBypassed: context.safeModeBypassed ?? false,
       };
 
       const allDocsWithCostTracking = await scrapeSearchResults(
@@ -366,11 +383,11 @@ export async function executeSearch(
     }
   }
 
-  if (wantsDeveloper) {
-    // The developer category is exclusive (schema-enforced), so these are
-    // the only results: they ARE the web group. Threat filtering above may
-    // have removed entries, so renumber the survivors.
-    searchResponse.web = developerResults.map((result, index) => ({
+  if (indexResultsPromise !== null) {
+    // An index category is exclusive, so these are the only results: they ARE
+    // the web group. Threat filtering above may have removed entries, so
+    // renumber the survivors.
+    searchResponse.web = indexResults.map((result, index) => ({
       ...result,
       position: index + 1,
     }));
@@ -418,7 +435,7 @@ export async function executeSearch(
     response: searchResponse,
     toolsWarning,
     totalResultsCount,
-    developerResultsCount,
+    indexResultsCount,
     searchCredits,
     scrapeCredits,
     totalCredits: searchCredits + scrapeCredits,
