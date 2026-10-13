@@ -6,6 +6,7 @@ use bytes::Bytes;
 use super::super::{
   document::{Document, DocumentMetadata, DocumentMetadataCacheState},
   error::ScrapeURLError,
+  formats::FormatKind,
   meta::Meta,
   raw_page::{RawPageContent, RawPageResult},
 };
@@ -78,7 +79,11 @@ pub fn parse_document(meta: &Meta, result: RawPageResult) -> Result<Document, Sc
         markdown: Some(markdown),
         html: None,
         raw_html: Some(html),
-        raw_base64: Some(base64::engine::general_purpose::STANDARD.encode(bytes.as_ref())),
+        raw_base64: meta
+          .options
+          .formats
+          .contains(FormatKind::RawBase64)
+          .then(|| base64::engine::general_purpose::STANDARD.encode(bytes.as_ref())),
         links: None,
         images: None,
         screenshot: result.screenshot,

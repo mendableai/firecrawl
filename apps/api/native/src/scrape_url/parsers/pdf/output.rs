@@ -8,6 +8,7 @@ use super::{
   super::super::{
     document::{Document, DocumentMetadata, DocumentMetadataCacheState},
     error::ScrapeURLError,
+    formats::FormatKind,
     index::IndexPDFMetadata,
     meta::Meta,
     raw_page::{RawPageActions, RawPageResult, ScrapeProxy},
@@ -188,7 +189,11 @@ pub fn raw_document(
   );
   document.markdown = Some(encoded.clone());
   document.raw_html = Some(encoded.clone());
-  document.raw_base64 = Some(encoded.clone());
+  document.raw_base64 = meta
+    .options
+    .formats
+    .contains(FormatKind::RawBase64)
+    .then(|| encoded.clone());
   document.html = Some(encoded);
   document.screenshot = page.screenshot;
   Ok(document)
@@ -208,7 +213,11 @@ pub fn parsed_document(
   );
   document.markdown = Some(parsed.markdown);
   document.raw_html = Some(parsed.html);
-  document.raw_base64 = Some(base64::engine::general_purpose::STANDARD.encode(bytes));
+  document.raw_base64 = meta
+    .options
+    .formats
+    .contains(FormatKind::RawBase64)
+    .then(|| base64::engine::general_purpose::STANDARD.encode(bytes));
   document.pages = parsed
     .pages
     .filter(|_| parser.pages)
