@@ -1,17 +1,40 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { describe, test, expect, vi } from "vitest";
 import { browser } from "../../../v2/methods/browser";
 
-describe("v2.browser unit", () => {
-  test("browser accepts and sends recordSession", async () => {
-    const post = jest.fn(async () => ({
+describe("JS SDK v2 browser", () => {
+  test("sends location when creating a session", async () => {
+    const post = vi.fn(async () => ({
       status: 200,
-      data: { success: true, id: "session-id" },
+      data: { success: true, id: "session-1" },
     }));
 
-    await browser({ post } as any, { recordSession: false });
+    await browser({ post } as any, { location: { country: "GB" } });
 
     expect(post).toHaveBeenCalledWith("/v2/browser", {
-      recordSession: false,
+      location: { country: "GB" },
     });
   });
+
+  test("omits location by default", async () => {
+    const post = vi.fn(async () => ({
+      status: 200,
+      data: { success: true, id: "session-1" },
+    }));
+
+    await browser({ post } as any);
+
+    expect(post).toHaveBeenCalledWith("/v2/browser", {});
+  });
+  test.each([true, false])("sends recordSession=%s alongside browser options", async (recordSession) => {
+    const post = vi.fn(async () => ({
+      status: 200,
+      data: { success: true, id: "session-1" },
+    }));
+    const options = { recordSession, blockAds: false, location: { country: "GB" } };
+
+    await browser({ post } as any, options);
+
+    expect(post).toHaveBeenCalledWith("/v2/browser", options);
+  });
+
 });

@@ -1,42 +1,65 @@
-from unittest.mock import Mock
-
 import pytest
-
-from firecrawl.v2.methods import browser as browser_module
-from firecrawl.v2.methods.aio import browser as async_browser_module
-
-
-def _response():
-    response = Mock()
-    response.ok = True
-    response.json.return_value = {"success": True, "id": "session-id"}
-    return response
+from firecrawl.v2.methods.browser import browser
+from firecrawl.v2.methods.aio import browser as async_browser
 
 
-def test_browser_sends_record_session():
-    client = Mock()
-    client.post.return_value = _response()
+class _FakeResponse:
+    ok = True
+    status_code = 200
 
-    browser_module.browser(client, record_session=False)
+    def json(self):
+        return {"success": True, "id": "session-1"}
 
-    client.post.assert_called_once_with(
-        "/v2/browser", {"recordSession": False}
-    )
+
+class _FakeClient:
+    def __init__(self):
+        self.last_post = None
+
+    def post(self, endpoint, payload):
+        self.last_post = (endpoint, payload)
+        return _FakeResponse()
+
+
+class _FakeAsyncClient(_FakeClient):
+    async def post(self, endpoint, payload):
+        return super().post(endpoint, payload)
+
+
+def test_browser_sends_location():
+    client = _FakeClient()
+    browser(client, location={"country": "GB"})
+    assert client.last_post == ("/v2/browser", {"location": {"country": "GB"}})
+
+
+def test_browser_omits_location_by_default():
+    client = _FakeClient()
+    browser(client)
+    assert client.last_post == ("/v2/browser", {})
 
 
 @pytest.mark.asyncio
-async def test_async_browser_sends_record_session():
-    client = Mock()
-    client.post = Mock(return_value=_response())
+async def test_async_browser_sends_location():
+    client = _FakeAsyncClient()
+    await async_browser.browser(client, location={"country": "GB"})
+    assert client.last_post == ("/v2/browser", {"location": {"country": "GB"}})
 
-    async def post(*args, **kwargs):
-        return client.post(*args, **kwargs)
 
-    async_client = Mock()
-    async_client.post = post
+@pytest.mark.parametrize("record_session", [True, False, None])
+def test_browser_record_session_with_other_options(record_session):
+    client = _FakeClient()
+    browser(client, record_session=record_session, block_ads=False, location={"country": "GB"})
+    payload = {"blockAds": False, "location": {"country": "GB"}}
+    if record_session is not None:
+        payload["recordSession"] = record_session
+    assert client.last_post == ("/v2/browser", payload)
 
-    await async_browser_module.browser(async_client, record_session=False)
 
-    client.post.assert_called_once_with(
-        "/v2/browser", {"recordSession": False}
-    )
+@pytest.mark.asyncio
+@pytest.mark.parametrize("record_session", [True, False, None])
+async def test_async_browser_record_session_with_other_options(record_session):
+    client = _FakeAsyncClient()
+    await async_browser.browser(client, record_session=record_session, block_ads=False, location={"country": "GB"})
+    payload = {"blockAds": False, "location": {"country": "GB"}}
+    if record_session is not None:
+        payload["recordSession"] = record_session
+    assert client.last_post == ("/v2/browser", payload)

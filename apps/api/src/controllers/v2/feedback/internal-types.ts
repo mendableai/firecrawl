@@ -5,6 +5,7 @@ import {
   EndpointFeedbackResponse,
   SearchFeedbackErrorCode,
 } from "../types";
+import type { RefundClass } from "../../../lib/feedback-job-store";
 
 export type FeedbackRating = "good" | "partial" | "bad";
 
@@ -32,6 +33,9 @@ export type FeedbackJobRow = {
   created_at: string;
   is_successful: boolean | null;
   options: unknown;
+  feedback_deadline_ms?: number;
+  refund_class?: RefundClass;
+  zero_data_retention?: boolean;
 };
 
 export type FeedbackRecordOptions = {
@@ -58,7 +62,7 @@ export type FeedbackRecordResult = {
 export type RefundPolicySnapshot = {
   version: "feedback_refund_v1";
   enabled: boolean;
-  endpoint: EndpointFeedbackEndpoint;
+  endpoint: EndpointFeedbackEndpoint | "alexandria";
   mode: "none" | "flat" | "percentage_with_cap";
   refundableRatings: FeedbackRating[];
   matchedReason: string;

@@ -4,11 +4,13 @@ import com.firecrawl.client.FirecrawlClient;
 import com.firecrawl.errors.FirecrawlException;
 import com.firecrawl.models.*;
 import okhttp3.OkHttpClient;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -147,6 +149,18 @@ class FirecrawlClientTest {
         assertEquals(10000, modified.getTimeout());
         assertEquals(List.of("markdown"), modified.getFormats());
         assertTrue(modified.getRedactPII());
+    }
+
+    @Test
+    void testScrapeOptionsSerializesCheckPromptInjection() {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        ScrapeOptions options = ScrapeOptions.builder()
+                .checkPromptInjection(true)
+                .build();
+
+        assertEquals(Boolean.TRUE, mapper.convertValue(options, Map.class).get("checkPromptInjection"));
+        assertTrue(options.toBuilder().build().getCheckPromptInjection());
+        assertFalse(mapper.convertValue(ScrapeOptions.builder().build(), Map.class).containsKey("checkPromptInjection"));
     }
 
     @Test
@@ -393,6 +407,19 @@ class FirecrawlClientTest {
         assertTrue(options.getRedactPII());
     }
 
+    @Test
+    void testParseOptionsSerializesCheckPromptInjection() {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        ParseOptions options = ParseOptions.builder()
+                .formats(List.of("markdown"))
+                .checkPromptInjection(true)
+                .build();
+
+        assertEquals(Boolean.TRUE, mapper.convertValue(options, Map.class).get("checkPromptInjection"));
+        assertTrue(options.toBuilder().build().getCheckPromptInjection());
+        assertFalse(mapper.convertValue(ParseOptions.builder().build(), Map.class).containsKey("checkPromptInjection"));
+    }
+
     // ================================================================
     // E2E TESTS (require FIRECRAWL_API_KEY)
     // ================================================================
@@ -489,5 +516,22 @@ class FirecrawlClientTest {
         assertNotNull(doc.getMarkdown());
         assertFalse(doc.getMarkdown().isEmpty());
         assertTrue(doc.getMarkdown().contains("Java SDK Parse E2E"));
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "FIRECRAWL_API_KEY", matches = ".*\\S.*")
+    void testGetParseFormatsE2E() {
+        FirecrawlClient client = FirecrawlClient.fromEnv();
+        List<ParseFormat> formats;
+        try {
+            formats = client.getParseFormats();
+        } catch (FirecrawlException e) {
+            Assumptions.assumeTrue(e.getStatusCode() != 404, "GET /v2/parse/formats is not deployed yet");
+            throw e;
+        }
+
+        assertFalse(formats.isEmpty());
+        assertTrue(formats.stream().anyMatch(f ->
+                "pdf".equals(f.getFormat()) && f.getKindType() == ParseFormat.Kind.DOCUMENT));
     }
 }

@@ -23,6 +23,7 @@ import { fetchProduct } from "./product";
 import { fetchMenu } from "./menu";
 import { fetchVideo } from "./video";
 import { performRedactPII } from "./redactPII";
+import { performPromptInjectionGuard } from "./promptInjectionGuard";
 import { useIndex, useSearchIndex } from "../../../services/index";
 import { sendDocumentToIndex } from "../engines/index/index";
 import { sendDocumentToSearchIndex } from "./sendToSearchIndex";
@@ -99,6 +100,7 @@ async function deriveMarkdownFromHTML(
   // - summary format requires markdown (for summarization)
   // - question/highlights/query formats require markdown (for page-level answers)
   // - redactPII needs markdown as its source text (spans are markdown char offsets)
+  // - checkPromptInjection scans markdown
   const hasMarkdown = hasFormatOfType(meta.options.formats, "markdown");
   const hasChangeTracking = hasFormatOfType(
     meta.options.formats,
@@ -123,6 +125,7 @@ async function deriveMarkdownFromHTML(
     !hasHighlights &&
     !hasQuery &&
     !hasRedactPII &&
+    !meta.options.checkPromptInjection &&
     !meta.options.onlyCleanContent
   ) {
     return document;
@@ -337,30 +340,6 @@ async function deriveBrandingFromActions(
   document.branding = await brandingTransformer(meta, document, rawBranding);
 
   return document;
-}
-
-async function performLLMExtractUnlessNativeJson(
-  meta: Meta,
-  document: Document,
-): Promise<Document> {
-  if (
-    document.json !== undefined &&
-    hasFormatOfType(meta.options.formats, "json")
-  ) {
-    if (
-      meta.internalOptions.v1OriginalFormat === "extract" &&
-      document.extract === undefined
-    ) {
-      document.extract = document.json;
-    }
-
-    meta.logger.debug(
-      "Skipping LLM JSON extraction - document already has native JSON",
-    );
-    return document;
-  }
-
-  return performLLMExtract(meta, document);
 }
 
 function coerceFieldsToFormats(meta: Meta, document: Document): Document {
@@ -645,6 +624,7 @@ const transformerStack: Transformer[] = [
   deriveMarkdownFromHTML,
   performCleanContent,
   performRedactPII,
+  performPromptInjectionGuard,
   deriveLinksFromHTML,
   deriveImagesFromHTML,
   deriveBrandingFromActions,
@@ -653,7 +633,7 @@ const transformerStack: Transformer[] = [
   fetchMenu,
   ...(useIndex ? [sendDocumentToIndex] : []),
   ...(useSearchIndex ? [sendDocumentToSearchIndex] : []), // Add to search index for real-time search
-  performLLMExtractUnlessNativeJson,
+  performLLMExtract,
   performDeterministicJson,
   performSummary,
   performQuery,

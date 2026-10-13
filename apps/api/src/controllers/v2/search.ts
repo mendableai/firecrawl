@@ -39,15 +39,23 @@ import { applyAgentAuthDiscoveryHeader } from "../../lib/agent-auth-discovery";
 import { resolveThreatProtection } from "../../lib/threat-protection/request";
 import { isToolsOnlySearch } from "../../search/alexandria";
 import {
+  resolveSafeMode,
+  isLockdownZeroDataRetention,
+  getEffectiveSearchForcedKind,
+} from "../../lib/safe-mode";
+import { checkPermissions } from "../../lib/permissions";
+import {
   actionTypesOf,
   checkKeyEndpointRestriction,
   checkKeyFormatRestriction,
   formatTypesOf,
 } from "../../lib/key-restriction";
 import { wantsDeveloperCategory } from "../../search/developer";
+import { wantsGovCategory } from "../../search/gov";
 import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
+import { markAlexandriaActivity } from "../../lib/alexandria-activity";
 
 const RESEARCH_CATEGORY_NOTICE: Notice = {
   message:
@@ -79,7 +87,11 @@ export async function searchController(
   const zeroDataRetentionTrace =
     Boolean(getSearchForcedKind(req.acuc?.flags)) ||
     enterprise.includes("zdr") ||
-    enterprise.includes("anon");
+    enterprise.includes("anon") ||
+    isLockdownZeroDataRetention(
+      req.acuc?.flags,
+      req.body?.scrapeOptions?.safeMode,
+    );
 
   return withSpan(
     "api.search.request",
@@ -106,7 +118,13 @@ async function searchControllerInner(
 
   const jobId = uuidv7();
   const searchZDRMode = getSearchZDR(req.acuc?.flags);
-  const teamForcedKind = getSearchForcedKind(req.acuc?.flags);
+  // Safe Mode lockdown forces the "zdr" kind like the searchZDR flag does
+  // (see getEffectiveSearchForcedKind).
+  const flagForcedKind = getSearchForcedKind(req.acuc?.flags);
+  const teamForcedKind = getEffectiveSearchForcedKind(
+    req.acuc?.flags,
+    req.body?.scrapeOptions?.safeMode,
+  );
   let logger = _logger.child({
     jobId,
     teamId: req.auth.team_id,
@@ -176,16 +194,28 @@ async function searchControllerInner(
       });
     }
 
-    if (wantsDeveloperCategory(req.body.categories as CategoryOption[])) {
-      const developerRestriction = await checkKeyEndpointRestriction(
-        "/v2/developer/search",
+    const categories = req.body.categories as CategoryOption[];
+    // Index categories reach the same upstream as their dedicated endpoint, so
+    // they share its key restriction and its request ledger.
+    const indexCategory = wantsDeveloperCategory(categories)
+      ? { endpoint: "/v2/developer/search", table: "code_searches" as const }
+      : wantsGovCategory(categories)
+        ? {
+            endpoint: "/v2/search/gov",
+            table: "gov_searches" as const,
+          }
+        : null;
+
+    if (indexCategory) {
+      const indexRestriction = await checkKeyEndpointRestriction(
+        indexCategory.endpoint,
         req.acuc?.api_key_id,
         req.acuc?.flags ?? null,
       );
-      if (!developerRestriction.allowed) {
-        return res.status(developerRestriction.status).json({
+      if (!indexRestriction.allowed) {
+        return res.status(indexRestriction.status).json({
           success: false,
-          error: developerRestriction.error,
+          error: indexRestriction.error,
         });
       }
     }
@@ -206,6 +236,21 @@ async function searchControllerInner(
       });
     }
 
+    // Safe Mode: validate the per-request param up front and reject scrape
+    // options it forbids (the worker backstop would otherwise strip them
+    // silently). Domain controls force threat protection over the results.
+    const safeMode = resolveSafeMode(
+      req.acuc?.flags,
+      req.body.scrapeOptions?.safeMode,
+    );
+    if (safeMode.error) {
+      return res.status(403).json({
+        success: false,
+        code: safeMode.code,
+        error: safeMode.error,
+      });
+    }
+
     // Threat protection: resolve the effective policy. Blocked domains are
     // removed from search results entirely, and scraped results inherit the
     // policy through the scrape pipeline.
@@ -215,6 +260,7 @@ async function searchControllerInner(
       flags: req.acuc?.flags ?? null,
       override:
         req.body.threatProtection ?? req.body.scrapeOptions?.threatProtection,
+      force: safeMode.safeMode?.domainControls === true,
     });
     if (threatProtection.error) {
       return res.status(403).json({
@@ -223,17 +269,51 @@ async function searchControllerInner(
       });
     }
 
+    // Search only scrapes (and only honors scrapeOptions) when formats are
+    // requested, so the scrape-option checks apply only then.
+    if (
+      safeMode.safeMode &&
+      requestedFormats.length > 0 &&
+      req.body.scrapeOptions
+    ) {
+      const permissions = checkPermissions(
+        req.body.scrapeOptions,
+        req.acuc?.flags,
+        {
+          threatProtectionOrgConfig: threatProtection.orgConfig,
+          safeMode: safeMode.safeMode,
+        },
+      );
+      if (permissions.error) {
+        return res.status(403).json({
+          success: false,
+          code: permissions.code,
+          error: permissions.error,
+        });
+      }
+    }
+
     const shouldBill = req.body.__agentInterop?.shouldBill ?? true;
     const agentRequestId = req.body.__agentInterop?.requestId ?? null;
-    const billing: BillingMetadata = req.body.__agentInterop
-      ? { endpoint: "agent" as const, jobId }
-      : { endpoint: "search" as const, jobId };
+    const billing: BillingMetadata = {
+      ...(req.body.__agentInterop
+        ? { endpoint: "agent" as const, jobId }
+        : { endpoint: "search" as const, jobId }),
+      externalRequestId: externalRequestId(req),
+    };
 
     logger = logger.child({
       version: "v2",
       query: req.body.query,
       origin: req.body.origin,
     });
+
+    // Kinds the request itself asked for, captured before the forced kind is
+    // injected: the entitlement check below applies to these only.
+    const requestedZDROrAnon =
+      req.body.enterprise?.includes("zdr") ||
+      req.body.enterprise?.includes("anon") ||
+      false;
 
     // Inject the team-forced enterprise mode so downstream billing,
     // upstream routing, and ZDR cleanup all see it.
@@ -251,7 +331,9 @@ async function searchControllerInner(
     logger = logger.child({ zeroDataRetention });
 
     // Verify the team has searchZDR enabled before allowing enterprise ZDR/anon
-    if (isZDROrAnon && !teamForcedKind) {
+    // it asked for. Only the flag-forced kind exempts a team: a lockdown-forced
+    // "zdr" must not let an unentitled request add "anon".
+    if (requestedZDROrAnon && !flagForcedKind) {
       if (searchZDRMode !== "allowed") {
         return res.status(403).json({
           success: false,
@@ -279,11 +361,17 @@ async function searchControllerInner(
         zeroDataRetention,
         api_key_id: req.acuc?.api_key_id ?? null,
       });
+      // The rejection is surfaced where the promise is awaited below; this
+      // only stops it counting as unhandled until then.
+      logRequestPromise.catch(() => {});
     }
 
     const toolsOnly = isToolsOnlySearch(req.body.sources, req.body.categories);
     const projectedKeylessCredits =
-      !isSearchPreview && shouldBill && !toolsOnly
+      !isSearchPreview &&
+      shouldBill &&
+      !toolsOnly &&
+      !wantsGovCategory(categories)
         ? projectSearchTotalCredits(
             {
               limit: req.body.limit,
@@ -294,6 +382,17 @@ async function searchControllerInner(
             zeroDataRetention,
           )
         : 0;
+    // The request must be on record before anything is reserved, runs, or
+    // bills. A failed log fails the request here, ahead of the keyless
+    // reservation and the search, so there is nothing to refund or unbill.
+    const logStart = Date.now();
+    await logRequestPromise;
+    const waited = Date.now() - logStart;
+    if (waited >= 5)
+      logger.warn("Had to wait for log request promise to complete", {
+        timeMs: waited,
+      });
+
     if (projectedKeylessCredits > 0) {
       const reservation = await reserveKeylessCredits(
         req.auth.team_id,
@@ -303,7 +402,7 @@ async function searchControllerInner(
         applyAgentAuthDiscoveryHeader(res);
         return res
           .status(429)
-          .json(await keylessLimitBody(req.auth.team_id, "v2_search"));
+          .json(await keylessLimitBody(req.auth.team_id, "v2_search", req));
       }
       reservedKeylessCredits = projectedKeylessCredits;
     }
@@ -326,6 +425,7 @@ async function searchControllerInner(
         scrapeOptions: req.body.scrapeOptions,
         highlights: req.body.highlights,
         domainTools: req.body.domainTools,
+        toolDetail: req.body.toolDetail,
         timeout: req.body.timeout,
       },
       {
@@ -344,6 +444,7 @@ async function searchControllerInner(
         agentIndexOnly: (req as any).agentIndexOnly ?? false,
         keylessReserved: reservedKeylessCredits > 0,
         threatProtectionPolicy: threatProtection.policy,
+        safeModeBypassed: safeMode.bypassed === true,
       },
       logger,
     );
@@ -379,40 +480,28 @@ async function searchControllerInner(
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - middlewareStartTime) / 1000;
 
-    // Wait for the parent log before inserting the child search log.
-    const logStart = Date.now();
-    await logRequestPromise;
-    const waited = Date.now() - logStart;
-    if (waited >= 5)
-      logger.warn("Had to wait for log request promise to complete", {
-        timeMs: waited,
-      });
-
-    logSearch(
-      {
-        id: jobId,
-        request_id: agentRequestId ?? jobId,
-        query: req.body.query,
-        is_successful: true,
-        error: undefined,
-        results: result.response as any,
-        num_results: result.totalResultsCount,
-        time_taken: timeTakenInSeconds,
-        team_id: req.auth.team_id,
-        options: req.body,
-        // Don't record preview tokens as billed in the ledger — only record
-        // credits when billing is actually applied.
-        credits_cost: !isSearchPreview && shouldBill ? result.searchCredits : 0,
-        zeroDataRetention,
-      },
-      false,
-    ).catch(error => {
+    logSearch({
+      id: jobId,
+      request_id: agentRequestId ?? jobId,
+      query: req.body.query,
+      is_successful: true,
+      error: undefined,
+      results: result.response as any,
+      num_results: result.totalResultsCount,
+      time_taken: timeTakenInSeconds,
+      team_id: req.auth.team_id,
+      options: req.body,
+      // Don't record preview tokens as billed in the ledger — only record
+      // credits when billing is actually applied.
+      credits_cost: !isSearchPreview && shouldBill ? result.searchCredits : 0,
+      zeroDataRetention,
+    }).catch(error => {
       logger.error("Failed to log search", { error, jobId });
     });
 
-    if (wantsDeveloperCategory(req.body.categories as CategoryOption[])) {
+    if (indexCategory) {
       logResearchEndpoint({
-        table: "code_searches",
+        table: indexCategory.table,
         id: uuidv7(),
         request_id: agentRequestId ?? jobId,
         team_id: req.auth.team_id,
@@ -425,7 +514,7 @@ async function searchControllerInner(
           via: "search_category",
         },
         response: null,
-        num_results: result.developerResultsCount,
+        num_results: result.indexResultsCount,
         time_taken: timeTakenInSeconds,
         // Ensure preview-mode searches don't get a non-zero credits_cost
         // in the research ledger when preview tokens are used.
@@ -433,7 +522,7 @@ async function searchControllerInner(
         is_successful: true,
         zeroDataRetention,
       }).catch(ledgerError => {
-        logger.warn("Failed to log developer category usage", {
+        logger.warn("Failed to log index category usage", {
           error: ledgerError,
         });
       });
@@ -457,6 +546,7 @@ async function searchControllerInner(
       scrapeful: result.shouldScrape,
     });
 
+    if (result.response.tools) markAlexandriaActivity(req.auth.team_id);
     return res.status(200).json({
       success: true,
       data: result.response,

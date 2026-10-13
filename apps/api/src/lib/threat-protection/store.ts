@@ -49,7 +49,7 @@ function isMissingTableError(error: unknown): boolean {
  * {@link getOrgZscalerCredentials} at call time, never serialized to the API
  * or into job payloads.
  */
-export interface OrgZscalerSettings {
+interface OrgZscalerSettings {
   clientId: string;
   secretCiphertext: string;
   vanityDomain: string;
@@ -134,7 +134,9 @@ export function rowToConfig(
           ? "normal"
           : row.mode === "zscaler"
             ? "zscaler"
-            : "off",
+            : row.mode === "manual-only"
+              ? "manual-only"
+              : "off",
       riskScoreThreshold: doc.riskScoreThreshold,
       blacklist: doc.blacklist,
       whitelist: doc.whitelist,
