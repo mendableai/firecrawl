@@ -6,7 +6,7 @@ use super::{
   raw_page::RawPageResult,
 };
 
-pub use self::pdf::{PdfBlockItem, PdfPage};
+pub use self::pdf::{FirePdfError, PdfPage, PdfPageBlocks, fire_engine_pdf_max_size};
 
 mod document;
 mod fallback;
@@ -24,21 +24,26 @@ pub type Parsers = KindedSet<Parser>;
 #[tracing::instrument(
   name = "parsers::parse_engine_result",
   skip(meta, result),
-  fields(parser = tracing::field::Empty),
+  fields(parser = tracing::field::Empty, raw_base64.length = tracing::field::Empty),
   err
 )]
 pub async fn parse_engine_result(
   meta: &Meta,
   result: RawPageResult,
 ) -> Result<Document, ScrapeURLError> {
-  if pdf::has_pdf_signal(&result) {
+  let document = if pdf::has_pdf_signal(&result) {
     tracing::Span::current().record("parser", "pdf");
-    pdf::parse_pdf(meta, result).await
+    pdf::parse_pdf(meta, result, None).await
   } else if document::has_document_signal(&result) {
     tracing::Span::current().record("parser", "document");
     document::parse_document(meta, result)
   } else {
     tracing::Span::current().record("parser", "fallback");
     fallback::parse_fallback(meta, result)
-  }
+  }?;
+  tracing::Span::current().record(
+    "raw_base64.length",
+    document.raw_base64.as_ref().map(String::len),
+  );
+  Ok(document)
 }

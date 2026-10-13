@@ -10,6 +10,7 @@ use crate::_get_inner_json;
 use super::super::{
   document::{Document, DocumentMetadata, DocumentMetadataCacheState},
   error::ScrapeURLError,
+  formats::FormatKind,
   meta::Meta,
   raw_page::{RawPageContent, RawPageResult},
 };
@@ -40,7 +41,11 @@ pub fn parse_fallback(meta: &Meta, result: RawPageResult) -> Result<Document, Sc
     RawPageContent::Bytes(bytes) => {
       let encoding = deduce_encoding(&bytes, &result.content_type);
       (
-        Some(base64::engine::general_purpose::STANDARD.encode(bytes.as_ref())),
+        meta
+          .options
+          .formats
+          .contains(FormatKind::RawBase64)
+          .then(|| base64::engine::general_purpose::STANDARD.encode(bytes.as_ref())),
         encoding.decode(bytes.as_ref()).0.to_string(),
         None,
       )
