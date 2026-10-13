@@ -63,10 +63,9 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
         if (row) searchRow = { options: JSON.parse(row.options ?? "null") };
         else await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      expect(searchRow?.options).toMatchObject({
-        clientModel: "claude-sonnet-4-6",
-      });
+      expect(searchRow?.options).toMatchObject({ query: "firecrawl" });
       expect(searchRow?.options).not.toHaveProperty("objective");
+      expect(searchRow?.options).not.toHaveProperty("clientModel");
 
       const result = await searchFeedback(
         raw.body.id,

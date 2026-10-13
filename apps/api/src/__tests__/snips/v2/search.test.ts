@@ -36,16 +36,14 @@ describeIf(TEST_PRODUCTION || HAS_SEARCH || HAS_PROXY)("Search tests", () => {
   );
 
   it.concurrent(
-    "accepts optional client model",
+    "ignores legacy client model on search requests",
     async () => {
-      const res = await search(
-        {
-          query: "firecrawl documentation",
-          clientModel: "claude-sonnet-4-6",
-          limit: 1,
-        },
-        identity,
-      );
+      const body = {
+        query: "firecrawl documentation",
+        clientModel: "claude-sonnet-4-6",
+        limit: 1,
+      };
+      const res = await search(body, identity);
       expect(res.web?.length).toBeGreaterThan(0);
     },
     60000,

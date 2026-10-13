@@ -51,36 +51,33 @@ describe("searchRequestSchema highlights", () => {
     expect(request.highlights).toBe(false);
   });
 
-  it("accepts optional client model without changing search defaults", () => {
+  it("keeps search defaults without task context fields", () => {
     const request = searchRequestSchema.parse({
       query: "React memo docs",
-      clientModel: "  claude-sonnet-4-6  ",
     });
 
     expect(request).toMatchObject({
       query: "React memo docs",
-      clientModel: "claude-sonnet-4-6",
       limit: 10,
     });
     expect(
       searchRequestSchema.parse({ query: "React memo docs" }),
     ).not.toHaveProperty("objective");
+    expect(request).not.toHaveProperty("clientModel");
   });
 
   it.each([
+    { clientModel: "claude-sonnet-4-6" },
     { clientModel: " " },
     { clientModel: "x".repeat(129) },
     { clientModel: 42 },
-  ])("drops invalid agent task context without failing the search %j", context => {
+  ])("rejects removed client model in the request schema %j", context => {
     const result = searchRequestSchema.safeParse({
       query: "React memo docs",
       ...context,
     });
 
-    expect(result.success).toBe(true);
-    expect(result.data).not.toHaveProperty("objective");
-    expect(result.data?.clientModel).toBeUndefined();
-    expect(result.data?.limit).toBe(10);
+    expect(result.success).toBe(false);
   });
 
   it.each(["Find official rerender guidance", " ", "x".repeat(5001), null])(
