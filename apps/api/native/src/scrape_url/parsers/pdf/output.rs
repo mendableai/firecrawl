@@ -200,7 +200,6 @@ pub fn parsed_document(
   parser: &PdfOptions,
   parsed: Parsed,
   bytes: &Bytes,
-  handed_off: bool,
   facts: PdfFacts,
 ) -> Document {
   let mut document = document(
@@ -209,9 +208,7 @@ pub fn parsed_document(
   );
   document.markdown = Some(parsed.markdown);
   document.raw_html = Some(parsed.html);
-  // A handed-off file can be up to 256MB; fire-engine never grants the handoff to raw requests.
-  document.raw_base64 =
-    (!handed_off).then(|| base64::engine::general_purpose::STANDARD.encode(bytes));
+  document.raw_base64 = Some(base64::engine::general_purpose::STANDARD.encode(bytes));
   document.pages = parsed
     .pages
     .filter(|_| parser.pages)

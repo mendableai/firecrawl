@@ -145,8 +145,5 @@ pub async fn parse_pdf(
   span.record("pdf.engine", engine);
   span.record("pdf.num_pages", facts.num_pages);
   span.record("pdf.total_pages", facts.total_pages);
-  let handed_off = handoff.is_some();
-  Ok(parsed_document(
-    meta, page, parser, parsed, &bytes, handed_off, facts,
-  ))
+  Ok(parsed_document(meta, page, parser, parsed, &bytes, facts))
 }
