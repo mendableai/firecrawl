@@ -40,7 +40,12 @@ pub async fn fire_pdf_inline(
   let with_cache_keys = client.cache_applicable(options);
   let (pdf_b64, cache_keys) = {
     let bytes = bytes.clone();
-    tokio::task::spawn_blocking(move || base64_with_cache_keys(&bytes, with_cache_keys)).await
+    let parent = Span::current();
+    tokio::task::spawn_blocking(move || {
+      let _guard = parent.enter();
+      base64_with_cache_keys(&bytes, with_cache_keys)
+    })
+    .await
   }
   .unwrap_or_else(|_| base64_with_cache_keys(bytes, with_cache_keys));
 

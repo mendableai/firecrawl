@@ -21,7 +21,9 @@ fn escape_html(text: &str) -> String {
 pub async fn markdown_to_html(markdown: String) -> (String, String) {
   let shared = Arc::new(markdown);
   let input = Arc::clone(&shared);
+  let parent = Span::current();
   let rendered = tokio::task::spawn_blocking(move || {
+    let _guard = parent.enter();
     markdown::to_html_with_options(&input, &markdown::Options::gfm()).map_err(|e| e.to_string())
   })
   .await

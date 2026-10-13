@@ -92,7 +92,14 @@ async fn convert_markdown_to_html(meta: &Meta, html: &str) -> Result<String, Tra
     ConvertResponse::Success { markdown, .. } => markdown,
   };
 
-  Ok(tokio::task::spawn_blocking(move || _post_process_markdown(markdown)).await?)
+  let parent = tracing::Span::current();
+  Ok(
+    tokio::task::spawn_blocking(move || {
+      let _guard = parent.enter();
+      _post_process_markdown(markdown)
+    })
+    .await?,
+  )
 }
 
 #[instrument(

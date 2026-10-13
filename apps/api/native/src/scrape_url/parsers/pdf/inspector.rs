@@ -43,6 +43,20 @@ fn millis_since(start: Instant) -> u64 {
   u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
+/// Runs `f` on a rayon pool whose threads enter `span`. pdf-inspector parses on rayon
+/// (through lopdf), and the ZDR panic hook needs the scrape's span on those threads.
+fn on_span_pool<R: Send>(span: &Span, f: impl FnOnce() -> R + Send) -> Result<R, String> {
+  rayon::ThreadPoolBuilder::new()
+    .build_scoped(
+      |thread| {
+        let _guard = span.enter();
+        thread.run();
+      },
+      |pool| pool.install(f),
+    )
+    .map_err(|e| e.to_string())
+}
+
 /// Runs pdf-inspector on the blocking pool, holding an extraction permit until it finishes.
 #[tracing::instrument(
   name = "parsers::pdf::inspect_pdf",
@@ -70,6 +84,7 @@ pub async fn inspect_pdf(bytes: &Bytes, pass: InspectPass) -> Result<PdfProcessR
 
   let running_since = Instant::now();
   let bytes = bytes.clone();
+  let parent = span.clone();
   let inspected = tokio::task::spawn_blocking(move || {
     let _permit = permit;
     let options = match pass {
@@ -79,7 +94,10 @@ pub async fn inspect_pdf(bytes: &Bytes, pass: InspectPass) -> Result<PdfProcessR
       }
       InspectPass::Extract { .. } => pdf_inspector::PdfOptions::new(),
     };
-    pdf_inspector::process_pdf_mem_with_options(&bytes, options).map_err(|e| e.to_string())
+    on_span_pool(&parent, || {
+      pdf_inspector::process_pdf_mem_with_options(&bytes, options)
+    })?
+    .map_err(|e| e.to_string())
   })
   .await
   .map_err(|e| e.to_string())??;

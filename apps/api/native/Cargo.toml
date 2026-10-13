@@ -22,6 +22,7 @@ kinded-macro = { path = "kinded-macro" }
 kuchikiki = "0.8.2"
 lol_html = "2.6.0"
 pdf-inspector = "1.18.0"
+rayon = "1.10"
 mime = "0.3"
 napi = { version = "3.12.0", features = ["serde-json", "tokio_rt"] }
 napi-derive = "3.6.2"
