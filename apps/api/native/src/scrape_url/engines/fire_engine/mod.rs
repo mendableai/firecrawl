@@ -58,7 +58,10 @@ impl FireEngine {
   #[instrument(
     name = "FireEngine::do_scrape",
     skip(self, meta),
-    fields(fire_engine.job_id = tracing::field::Empty),
+    fields(
+      fire_engine.job_id = tracing::field::Empty,
+      javascript_return.parse_error = tracing::field::Empty,
+    ),
     err
   )]
   pub async fn do_scrape(
@@ -310,7 +313,7 @@ impl FireEngine {
                     }
                   }
                   Err(e) => {
-                    tracing::warn!(error = %e, "failed to parse executeJavascript return");
+                    tracing::Span::current().record("javascript_return.parse_error", e.to_string());
                     JavascriptActionContent {
                       r#type: "unknown".to_string(),
                       value: serde_json::Value::String(raw_return.clone()),
