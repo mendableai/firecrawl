@@ -14,6 +14,7 @@ use self::{
   meta::Meta,
   options::{InternalOptions, ScrapeOptions},
   raw_page::{RawPage, RawPageSource, ScrapeProxy},
+  timeout::{DEFAULT_SCRAPE_TIMEOUT, scrape_timeout_error},
   transformers::execute_tranformers,
 };
 
@@ -33,6 +34,7 @@ mod parsers;
 mod raw_page;
 mod rewrite_url;
 mod robots;
+mod timeout;
 mod transformers;
 mod ts_bindings;
 
@@ -258,6 +260,9 @@ pub async fn scrape_url(
     engine = Empty,
     proxy_elevated = Empty,
     proxy_elevation_reason = Empty,
+    deadline.timeout_ms = Empty,
+    timed_out = Empty,
+    large_pdf.job_scrape_id = Empty,
     input.argument = Empty,
     input.path = Empty,
     error.code = Empty,
@@ -309,7 +314,24 @@ async fn scrape_url_task(
       .join(","),
   );
 
-  Ok(serde_json::to_value(_scrape_url(meta).await?)?)
+  // Dropping the scrape at the deadline cancels whatever it is waiting on.
+  let capped = meta.deadline.is_none();
+  let deadline = meta
+    .deadline
+    .unwrap_or_else(|| tokio::time::Instant::now() + DEFAULT_SCRAPE_TIMEOUT);
+  span.record(
+    "deadline.timeout_ms",
+    meta
+      .options
+      .timeout
+      .unwrap_or(DEFAULT_SCRAPE_TIMEOUT.as_secs() * 1000),
+  );
+  let large_pdf_processing = meta.large_pdf_processing.clone();
+  let result = tokio::time::timeout_at(deadline, _scrape_url(meta)).await;
+  span.record("timed_out", result.is_err());
+  let document = result.map_err(|_| scrape_timeout_error(capped, &large_pdf_processing))??;
+
+  Ok(serde_json::to_value(document)?)
 }
 
 /// Decodes the message of a `scrapeUrl` rejection into its typed payload.

@@ -32,7 +32,7 @@ struct PlaywrightRequest<'a> {
   url: &'a Url,
   wait_after_load: i32,
   #[serde(skip_serializing_if = "Option::is_none")]
-  timeout: Option<u32>,
+  timeout: Option<u64>,
   headers: &'a HashMap<String, String>,
   skip_tls_verification: bool,
 }
@@ -83,7 +83,10 @@ impl Engine for PlaywrightEngine {
   #[tracing::instrument(
     name = "PlaywrightEngine::scrape",
     skip_all,
-    fields(landed_url = tracing::field::Empty),
+    fields(
+      landed_url = tracing::field::Empty,
+      deadline.remaining_ms = tracing::field::Empty
+    ),
     err
   )]
   async fn scrape(
@@ -91,13 +94,14 @@ impl Engine for PlaywrightEngine {
     meta: &Meta,
     _proxy: ScrapeProxy,
   ) -> Result<EngineOutcome<RawPageResult>, ScrapeURLError> {
+    let remaining_ms = meta.remaining_ms();
+    tracing::Span::current().record("deadline.remaining_ms", remaining_ms);
     let res = super::shared_client(&CLIENT)?
       .post(self.url)
       .json(&PlaywrightRequest {
         url: meta.get_url(),
         wait_after_load: meta.options.effective_wait_for(),
-        // timeout: meta.options.timeout // TODO:
-        timeout: None,
+        timeout: remaining_ms,
         headers: &meta.options.headers,
         skip_tls_verification: meta.options.should_skip_tls_verification(),
       })

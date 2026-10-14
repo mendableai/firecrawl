@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
 
-use super::{options::ProxyMode, parsers::FirePdfError, transformers::TransformerError};
+use super::{
+  options::ProxyMode, parsers::FirePdfError, timeout::ScrapeTimeoutProcessing,
+  transformers::TransformerError,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ScrapeURLError {
@@ -24,6 +27,12 @@ pub enum ScrapeURLError {
     (.min_timeout * 3).div_ceil(2000)
   )]
   PDFInsufficientTimeError { page_count: u32, min_timeout: u64 },
+
+  #[error("{message}")]
+  ScrapeTimeout {
+    message: String,
+    processing: Option<ScrapeTimeoutProcessing>,
+  },
 
   #[error("page failed to load in the browser with error code {code}")]
   SiteError { code: String },
@@ -180,6 +189,10 @@ impl ScrapeURLError {
         page_count: *page_count,
         min_timeout: *min_timeout,
       },
+      Self::ScrapeTimeout { processing, .. } => ScrapeErrorPayload::ScrapeTimeout {
+        message,
+        processing: processing.clone(),
+      },
       Self::SiteError { code } => ScrapeErrorPayload::SiteError {
         error_code: code.clone(),
       },
@@ -296,6 +309,14 @@ pub enum ScrapeErrorPayload {
 
   #[serde(rename = "SCRAPE_PDF_INSUFFICIENT_TIME_ERROR", rename_all = "camelCase")]
   PdfInsufficientTime { page_count: u32, min_timeout: u64 },
+
+  #[serde(rename = "SCRAPE_TIMEOUT")]
+  ScrapeTimeout {
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    processing: Option<ScrapeTimeoutProcessing>,
+  },
 
   #[serde(rename = "SCRAPE_SITE_ERROR", rename_all = "camelCase")]
   SiteError { error_code: String },

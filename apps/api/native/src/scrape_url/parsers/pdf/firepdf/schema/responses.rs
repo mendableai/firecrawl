@@ -1,6 +1,6 @@
 //! Responses of the job, adoption and cache-lookup endpoints.
 
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
 use super::document::{
@@ -96,6 +96,21 @@ pub struct PollResponse {
   pub pages_processed: Option<u32>,
   #[serde(default)]
   pub error_class: Option<String>,
+  /// fire-pdf's live estimate of the time left.
+  #[serde(default, deserialize_with = "deserialize_estimate")]
+  pub estimated_remaining_ms: Option<i64>,
+}
+
+/// Anything but a finite non-negative number reads as no estimate, never a failed poll.
+fn deserialize_estimate<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<i64>, D::Error> {
+  Ok(
+    Value::deserialize(deserializer)?
+      .as_f64()
+      .filter(|n| n.is_finite() && *n >= 0.0)
+      .map(|n| n as i64),
+  )
 }
 
 /// The 503 codes fire-pdf's submit handlers document. A 503 with any other

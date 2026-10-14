@@ -1,7 +1,14 @@
-use std::time::Duration;
+use std::{
+  sync::{Arc, Mutex},
+  time::Duration,
+};
 
 use super::{
-  super::{super::super::meta::Meta, html::markdown_to_html, types::PdfMode},
+  super::{
+    super::super::{meta::Meta, timeout::LargePdfProcessing},
+    html::markdown_to_html,
+    types::PdfMode,
+  },
   FirePdfConfig,
   io::{self, HttpRequest, HttpResponse, Method},
   schedule,
@@ -37,6 +44,8 @@ pub struct FirePdfRequest {
   pub source_kind: SourceKind,
   /// Scrape deadline in the io clock's epoch milliseconds.
   pub deadline_ms: Option<i64>,
+  /// The scrape's large-PDF job, for its timeout error.
+  pub large_pdf_processing: Arc<Mutex<Option<LargePdfProcessing>>>,
 }
 
 impl FirePdfRequest {
@@ -58,6 +67,7 @@ impl FirePdfRequest {
         || options.profile.is_some(),
       source_kind: SourceKind::Pdf,
       deadline_ms,
+      large_pdf_processing: meta.large_pdf_processing.clone(),
     }
   }
 

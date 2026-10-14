@@ -4,6 +4,7 @@
 use serde_json::Value;
 use tracing::{Span, field::Empty};
 
+use super::super::super::super::super::timeout::ServerEstimate;
 use super::super::{
   FallbackReason, FirePdfClient, FirePdfError,
   io::{self, Method},
@@ -288,7 +289,20 @@ impl FirePdfClient<'_> {
       span.record("http.status", response.status);
       match state.interpret(&round, response.status, response.json_or_empty())? {
         PollAnswer::Done(pages_processed) => return Ok(pages_processed),
-        PollAnswer::Running(poll) => state.after_running(&round, poll, io::now_ms() - sent_at),
+        PollAnswer::Running(poll) => {
+          if let Ok(mut slot) = self.request.large_pdf_processing.lock()
+            && let Some(current) = slot.as_mut()
+          {
+            current.last_status = poll.status.as_str();
+            if let Some(remaining_ms) = poll.estimated_remaining_ms {
+              current.server_estimate = Some(ServerEstimate {
+                remaining_ms,
+                observed_at_ms: io::now_ms(),
+              });
+            }
+          }
+          state.after_running(&round, poll, io::now_ms() - sent_at);
+        }
       }
     }
   }

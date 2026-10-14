@@ -107,6 +107,16 @@ fn generate_domain_splits(hostname: impl AsRef<str>) -> Vec<String> {
   }
 }
 
+/// Cache writes never hold up a lookup, like TS's unawaited writes.
+fn spawn_cache_write(write: impl Future<Output = Result<(), ScrapeURLError>> + Send + 'static) {
+  tokio::spawn(
+    async move {
+      let _ = write.await;
+    }
+    .in_current_span(),
+  );
+}
+
 enum MaxAgeSource {
   Explicit,
   DynamicCached,
@@ -130,7 +140,7 @@ impl<'a> PartialEq for IndexEntrySource<'a> {
 
 impl<'a> Eq for IndexEntrySource<'a> {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct IndexEntryVariant {
   pub url_hash: Vec<u8>,
   pub is_mobile: bool,
@@ -165,7 +175,7 @@ impl IndexEntryVariant {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct IndexEntryFilter {
   pub max_age: i32,
   pub min_age: Option<i32>,
@@ -263,8 +273,11 @@ impl Index {
             {
               (max_age, MaxAgeSource::DynamicCached)
             } else if let Ok(Some(max_age)) = self.db.get_max_age(domain_hash).await {
-              if let Some(index_cache) = &self.cache {
-                let _ = index_cache.set_max_age(domain_hash, max_age).await;
+              if let Some(index_cache) = self.cache {
+                let domain_hash = domain_hash.clone();
+                spawn_cache_write(
+                  async move { index_cache.set_max_age(&domain_hash, max_age).await },
+                );
               }
               (max_age, MaxAgeSource::DynamicDb)
             } else {
@@ -309,20 +322,24 @@ impl Index {
         (
           if !entries.is_empty() {
             if meta.options.min_age.is_none() {
-              let _ = index_cache.upsert_entries(&variant, &entries).await;
+              let (index_cache, variant, entries) =
+                (*index_cache, variant.clone(), entries.clone());
+              spawn_cache_write(
+                async move { index_cache.upsert_entries(&variant, &entries).await },
+              );
             }
 
             Some(entries)
           } else {
             if meta.options.min_age.is_none() {
               // TODO: this is suboptimal as it can overwrite a more broader negative hit signal
-              let _ = index_cache
-                .set_negative(
-                  &variant,
-                  &filter,
-                  Utc::now() - Duration::from_millis(filter.max_age as u64),
-                )
-                .await;
+              let empty_from = Utc::now() - Duration::from_millis(filter.max_age as u64);
+              let (index_cache, variant, filter) = (*index_cache, variant.clone(), filter.clone());
+              spawn_cache_write(async move {
+                index_cache
+                  .set_negative(&variant, &filter, empty_from)
+                  .await
+              });
             }
 
             None
@@ -413,7 +430,8 @@ impl Index {
     } else {
       if let IndexEntrySource::Cache(index_cache) = source {
         // drop poisoned cache
-        let _ = index_cache.delete_entry(&variant, selected_row.id).await;
+        let (index_cache, variant) = (*index_cache, variant.clone());
+        spawn_cache_write(async move { index_cache.delete_entry(&variant, selected_row.id).await });
       }
       Ok(None)
     }

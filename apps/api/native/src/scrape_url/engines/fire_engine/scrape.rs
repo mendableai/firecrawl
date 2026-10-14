@@ -64,7 +64,7 @@ pub struct FireEngineScrapeRequest<'a> {
   pub mobile_proxy: bool,
   pub auto_proxy: bool,
 
-  pub timeout: u32,
+  pub timeout: u64,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub max_age: Option<i32>, // TODO: why the fuck is this in here?
 
