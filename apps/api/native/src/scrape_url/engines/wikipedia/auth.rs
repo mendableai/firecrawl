@@ -9,7 +9,7 @@ use redis::{
 use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::{Mutex, OnceCell};
-use tracing::{Span, field::Empty};
+use tracing::{Instrument, Span, field::Empty};
 
 use super::super::super::error::ScrapeURLError;
 use super::{USER_AGENT, engine_error};
@@ -76,6 +76,7 @@ async fn log_in(
 ) -> Result<String, ScrapeURLError> {
   let response = client
     .post(AUTH_URL)
+    .timeout(Duration::from_millis(LOCK_TTL_MS))
     .header("User-Agent", USER_AGENT)
     .json(&json!({ "username": username, "password": password }))
     .send()
@@ -130,9 +131,9 @@ async fn acquire_lock(value: &str) -> Option<&'static Mutex<MultiplexedConnectio
 /// A valid access token: Redis's, or a fresh login under the lock.
 #[tracing::instrument(name = "WikipediaEngine::access_token", skip_all, fields(wikipedia.token = Empty), err)]
 pub async fn access_token(
-  client: &reqwest::Client,
-  username: &str,
-  password: &str,
+  client: &'static reqwest::Client,
+  username: &'static str,
+  password: &'static str,
 ) -> Result<String, ScrapeURLError> {
   let span = Span::current();
   if let Some(token) = cached_token().await {
@@ -142,25 +143,32 @@ pub async fn access_token(
 
   let lock_value = format!("{:032x}", rand::random::<u128>());
   let lock = acquire_lock(&lock_value).await;
-  let token = match cached_token().await {
-    Some(token) => {
-      span.record("wikipedia.token", "cached_after_lock");
-      Ok(token)
+  // Its own task, so a scrape that times out mid-login still caches the token and
+  // releases the lock for the scrapes waiting on it.
+  let locked = async move {
+    let token = match cached_token().await {
+      Some(token) => {
+        span.record("wikipedia.token", "cached_after_lock");
+        Ok(token)
+      }
+      None => {
+        span.record("wikipedia.token", "logged_in");
+        log_in(client, username, password).await
+      }
+    };
+    if let Some(redis) = lock {
+      let released: Result<i64, _> = Script::new(RELEASE_LOCK)
+        .key(LOCK_KEY)
+        .arg(&lock_value)
+        .invoke_async(&mut *redis.lock().await)
+        .await;
+      if let Err(error) = released {
+        tracing::error!(error = %error, "failed to release the Wikipedia Enterprise login lock");
+      }
     }
-    None => {
-      span.record("wikipedia.token", "logged_in");
-      log_in(client, username, password).await
-    }
+    token
   };
-  if let Some(redis) = lock {
-    let released: Result<i64, _> = Script::new(RELEASE_LOCK)
-      .key(LOCK_KEY)
-      .arg(&lock_value)
-      .invoke_async(&mut *redis.lock().await)
-      .await;
-    if let Err(error) = released {
-      tracing::error!(error = %error, "failed to release the Wikipedia Enterprise login lock");
-    }
-  }
-  token
+  tokio::spawn(locked.in_current_span())
+    .await
+    .map_err(|e| engine_error(e.to_string()))?
 }
