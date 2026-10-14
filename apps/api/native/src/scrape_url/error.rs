@@ -221,6 +221,9 @@ impl ScrapeURLError {
       Self::Transformer(TransformerError::JsonContentTooLarge) => {
         ScrapeErrorPayload::JsonContentTooLarge { message }
       }
+      Self::Transformer(TransformerError::PromptInjectionDetected(_)) => {
+        ScrapeErrorPayload::PromptInjectionDetected { message }
+      }
       Self::ReliableRetrievalError(proxy) => ScrapeErrorPayload::ReliableRetrievalError {
         proxy: *proxy,
         message,
@@ -368,6 +371,9 @@ pub enum ScrapeErrorPayload {
 
   #[serde(rename = "SCRAPE_JSON_CONTENT_TOO_LARGE")]
   JsonContentTooLarge { message: String },
+
+  #[serde(rename = "SCRAPE_PROMPT_INJECTION_DETECTED")]
+  PromptInjectionDetected { message: String },
 
   #[serde(rename = "UNKNOWN_ERROR")]
   Unknown { message: String },

@@ -120,7 +120,8 @@ pub async fn derive_markdown_from_html(
     && !meta.options.formats.contains(FormatKind::Question)
     && !meta.options.formats.contains(FormatKind::Highlights)
     && !meta.options.formats.contains(FormatKind::Query)
-    // && meta.options.redact_pii.is_none() // TODO:
+    && meta.options.redact_pii.is_none()
+    && !meta.options.check_prompt_injection
     && !meta.options.only_clean_content
   {
     return Ok(document);

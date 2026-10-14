@@ -17,7 +17,7 @@ mod strict_schema;
 pub(super) use generate::{CompletionOptions, generate_object};
 
 // ~2MB of markdown, well past typical page sizes -- caps worst-case JSON extraction cost/latency.
-const MAX_JSON_EXTRACTION_MARKDOWN_CHARS: usize = 2_000_000;
+pub(super) const MAX_JSON_EXTRACTION_MARKDOWN_CHARS: usize = 2_000_000;
 
 const SCHEMA_GENERATOR_SYSTEM_PROMPT: &str = "You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
 Consider:
@@ -114,7 +114,6 @@ fn record_llm_telemetry(meta: &Meta, span: &tracing::Span) {
   fields(
     json.prompt = tracing::field::Empty,
     json.schema = tracing::field::Empty,
-    json.check_prompt_injection = tracing::field::Empty,
     llm.function_id = tracing::field::Empty,
     llm.telemetry = tracing::field::Empty,
   ),
@@ -134,7 +133,6 @@ pub async fn perform_llm_extract(
     "json.schema",
     options.schema.as_ref().map(|x| x.to_string()).as_deref(),
   );
-  span.record("json.check_prompt_injection", options.check_prompt_injection);
   record_llm_telemetry(meta, &span);
 
   let Some(markdown) = document.markdown.as_deref() else {
