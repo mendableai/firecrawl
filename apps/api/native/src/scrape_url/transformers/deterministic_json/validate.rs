@@ -1,6 +1,7 @@
 //! TS `pipeline/validate.ts`: clean the codegen output down to the extract
 //! function and check its shape before running it. TS uses the TypeScript
-//! parser; this uses oxc, so syntax-error wording differs.
+//! parser; this uses oxc, so syntax-error wording differs, and a source oxc
+//! can't recover is checked for its syntax errors only.
 
 use std::sync::LazyLock;
 
@@ -35,6 +36,13 @@ static FENCE_OPEN: LazyLock<Regex> = LazyLock::new(|| {
 });
 static FENCE_CLOSE: LazyLock<Regex> =
   LazyLock::new(|| Regex::new(&format!("```{}*$", js::SPACE_CLASS)).expect("static regex"));
+static DECLARES_EXTRACT: LazyLock<Regex> = LazyLock::new(|| {
+  let s = js::SPACE_CLASS;
+  Regex::new(&format!(
+    "(?m)^{s}*(?:export{s}+(?:default{s}+)?)?(?:async{s}+)?function{s}+extract\\b"
+  ))
+  .expect("static regex")
+});
 static EXPORT_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
   let s = js::SPACE_CLASS;
   Regex::new(&format!("^(?i){s}*export{s}+(?:default{s}+)?")).expect("static regex")
@@ -113,6 +121,11 @@ pub fn clean_generated_code(raw: &str) -> Result<String, String> {
   let allocator = Allocator::default();
   let parsed = parse(&allocator, &code);
   let Some((index, _)) = find_extractor(&parsed.program) else {
+    // TS's parser recovers from a syntax error and still finds extract; oxc
+    // doesn't, so keep the source and let validation report the errors.
+    if !parsed.errors.is_empty() && DECLARES_EXTRACT.is_match(&code) {
+      return Ok(EXPORT_PREFIX.replace(&code, "").into_owned());
+    }
     return Err("LLM did not return a function named extract".to_string());
   };
   let kept: Vec<String> = parsed
@@ -159,7 +172,10 @@ pub fn validate_generated_extractor(code: &str) -> Vec<Issue> {
       excerpt: String::new(),
     })
     .collect();
-  validate_top_level_shape(code, &parsed.program, &mut issues);
+  // A source oxc couldn't recover is reported by its syntax errors alone.
+  if issues.is_empty() || find_extractor(&parsed.program).is_some() {
+    validate_top_level_shape(code, &parsed.program, &mut issues);
+  }
   let mut globals = ForbiddenGlobals {
     seen: Vec::new(),
     issues: &mut issues,

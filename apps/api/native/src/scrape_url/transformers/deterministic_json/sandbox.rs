@@ -8,7 +8,7 @@ use serde_json::{Map, Value, json};
 use tokio::net::{TcpStream, lookup_host};
 use tokio_tungstenite::{
   WebSocketStream, client_async,
-  tungstenite::{Error as WsError, Message},
+  tungstenite::{Error as WsError, Message, error::ProtocolError},
 };
 use tracing::{Span, field::Empty, instrument};
 use url::Url;
@@ -47,9 +47,7 @@ pub async fn run_extractor_in_sandbox(
 
 async fn session(endpoint: &str, run: String, ask: &AskLlm) -> Result<Option<Value>, String> {
   let mut ws = connect(endpoint).await?;
-  ws.send(Message::text(run))
-    .await
-    .map_err(|e| e.to_string())?;
+  ws.send(Message::text(run)).await.map_err(stream_error)?;
 
   let mut host_calls = 0;
   let mut pending = FuturesUnordered::new();
@@ -57,8 +55,8 @@ async fn session(endpoint: &str, run: String, ask: &AskLlm) -> Result<Option<Val
     tokio::select! {
       message = ws.next() => {
         let text = match message {
-          None | Some(Ok(Message::Close(_))) => break Err("sandbox connection closed".to_string()),
-          Some(Err(e)) => break Err(e.to_string()),
+          None | Some(Ok(Message::Close(_))) => break Err(CLOSED.to_string()),
+          Some(Err(e)) => break Err(stream_error(e)),
           Some(Ok(Message::Text(text))) => text.to_string(),
           Some(Ok(Message::Binary(bytes))) => String::from_utf8_lossy(&bytes).into_owned(),
           Some(Ok(_)) => continue,
@@ -85,6 +83,20 @@ async fn session(endpoint: &str, run: String, ask: &AskLlm) -> Result<Option<Val
   Span::current().record("host_calls", host_calls);
   let _ = ws.close(None).await;
   outcome
+}
+
+const CLOSED: &str = "sandbox connection closed";
+
+/// After the handshake, Node's `ws` reports a dropped socket only as `close`;
+/// bad frames still surface as errors.
+fn stream_error(e: WsError) -> String {
+  match e {
+    WsError::ConnectionClosed
+    | WsError::AlreadyClosed
+    | WsError::Io(_)
+    | WsError::Protocol(ProtocolError::ResetWithoutClosingHandshake) => CLOSED.to_string(),
+    e => e.to_string(),
+  }
 }
 
 /// Connects like Node's `ws`, with its messages for the usual failures.
