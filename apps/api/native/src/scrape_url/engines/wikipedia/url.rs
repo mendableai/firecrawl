@@ -94,6 +94,7 @@ pub async fn resolve_redirect(
   );
   let response = client
     .get(api)
+    .header("User-Agent", super::USER_AGENT)
     .header("Accept", "application/json")
     .timeout(timeout)
     .send()
