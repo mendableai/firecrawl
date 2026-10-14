@@ -28,10 +28,14 @@ pub struct WikimediaUrl {
 }
 
 /// An article on a language edition of a Wikimedia project, like `en.wikipedia.org/wiki/<title>`.
+/// `www.` is the project portal, which redirects to a language edition.
 pub fn parse_wikimedia_url(url: &Url) -> Option<WikimediaUrl> {
   let (lang, domain) = url.host_str()?.split_once('.')?;
   let (domain, suffix) = PROJECTS.into_iter().find(|(x, _)| *x == domain)?;
-  if !(2..=3).contains(&lang.len()) || !lang.bytes().all(|x| x.is_ascii_lowercase()) {
+  if !(2..=3).contains(&lang.len())
+    || !lang.bytes().all(|x| x.is_ascii_lowercase())
+    || lang == "www"
+  {
     return None;
   }
   let article = url

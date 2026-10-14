@@ -45,7 +45,13 @@ async fn redis(
 
 async fn cached_token() -> Option<String> {
   let redis = redis(&TOKEN_REDIS, "REDIS_URL").await?;
-  redis.lock().await.get(TOKEN_KEY).await.ok().flatten()
+  match redis.lock().await.get(TOKEN_KEY).await {
+    Ok(token) => token,
+    Err(error) => {
+      tracing::error!(error = %error, "failed to read the Wikipedia Enterprise token");
+      None
+    }
+  }
 }
 
 /// Drops a token the API rejected, so the next scrape logs in again.

@@ -28,8 +28,11 @@ mod url;
 use self::url::XTwitterUrl;
 pub use self::url::parse_x_twitter_url;
 
-static XAI_API_KEY: LazyLock<Option<String>> =
-  LazyLock::new(|| std::env::var("XAI_API_KEY").ok().filter(|x| !x.is_empty()));
+static XAI_API_KEY: LazyLock<Option<String>> = LazyLock::new(|| {
+  std::env::var("XAI_API_KEY")
+    .ok()
+    .filter(|x| !x.trim().is_empty())
+});
 
 /// Without a key the engine still claims X URLs on the hosted service, so the scrape fails
 /// with a configuration error instead of reaching another engine.
