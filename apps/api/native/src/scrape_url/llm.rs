@@ -62,7 +62,9 @@ async fn vertex_credentials() -> Result<&'static AccessTokenCredentials, String>
         Some(encoded) => base64::engine::general_purpose::STANDARD
           .decode(encoded.trim())
           .map_err(|e| e.to_string())?,
-        None => std::fs::read("./gke-key.json").map_err(|e| e.to_string())?,
+        None => tokio::fs::read("./gke-key.json")
+          .await
+          .map_err(|e| e.to_string())?,
       };
       let key = serde_json::from_slice(&key).map_err(|e| e.to_string())?;
       service_account::Builder::new(key)
@@ -82,11 +84,13 @@ fn vertex_auth(
     if model.adapter_kind != AdapterKind::Vertex {
       return Ok(None);
     }
-    let token = vertex_credentials()
-      .await?
-      .access_token()
-      .await
-      .map_err(|e| e.to_string())?;
+    // Own task, like the GCS client calls (FIRE-86).
+    let token = tokio::spawn(async {
+      let credentials = vertex_credentials().await?;
+      credentials.access_token().await.map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     Ok(Some(AuthData::from_single(token.token)))
   })
 }

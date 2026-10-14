@@ -15,7 +15,7 @@ use serde_json::Value;
 use tokio::sync::OnceCell;
 use tracing::{Span, field::Empty, instrument};
 
-use super::super::super::cost_tracking::CostTracking;
+use super::super::super::{cost_tracking::CostTracking, llm::LlmError};
 use super::{
   DeterministicJsonError, cache,
   config::{ASK_LLM_MAX_CALLS, ASK_LLM_MAX_TOKENS, LIGHT_MODEL},
@@ -101,36 +101,9 @@ impl AskLlm {
     let mut last_error = String::new();
     for attempt in 1..=ASK_LLM_RETRIES {
       span.record("attempts", attempt);
-      let reserved = self
-        .api_calls
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
-          (n < self.max_calls).then_some(n + 1)
-        });
-      if reserved.is_err() {
-        return Err(DeterministicJsonError::AskLlm(format!(
-          "askLlm call budget exhausted ({})",
-          self.max_calls
-        )));
-      }
-
-      let messages = vec![
-        ChatMessage::system(ASK_LLM_SYSTEM),
-        ChatMessage::user(request.user_content.clone()),
-      ];
-      let options = ChatOptions::default()
-        .with_temperature(0.0)
-        .with_max_tokens(ASK_LLM_MAX_TOKENS);
-      let raw = match generate_text(Provider::Groq, &LIGHT_MODEL, messages, options).await {
-        Ok(response) => {
-          record(
-            &self.cost_tracking,
-            "askLlm",
-            Provider::Groq,
-            &LIGHT_MODEL,
-            &response,
-          );
-          js::trim(&response_text(&response)).to_string()
-        }
+      self.reserve_call()?;
+      let raw = match self.call(&request).await {
+        Ok(raw) => raw,
         Err(e) => {
           last_error = e.to_string();
           continue;
@@ -160,6 +133,38 @@ impl AskLlm {
     Err(DeterministicJsonError::AskLlm(format!(
       "askLlm failed after {ASK_LLM_RETRIES} attempts: {last_error}"
     )))
+  }
+
+  fn reserve_call(&self) -> Result<(), DeterministicJsonError> {
+    self
+      .api_calls
+      .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+        (n < self.max_calls).then_some(n + 1)
+      })
+      .map(|_| ())
+      .map_err(|_| {
+        DeterministicJsonError::AskLlm(format!("askLlm call budget exhausted ({})", self.max_calls))
+      })
+  }
+
+  /// One API call; the trimmed reply text.
+  async fn call(&self, request: &Request) -> Result<String, LlmError> {
+    let messages = vec![
+      ChatMessage::system(ASK_LLM_SYSTEM),
+      ChatMessage::user(request.user_content.clone()),
+    ];
+    let options = ChatOptions::default()
+      .with_temperature(0.0)
+      .with_max_tokens(ASK_LLM_MAX_TOKENS);
+    let response = generate_text(Provider::Groq, &LIGHT_MODEL, messages, options).await?;
+    record(
+      &self.cost_tracking,
+      "askLlm",
+      Provider::Groq,
+      &LIGHT_MODEL,
+      &response,
+    );
+    Ok(js::trim(&response_text(&response)).to_string())
   }
 }
 
