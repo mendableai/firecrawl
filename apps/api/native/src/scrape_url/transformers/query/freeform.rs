@@ -121,7 +121,7 @@ async fn answer(
   provider: Provider,
   prompt: &str,
 ) -> Result<String, llm::LlmError> {
-  let spec = provider.spec(model).await?;
+  let spec = provider.spec(model);
   let chat_req = ChatRequest::new(vec![
     ChatMessage::system(SYSTEM_PROMPT),
     ChatMessage::user(prompt),

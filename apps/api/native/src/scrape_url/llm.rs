@@ -1,12 +1,17 @@
 use std::sync::LazyLock;
 use std::time::Duration;
 
+use base64::Engine;
+
 use genai::Client;
 use genai::ModelSpec;
 use genai::ServiceTarget;
 use genai::adapter::AdapterKind;
 use genai::chat::{ChatOptions, ChatRequest, ChatResponse, Usage};
-use genai::resolver::Endpoint;
+use genai::resolver::{AuthData, AuthResolver, Endpoint};
+use genai::{ModelIden, resolver};
+use google_cloud_auth::credentials::{AccessTokenCredentials, service_account};
+use tokio::sync::OnceCell;
 use tracing::{Span, field::Empty, instrument};
 
 use super::cost_tracking::CostTrackingTokens;
@@ -21,14 +26,17 @@ static LLM_CLIENT: LazyLock<Result<Client, genai::Error>> = LazyLock::new(|| {
   let ollama_base_url = std::env::var("OLLAMA_BASE_URL")
     .ok()
     .filter(|x| !x.is_empty());
+  let vertex_base_url = Some(VERTEX_BASE_URL.to_string());
 
   Client::builder()
+    .with_auth_resolver(AuthResolver::from_resolver_async_fn(vertex_auth))
     .with_service_target_resolver_fn(move |target: ServiceTarget| {
       let base_url = match target.model.adapter_kind {
         // A target that names another OpenAI-compatible service keeps it.
         AdapterKind::OpenAI if target.endpoint.base_url() != OPENAI_ENDPOINT => &None,
         AdapterKind::OpenAI => &openai_base_url,
         AdapterKind::Ollama => &ollama_base_url,
+        AdapterKind::Vertex => &vertex_base_url,
         _ => &None,
       };
       Ok(match base_url {
@@ -41,6 +49,57 @@ static LLM_CLIENT: LazyLock<Result<Client, genai::Error>> = LazyLock::new(|| {
     })
     .build()
 });
+
+/// TS `getModel`'s Vertex provider: project `firecrawl`, location `global`.
+const VERTEX_BASE_URL: &str =
+  "https://aiplatform.googleapis.com/v1/projects/firecrawl/locations/global/";
+
+static VERTEX_CREDENTIALS: OnceCell<AccessTokenCredentials> = OnceCell::const_new();
+
+/// TS's `googleAuthOptions`: the base64 service account in `VERTEX_CREDENTIALS`,
+/// else the `./gke-key.json` key file.
+async fn vertex_credentials() -> Result<&'static AccessTokenCredentials, String> {
+  VERTEX_CREDENTIALS
+    .get_or_try_init(|| async {
+      let key = match std::env::var("VERTEX_CREDENTIALS")
+        .ok()
+        .filter(|x| !x.is_empty())
+      {
+        Some(encoded) => base64::engine::general_purpose::STANDARD
+          .decode(encoded.trim())
+          .map_err(|e| e.to_string())?,
+        None => tokio::fs::read("./gke-key.json")
+          .await
+          .map_err(|e| e.to_string())?,
+      };
+      let key = serde_json::from_slice(&key).map_err(|e| e.to_string())?;
+      service_account::Builder::new(key)
+        .with_access_specifier(service_account::AccessSpecifier::from_scopes([
+          "https://www.googleapis.com/auth/cloud-platform",
+        ]))
+        .build_access_token_credentials()
+        .map_err(|e| e.to_string())
+    })
+    .await
+}
+
+fn vertex_auth(
+  model: ModelIden,
+) -> std::pin::Pin<Box<dyn Future<Output = resolver::Result<Option<AuthData>>> + Send>> {
+  Box::pin(async move {
+    if model.adapter_kind != AdapterKind::Vertex {
+      return Ok(None);
+    }
+    // Own task, like the GCS client calls (FIRE-86).
+    let token = tokio::spawn(async {
+      let credentials = vertex_credentials().await?;
+      credentials.access_token().await.map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(Some(AuthData::from_single(token.token)))
+  })
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum LlmError {

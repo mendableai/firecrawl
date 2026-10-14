@@ -109,10 +109,7 @@ async fn select_lines(
   user_prompt: String,
   sentences: &[Sentence],
 ) -> Result<String, String> {
-  let spec = Provider::Fireworks
-    .spec(MODEL)
-    .await
-    .map_err(|e| e.to_string())?;
+  let spec = Provider::Fireworks.spec(MODEL);
   let chat_req = ChatRequest::new(vec![
     ChatMessage::system(SYSTEM_PROMPT),
     ChatMessage::user(user_prompt),
