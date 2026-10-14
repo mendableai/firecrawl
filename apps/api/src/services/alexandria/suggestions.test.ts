@@ -9,12 +9,10 @@ import { exchangeUrlSuggestions } from "./suggestions";
 const url = "https://data.similarweb.com/api/v1/data?domain=example.com";
 const suggestion = {
   provider: "similarweb",
-  name: "Similarweb",
   capability: "web/traffic",
-  label: "Traffic and engagement",
-  relationship: "related",
-  group: "alternative",
+  reason: "Licensed Similarweb traffic and engagement data for any website.",
   input: { domain: "example.com" },
+  creditsCost: 110,
   contractPath: "/v1/discover/web-analytics/similarweb",
 };
 
@@ -27,7 +25,11 @@ describe("exchangeUrlSuggestions", () => {
   it("asks the Exchange about one URL and rewrites contract paths to the public proxy", async () => {
     mocks.request.mockResolvedValue({
       status: 200,
-      body: { url, suggestions: [suggestion], message: "Structured data…" },
+      body: {
+        url,
+        suggestions: [suggestion],
+        message: "Alexandria suggestion: …",
+      },
     });
     const result = await exchangeUrlSuggestions({ teamId: "team", url });
     expect(mocks.request).toHaveBeenCalledWith({
@@ -42,7 +44,7 @@ describe("exchangeUrlSuggestions", () => {
           contractPath: "/exchange/discover/web-analytics/similarweb",
         },
       ],
-      message: "Structured data…",
+      message: "Alexandria suggestion: …",
     });
   });
 

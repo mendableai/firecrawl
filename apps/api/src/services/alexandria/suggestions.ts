@@ -3,13 +3,8 @@ import { exchangeRequest } from "./client";
 
 export type ExchangeUrlSuggestion = {
   provider: string;
-  name: string;
   capability: string;
-  label: string;
-  relationship: "owned" | "related";
-  group: "alternative" | "complementary" | "broader_search";
-  reason?: string;
-  instructions?: string;
+  reason: string;
   input?: Record<string, string>;
   creditsCost?: number;
   contractPath: string;
