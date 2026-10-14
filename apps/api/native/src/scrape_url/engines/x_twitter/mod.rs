@@ -47,6 +47,7 @@ async fn fetch_profile(
   handle: &str,
 ) -> Result<Profile, ScrapeURLError> {
   let profile: Profile = grok(meta, api_key, GrokCall {
+    method: "xTwitter/profile",
     prompt: format!(
       "Give me current public X/Twitter profile details for @{handle}: display name, username, profile picture URL, bio, follower count, verification status, and profile URL. Look up this exact username directly with a single user search for \"{handle}\" that returns only 1 result; do not search for other or similarly named accounts. If no account has the username {handle} (ignoring case), return null for every profile field and no posts rather than another account's data. Also return exactly the 5 latest posts authored by @{handle} that are top-level posts, not replies or comments, found with a single latest-posts search for \"from:{handle} -filter:replies\" limited to 5 results. Include fewer posts only if fewer public non-reply posts are available. Use the current public X data available to x_search."
     ),
@@ -84,6 +85,7 @@ async fn fetch_post(
     tool["allowed_x_handles"] = json!([handle]);
   }
   grok(meta, api_key, GrokCall {
+    method: "xTwitter/post",
     prompt: format!(
       "Fetch the public X/Twitter post{by} with post id {post_id} at {normalized_url}. Return the post body in text as GitHub-flavored Markdown, preserving its original structure like headings and lists. Also return author, URL, created date, likes, and retweets. If this post is part of a thread, return the unrolled thread in chronological order under thread. Return the top 5 public comments or replies to the post under comments. Use the current public X data available to x_search."
     ),

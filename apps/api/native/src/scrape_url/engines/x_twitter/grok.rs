@@ -8,17 +8,26 @@ use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use tracing::{Span, field::Empty};
 
-use super::super::super::{error::ScrapeURLError, meta::Meta};
+use super::super::super::{
+  cost_tracking::{CostTrackingTokens, calculate_cost},
+  error::ScrapeURLError,
+  meta::Meta,
+};
 use super::{super::Engine, XTwitterEngine};
 
 const XAI_RESPONSES_URL: &str = "https://api.x.ai/v1/responses";
 const XAI_RESPONSES_MODEL: &str = "grok-4-1-fast-non-reasoning";
 const MAX_ATTEMPTS: u32 = 3;
 const FIRST_RETRY_DELAY: Duration = Duration::from_secs(2);
+/// xAI bills X Search per item fetched, on top of tokens. USD per item.
+const X_SEARCH_USD_PER_POST: f64 = 5.0 / 1000.0;
+const X_SEARCH_USD_PER_PROFILE: f64 = 10.0 / 1000.0;
 
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 pub struct GrokCall {
+  /// The cost entry's `method`, like TS `recordGrokCost`.
+  pub method: &'static str,
   pub prompt: String,
   pub tool: Value,
   pub output_name: &'static str,
@@ -104,16 +113,32 @@ fn output_text(response: &Value) -> String {
   parts.collect()
 }
 
-fn record_usage(span: &Span, response: &Value) {
+/// Records the token cost plus the X Search fee for the items the call fetched.
+fn record_usage(meta: &Meta, span: &Span, response: &Value, method: &str) {
   let usage = &response["usage"];
-  span.record("gen_ai.usage.input_tokens", usage["input_tokens"].as_u64());
-  span.record(
-    "gen_ai.usage.output_tokens",
-    usage["output_tokens"].as_u64(),
-  );
   let details = &usage["server_side_tool_usage_details"];
-  span.record("x_search.posts", details["x_posts_fetched"].as_u64());
-  span.record("x_search.profiles", details["x_users_fetched"].as_u64());
+  let tokens = CostTrackingTokens {
+    input: usage["input_tokens"].as_u64().unwrap_or(0),
+    output: usage["output_tokens"].as_u64().unwrap_or(0),
+  };
+  let posts = details["x_posts_fetched"].as_u64().unwrap_or(0);
+  let profiles = details["x_users_fetched"].as_u64().unwrap_or(0);
+  span.record("gen_ai.usage.input_tokens", tokens.input);
+  span.record("gen_ai.usage.output_tokens", tokens.output);
+  span.record("x_search.posts", posts);
+  span.record("x_search.profiles", profiles);
+  let cost = calculate_cost(XAI_RESPONSES_MODEL, tokens.input, tokens.output)
+    + posts as f64 * X_SEARCH_USD_PER_POST
+    + profiles as f64 * X_SEARCH_USD_PER_PROFILE;
+  let metadata = json!({
+    "module": "scrapeURL",
+    "method": method,
+    "xSearchPosts": posts,
+    "xSearchProfiles": profiles,
+  });
+  meta
+    .cost_tracking
+    .add_call(metadata, XAI_RESPONSES_MODEL, cost, tokens);
 }
 
 /// Runs `call` and parses its structured output as `T`.
@@ -178,7 +203,7 @@ pub async fn grok<T: DeserializeOwned>(
     delay *= 2;
   };
 
-  record_usage(&span, &response);
+  record_usage(meta, &span, &response, call.method);
   serde_json::from_str(&output_text(&response)).map_err(|e| {
     engine_error(format!(
       "No object generated: could not parse the response: {e}"
