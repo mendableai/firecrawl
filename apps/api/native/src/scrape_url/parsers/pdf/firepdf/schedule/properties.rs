@@ -53,7 +53,7 @@ fn polls_never_wait_past_the_polling_deadline(tc: TestCase) {
   );
   let wait = long_poll_wait_for(configured_wait, until_deadline);
   if wait != 0 {
-    assert!(wait >= LONG_POLL_MIN_WAIT_MS && wait <= LONG_POLL_MAX_WAIT_MS);
+    assert!((LONG_POLL_MIN_WAIT_MS..=LONG_POLL_MAX_WAIT_MS).contains(&wait));
     assert!(wait <= configured_wait);
     assert!(wait <= until_deadline - LONG_POLL_DEADLINE_SLACK_MS);
   }

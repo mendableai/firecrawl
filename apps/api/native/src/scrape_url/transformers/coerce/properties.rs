@@ -105,11 +105,13 @@ async fn coerce_keeps_only_requested_fields_and_is_idempotent(tc: TestCase) {
   if tc.draw(gs::booleans()) {
     options.actions = vec![Action::Scrape];
   }
-  let mut internal_options = InternalOptions::default();
-  internal_options.v1_original_format = tc.draw(gs::optional(gs::sampled_from(&[
-    V1OriginalFormat::Extract,
-    V1OriginalFormat::Json,
-  ])));
+  let internal_options = InternalOptions {
+    v1_original_format: tc.draw(gs::optional(gs::sampled_from(&[
+      V1OriginalFormat::Extract,
+      V1OriginalFormat::Json,
+    ]))),
+    ..InternalOptions::default()
+  };
   let url = Url::parse(PAGE_URL).unwrap();
   let meta = Meta::new("p".into(), url, "t".into(), options, internal_options);
 
