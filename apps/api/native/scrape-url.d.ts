@@ -26,7 +26,7 @@ export declare namespace ScrapeUrl {
   export type CostTrackingCallType = "other";
   export type CostTrackingTokens = { input: number, output: number, };
   export type DeterministicJsonOptions = { prompt?: string | null, schema?: JsonValue | null, };
-  export type Document = { markdown?: string, html?: string, rawHtml?: string, rawBase64?: string, links?: Array<string>, images?: Array<string>, screenshot?: string, audio?: string, video?: string, extract?: JsonValue, json?: JsonValue, summary?: string, answer?: string, highlights?: string, pages?: Array<PdfPage>, blocks?: Array<PdfPageBlocks>, warning?: string, attributes?: Array<DocumentAttribute>, actions?: RawPageActions, metadata: DocumentMetadata, };
+  export type Document = { markdown?: string, html?: string, rawHtml?: string, rawBase64?: string, links?: Array<string>, images?: Array<string>, screenshot?: string, audio?: string, video?: string, extract?: JsonValue, json?: JsonValue, summary?: string, answer?: string, highlights?: string, product?: JsonValue, menu?: JsonValue, pages?: Array<PdfPage>, blocks?: Array<PdfPageBlocks>, warning?: string, attributes?: Array<DocumentAttribute>, actions?: RawPageActions, metadata: DocumentMetadata, };
   export type DocumentAttribute = { selector: string, attribute: string, values: Array<string>, };
   export type DocumentMetadata = { title?: string, scrapeId: string, sourceURL: string, url: string, statusCode: number, numPages?: number, totalPages?: number, contentType: string, timezone?: string, proxyUsed: ScrapeProxy, cacheState: DocumentMetadataCacheState, cachedAt?: string, indexId?: string, creditsUsed?: number, concurrencyLimited: boolean, concurrencyQueueDurationMs?: number, postprocessorsUsed?: Array<string>, } & ({ [key in string]: number | string | boolean | Array<JsonValue> | { [key in string]: JsonValue } | null });
   export type DocumentMetadataCacheState = "hit" | "miss";
@@ -134,7 +134,11 @@ export declare namespace ScrapeUrl {
   /**
    * Grants the privileged large-PDF size cap.
    */
-  largePdfs?: boolean | null, };
+  largePdfs?: boolean | null, 
+  /**
+   * Opens the menu format, which is in beta.
+   */
+  menuBeta?: boolean | null, };
   /**
    * The format a v1 request asked for; extracted data is kept under that field name.
    */

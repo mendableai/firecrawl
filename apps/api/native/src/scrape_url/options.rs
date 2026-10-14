@@ -302,6 +302,8 @@ pub struct LlmTelemetry {
 pub struct TeamFlags {
   /// Grants the privileged large-PDF size cap.
   pub large_pdfs: Option<bool>,
+  /// Opens the menu format, which is in beta.
+  pub menu_beta: Option<bool>,
 }
 
 #[derive(Deserialize, Default, TS)]

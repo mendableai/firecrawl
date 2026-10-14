@@ -70,6 +70,8 @@ pub async fn coerce_fields_to_formats(
   c.field(&mut document.summary, has(Summary), "summary");
   c.field(&mut document.answer, has_answer, "answer");
   c.field(&mut document.highlights, has(Highlights), "highlights");
+  c.field(&mut document.product, has(Product), "product");
+  c.field(&mut document.menu, has(Menu), "menu");
   c.field(&mut document.audio, has(Audio), "audio");
   c.field(&mut document.video, has(Video), "video");
 

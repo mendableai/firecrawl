@@ -28,7 +28,9 @@ use images::derive_images_from_html;
 use json::perform_llm_extract;
 use links::derive_links_from_html;
 use markdown::derive_markdown_from_html;
+use menu::fetch_menu;
 use metadata::derive_metadata_from_raw_html;
+use product::fetch_product;
 use prompt_injection_guard::perform_prompt_injection_guard;
 use redact_pii::perform_redact_pii;
 use summary::perform_summary;
@@ -39,12 +41,15 @@ mod attributes;
 mod base64_images;
 mod clean_content;
 mod coerce;
+mod extraction_service;
 mod html;
 mod images;
 mod json;
 mod links;
 mod markdown;
+mod menu;
 mod metadata;
+mod product;
 mod prompt_injection_guard;
 mod redact_pii;
 mod summary;
@@ -78,6 +83,9 @@ pub enum TransformerError {
 
   #[error(transparent)]
   Llm(#[from] LlmError),
+
+  #[error(transparent)]
+  ExtractionService(#[from] extraction_service::ExtractionError),
 }
 
 generate_execute_tranformers!(
@@ -91,8 +99,8 @@ generate_execute_tranformers!(
   derive_images_from_html,
   // TODO: derive_branding_from_actions
   derive_metadata_from_raw_html,
-  // TODO: fetch_product
-  // TODO: fetch_menu
+  fetch_product,
+  fetch_menu,
   // TODO: send_document_to_index
   // TODO: send_document_to_search_index
   perform_llm_extract,
