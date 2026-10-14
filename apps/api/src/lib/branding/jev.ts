@@ -362,7 +362,7 @@ function fileName(src: string): string {
 
 // Cookie-consent controls are page chrome, never the site's call to action.
 const CONSENT =
-  /cookie|consent|gdpr|accept all|reject all|allow all|decline|manage (?:preferences|settings)|akzeptieren|ablehnen|accepter|refuser|aceptar|rechazar/i;
+  /cookie|consent|gdpr|accept all|reject all|allow all|decline|\b(?:manage|view) (?:preferences|settings)|akzeptieren|ablehnen|accepter|refuser|aceptar|rechazar/i;
 const isConsentButton = (button: { text?: string; classes?: string }) =>
   CONSENT.test(`${button.text ?? ""} ${button.classes ?? ""}`);
 

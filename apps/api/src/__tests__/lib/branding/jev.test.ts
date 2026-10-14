@@ -359,6 +359,17 @@ describe("branding with Jev", () => {
     expect(merged.colors?.primary).toBe("#6D28D9");
   });
 
+  it("tells cookie settings apart from buttons that merely contain the words", () => {
+    const input = baseInput(new CostTracking());
+    input.buttons = [
+      { ...input.buttons[0], index: 0, text: "View preferences" },
+      { ...input.buttons[1], index: 1, text: "Preview settings" },
+    ];
+    expect(Object.keys(buildJevRequest(input).state.buttons as object)).toEqual(
+      ["button_1"],
+    );
+  });
+
   it("never asks Jev to pick a cookie-consent button", async () => {
     const input = baseInput(new CostTracking());
     input.buttons = [
