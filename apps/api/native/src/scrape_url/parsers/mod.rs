@@ -56,7 +56,7 @@ fn is_unsupported_binary(meta: &Meta, result: &RawPageResult) -> bool {
   ) && !meta.options.formats.contains(FormatKind::RawBase64)
     && UNSUPPORTED_BINARY_PREFIXES
       .iter()
-      .any(|x| result.content_type.starts_with(x))
+      .any(|x| media_type(&result.content_type).starts_with(x))
 }
 
 #[tracing::instrument(
