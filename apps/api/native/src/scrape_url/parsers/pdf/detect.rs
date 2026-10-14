@@ -14,6 +14,11 @@ pub fn pdf_binary_match(bytes: &Bytes) -> bool {
     .any(|w| w == b"%PDF")
 }
 
+/// The `%PDF-` header at byte 0, the signature a mislabeled PDF is routed on.
+pub fn pdf_signature_match(bytes: &Bytes) -> bool {
+  bytes.starts_with(b"%PDF-")
+}
+
 pub fn pdf_base64_match(base64: &str) -> bool {
   base64.starts_with("JVBERi")
 }
