@@ -179,7 +179,7 @@ async fn request_articles(
       "{API_BASE}/articles/{}",
       utf8_percent_encode(article_name, URI_COMPONENT)
     ))
-    .bearer_auth(token)
+    .bearer_auth(&token)
     .header("User-Agent", USER_AGENT)
     .header("Accept", "application/json")
     .json(&json!({
@@ -196,7 +196,7 @@ async fn request_articles(
       wiki.project_identifier
     ))),
     401 | 403 => {
-      clear_cached_token().await;
+      clear_cached_token(&token).await;
       Err(engine_error(format!(
         "Wikipedia Enterprise API authorization failed ({status}). Check credentials."
       )))

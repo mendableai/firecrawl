@@ -18,7 +18,8 @@ const AUTH_URL: &str = "https://auth.enterprise.wikimedia.com/v1/login";
 const TOKEN_KEY: &str = "wikipedia_enterprise:access_token";
 const LOCK_KEY: &str = "lock:wikipedia_enterprise:auth";
 const LOCK_TTL_MS: u64 = 10_000;
-const RELEASE_LOCK: &str = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+/// Deletes `KEYS[1]` only while it still holds `ARGV[1]`.
+const DELETE_IF_EQUAL: &str = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
 
 type Connection = Option<Mutex<MultiplexedConnection>>;
 
@@ -54,11 +55,18 @@ async fn cached_token() -> Option<String> {
   }
 }
 
-/// Drops a token the API rejected, so the next scrape logs in again.
-pub async fn clear_cached_token() {
-  if let Some(redis) = redis(&TOKEN_REDIS, "REDIS_URL").await
-    && let Err(error) = redis.lock().await.del(TOKEN_KEY).await
-  {
+/// Drops a token the API rejected, so the next scrape logs in again. A replacement another
+/// scrape cached in the meantime stays.
+pub async fn clear_cached_token(rejected: &str) {
+  let Some(redis) = redis(&TOKEN_REDIS, "REDIS_URL").await else {
+    return;
+  };
+  let cleared: Result<i64, _> = Script::new(DELETE_IF_EQUAL)
+    .key(TOKEN_KEY)
+    .arg(rejected)
+    .invoke_async(&mut *redis.lock().await)
+    .await;
+  if let Err(error) = cleared {
     tracing::error!(error = %error, "failed to clear the Wikipedia Enterprise token");
   }
 }
@@ -157,7 +165,7 @@ pub async fn access_token(
       }
     };
     if let Some(redis) = lock {
-      let released: Result<i64, _> = Script::new(RELEASE_LOCK)
+      let released: Result<i64, _> = Script::new(DELETE_IF_EQUAL)
         .key(LOCK_KEY)
         .arg(&lock_value)
         .invoke_async(&mut *redis.lock().await)
