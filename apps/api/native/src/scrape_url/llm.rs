@@ -2,6 +2,7 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use genai::Client;
+use genai::ModelSpec;
 use genai::ServiceTarget;
 use genai::adapter::AdapterKind;
 use genai::chat::{ChatOptions, ChatRequest, ChatResponse, Usage};
@@ -9,6 +10,9 @@ use genai::resolver::Endpoint;
 use tracing::{Span, field::Empty, instrument};
 
 use super::cost_tracking::CostTrackingTokens;
+
+/// genai's default OpenAI endpoint, which `OPENAI_BASE_URL` replaces.
+const OPENAI_ENDPOINT: &str = "https://api.openai.com/v1/";
 
 static LLM_CLIENT: LazyLock<Result<Client, genai::Error>> = LazyLock::new(|| {
   let openai_base_url = std::env::var("OPENAI_BASE_URL")
@@ -21,6 +25,8 @@ static LLM_CLIENT: LazyLock<Result<Client, genai::Error>> = LazyLock::new(|| {
   Client::builder()
     .with_service_target_resolver_fn(move |target: ServiceTarget| {
       let base_url = match target.model.adapter_kind {
+        // A target that names another OpenAI-compatible service keeps it.
+        AdapterKind::OpenAI if target.endpoint.base_url() != OPENAI_ENDPOINT => &None,
         AdapterKind::OpenAI => &openai_base_url,
         AdapterKind::Ollama => &ollama_base_url,
         _ => &None,
@@ -119,13 +125,36 @@ pub async fn exec_chat(
   chat_req: ChatRequest,
   options: Option<&ChatOptions>,
 ) -> Result<ChatResponse, LlmError> {
+  exec_with_retries(ModelSpec::from(model), chat_req, options).await
+}
+
+/// [`exec_chat`] on a provider `model`'s name doesn't pick, like Gemini on
+/// Vertex or a fine-tune on Fireworks.
+#[instrument(name = "llm::exec_chat", skip(spec, chat_req, options), fields(attempts = Empty), err)]
+pub async fn exec_chat_spec(
+  model: &str,
+  spec: ModelSpec,
+  chat_req: ChatRequest,
+  options: Option<&ChatOptions>,
+) -> Result<ChatResponse, LlmError> {
+  exec_with_retries(spec, chat_req, options).await
+}
+
+async fn exec_with_retries(
+  model: ModelSpec,
+  chat_req: ChatRequest,
+  options: Option<&ChatOptions>,
+) -> Result<ChatResponse, LlmError> {
   const MAX_RETRIES: u32 = 2;
   let client = client()?;
   let mut delay = Duration::from_secs(2);
   let mut attempts = 0;
   let result = loop {
     attempts += 1;
-    let error = match client.exec_chat(model, chat_req.clone(), options).await {
+    let error = match client
+      .exec_chat(model.clone(), chat_req.clone(), options)
+      .await
+    {
       Ok(x) => break Ok(x),
       Err(e) => e,
     };

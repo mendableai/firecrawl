@@ -30,6 +30,7 @@ use links::derive_links_from_html;
 use markdown::derive_markdown_from_html;
 use metadata::derive_metadata_from_raw_html;
 use prompt_injection_guard::perform_prompt_injection_guard;
+use query::perform_query;
 use redact_pii::perform_redact_pii;
 use summary::perform_summary;
 use youtube::fetch_youtube;
@@ -46,6 +47,7 @@ mod links;
 mod markdown;
 mod metadata;
 mod prompt_injection_guard;
+mod query;
 mod redact_pii;
 mod summary;
 mod tokens;
@@ -96,7 +98,7 @@ generate_execute_tranformers!(
   perform_llm_extract,
   // TODO: perform_deterministic_json
   perform_summary,
-  // TODO: perform_query
+  perform_query,
   derive_attributes_from_html,
   // TODO: perform_agent
   remove_base64_images,

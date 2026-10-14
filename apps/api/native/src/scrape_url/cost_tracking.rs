@@ -103,6 +103,18 @@ const MODEL_COSTS: &[(&str, f64, f64)] = &[
   ("google/gemini-2.0-flash-thinking-exp:free", 0.55, 2.19),
 ];
 
+/// USD per token: the TS `modelPrices` rows `calculateCost` falls back to
+/// for models [`MODEL_COSTS`] lacks.
+const MODEL_PRICES: &[(&str, f64, f64)] = &[
+  ("gemini-3.5-flash", 1.5e-6, 9e-6),
+  ("gemini-3.5-flash-lite", 3e-7, 2.5e-6),
+  (
+    "fireworks_ai/accounts/fireworks/models/gpt-oss-20b",
+    5e-8,
+    2e-7,
+  ),
+];
+
 /// The limits TS `modelPrices` gives the models Rust calls.
 pub struct ModelPrice {
   pub max_input_tokens: u64,
@@ -113,6 +125,7 @@ pub fn model_price(model: &str) -> Option<ModelPrice> {
   let (max_input_tokens, max_output_tokens) = match model {
     "gpt-4o-mini" | "gpt-4o" => (128000, 16384),
     "gpt-4.1" | "gpt-4.1-mini" => (1047576, 32768),
+    "gemini-3.5-flash-lite" => (1048576, 65536),
     _ => return None,
   };
   Some(ModelPrice {
@@ -126,16 +139,26 @@ fn lookup_model_cost(model: &str) -> Option<(f64, f64)> {
   if let Some((_, bare)) = model.split_once('/') {
     candidates.push(bare);
   }
-  candidates.iter().find_map(|id| {
-    MODEL_COSTS
+  let find = |table: &[(&str, f64, f64)], id: &&str| {
+    table
       .iter()
       .find(|(name, ..)| name == id)
       .map(|(_, input, output)| (*input, *output))
-  })
+  };
+  candidates
+    .iter()
+    .find_map(|id| find(MODEL_COSTS, id))
+    .or_else(|| {
+      candidates
+        .iter()
+        .find_map(|id| find(MODEL_PRICES, id))
+        .map(|(input, output)| (input * 1_000_000.0, output * 1_000_000.0))
+    })
 }
 
-/// TS `calculateCost`. A model outside [`MODEL_COSTS`] costs 0; TS's fallback
-/// to its full `modelPrices` table only prices `MODEL_NAME` overrides.
+/// TS `calculateCost`. A model in neither [`MODEL_COSTS`] nor
+/// [`MODEL_PRICES`] costs 0; past those, TS's `modelPrices` fallback only
+/// prices `MODEL_NAME` overrides.
 pub fn calculate_cost(model: &str, input_tokens: u64, output_tokens: u64) -> f64 {
   let cost = if model.contains("gemini-2.5-pro") {
     Some(if input_tokens <= 200_000 {

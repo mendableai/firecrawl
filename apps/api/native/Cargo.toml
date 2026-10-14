@@ -62,6 +62,8 @@ wreq-util = "3.0.0-rc"
 google-cloud-storage = "1.17.0"
 base64 = "0.23.1"
 markdown = "1.0.0"
+markup5ever = "0.11.0"
+google-cloud-auth = { version = "1.17.0", default-features = false }
 rust_iso3166 = { version = "0.2.0", features = ["serde"] }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl", "chrono-impl", "url-impl", "no-serde-warnings"] }
 serde_path_to_error = "0.1.20"
