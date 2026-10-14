@@ -75,6 +75,21 @@ async fn generate_schema_from_prompt(meta: &Meta, prompt: &str) -> Result<Value,
   .into())
 }
 
+/// The feature the extraction's LLM calls are attributed to, like TS `llmTelemetry`.
+fn record_llm_telemetry(meta: &Meta, span: &tracing::Span) {
+  let telemetry = meta.internal_options.llm_telemetry.as_ref();
+  span.record(
+    "llm.function_id",
+    telemetry.map_or("performLLMExtract", |x| x.function_id.as_str()),
+  );
+  if let Some(telemetry) = telemetry {
+    span.record(
+      "llm.telemetry",
+      serde_json::to_string(&telemetry.metadata).ok(),
+    );
+  }
+}
+
 #[instrument(
   name = "transformers::json::perform_llm_extract",
   skip(meta, document),
@@ -102,17 +117,7 @@ pub async fn perform_llm_extract(
     options.schema.as_ref().map(|x| x.to_string()).as_deref(),
   );
   span.record("json.check_prompt_injection", options.check_prompt_injection);
-  let telemetry = meta.internal_options.llm_telemetry.as_ref();
-  span.record(
-    "llm.function_id",
-    telemetry.map_or("performLLMExtract", |x| x.function_id.as_str()),
-  );
-  if let Some(telemetry) = telemetry {
-    span.record(
-      "llm.telemetry",
-      serde_json::to_string(&telemetry.metadata).ok(),
-    );
-  }
+  record_llm_telemetry(meta, &span);
 
   let Some(markdown) = document.markdown.as_deref() else {
     return Err(TransformerError::CalledOutOfOrder(
