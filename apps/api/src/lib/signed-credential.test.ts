@@ -42,6 +42,11 @@ describe("team token (fct_)", () => {
     expect(verifyTeamToken(sign("fct_", payload))).toEqual(payload);
   });
 
+  it("accepts a full-lifetime token from a clock up to 30 seconds ahead", () => {
+    const payload = teamToken({ iat: NOW + 30, exp: NOW + 330 });
+    expect(verifyTeamToken(sign("fct_", payload))).toEqual(payload);
+  });
+
   it.each([
     ["expired", { iat: NOW - 120, exp: NOW }],
     ["living longer than 300 seconds", { exp: NOW + 301 }],
@@ -71,14 +76,31 @@ describe("team token (fct_)", () => {
 
   it("rejects every token when no secret is configured", () => {
     const token = sign("fct_", teamToken());
-    expect(verifyTeamToken(token, undefined)).toBeNull();
-    expect(verifyTeamToken(token, "")).toBeNull();
+    expect(
+      verifySignedCredential(token, TEAM_TOKEN, undefined, NOW),
+    ).toBeNull();
+    expect(verifySignedCredential(token, TEAM_TOKEN, "", NOW)).toBeNull();
   });
 
-  it("rejects a signature over a non-canonical payload encoding", () => {
-    const token = sign("fct_", teamToken());
-    const [payload, signature] = token.slice(4).split(".");
-    expect(verifyTeamToken(`fct_${payload}=.${signature}`)).toBeNull();
+  it("rejects a correctly signed but non-canonical payload encoding", () => {
+    // This payload's last base64url character carries unused low bits, so
+    // flipping one decodes to the same bytes under a different string.
+    const [canonical] = sign("fct_", teamToken({ api_key_id: null }))
+      .slice(4)
+      .split(".");
+    const alphabet =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const flipped =
+      canonical.slice(0, -1) +
+      alphabet[alphabet.indexOf(canonical.at(-1)!) ^ 1];
+    expect(Buffer.from(flipped, "base64url")).toEqual(
+      Buffer.from(canonical, "base64url"),
+    );
+    const signature = createHmac("sha256", SECRET)
+      .update(flipped)
+      .digest("base64url");
+
+    expect(verifyTeamToken(`fct_${flipped}.${signature}`)).toBeNull();
   });
 
   it("rejects an MCP delegation presented as a team token", () => {

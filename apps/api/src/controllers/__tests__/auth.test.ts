@@ -1987,6 +1987,21 @@ describe("authenticateUser", () => {
         expect(deniedReasons()).toEqual(["team_token_mismatch"]);
       });
 
+      it("rejects a team-only token for a banned team", async () => {
+        vi.mocked(authCreditUsageChunkFromTeam).mockResolvedValue([
+          { team_id: teamId, org_id: "org-1", is_banned: true, flags: null },
+        ] as never);
+
+        const auth = await authenticateUser(
+          request(signTeamToken({ api_key_id: null })),
+          {},
+          RateLimiterMode.Scrape,
+        );
+
+        expect(auth).toEqual(expect.objectContaining({ status: 403 }));
+        expect(deniedReasons()).toEqual(["team_banned"]);
+      });
+
       it("rejects a team-only token for an unknown team", async () => {
         vi.mocked(authCreditUsageChunkFromTeam).mockResolvedValue([]);
 

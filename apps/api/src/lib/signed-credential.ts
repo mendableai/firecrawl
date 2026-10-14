@@ -127,8 +127,7 @@ export function verifySignedCredential<T extends Claims>(
 
   const { iat, exp } = claims as T;
   if (iat > nowSeconds + MAX_FUTURE_IAT_SECONDS) return null;
-  if (exp <= nowSeconds || exp > nowSeconds + maxTtlSeconds) return null;
-  if (exp <= iat || exp - iat > maxTtlSeconds) return null;
+  if (exp <= nowSeconds || exp <= iat || exp - iat > maxTtlSeconds) return null;
 
   return claims as T;
 }
