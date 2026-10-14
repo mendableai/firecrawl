@@ -43,7 +43,7 @@ sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-rustls-ring-webpki"
 texting_robots = "0.2.2"
 thiserror = "2"
 url = { version = "2.5.7", features = ["serde"] }
-uuid = { version = "1", features = ["serde"] }
+uuid = { version = "1", features = ["serde", "v4"] }
 url-macro = "0.2.4"
 zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
 tokio = { version = "1.48.0", features = ["macros", "time", "rt"] }

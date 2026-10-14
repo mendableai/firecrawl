@@ -105,6 +105,49 @@ pub struct ScrapeOptionsProfile {
   pub save_changes: bool,
 }
 
+#[derive(Debug, Clone, Copy, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum RedactPiiMode {
+  #[default]
+  Accurate,
+  Aggressive,
+  Fast,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum RedactPiiReplaceStyle {
+  #[default]
+  Tag,
+  Mask,
+  Remove,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, TS)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum RedactPiiEntity {
+  Person,
+  Email,
+  Phone,
+  Location,
+  Financial,
+  Secret,
+}
+
+/// TS `RedactPIIOptions`, after its schema turned `true` into the defaults.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(optional_fields = nullable)]
+pub struct RedactPiiOptions {
+  #[serde(default)]
+  #[ts(as = "Option<_>", optional)]
+  pub mode: RedactPiiMode,
+  pub entities: Option<Vec<RedactPiiEntity>>,
+  #[serde(default)]
+  #[ts(as = "Option<_>", optional)]
+  pub replace_style: RedactPiiReplaceStyle,
+}
+
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields = nullable)]
@@ -152,8 +195,11 @@ pub struct ScrapeOptions {
   pub min_age: Option<i32>,
   pub store_in_cache: bool,
   pub lockdown: bool,
-  // #[serde(rename = "redactPII")]
-  // redact_pii:
+  #[serde(default)]
+  #[ts(as = "Option<_>", optional)]
+  pub check_prompt_injection: bool,
+  #[serde(rename = "redactPII")]
+  pub redact_pii: Option<RedactPiiOptions>,
   // threat_protection:
   // audit_metadata:
   pub profile: Option<ScrapeOptionsProfile>,
@@ -196,6 +242,8 @@ impl Default for ScrapeOptions {
       min_age: None,
       store_in_cache: true,
       lockdown: false,
+      check_prompt_injection: false,
+      redact_pii: None,
       profile: None,
       __search_preview_token: None,
       __experimental_omce: false,
