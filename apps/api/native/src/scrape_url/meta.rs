@@ -8,6 +8,7 @@ use tokio::time::Instant;
 use url::Url;
 
 use super::cost_tracking::CostTracking;
+use super::engines::RedirectRules;
 use super::feature_flags::FeatureFlag;
 use super::feature_flags::build_feature_flags;
 use super::options::{InternalOptions, ScrapeOptions};
@@ -36,6 +37,8 @@ pub struct Meta {
   pub audio_cookies: Vec<BrowserCookie>,
   /// Shared so the timeout error can read it after the scrape future is dropped.
   pub large_pdf_processing: Arc<Mutex<Option<LargePdfProcessing>>>,
+  /// The special engines a redirect can still hand the scrape to.
+  pub redirect_rules: RedirectRules,
   // warnings:
 }
 
@@ -74,6 +77,7 @@ impl Meta {
       cost_tracking,
       audio_cookies: Vec::new(),
       large_pdf_processing: Arc::default(),
+      redirect_rules: RedirectRules::default(),
     }
   }
 

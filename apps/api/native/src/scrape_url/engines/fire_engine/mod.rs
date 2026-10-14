@@ -5,7 +5,10 @@ use tracing::instrument;
 
 use self::{
   actions::FireEngineActionResultKind,
-  scrape::{FireEngineProfile, FireEngineScrapeRequest, FireEngineScrapeRequestEngine},
+  scrape::{
+    FireEngineProfile, FireEngineScrapeCompleted, FireEngineScrapeRequest,
+    FireEngineScrapeRequestEngine,
+  },
 };
 use super::super::{
   actions::{Action, InternalAction, InternalActionMetadata, WaitAction},
@@ -57,6 +60,7 @@ impl FireEngine {
     fields(
       fire_engine.job_id = tracing::field::Empty,
       fire_engine.job_abandoned = tracing::field::Empty,
+      fire_engine.matched_url_regex = tracing::field::Empty,
       deadline.remaining_ms = tracing::field::Empty,
       javascript_return.parse_error = tracing::field::Empty,
     ),
@@ -164,10 +168,12 @@ impl FireEngine {
         }),
 
       pdf_max_size: fire_engine_pdf_max_size(meta),
+      abort_on_url_regexes: meta.redirect_rules.abort_patterns(),
     };
 
     let scrape = self.call_scrape(request).await?;
     let result = match self.finish_job(scrape).await? {
+      Ok(x) if x.aborted_by_url_regex => return handoff(meta, x),
       Ok(x)
         if x.page_status_code == 415
           && let Some(page_error) = x.page_error.to_owned()
@@ -322,6 +328,30 @@ impl FireEngine {
         .collect(),
       postprocessors_used: None,
     }))
+  }
+}
+
+/// Hands an aborted navigation to the special engine whose pattern it matched.
+fn handoff(
+  meta: &Meta,
+  result: FireEngineScrapeCompleted,
+) -> Result<EngineOutcome<RawPageResult>, ScrapeURLError> {
+  tracing::Span::current().record(
+    "fire_engine.matched_url_regex",
+    result.matched_url_regex.as_deref(),
+  );
+  let unowned = |error: String| ScrapeURLError::UnclassifiedEngineError {
+    engine: FireEngine::NAME,
+    error,
+  };
+  let url = result
+    .url
+    .ok_or_else(|| unowned("aborted a navigation without reporting its URL".to_string()))?;
+  match meta.redirect_rules.check(&url)? {
+    Some(engine) => Ok(EngineOutcome::Handoff { engine, url }),
+    None => Err(unowned(format!(
+      "aborted at {url}, which no special engine owns"
+    ))),
   }
 }
 

@@ -1,5 +1,7 @@
 //! Which X/Twitter URLs the engine serves: a profile or a post.
 
+use std::sync::LazyLock;
+
 use url::Url;
 
 /// First path segments that are X routes, not handles. `/tos` and `/privacy` are
@@ -19,6 +21,24 @@ const RESERVED_PROFILE_PATHS: [&str; 13] = [
   "settings",
   "share",
 ];
+
+/// JavaScript RegExp source matching the URLs `parse_x_twitter_url` accepts. It takes no
+/// flags, so the reserved paths spell out both letter cases.
+pub static X_TWITTER_URL_PATTERN: LazyLock<String> = LazyLock::new(|| {
+  let reserved = RESERVED_PROFILE_PATHS
+    .iter()
+    .map(|path| {
+      path
+        .chars()
+        .map(|x| format!("[{x}{}]", x.to_ascii_uppercase()))
+        .collect::<String>()
+    })
+    .collect::<Vec<_>>()
+    .join("|");
+  format!(
+    r"^https?://(?:www\.)?(?:x\.com|(?:mobile\.)?twitter\.com)(?::\d+)?/+(?:i/+web/+status/+\d{{5,}}(?:[/?#]|$)|[A-Za-z0-9_]{{1,15}}/+status(?:es)?/+\d{{5,}}(?:[/?#]|$)|(?!(?:{reserved})/*(?:[?#]|$))[A-Za-z0-9_]{{1,15}}/*(?:[?#]|$))"
+  )
+});
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum XTwitterUrl {

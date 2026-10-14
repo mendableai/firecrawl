@@ -77,6 +77,10 @@ pub struct FireEngineScrapeRequest<'a> {
   pub disable_smart_wait_cache: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub profile: Option<FireEngineProfile<'a>>,
+
+  /// JavaScript RegExp sources; fire-engine stops at the first navigation matching one.
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub abort_on_url_regexes: Vec<&'static str>,
 }
 
 #[derive(Deserialize)]
@@ -133,6 +137,11 @@ pub struct FireEngineScrapeCompleted {
   #[serde(default)]
   pub used_mobile_proxy: bool,
   pub timezone: Option<String>,
+
+  /// A navigation matched `abortOnUrlRegexes` and was never loaded; `url` is its URL.
+  #[serde(default)]
+  pub aborted_by_url_regex: bool,
+  pub matched_url_regex: Option<String>,
 }
 
 #[derive(Deserialize)]

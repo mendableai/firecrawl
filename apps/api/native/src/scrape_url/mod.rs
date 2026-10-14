@@ -9,8 +9,8 @@ use self::{
   cost_tracking::CostTracking,
   document::{Document, DocumentMetadataCacheState, ScrapeResult},
   engines::{
-    EngineOutcome, check_engine_support, get_main_engine, get_special_engine, preempts_index,
-    scrape_special, should_elevate_proxy,
+    EngineOutcome, RedirectRules, check_engine_support, get_main_engine, get_special_engine,
+    hand_off_landed, preempts_index, scrape_handoff, scrape_special, should_elevate_proxy,
   },
   error::{ScrapeErrorPayload, ScrapeFailure, ScrapeURLError},
   feature_flags::FeatureFlag,
@@ -62,7 +62,8 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
     options::ProxyMode::Enhanced => ScrapeProxy::Enhanced,
   };
 
-  let special_engine = get_special_engine(&meta).await;
+  meta.redirect_rules = RedirectRules::new(&meta);
+  let special_engine = get_special_engine(&mut meta)?;
   let should_use_index = should_use_index(&meta) && !preempts_index(special_engine.as_ref());
 
   let index_page = {
@@ -105,7 +106,7 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
     None if meta.internal_options.agent_index_only => {
       return Err(ScrapeURLError::AgentIndexOnlyError);
     }
-    None => {
+    None => loop {
       let main_engine = get_main_engine().await;
       Span::current().record("engine", main_engine.get_name());
 
@@ -131,7 +132,7 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
         outcome = main_engine.scrape(&meta, ScrapeProxy::Enhanced).await?;
       }
 
-      match outcome {
+      let page = match outcome {
         EngineOutcome::Scraped(result) => RawPage {
           source: RawPageSource::Engine(
             main_engine,
@@ -143,8 +144,16 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
         EngineOutcome::ProxyElevationNeeded => {
           return Err(ScrapeURLError::ReliableRetrievalError(meta.options.proxy));
         }
-      }
-    }
+        EngineOutcome::Handoff { engine, url } => {
+          match scrape_handoff(&mut meta, engine, url, should_use_index).await? {
+            Some(page) => break page,
+            // wikipedia fell back, so the main engine loads the URL it handed off
+            None => continue,
+          }
+        }
+      };
+      break hand_off_landed(&mut meta, page).await?;
+    },
   };
 
   meta.audio_cookies = std::mem::take(&mut page.result.audio_cookies);

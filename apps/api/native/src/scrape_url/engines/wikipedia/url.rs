@@ -1,6 +1,6 @@
 //! Which Wikimedia URLs the Enterprise API serves, and the article title they name.
 
-use std::time::Duration;
+use std::{sync::LazyLock, time::Duration};
 
 use percent_encoding::percent_decode_str;
 use serde::Deserialize;
@@ -17,6 +17,16 @@ const PROJECTS: [(&str, &str); 7] = [
   ("wikiversity.org", "wikiversity"),
   ("wikivoyage.org", "wikivoyage"),
 ];
+
+/// JavaScript RegExp source matching the URLs `parse_wikimedia_url` accepts.
+pub static WIKIMEDIA_URL_PATTERN: LazyLock<String> = LazyLock::new(|| {
+  let domains = PROJECTS
+    .iter()
+    .map(|(domain, _)| domain.replace('.', r"\."))
+    .collect::<Vec<_>>()
+    .join("|");
+  format!(r"^[a-z][a-z0-9+.-]*://[a-z]{{2,3}}\.(?:{domains})(?::\d+)?/wiki/[^?#]")
+});
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WikimediaUrl {

@@ -14,7 +14,7 @@ use super::super::{
   meta::Meta,
   raw_page::{RawPageContent, RawPageResult, ScrapeProxy},
 };
-use super::{Engine, EngineOutcome};
+use super::{Engine, EngineOutcome, RedirectRules};
 
 pub struct FetchEngine;
 
@@ -97,21 +97,28 @@ impl wreq::dns::Resolve for GuardedResolver {
   }
 }
 
-#[tracing::instrument(name = "engines::fetch::safe_wreq_builder", err)]
+#[tracing::instrument(name = "engines::fetch::safe_wreq_builder", skip(rules), err)]
 fn safe_wreq_builder(
   skip_tls_verification: bool,
   cookies: bool,
+  rules: RedirectRules,
 ) -> Result<wreq::Client, wreq::Error> {
   let mut builder = wreq::Client::builder()
     .emulation(wreq_util::Emulation::Chrome137)
     .tls_cert_verification(!skip_tls_verification)
     .dns_resolver(Arc::new(GuardedResolver)) // guard against SSRF via DNS filtering
-    .redirect(wreq::redirect::Policy::custom(|attempt| {
+    .redirect(wreq::redirect::Policy::custom(move |attempt| {
       if attempt.previous.len() >= 20 {
         attempt.error("too many redirects") // TODO: proper error
       } else if let Some(e) = guard_ip_host(attempt.uri.host()).err() {
         // also guard against SSRF via direct IP filtering
         attempt.error(e)
+      } else if let Ok(url) = Url::parse(&attempt.uri.to_string()) {
+        match rules.check(&url) {
+          Err(e) => attempt.error(e),
+          Ok(Some(_)) => attempt.stop(),
+          Ok(None) => attempt.follow(),
+        }
       } else {
         attempt.follow()
       }
@@ -147,6 +154,7 @@ impl Engine for FetchEngine {
     fields(
       skip_tls_verification = meta.options.should_skip_tls_verification(),
       rejected_by = tracing::field::Empty,
+      handoff = tracing::field::Empty,
     ),
     err
   )]
@@ -160,7 +168,11 @@ impl Engine for FetchEngine {
     })?;
 
     // Not sure how safe or performant it is to construct a new wreq every turn? - mogery
-    let client = safe_wreq_builder(meta.options.should_skip_tls_verification(), true)?;
+    let client = safe_wreq_builder(
+      meta.options.should_skip_tls_verification(),
+      true,
+      meta.redirect_rules,
+    )?;
 
     let mut headers = HeaderMap::with_capacity(meta.options.headers.len());
     for (name, value) in &meta.options.headers {
@@ -186,6 +198,20 @@ impl Engine for FetchEngine {
       })?;
 
     let url = Url::parse(&res.uri().to_string())?;
+
+    // The redirect policy only stops at a hop a special engine owns.
+    if res.status().is_redirection()
+      && let Some(hop) = res
+        .headers()
+        .get(wreq::header::LOCATION)
+        .and_then(|x| x.to_str().ok())
+        .and_then(|x| url.join(x).ok())
+      && let Some(engine) = meta.redirect_rules.check(&hop)?
+    {
+      tracing::Span::current().record("handoff", engine.get_name());
+      return Ok(EngineOutcome::Handoff { engine, url: hop });
+    }
+
     let status_code = res.status().as_u16();
     let content_type = res
       .headers()

@@ -8,6 +8,7 @@ use self::{
 };
 
 use tracing::Instrument;
+use url::Url;
 
 use super::{
   error::ScrapeURLError,
@@ -24,7 +25,10 @@ mod special;
 mod wikipedia;
 mod x_twitter;
 
-pub use self::special::{get_special_engine, preempts_index, scrape_special};
+pub use self::special::{
+  RedirectRules, get_special_engine, hand_off_landed, preempts_index, scrape_handoff,
+  scrape_special,
+};
 
 pub trait Engine {
   const NAME: &'static str;
@@ -121,6 +125,9 @@ impl EngineKind {
       Ok(EngineOutcome::ProxyElevationNeeded) => {
         span.record("outcome", "proxy_elevation_needed");
       }
+      Ok(EngineOutcome::Handoff { .. }) => {
+        span.record("outcome", "handoff");
+      }
       Err(e) => {
         span.in_scope(|| tracing::error!(error = %e));
       }
@@ -160,6 +167,11 @@ pub async fn get_main_engine() -> EngineKind {
 pub enum EngineOutcome<T> {
   Scraped(T),
   ProxyElevationNeeded,
+  /// The engine stopped before loading `url`, a navigation `engine` owns.
+  Handoff {
+    engine: EngineKind,
+    url: Url,
+  },
 }
 
 /// Why a basic-proxy attempt in `auto` mode should be retried once with
@@ -178,6 +190,7 @@ pub fn should_elevate_proxy(
 
   match outcome {
     EngineOutcome::ProxyElevationNeeded => Some("engine_requested"),
+    EngineOutcome::Handoff { .. } => None,
     EngineOutcome::Scraped(_) if !engine_supports_enhanced => None,
     EngineOutcome::Scraped(result) => match result.status_code {
       401 => Some("status_401"),

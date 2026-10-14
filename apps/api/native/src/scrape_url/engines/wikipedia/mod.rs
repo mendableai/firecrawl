@@ -27,7 +27,7 @@ use super::{Engine, EngineKind, EngineOutcome};
 mod auth;
 mod url;
 
-pub use self::url::parse_wikimedia_url;
+pub use self::url::{WIKIMEDIA_URL_PATTERN, parse_wikimedia_url};
 
 const API_BASE: &str = "https://api.enterprise.wikimedia.com/v2";
 /// The engine's whole budget, within the scrape deadline; past it the main engine takes over.
@@ -162,9 +162,18 @@ fn article_document(article: &Article, body: &str, wiki: &WikimediaUrl, url: &st
   )
 }
 
+#[derive(Clone, Copy)]
 pub struct WikipediaEngine {
   username: &'static str,
   password: &'static str,
+}
+
+impl WikipediaEngine {
+  /// The engine, when Enterprise API credentials are set.
+  pub fn configured() -> Option<Self> {
+    let (username, password) = CREDENTIALS.as_ref()?;
+    Some(Self { username, password })
+  }
 }
 
 /// The Enterprise API's matches for an article title within one project.
@@ -267,8 +276,7 @@ impl Engine for WikipediaEngine {
   const FEATURES: ConstFeatureFlags = ConstFeatureFlags::new(&[FeatureFlag::DisableAdblock]);
 
   async fn get() -> Option<EngineKind> {
-    let (username, password) = CREDENTIALS.as_ref()?;
-    Some(EngineKind::Wikipedia(Self { username, password }))
+    Self::configured().map(EngineKind::Wikipedia)
   }
 
   #[tracing::instrument(

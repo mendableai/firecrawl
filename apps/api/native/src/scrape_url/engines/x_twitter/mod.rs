@@ -26,7 +26,7 @@ mod schema;
 mod url;
 
 use self::url::XTwitterUrl;
-pub use self::url::parse_x_twitter_url;
+pub use self::url::{X_TWITTER_URL_PATTERN, parse_x_twitter_url};
 
 static XAI_API_KEY: LazyLock<Option<String>> = LazyLock::new(|| {
   std::env::var("XAI_API_KEY")
@@ -40,8 +40,18 @@ fn available() -> bool {
   XAI_API_KEY.is_some() || std::env::var("USE_DB_AUTHENTICATION").as_deref() == Ok("true")
 }
 
+#[derive(Clone, Copy)]
 pub struct XTwitterEngine {
   api_key: Option<&'static str>,
+}
+
+impl XTwitterEngine {
+  /// The engine, when this deployment serves X URLs.
+  pub fn configured() -> Option<Self> {
+    available().then(|| Self {
+      api_key: XAI_API_KEY.as_deref(),
+    })
+  }
 }
 
 async fn fetch_profile(
@@ -106,11 +116,7 @@ impl Engine for XTwitterEngine {
   const FEATURES: ConstFeatureFlags = ConstFeatureFlags::new(&[FeatureFlag::DisableAdblock]);
 
   async fn get() -> Option<EngineKind> {
-    available().then(|| {
-      EngineKind::XTwitter(Self {
-        api_key: XAI_API_KEY.as_deref(),
-      })
-    })
+    Self::configured().map(EngineKind::XTwitter)
   }
 
   #[tracing::instrument(
