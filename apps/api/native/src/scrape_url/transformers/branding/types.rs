@@ -23,6 +23,10 @@ pub struct BrandingScriptReturn {
   pub typography: ScriptTypography,
   pub color_scheme: Option<String>,
   pub page_background: Option<String>,
+  pub page_title: Option<String>,
+  pub page_url: Option<String>,
+  /// Shown to the model as JS prints them, so kept as the script sent them.
+  pub background_candidates: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -144,6 +148,8 @@ pub struct BrandingFontSizes {
 pub struct LogoCandidate {
   pub src: String,
   pub alt: String,
+  pub aria_label: Option<String>,
+  pub title: Option<String>,
   #[serde(deserialize_with = "flag")]
   pub is_svg: bool,
   #[serde(deserialize_with = "flag")]
@@ -153,6 +159,7 @@ pub struct LogoCandidate {
   pub indicators: LogoIndicators,
   pub href: Option<String>,
   pub source: String,
+  pub logo_svg_score: Option<f64>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]

@@ -5,6 +5,7 @@ mod color;
 mod color_roles;
 mod enhancement;
 mod js;
+mod llm;
 mod logo;
 mod merge;
 mod processor;
@@ -59,11 +60,9 @@ pub async fn derive_branding_from_actions(
   let logo_candidates = raw.get("logoCandidates").cloned();
   let parsed: BrandingScriptReturn =
     serde_json::from_value(raw).map_err(TransformerError::BrandingScriptReturn)?;
-  document.branding = Some(transformer::branding_transformer(
-    meta,
-    &parsed,
-    framework_hints,
-    logo_candidates,
-  ));
+  let branding =
+    transformer::branding_transformer(meta, &document, &parsed, framework_hints, logo_candidates)
+      .await;
+  document.branding = Some(branding);
   Ok(document)
 }

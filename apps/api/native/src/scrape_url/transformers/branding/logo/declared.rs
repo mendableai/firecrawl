@@ -55,6 +55,8 @@ pub fn declared_logo_candidate(declared: &DeclaredLogo, brand_name: Option<&str>
   LogoCandidate {
     src: src.clone(),
     alt: brand_name.map(js::trim).unwrap_or_default().to_string(),
+    aria_label: None,
+    title: None,
     is_svg,
     is_visible: true,
     location: "header".to_string(),
@@ -73,5 +75,6 @@ pub fn declared_logo_candidate(declared: &DeclaredLogo, brand_name: Option<&str>
     },
     href: None,
     source: declared.source.to_string(),
+    logo_svg_score: None,
   }
 }

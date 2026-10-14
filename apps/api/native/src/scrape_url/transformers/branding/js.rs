@@ -109,3 +109,48 @@ pub fn split_spaces(s: &str) -> Vec<&str> {
 pub fn len(s: &str) -> usize {
   s.encode_utf16().count()
 }
+
+/// `x.toFixed(digits)`: like Rust's formatting except that exact ties round
+/// away from zero instead of to even.
+pub fn to_fixed(x: f64, digits: usize) -> String {
+  if !x.is_finite() {
+    return number_to_string(x);
+  }
+  let exact = format!("{:.*}", digits + 30, x.abs());
+  let cut = exact.len() - 30;
+  let is_tie = exact[cut..].starts_with('5') && exact[cut + 1..].bytes().all(|b| b == b'0');
+  let rounded = if is_tie {
+    format!(
+      "{:.*}",
+      digits,
+      x.abs() + 0.5 * 10f64.powi(-(digits as i32))
+    )
+  } else {
+    format!("{:.*}", digits, x.abs())
+  };
+  if x < 0.0 {
+    format!("-{rounded}")
+  } else {
+    rounded
+  }
+}
+
+/// `s.slice(start, end)` in UTF-16 units. Half of a surrogate pair at either
+/// edge becomes U+FFFD, since a Rust string can't hold a lone surrogate.
+pub fn slice_utf16(s: &str, start: usize, end: usize) -> String {
+  let mut out = String::new();
+  let mut unit = 0;
+  for c in s.chars() {
+    let (from, to) = (unit, unit + c.len_utf16());
+    unit = to;
+    if to <= start || from >= end {
+      continue;
+    }
+    out.push(if from >= start && to <= end {
+      c
+    } else {
+      '\u{fffd}'
+    });
+  }
+  out
+}

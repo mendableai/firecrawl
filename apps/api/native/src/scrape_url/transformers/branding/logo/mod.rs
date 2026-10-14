@@ -311,3 +311,33 @@ pub fn select_logo_with_confidence(
     reasoning,
   }
 }
+
+/// TS `getTopCandidatesForLLM`: the indices of the candidates the model sees,
+/// best first, or all of them in order when there are at most `max`.
+pub fn top_candidates_for_llm(candidates: &[LogoCandidate], max: usize) -> Vec<usize> {
+  if candidates.len() <= max {
+    return (0..candidates.len()).collect();
+  }
+  let mut scored: Vec<(usize, i64)> = candidates
+    .iter()
+    .enumerate()
+    .map(|(i, c)| {
+      let mut score = score_href_and_header(c, &mut Vec::new());
+      score += [
+        (c.location == "header", 20),
+        (c.is_visible, 15),
+        (c.indicators.class_match, 10),
+        (c.indicators.src_match, 10),
+        (c.indicators.alt_match, 5),
+        (c.source == "document.images", 15),
+      ]
+      .iter()
+      .filter(|(hit, _)| *hit)
+      .map(|(_, points)| points)
+      .sum::<i64>();
+      (i, score)
+    })
+    .collect();
+  scored.sort_by_key(|(_, score)| std::cmp::Reverse(*score));
+  scored.into_iter().take(max).map(|(i, _)| i).collect()
+}

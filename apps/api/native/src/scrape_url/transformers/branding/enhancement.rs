@@ -42,6 +42,20 @@ pub struct LlmLogoSelection {
 /// The button reasoning a failed model call reports.
 pub const LLM_FAILED: &str = "LLM failed";
 
+impl ButtonClassification {
+  /// The schema's default when the answer has no `buttonClassification`.
+  pub fn not_returned() -> Self {
+    let reasoning = "LLM did not return button classification";
+    ButtonClassification {
+      primary_button_index: -1,
+      primary_button_reasoning: reasoning.to_string(),
+      secondary_button_index: -1,
+      secondary_button_reasoning: reasoning.to_string(),
+      confidence: 0.0,
+    }
+  }
+}
+
 impl BrandingEnhancement {
   /// What TS's `enhanceBrandingWithLLM` answers when the call fails. It has no
   /// logo selection, so the heuristic's pick stands.
