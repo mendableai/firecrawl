@@ -10,16 +10,25 @@ use pdf_inspector::PdfProcessResult;
 use tokio::sync::Semaphore;
 use tracing::{Span, field::Empty};
 
-/// Bounds concurrent pdf-inspector runs (`PDF_EXTRACTION_CONCURRENCY`, default 3);
-/// each holds a whole document in memory. Waiters are served first come, first served.
-static PDF_EXTRACTION_PERMITS: LazyLock<Arc<Semaphore>> = LazyLock::new(|| {
-  let permits = std::env::var("PDF_EXTRACTION_CONCURRENCY")
+/// Concurrent pdf-inspector runs (`PDF_EXTRACTION_CONCURRENCY`, default 3);
+/// each holds a whole document in memory.
+static PDF_EXTRACTION_CONCURRENCY: LazyLock<usize> = LazyLock::new(|| {
+  std::env::var("PDF_EXTRACTION_CONCURRENCY")
     .ok()
     .and_then(|x| x.trim().parse::<usize>().ok())
     .filter(|x| *x > 0)
     .unwrap_or(3)
-    .min(Semaphore::MAX_PERMITS);
-  Arc::new(Semaphore::new(permits))
+    .min(Semaphore::MAX_PERMITS)
+});
+
+/// Bounds concurrent pdf-inspector runs. Waiters are served first come, first served.
+static PDF_EXTRACTION_PERMITS: LazyLock<Arc<Semaphore>> =
+  LazyLock::new(|| Arc::new(Semaphore::new(*PDF_EXTRACTION_CONCURRENCY)));
+
+/// Rayon threads per run, so concurrent runs together use about one thread per core.
+static PDF_POOL_THREADS: LazyLock<usize> = LazyLock::new(|| {
+  let cores = std::thread::available_parallelism().map_or(1, usize::from);
+  (cores / *PDF_EXTRACTION_CONCURRENCY).max(1)
 });
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +50,21 @@ impl InspectPass {
 
 fn millis_since(start: Instant) -> u64 {
   u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
+/// Runs `f` on a rayon pool whose threads enter `span`. pdf-inspector parses on rayon
+/// (through lopdf), and the ZDR panic hook needs the scrape's span on those threads.
+fn on_span_pool<R: Send>(span: &Span, f: impl FnOnce() -> R + Send) -> Result<R, String> {
+  rayon::ThreadPoolBuilder::new()
+    .num_threads(*PDF_POOL_THREADS)
+    .build_scoped(
+      |thread| {
+        let _guard = span.enter();
+        thread.run();
+      },
+      |pool| pool.install(f),
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// Runs pdf-inspector on the blocking pool, holding an extraction permit until it finishes.
@@ -70,6 +94,7 @@ pub async fn inspect_pdf(bytes: &Bytes, pass: InspectPass) -> Result<PdfProcessR
 
   let running_since = Instant::now();
   let bytes = bytes.clone();
+  let parent = span.clone();
   let inspected = tokio::task::spawn_blocking(move || {
     let _permit = permit;
     let options = match pass {
@@ -79,7 +104,10 @@ pub async fn inspect_pdf(bytes: &Bytes, pass: InspectPass) -> Result<PdfProcessR
       }
       InspectPass::Extract { .. } => pdf_inspector::PdfOptions::new(),
     };
-    pdf_inspector::process_pdf_mem_with_options(&bytes, options).map_err(|e| e.to_string())
+    on_span_pool(&parent, || {
+      pdf_inspector::process_pdf_mem_with_options(&bytes, options)
+    })?
+    .map_err(|e| e.to_string())
   })
   .await
   .map_err(|e| e.to_string())??;

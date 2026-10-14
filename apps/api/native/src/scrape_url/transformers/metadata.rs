@@ -20,9 +20,13 @@ pub async fn derive_metadata_from_raw_html(
     ));
   };
 
-  let metadata = tokio::task::spawn_blocking(move || _extract_metadata(&raw_html))
-    .await?
-    .map_err(|e| TransformerError::HtmlProcessing(e.to_string()))?;
+  let parent = tracing::Span::current();
+  let metadata = tokio::task::spawn_blocking(move || {
+    let _guard = parent.enter();
+    _extract_metadata(&raw_html)
+  })
+  .await?
+  .map_err(|e| TransformerError::HtmlProcessing(e.to_string()))?;
 
   // TODO: unmerge stuff like `title` and other defined tags (or rework metadata completely...)
   document.metadata.extra = metadata;

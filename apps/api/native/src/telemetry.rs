@@ -2,6 +2,7 @@
 //! (e.g. otel-desktop-viewer). Initialized lazily on the first scrape so the
 //! process only builds an exporter when it actually runs work.
 
+use std::io::Write;
 use std::sync::{Once, OnceLock};
 
 use opentelemetry::trace::{
@@ -14,11 +15,12 @@ use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use tracing::field::{Field, Visit};
 use tracing::{Event, span};
 use tracing_subscriber::Layer;
+use tracing_subscriber::filter::{FilterExt, filter_fn};
 use tracing_subscriber::layer::Context as LayerContext;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{EnvFilter, Registry, fmt};
 
 /// Marker stored in a span's extensions when that span -- or any ancestor -- is
 /// a zero-data-retention scrape. Inserted at span creation and inherited from
@@ -141,56 +143,106 @@ fn traces_endpoint() -> String {
   format!("{}/v1/traces", base.trim_end_matches('/'))
 }
 
+fn build_tracer_provider() -> Option<SdkTracerProvider> {
+  let endpoint = traces_endpoint();
+
+  let exporter = match SpanExporter::builder()
+    .with_http()
+    .with_protocol(Protocol::HttpBinary)
+    .with_endpoint(&endpoint)
+    // Retries would block every scrape's flush for ~1s while the collector is down.
+    .with_retry_policy(RetryPolicy::disabled())
+    .build()
+  {
+    Ok(exporter) => exporter,
+    Err(e) => {
+      eprintln!("[telemetry] failed to build OTLP exporter ({endpoint}): {e}");
+      return None;
+    }
+  };
+
+  let provider = SdkTracerProvider::builder()
+    .with_sampler(ZeroDataRetentionSampler {
+      // Root spans without the ZDR flag are always recorded; child spans
+      // follow their parent's decision (so a dropped ZDR root drops its tree).
+      delegate: Sampler::ParentBased(Box::new(Sampler::AlwaysOn)),
+    })
+    .with_batch_exporter(exporter)
+    .with_resource(
+      Resource::builder()
+        .with_service_name("firecrawl-rs")
+        .build(),
+    )
+    .build();
+
+  eprintln!("[telemetry] OTLP traces -> {endpoint}");
+  Some(provider)
+}
+
+fn env_filter() -> EnvFilter {
+  EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
+}
+
 pub fn init_telemetry() {
   INIT.call_once(|| {
-    let endpoint = traces_endpoint();
+    install_zdr_panic_hook();
 
-    let exporter = match SpanExporter::builder()
-      .with_http()
-      .with_protocol(Protocol::HttpBinary)
-      .with_endpoint(&endpoint)
-      // Retries would block every scrape's flush for ~1s while the collector is down.
-      .with_retry_policy(RetryPolicy::disabled())
-      .build()
-    {
-      Ok(exporter) => exporter,
-      Err(e) => {
-        eprintln!("[telemetry] failed to build OTLP exporter ({endpoint}): {e}");
-        return;
-      }
-    };
+    let otel_layer = build_tracer_provider().map(|provider| {
+      let tracer = provider.tracer("firecrawl-rs");
+      opentelemetry::global::set_tracer_provider(provider.clone());
+      let _ = PROVIDER.set(provider);
+      tracing_opentelemetry::layer()
+        .with_tracer(tracer)
+        .with_filter(env_filter())
+    });
 
-    let provider = SdkTracerProvider::builder()
-      .with_sampler(ZeroDataRetentionSampler {
-        // Root spans without the ZDR flag are always recorded; child spans
-        // follow their parent's decision (so a dropped ZDR root drops its tree).
-        delegate: Sampler::ParentBased(Box::new(Sampler::AlwaysOn)),
-      })
-      .with_batch_exporter(exporter)
-      .with_resource(
-        Resource::builder()
-          .with_service_name("firecrawl-rs")
-          .build(),
-      )
-      .build();
+    // ZDR is marked on the scrape_url span, so ZdrLayer keeps it whatever RUST_LOG says.
+    let zdr_filter = env_filter().or(filter_fn(|meta| {
+      meta.is_span() && meta.name() == "scrape_url"
+    }));
 
-    let tracer = provider.tracer("firecrawl-rs");
-    opentelemetry::global::set_tracer_provider(provider.clone());
-    let _ = PROVIDER.set(provider);
-
-    let filter =
-      EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-
+    // Installed even without an exporter: the panic hook reads ZdrLayer's marker.
     let _ = tracing_subscriber::registry()
-      .with(filter)
-      // Marks ZDR spans and vetoes ZDR log events for every downstream layer.
-      .with(ZdrLayer)
-      .with(fmt::layer().with_writer(std::io::stderr))
-      .with(tracing_opentelemetry::layer().with_tracer(tracer))
+      // Marks ZDR spans and vetoes ZDR log events for every other layer.
+      .with(ZdrLayer.with_filter(zdr_filter))
+      .with(
+        fmt::layer()
+          .with_writer(std::io::stderr)
+          .with_filter(env_filter()),
+      )
+      .with(otel_layer)
       .try_init();
-
-    eprintln!("[telemetry] OTLP traces -> {endpoint}");
   });
+}
+
+/// Whether the span entered on this thread belongs to a ZDR scrape.
+fn in_zdr_span() -> bool {
+  tracing::Span::current()
+    .with_subscriber(|(id, dispatch)| {
+      dispatch
+        .downcast_ref::<Registry>()
+        .and_then(|registry| registry.span(id))
+        .is_some_and(|span| span.extensions().get::<ZeroDataRetention>().is_some())
+    })
+    .unwrap_or(false)
+}
+
+/// Withholds the payload of a panic raised inside a ZDR scrape, since it can carry
+/// user content. Every other panic goes to the previous hook unchanged.
+fn install_zdr_panic_hook() {
+  let previous = std::panic::take_hook();
+  std::panic::set_hook(Box::new(move |info| {
+    if !in_zdr_span() {
+      return previous(info);
+    }
+    let location = info
+      .location()
+      .map_or_else(|| "<unknown>".to_string(), ToString::to_string);
+    let _ = writeln!(
+      std::io::stderr(),
+      "panicked at {location}: panic payload withheld (zero data retention)"
+    );
+  }));
 }
 
 /// Force any buffered spans out to the collector. Called after a scrape so

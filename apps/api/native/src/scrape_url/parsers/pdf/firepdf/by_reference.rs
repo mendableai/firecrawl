@@ -69,7 +69,12 @@ impl FirePdfClient<'_> {
     // The raw-byte sha is the cache identity, the adoption identity, and verifies a handoff.
     let sha256 = {
       let bytes = bytes.clone();
-      tokio::task::spawn_blocking(move || sha256_hex(&bytes)).await
+      let parent = Span::current();
+      tokio::task::spawn_blocking(move || {
+        let _guard = parent.enter();
+        sha256_hex(&bytes)
+      })
+      .await
     }
     .unwrap_or_else(|_| sha256_hex(bytes));
 
