@@ -85,7 +85,7 @@ impl CostTracking {
   }
 }
 
-/// USD per million tokens, like TS `modelCosts`. Takes precedence over [`model_price`].
+/// USD per million tokens, like TS `modelCosts`.
 const MODEL_COSTS: &[(&str, f64, f64)] = &[
   ("gpt-4o-mini", 0.15, 0.6),
   ("gpt-4o", 2.5, 10.0),
@@ -103,26 +103,18 @@ const MODEL_COSTS: &[(&str, f64, f64)] = &[
   ("google/gemini-2.0-flash-thinking-exp:free", 0.55, 2.19),
 ];
 
-/// The rows of TS `modelPrices` for the models Rust calls.
+/// The limits TS `modelPrices` gives the models Rust calls.
 pub struct ModelPrice {
-  pub input_cost_per_token: f64,
-  pub output_cost_per_token: f64,
   pub max_input_tokens: u64,
 }
 
 pub fn model_price(model: &str) -> Option<ModelPrice> {
-  let (input_cost_per_token, output_cost_per_token, max_input_tokens) = match model {
-    "gpt-4o-mini" => (0.00000015, 0.0000006, 128000),
-    "gpt-4o" => (0.0000025, 0.00001, 128000),
-    "gpt-4.1" => (2e-6, 8e-6, 1047576),
-    "gpt-4.1-mini" => (0.4e-6, 1.6e-6, 1047576),
+  let max_input_tokens = match model {
+    "gpt-4o-mini" | "gpt-4o" => 128000,
+    "gpt-4.1" | "gpt-4.1-mini" => 1047576,
     _ => return None,
   };
-  Some(ModelPrice {
-    input_cost_per_token,
-    output_cost_per_token,
-    max_input_tokens,
-  })
+  Some(ModelPrice { max_input_tokens })
 }
 
 fn lookup_model_cost(model: &str) -> Option<(f64, f64)> {
@@ -130,27 +122,16 @@ fn lookup_model_cost(model: &str) -> Option<(f64, f64)> {
   if let Some((_, bare)) = model.split_once('/') {
     candidates.push(bare);
   }
-  candidates
-    .iter()
-    .find_map(|id| {
-      MODEL_COSTS
-        .iter()
-        .find(|(name, ..)| name == id)
-        .map(|(_, input, output)| (*input, *output))
-    })
-    .or_else(|| {
-      candidates.iter().find_map(|id| {
-        model_price(id).map(|x| {
-          (
-            x.input_cost_per_token * 1_000_000.0,
-            x.output_cost_per_token * 1_000_000.0,
-          )
-        })
-      })
-    })
+  candidates.iter().find_map(|id| {
+    MODEL_COSTS
+      .iter()
+      .find(|(name, ..)| name == id)
+      .map(|(_, input, output)| (*input, *output))
+  })
 }
 
-/// TS `calculateCost`. An unpriced model costs 0.
+/// TS `calculateCost`. A model outside [`MODEL_COSTS`] costs 0; TS's fallback
+/// to its full `modelPrices` table only prices `MODEL_NAME` overrides.
 pub fn calculate_cost(model: &str, input_tokens: u64, output_tokens: u64) -> f64 {
   let cost = if model.contains("gemini-2.5-pro") {
     Some(if input_tokens <= 200_000 {
