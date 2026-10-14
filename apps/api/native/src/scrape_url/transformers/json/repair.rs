@@ -56,24 +56,68 @@ async fn repair_json(
   Ok(response.first_text().unwrap_or_default().to_string())
 }
 
+/// TS `isTruncatedJson`: whether text is JSON cut off before its end, with an
+/// unclosed string, object or array. No repair can recover what was never generated.
+fn is_truncated_json(text: &str) -> bool {
+  let mut open = Vec::new();
+  let mut in_string = false;
+  let mut escaped = false;
+  for char in text.chars() {
+    if in_string {
+      match char {
+        _ if escaped => escaped = false,
+        '\\' => escaped = true,
+        '"' => in_string = false,
+        _ => {}
+      }
+      continue;
+    }
+    match char {
+      '"' => in_string = true,
+      '{' | '[' => open.push(char),
+      '}' | ']' => {
+        let expected = if char == '}' { '{' } else { '[' };
+        if open.pop() != Some(expected) {
+          return false;
+        }
+      }
+      _ => {}
+    }
+  }
+  in_string || !open.is_empty()
+}
+
+/// Parses the model's JSON, repairing it like TS `experimental_repairText`.
+/// Output cut off at the model's output limit fails instead of being repaired.
 pub(super) async fn parse_llm_json(
   meta: &Meta,
   cost_metadata: &Value,
   text: &str,
   model: &str,
+  hit_output_limit: bool,
 ) -> Result<Value, LlmError> {
-  match serde_json::from_str(text) {
-    Ok(x) => Ok(x),
-    Err(parse_error) => {
-      if let Some(unfenced) = strip_code_fences(text)
-        && let Ok(x) = serde_json::from_str(&unfenced)
-      {
-        return Ok(x);
-      }
-
-      let repaired = repair_json(meta, cost_metadata, text, &parse_error, model).await?;
-      let repaired = strip_code_fences(&repaired).unwrap_or(repaired);
-      serde_json::from_str(&repaired).map_err(|e| LlmError::InvalidJson(e.to_string()))
+  let parse_error = match serde_json::from_str(text) {
+    Ok(x) => return Ok(x),
+    Err(e) => e,
+  };
+  let failure = |e: String| {
+    if hit_output_limit {
+      LlmError::OutputLimit
+    } else {
+      LlmError::InvalidJson(e)
     }
+  };
+
+  if is_truncated_json(text) {
+    return Err(failure(parse_error.to_string()));
   }
+  if let Some(unfenced) = strip_code_fences(text)
+    && let Ok(x) = serde_json::from_str(&unfenced)
+  {
+    return Ok(x);
+  }
+
+  let repaired = repair_json(meta, cost_metadata, text, &parse_error, model).await?;
+  let repaired = strip_code_fences(&repaired).unwrap_or(repaired);
+  serde_json::from_str(&repaired).map_err(|e| failure(e.to_string()))
 }

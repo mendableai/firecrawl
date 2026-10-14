@@ -106,15 +106,19 @@ const MODEL_COSTS: &[(&str, f64, f64)] = &[
 /// The limits TS `modelPrices` gives the models Rust calls.
 pub struct ModelPrice {
   pub max_input_tokens: u64,
+  pub max_output_tokens: u64,
 }
 
 pub fn model_price(model: &str) -> Option<ModelPrice> {
-  let max_input_tokens = match model {
-    "gpt-4o-mini" | "gpt-4o" => 128000,
-    "gpt-4.1" | "gpt-4.1-mini" => 1047576,
+  let (max_input_tokens, max_output_tokens) = match model {
+    "gpt-4o-mini" | "gpt-4o" => (128000, 16384),
+    "gpt-4.1" | "gpt-4.1-mini" => (1047576, 32768),
     _ => return None,
   };
-  Some(ModelPrice { max_input_tokens })
+  Some(ModelPrice {
+    max_input_tokens,
+    max_output_tokens,
+  })
 }
 
 fn lookup_model_cost(model: &str) -> Option<(f64, f64)> {

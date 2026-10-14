@@ -21,6 +21,7 @@ macro_rules! generate_execute_tranformers {
 
 use attributes::derive_attributes_from_html;
 use base64_images::remove_base64_images;
+use clean_content::perform_clean_content;
 use coerce::coerce_fields_to_formats;
 use html::derive_html_from_raw_html;
 use images::derive_images_from_html;
@@ -34,6 +35,7 @@ pub(super) use youtube::is_youtube_video_url;
 
 mod attributes;
 mod base64_images;
+mod clean_content;
 mod coerce;
 mod html;
 mod images;
@@ -73,7 +75,7 @@ generate_execute_tranformers!(
   fetch_youtube,
   derive_html_from_raw_html,
   derive_markdown_from_html,
-  // TODO: perform_clean_content
+  perform_clean_content,
   // TODO: perform_redact_pii
   derive_links_from_html,
   derive_images_from_html,
