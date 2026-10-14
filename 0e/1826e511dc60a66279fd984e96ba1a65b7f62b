@@ -1,0 +1,24 @@
+apps/api/src/scraper/scrapeURL/engines/fire-engine/branding-script/logo-colors.ts
+  s_3002048a2ce37a::t_b9f1da0ff08fc3 70-79,81-87,95
+  s_3002048a2ce37a::t_2411b3f59d611e 1,80,96,113-114,172-181
+apps/api/src/scraper/scrapeURL/engines/fire-engine/branding-script/images.ts
+  s_3002048a2ce37a::t_2411b3f59d611e 1407-1425
+apps/api/src/__tests__/lib/branding/branding-script-logo-colors.test.ts
+  s_3002048a2ce37a::t_43e138871c5687 66-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e1826e511dc60a66279fd984e96ba1a65b7f62b",
+  "prompts": {},
+  "sessions": {
+    "s_3002048a2ce37a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fabc48ca-b328-4b9d-9e17-ee599b54f859",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Abimael Martell <1450169+abimaelmartell@users.noreply.github.com>"
+    }
+  }
+}
