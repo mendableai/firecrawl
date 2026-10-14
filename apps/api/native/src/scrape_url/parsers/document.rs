@@ -115,11 +115,12 @@ pub fn parse_document(meta: &Meta, result: RawPageResult) -> Result<Document, Sc
           })
       });
 
-      let markdown = anydoc::to_markdown_bytes(bytes.as_ref(), format).map_err(|e| {
-        ScrapeURLError::UnsupportedFileError {
-          reason: format!("failed to convert document: {e}"),
-        }
-      })?;
+      let markdown =
+        crate::document::document_to_markdown(bytes.as_ref(), format).map_err(|e| {
+          ScrapeURLError::UnsupportedFileError {
+            reason: format!("failed to convert document: {e}"),
+          }
+        })?;
       let html = markdown::to_html_with_options(&markdown, &markdown::Options::gfm())
         .map_err(|e| ScrapeURLError::Internal(e.to_string()))?;
 
