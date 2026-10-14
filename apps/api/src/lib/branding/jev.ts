@@ -12,6 +12,7 @@ import { setSpanAttributes, SpanKind, withSpan } from "../otel-tracer";
 import { sampled } from "../rollout";
 import { getTypeSafeClient } from "../typesafe";
 import { BrandingEnhancement } from "./schema";
+import { isPageControl } from "./page-controls";
 import { BrandingLLMInput } from "./types";
 
 // TypeSafe's System One API: https://docs.typesafe.ai/api
@@ -362,7 +363,7 @@ function fileName(src: string): string {
 
 // Cookie-consent controls are page chrome, never the site's call to action.
 const CONSENT =
-  /cookie|consent|gdpr|accept all|reject all|allow all|decline|manage (?:preferences|settings)|akzeptieren|ablehnen|accepter|refuser|aceptar|rechazar/i;
+  /cookie|consent|gdpr|accept all|reject all|allow all|decline|(?:manage|view) (?:preferences|settings)|akzeptieren|ablehnen|accepter|refuser|aceptar|rechazar/i;
 const isConsentButton = (button: { text?: string; classes?: string }) =>
   CONSENT.test(`${button.text ?? ""} ${button.classes ?? ""}`);
 
@@ -471,7 +472,7 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
   // Ids keep each button's index in `input.buttons`, which is what merge reads.
   const ctaButtons = buttons
     .map((button, i) => ({ button, id: `button_${i}` }))
-    .filter(({ button }) => !isConsentButton(button));
+    .filter(({ button }) => !isConsentButton(button) && !isPageControl(button));
 
   if (ctaButtons.length > 0) {
     state.buttons = Object.fromEntries(
