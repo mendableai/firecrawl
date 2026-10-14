@@ -129,6 +129,8 @@ pub struct RawPageResult {
   pub proxy_used: ScrapeProxy,
   pub timezone: Option<String>,
   pub filename: Option<String>,
+  /// Engine-side processing the document reports in `metadata.postprocessorsUsed`.
+  pub postprocessors_used: Option<Vec<String>>,
 }
 
 /// A span carrying every [`RawPageResult`] field, declared here and recorded by
@@ -159,6 +161,7 @@ macro_rules! raw_page_span {
       page.actions.javascript_returns = tracing::field::Empty,
       page.actions.pdfs = tracing::field::Empty,
       page.audio_cookies = tracing::field::Empty,
+      page.postprocessors_used = tracing::field::Empty,
     )
   };
 }
@@ -172,6 +175,10 @@ pub fn record_raw_page(span: &tracing::Span, result: &RawPageResult) {
   span.record("page.proxy_used", result.proxy_used.to_string());
   span.record("page.timezone", result.timezone.as_deref());
   span.record("page.filename", result.filename.as_deref());
+  span.record(
+    "page.postprocessors_used",
+    result.postprocessors_used.as_ref().map(|x| x.join(",")),
+  );
   span.record(
     "page.cached_at",
     result.cached_at.map(|x| x.to_rfc3339()).as_deref(),

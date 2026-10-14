@@ -8,7 +8,10 @@ use url::Url;
 use self::{
   cost_tracking::CostTracking,
   document::{Document, DocumentMetadataCacheState, ScrapeResult},
-  engines::{EngineOutcome, check_engine_support, get_main_engine, should_elevate_proxy},
+  engines::{
+    EngineOutcome, check_engine_support, get_main_engine, get_special_engine, preempts_index,
+    scrape_special, should_elevate_proxy,
+  },
   error::{ScrapeErrorPayload, ScrapeFailure, ScrapeURLError},
   feature_flags::FeatureFlag,
   index::{Index, should_use_index},
@@ -59,7 +62,8 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
     options::ProxyMode::Enhanced => ScrapeProxy::Enhanced,
   };
 
-  let should_use_index = should_use_index(&meta);
+  let special_engine = get_special_engine(&meta).await;
+  let should_use_index = should_use_index(&meta) && !preempts_index(special_engine.as_ref());
 
   let index_page = {
     if !should_use_index {
@@ -90,8 +94,13 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
     }
   };
 
-  let mut page = match index_page {
-    Some(index_page) => index_page,
+  let special_page = match (&index_page, special_engine) {
+    (None, Some(engine)) => scrape_special(&meta, engine, should_use_index).await?,
+    _ => None,
+  };
+
+  let mut page = match index_page.or(special_page) {
+    Some(page) => page,
     None if meta.options.lockdown => return Err(ScrapeURLError::LockdownMissError),
     None if meta.internal_options.agent_index_only => {
       return Err(ScrapeURLError::AgentIndexOnlyError);

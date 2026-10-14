@@ -28,7 +28,9 @@ napi = { version = "3.12.0", features = ["serde-json", "tokio_rt"] }
 napi-derive = "3.6.2"
 nodesig = { git = "https://github.com/firecrawl/nodesig" }
 nom = "8"
+percent-encoding = "2"
 psl = "2"
+rand = "0.9"
 redis = { version = "1", features = ["tokio-comp"] }
 regex = "1.13"
 reqwest = { version = "0.13", features = ["rustls", "json"] }

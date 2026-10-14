@@ -206,6 +206,7 @@ impl Engine for FetchEngine {
       filename: None, // TODO: get out of header maybe?
       cached_at: None,
       audio_cookies: Vec::new(),
+      postprocessors_used: None,
     }))
   }
 }

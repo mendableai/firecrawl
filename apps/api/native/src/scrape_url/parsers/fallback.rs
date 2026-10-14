@@ -118,7 +118,7 @@ pub fn parse_fallback(meta: &Meta, result: RawPageResult) -> Result<Document, Sc
       credits_used: None,
       concurrency_limited: false,
       concurrency_queue_duration_ms: None,
-      postprocessors_used: None,
+      postprocessors_used: result.postprocessors_used,
 
       extra: HashMap::new(),
     },
