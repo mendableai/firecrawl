@@ -32,6 +32,7 @@ use Firecrawl\Models\Monitor;
 use Firecrawl\Models\MonitorCheck;
 use Firecrawl\Models\MonitorCheckDetail;
 use Firecrawl\Models\ParseFile;
+use Firecrawl\Models\ParseFormat;
 use Firecrawl\Models\ParseOptions;
 use Firecrawl\Models\ScrapeOptions;
 use Firecrawl\Models\SearchData;
@@ -257,6 +258,21 @@ final class FirecrawlClient
         );
 
         return Document::fromArray($response['data'] ?? $response);
+    }
+
+    /**
+     * List the file formats the parse endpoint accepts on this deployment.
+     *
+     * @return list<ParseFormat>
+     */
+    public function getParseFormats(): array
+    {
+        $response = $this->http->get('/v2/parse/formats');
+
+        return array_values(array_map(
+            static fn (array $item): ParseFormat => ParseFormat::fromArray($item),
+            array_filter($response['data']['formats'] ?? [], 'is_array'),
+        ));
     }
 
     // ================================================================
@@ -690,12 +706,14 @@ final class FirecrawlClient
      * Create a new browser session.
      *
      * @param array<string, string>|null $profile
+     * @param array{country: string}|null $location Country the session browses from, e.g. ['country' => 'GB'] (default US)
      */
     public function browser(
         ?int $ttl = null,
         ?int $activityTtl = null,
         ?bool $streamWebView = null,
         ?array $profile = null,
+        ?array $location = null,
     ): BrowserCreateResponse {
         $body = [];
         if ($ttl !== null) {
@@ -709,6 +727,9 @@ final class FirecrawlClient
         }
         if ($profile !== null) {
             $body['profile'] = $profile;
+        }
+        if ($location !== null) {
+            $body['location'] = $location;
         }
 
         return BrowserCreateResponse::fromArray($this->http->post('/v2/browser', $body));
@@ -808,9 +829,14 @@ final class FirecrawlClient
         if (($response['success'] ?? null) === false) {
             $error = $response['error'] ?? null;
 
-            throw new FirecrawlException(is_string($error) && $error !== ''
-                ? $error
-                : 'The API reported the request as unsuccessful.');
+            $code = $response['code'] ?? null;
+
+            throw new FirecrawlException(
+                is_string($error) && $error !== '' ? $error : 'The API reported the request as unsuccessful.',
+                200,
+                is_string($code) ? $code : null,
+                $response['details'] ?? null,
+            );
         }
 
         return $response;

@@ -1,4 +1,4 @@
-import { describe, test, expect, jest } from "@jest/globals";
+import { describe, test, expect, vi } from "vitest";
 import { scrape } from "../../../v2/methods/scrape";
 import { startBatchScrape } from "../../../v2/methods/batch";
 import { startCrawl } from "../../../v2/methods/crawl";
@@ -18,10 +18,10 @@ const threatProtection: ThreatProtectionOptions = {
 };
 
 function makeHttp(data: Record<string, unknown>) {
-  const post = jest.fn(async () => ({ status: 200, data }));
+  const post = vi.fn(async () => ({ status: 200, data }));
   return {
     post,
-    prepareHeaders: jest.fn(() => undefined),
+    prepareHeaders: vi.fn(() => undefined),
   } as any;
 }
 
@@ -32,7 +32,17 @@ describe("v2 threatProtection request serialization", () => {
     expect(http.post).toHaveBeenCalledWith(
       "/v2/scrape",
       expect.objectContaining({ url: "https://example.com", threatProtection }),
-      {},
+      { timeoutMs: 330000 },
+    );
+  });
+
+  test("scrape sends domainTools when true", async () => {
+    const http = makeHttp({ success: true, data: {} });
+    await scrape(http, "https://example.com", { domainTools: true });
+    expect(http.post).toHaveBeenCalledWith(
+      "/v2/scrape",
+      expect.objectContaining({ url: "https://example.com", domainTools: true }),
+      expect.anything(),
     );
   });
 
@@ -120,4 +130,11 @@ describe("v2 threatProtection request serialization", () => {
     const body = http.post.mock.calls[0][1] as Record<string, unknown>;
     expect(body).not.toHaveProperty("threatProtection");
   });
+});
+
+
+test.each([false, undefined])("scrape omits domainTools when %s", async (domainTools) => {
+  const http = makeHttp({ success: true, data: {} });
+  await scrape(http, "https://example.com", { domainTools });
+  expect(http.post.mock.calls[0][1]).not.toHaveProperty("domainTools");
 });

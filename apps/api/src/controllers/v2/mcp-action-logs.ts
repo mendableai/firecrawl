@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import { config } from "../../config";
-import { db, dbRr } from "../../db/connection";
+import { db } from "../../db/connection";
 import { ErrorResponse, RequestWithAuth, TeamFlags } from "./types";
 import {
   authorizeMcpActionLogViewer,
   listMcpActionLogs,
   McpActionLogAuthorizationError,
+  McpActionLogUnavailableError,
   McpActionLogValidationError,
   normalizeMcpActionLogInput,
-  purgeMcpActionLogsForTeam,
   recordMcpActionLog,
   resolveMcpActionLogTeamPolicy,
   validateMcpActionLogActor,
@@ -44,14 +44,13 @@ export async function ingestMcpActionLogController(
       });
     }
     if (isMcpActionLogZdrTeam(team.flags)) {
-      await purgeMcpActionLogsForTeam(db, input.team_id);
       return res.status(202).json({
         success: true,
         disposition: "zero-data-retention",
         id: null,
       });
     }
-    const result = await recordMcpActionLog(db, input);
+    const result = await recordMcpActionLog(input);
     return res.status(202).json({ success: true, ...result });
   } catch (error) {
     if (error instanceof McpActionLogValidationError) {
@@ -91,7 +90,6 @@ export async function listMcpActionLogsController(
       });
     }
     if (isMcpActionLogZdrTeam(team.flags)) {
-      await purgeMcpActionLogsForTeam(db, req.auth.team_id);
       return res.status(200).json({
         success: true,
         data: [],
@@ -99,7 +97,7 @@ export async function listMcpActionLogsController(
       });
     }
     const parsedLimit = Number.parseInt(String(req.query.limit ?? "50"), 10);
-    const result = await listMcpActionLogs(dbRr, req.auth.team_id, {
+    const result = await listMcpActionLogs(req.auth.team_id, {
       limit: Number.isFinite(parsedLimit) ? parsedLimit : 50,
       cursor: typeof req.query.cursor === "string" ? req.query.cursor : null,
     });
@@ -110,6 +108,9 @@ export async function listMcpActionLogsController(
     }
     if (error instanceof McpActionLogValidationError) {
       return res.status(400).json({ success: false, error: error.message });
+    }
+    if (error instanceof McpActionLogUnavailableError) {
+      return res.status(503).json({ success: false, error: error.message });
     }
     throw error;
   }

@@ -4,9 +4,11 @@ import {
   interact as interactMethod,
   stopInteraction as stopInteractionMethod,
 } from "./methods/scrape";
-import { parse as parseMethod } from "./methods/parse";
+import { parse as parseMethod, getParseFormats } from "./methods/parse";
 import { search } from "./methods/search";
+import { scrapeAlexandria, findTools } from "./methods/tools";
 import { developerSearch as developerSearchMethod } from "./methods/developer";
+import { govSearch as govSearchMethod } from "./methods/gov";
 import { map as mapMethod } from "./methods/map";
 import { feedback as feedbackMethod, searchFeedback as searchFeedbackMethod } from "./methods/feedback";
 import {
@@ -47,13 +49,20 @@ import {
 } from "./methods/monitor";
 import type {
   Document,
+  AlexandriaScrapeRequest,
+  FindToolsOptions,
+  FindToolsData,
+  AlexandriaScrapeData,
   ParseFile,
+  ParseFormatInfo,
   ParseOptions,
   ScrapeOptions,
   SearchData,
   SearchRequest,
   DeveloperSearchOptions,
   DeveloperSearchResponse,
+  GovSearchOptions,
+  GovSearchResponse,
   EndpointFeedbackRequest,
   FeedbackResponse,
   SearchFeedbackRequest,
@@ -171,11 +180,42 @@ export class FirecrawlClient {
    */
   async scrape<Opts extends ScrapeOptions>(
     url: string,
-    options: Opts
+    options: Opts,
   ): Promise<Omit<Document, "json"> & { json?: InferredJsonFromOptions<Opts> }>;
   async scrape(url: string, options?: ScrapeCallOptions): Promise<Document>;
-  async scrape(url: string, options?: ScrapeCallOptions): Promise<Document> {
-    return scrape(this.http, url, options);
+  async scrape(request: AlexandriaScrapeRequest): Promise<AlexandriaScrapeData>;
+  async scrape(
+    url: string | AlexandriaScrapeRequest,
+    options?: ScrapeCallOptions,
+  ): Promise<Document | AlexandriaScrapeData> {
+    if (typeof url === "string") return scrape(this.http, url, options);
+    if (
+      !url ||
+      options !== undefined ||
+      Object.keys(url).some(
+        (key) =>
+          ![
+            "alexandria",
+            "requestId",
+            "timeout",
+            "integration",
+            "origin",
+          ].includes(key),
+      )
+    ) {
+      throw new Error("Provide an alexandria request without URL scrape options");
+    }
+    const { alexandria, ...opts } = url;
+    return scrapeAlexandria(
+      this.http,
+      Array.isArray(alexandria) ? alexandria : [alexandria],
+      opts,
+    );
+  }
+
+  /** Explore the catalogue without executing the tools it returns. */
+  async findTools(options?: FindToolsOptions): Promise<FindToolsData> {
+    return findTools(this.http, options);
   }
   /**
    * Interact with the browser session associated with a scrape job.
@@ -237,6 +277,14 @@ export class FirecrawlClient {
     return parseMethod(this.http, file, options);
   }
 
+  /**
+   * List the file formats the parse endpoint accepts on this deployment.
+   * @returns Formats with their kind, extensions, MIME types, and availability.
+   */
+  async getParseFormats(): Promise<ParseFormatInfo[]> {
+    return getParseFormats(this.http);
+  }
+
   // Search
   /**
    * Search the web and optionally scrape each result.
@@ -259,6 +307,17 @@ export class FirecrawlClient {
     options: DeveloperSearchOptions = {},
   ): Promise<DeveloperSearchResponse> {
     return developerSearchMethod(this.http, query, options);
+  }
+
+  /**
+   * Search the Government Index: primary law and regulatory material
+   * from US federal, state, and local government sources.
+   */
+  async govSearch(
+    query: string,
+    options: GovSearchOptions = {},
+  ): Promise<GovSearchResponse> {
+    return govSearchMethod(this.http, query, options);
   }
 
   /**
@@ -335,7 +394,7 @@ export class FirecrawlClient {
   /**
    * Cancel a crawl job.
    * @param jobId Crawl job id.
-   * @returns True if cancelled.
+   * @returns True if cancelled. False if the crawl was already completed (the API answers 409).
    */
   async cancelCrawl(jobId: string): Promise<boolean> {
     return cancelCrawl(this.http, jobId);
@@ -343,11 +402,14 @@ export class FirecrawlClient {
   /**
    * Convenience waiter: start a crawl and poll until it finishes.
    * @param url Root URL to crawl.
-   * @param req Crawl configuration plus waiter controls (pollInterval, timeout seconds).
+   * @param req Crawl configuration plus waiter controls (pollInterval, timeout seconds, signal).
+   * When `signal` aborts, polling stops, the job gets a best-effort cancel request,
+   * and the promise rejects with `signal.reason`.
    * @returns Final job snapshot.
    */
-  async crawl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number } = {}): Promise<CrawlJob> {
-    return crawlWaiter(this.http, { url, ...req }, req.pollInterval, req.timeout);
+  async crawl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<CrawlJob> {
+    const { pollInterval, timeout, signal, ...options } = req;
+    return crawlWaiter(this.http, { url, ...options }, pollInterval, timeout, signal);
   }
   /**
    * Retrieve crawl errors and robots.txt blocks.
@@ -582,7 +644,7 @@ export class FirecrawlClient {
   // Browser
   /**
    * Create a new browser session.
-   * @param args Session options (ttl, activityTtl, streamWebView, profile).
+   * @param args Session options (ttl, activityTtl, streamWebView, blockAds, profile, location).
    * @returns Session id, CDP URL, live view URL, and expiration time.
    */
   async browser(
@@ -665,7 +727,7 @@ export class FirecrawlClient {
   }
 
   /** @deprecated V1 compatibility alias for agent recovery. Prefer crawl(). */
-  async crawlUrl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number } = {}): Promise<CrawlJob> {
+  async crawlUrl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<CrawlJob> {
     return this.crawl(url, req);
   }
 

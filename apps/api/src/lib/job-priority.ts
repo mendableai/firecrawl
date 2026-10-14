@@ -1,6 +1,8 @@
 import { redisEvictConnection } from "../services/redis";
 import { logger } from "./logger";
-import { autumnService } from "../services/autumn/autumn.service";
+import { getACUCTeam } from "../controllers/auth";
+import { DEFAULT_TEAM_LIMITS } from "../services/autumn/autumn.service";
+import type { AuthCreditUsageChunkFromTeam } from "../controllers/v1/types";
 import { inferPlanPriorityFromMultiplier } from "../services/rate-limiter";
 
 const SET_KEY_PREFIX = "limit_team_id:";
@@ -31,9 +33,13 @@ export async function deleteJobPriority(team_id, job_id) {
 
 export async function getJobPriority({
   team_id,
+  acuc,
   basePriority = 10,
 }: {
   team_id: string;
+  /** The team's ACUC, when the caller holds one. Pass it on hot loops, which
+   * would otherwise read the team's ACUC once per call. */
+  acuc?: AuthCreditUsageChunkFromTeam | null;
   basePriority?: number;
   from_extract?: boolean;
 }): Promise<number> {
@@ -48,7 +54,9 @@ export async function getJobPriority({
     const setLength = await redisEvictConnection.scard(setKey);
 
     // Plan priority is inferred from the team's Autumn rate-limit multiplier.
-    const multiplier = await autumnService.getRateLimitMultiplier(team_id);
+    const multiplier =
+      (acuc ?? (await getACUCTeam(team_id)))?.rate_limit_multiplier ??
+      DEFAULT_TEAM_LIMITS.rate_limit_multiplier;
     const { bucketLimit, planModifier } =
       inferPlanPriorityFromMultiplier(multiplier);
 

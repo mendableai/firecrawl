@@ -4,7 +4,7 @@
  */
 
 interface CategoryInput {
-  type: "github" | "research" | "pdf" | "developer";
+  type: "github" | "research" | "pdf" | "developer" | "gov";
   sites?: string[];
 }
 
@@ -37,6 +37,16 @@ const DEFAULT_RESEARCH_SITES = [
   "biorxiv.org",
   "medrxiv.org",
 ];
+
+export function hasCategory(
+  categories: unknown,
+  type: CategoryInput["type"],
+): boolean {
+  return (
+    Array.isArray(categories) &&
+    categories.some(c => (typeof c === "string" ? c : c?.type) === type)
+  );
+}
 
 /**
  * Builds a search query with category filters

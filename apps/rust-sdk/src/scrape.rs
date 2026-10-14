@@ -79,6 +79,11 @@ pub struct ScrapeOptions {
     /// Lockdown mode: serve only previously cached results, never make outbound requests.
     pub lockdown: Option<bool>,
 
+    /// Scan the page content for prompt injection with any format except rawBase64,
+    /// before LLM-backed formats run. A detection fails the scrape with
+    /// SCRAPE_PROMPT_INJECTION_DETECTED. Adds 4 credits when the check scans the whole page.
+    pub check_prompt_injection: Option<bool>,
+
     /// Redact personally identifiable information from returned content.
     #[serde(rename = "redactPII")]
     pub redact_pii: Option<bool>,
@@ -103,6 +108,12 @@ pub struct ScrapeOptions {
 
     /// Attribute selectors for extraction.
     pub attribute_selectors: Option<Vec<AttributeSelector>>,
+
+    /// Enable Alexandria domain-tool discovery for this scrape.
+    pub domain_tools: Option<bool>,
+
+    /// Discovery response detail; defaults to summary.
+    pub tool_detail: Option<crate::types::ToolDetail>,
 }
 
 /// Parser configuration for document parsing.
@@ -146,6 +157,101 @@ struct ScrapeResponse {
     data: Document,
     #[serde(skip_serializing_if = "Option::is_none")]
     warning: Option<String>,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AlexandriaCall {
+    pub provider: String,
+    pub capability: String,
+    pub options: Option<serde_json::Map<String, Value>>,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AlexandriaOptions {
+    #[serde(skip)]
+    pub request_id: Option<String>,
+    pub timeout: Option<u32>,
+    pub integration: Option<String>,
+    pub origin: Option<String>,
+}
+
+/// Matches the API's default and maximum execution timeout for Alexandria calls.
+const ALEXANDRIA_MAX_TIMEOUT_MS: u32 = 120_000;
+/// Extra time for the API to deliver a response after its execution deadline.
+const ALEXANDRIA_RESPONSE_MARGIN_MS: u64 = 30_000;
+
+/// Returns how long the client waits for an Alexandria response.
+fn alexandria_transport_timeout(timeout: Option<u32>) -> std::time::Duration {
+    let execution_ms = timeout
+        .unwrap_or(ALEXANDRIA_MAX_TIMEOUT_MS)
+        .min(ALEXANDRIA_MAX_TIMEOUT_MS);
+    std::time::Duration::from_millis(u64::from(execution_ms) + ALEXANDRIA_RESPONSE_MARGIN_MS)
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct AlexandriaRequest {
+    alexandria: Vec<AlexandriaCall>,
+    #[serde(flatten)]
+    options: AlexandriaOptions,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AlexandriaScrapeError {
+    pub code: String,
+    pub message: String,
+    pub status: Option<u16>,
+    /// Charge identifier, present when credits were captured before the failure.
+    #[serde(default)]
+    pub charge_id: Option<String>,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AlexandriaScrapeResult {
+    pub provider: Option<String>,
+    pub capability: Option<String>,
+    pub credits_cost: Option<u32>,
+    pub data: Option<Value>,
+    pub records: Option<u64>,
+    pub upstream_status: Option<u16>,
+    pub recorded_at: Option<String>,
+    pub error: Option<AlexandriaScrapeError>,
+}
+
+impl AlexandriaScrapeResult {
+    pub fn failed(&self) -> bool {
+        self.error.is_some()
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AlexandriaScrapeData {
+    pub request_id: String,
+    pub scrape_id: String,
+    pub alexandria: Vec<AlexandriaScrapeResult>,
+    pub credits_cost: u32,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct AlexandriaScrapePayload {
+    alexandria: Vec<AlexandriaScrapeResult>,
+    credits_cost: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct AlexandriaScrapeResponse {
+    scrape_id: String,
+    data: AlexandriaScrapePayload,
 }
 
 /// Supported languages for scrape-bound browser execution.
@@ -283,6 +389,96 @@ impl Client {
         let response: ScrapeResponse = self.handle_response(response, "scrape").await?;
 
         Ok(response.data)
+    }
+
+    pub async fn scrape_alexandria(
+        &self,
+        calls: Vec<AlexandriaCall>,
+        options: impl Into<Option<AlexandriaOptions>>,
+    ) -> Result<AlexandriaScrapeData, FirecrawlError> {
+        if calls.is_empty() {
+            return Err(FirecrawlError::Misuse(
+                "at least one alexandria call is required".to_string(),
+            ));
+        }
+        if calls.len() > 10 {
+            return Err(FirecrawlError::Misuse(
+                "at most 10 alexandria calls are allowed per request".to_string(),
+            ));
+        }
+        for (index, call) in calls.iter().enumerate() {
+            if call.provider.trim().is_empty() {
+                return Err(FirecrawlError::Misuse(format!(
+                    "alexandria call {index}: provider is required"
+                )));
+            }
+            if call.capability.trim().is_empty() {
+                return Err(FirecrawlError::Misuse(format!(
+                    "alexandria call {index}: capability is required"
+                )));
+            }
+        }
+        let mut options = options.into().unwrap_or_default();
+        if options.timeout == Some(0) {
+            return Err(FirecrawlError::Misuse(
+                "timeout must be positive".to_string(),
+            ));
+        }
+        if options.origin.is_none() {
+            options.origin = Some(format!("rust-sdk@{}", env!("CARGO_PKG_VERSION")));
+        }
+        // Allow response delivery after the API's capped execution deadline.
+        let request_timeout = alexandria_transport_timeout(options.timeout);
+        let request_id = options
+            .request_id
+            .clone()
+            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+        if request_id.is_empty()
+            || request_id.len() > 128
+            || !request_id
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || b"._:-".contains(&c))
+        {
+            return Err(FirecrawlError::Misuse("Invalid request_id".into()));
+        }
+        let body = AlexandriaRequest {
+            alexandria: calls,
+            options,
+        };
+
+        let headers = self.prepare_headers(None);
+
+        let response = self
+            .client
+            .post(self.url("/scrape"))
+            .headers(headers)
+            .header("x-request-id", &request_id)
+            .json(&body)
+            .timeout(request_timeout)
+            .send()
+            .await
+            .map_err(|e| FirecrawlError::AlexandriaExecution {
+                request_id: request_id.clone(),
+                source: Box::new(FirecrawlError::HttpError(
+                    "Executing alexandria calls".to_string(),
+                    e,
+                )),
+            })?;
+
+        let response: AlexandriaScrapeResponse = self
+            .handle_response(response, "alexandria")
+            .await
+            .map_err(|e| FirecrawlError::AlexandriaExecution {
+                request_id: request_id.clone(),
+                source: Box::new(e),
+            })?;
+
+        Ok(AlexandriaScrapeData {
+            request_id,
+            scrape_id: response.scrape_id,
+            alexandria: response.data.alexandria,
+            credits_cost: response.data.credits_cost,
+        })
     }
 
     /// Scrapes a URL with a JSON schema for structured extraction.
@@ -464,6 +660,23 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn test_alexandria_transport_timeout() {
+        for (timeout, expected_secs) in [
+            (None, 150),
+            (Some(1_000), 31),
+            (Some(100_000), 130),
+            (Some(120_000), 150),
+            (Some(300_000), 150),
+        ] {
+            assert_eq!(
+                alexandria_transport_timeout(timeout),
+                std::time::Duration::from_secs(expected_secs),
+                "timeout {timeout:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_query_format_serializes_mode() {
         let options = ScrapeOptions {
             formats: Some(vec![Format::Query(QueryFormat {
@@ -516,6 +729,17 @@ mod tests {
     }
 
     #[test]
+    fn test_scrape_options_serializes_domain_tools() {
+        let options = ScrapeOptions {
+            domain_tools: Some(true),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(payload["domainTools"], json!(true));
+    }
+
+    #[test]
     fn test_scrape_options_serializes_redact_pii() {
         let options = ScrapeOptions {
             redact_pii: Some(true),
@@ -525,6 +749,20 @@ mod tests {
         let payload = serde_json::to_value(options).unwrap();
         assert_eq!(payload["redactPII"], json!(true));
         assert!(payload.get("formats").is_none());
+    }
+
+    #[test]
+    fn test_scrape_options_serializes_check_prompt_injection() {
+        let options = ScrapeOptions {
+            check_prompt_injection: Some(true),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(payload["checkPromptInjection"], json!(true));
+
+        let unset = serde_json::to_value(ScrapeOptions::default()).unwrap();
+        assert!(unset.get("checkPromptInjection").is_none());
     }
 
     #[test]

@@ -1,5 +1,12 @@
+import { UNSUPPORTED_SITE_MESSAGE } from "./strings";
+
 export type ErrorCodes =
   | "THIRD_PARTY_DATA_TERMS_REQUIRED"
+  | "THIRD_PARTY_DATA_NOT_FOUND"
+  | "THIRD_PARTY_DATA_UNSUPPORTED_URL"
+  | "THIRD_PARTY_DATA_UNSUPPORTED_OPTION"
+  | "THIRD_PARTY_DATA_NOT_ENABLED"
+  | "THIRD_PARTY_DATA_ENRICHMENT_NOT_ENABLED"
   | "SCRAPE_TIMEOUT"
   | "MAP_TIMEOUT"
   | "UNKNOWN_ERROR"
@@ -36,10 +43,13 @@ export type ErrorCodes =
   | "SCRAPE_X_TWITTER_CONFIGURATION_ERROR"
   | "PARSE_UNSUPPORTED_OPTIONS"
   | "CRAWL_DENIAL"
+  | "UNSUPPORTED_SITE"
   | "MAP_FAILED"
   | "BAD_REQUEST_INVALID_JSON"
   | "BAD_REQUEST"
   | "CONCURRENCY_QUEUE_TIMEOUT"
+  | "SAFE_MODE_BLOCKED"
+  | "SCRAPE_SITE_RESTRICTION_BLOCKED"
   // Threat protection (enterprise domain risk blocking). Lowercase by design:
   // this is the documented, user-facing error code for the feature.
   | "unsafe_domain_blocked"
@@ -347,14 +357,22 @@ export class SitemapError extends TransportableError {
 }
 
 export class CrawlDenialError extends TransportableError {
-  constructor(public reason: string) {
+  /** The URL robots.txt disallows, or null when robots.txt did not cause the denial. */
+  public robotsBlockedUrl: string | null;
+
+  constructor(
+    public reason: string,
+    options: { robotsBlockedUrl?: string | null } = {},
+  ) {
     super("CRAWL_DENIAL", reason);
+    this.robotsBlockedUrl = options.robotsBlockedUrl ?? null;
   }
 
   serialize() {
     return {
       ...super.serialize(),
       reason: this.reason,
+      robotsBlockedUrl: this.robotsBlockedUrl,
     };
   }
 
@@ -362,7 +380,28 @@ export class CrawlDenialError extends TransportableError {
     _: ErrorCodes,
     data: ReturnType<typeof this.prototype.serialize> & { reason: string },
   ) {
-    const x = new CrawlDenialError(data.reason);
+    const x = new CrawlDenialError(data.reason, {
+      robotsBlockedUrl: data.robotsBlockedUrl,
+    });
+    x.stack = data.stack;
+    return x;
+  }
+}
+
+export class UnsupportedSiteError extends TransportableError {
+  constructor() {
+    super("UNSUPPORTED_SITE", UNSUPPORTED_SITE_MESSAGE);
+  }
+
+  serialize() {
+    return super.serialize();
+  }
+
+  static deserialize(
+    _: ErrorCodes,
+    data: ReturnType<typeof this.prototype.serialize>,
+  ) {
+    const x = new UnsupportedSiteError();
     x.stack = data.stack;
     return x;
   }
