@@ -44,7 +44,7 @@ struct Prompt {
 #[instrument(
   name = "transformers::query::freeform",
   skip_all,
-  fields(model = Empty, failed_models = 0),
+  fields(model = Empty, failed_models = Empty),
   err
 )]
 pub async fn freeform(
@@ -62,25 +62,24 @@ pub async fn freeform(
   // fallback to a smaller window can still succeed.
   let mut prompts: HashMap<&str, Prompt> = HashMap::new();
   let span = Span::current();
-  for (attempt, (model, provider)) in chain.into_iter().enumerate() {
+  let models = chain.len();
+  for (failed, (model, provider)) in chain.into_iter().enumerate() {
     let built = match prompts.entry(model) {
       Entry::Occupied(x) => x.into_mut(),
       Entry::Vacant(x) => x.insert(build_prompt(meta, prompt, markdown, model).await?),
     };
-    match answer(meta, model, provider, &built.text).await {
-      Ok(text) => {
-        span.record("model", model);
-        if built.trimmed {
-          document.prepend_warning(too_long_warning(Purpose::Query));
-        }
-        return Ok(Some(text));
-      }
-      // `answer` records the error on its span.
-      Err(_) => {
-        span.record("failed_models", attempt + 1);
-      }
+    // `answer` records a failure on its own span.
+    let Ok(text) = answer(meta, model, provider, &built.text).await else {
+      continue;
+    };
+    span.record("model", model);
+    span.record("failed_models", failed);
+    if built.trimmed {
+      document.prepend_warning(too_long_warning(Purpose::Query));
     }
+    return Ok(Some(text));
   }
+  span.record("failed_models", models);
   Ok(None)
 }
 
