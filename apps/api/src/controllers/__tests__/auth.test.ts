@@ -136,6 +136,7 @@ describe("authenticateUser", () => {
     WORLD_ID_CLIENT_ID: config.WORLD_ID_CLIENT_ID,
     WORLD_ID_CLIENT_SECRET: config.WORLD_ID_CLIENT_SECRET,
     WORLD_ID_CREDENTIAL_SECRET: config.WORLD_ID_CREDENTIAL_SECRET,
+    WORLD_ID_SUBJECT_SECRET: config.WORLD_ID_SUBJECT_SECRET,
   };
 
   beforeEach(() => {
@@ -416,6 +417,7 @@ describe("authenticateUser", () => {
       config.WORLD_ID_CLIENT_ID = "app_test";
       config.WORLD_ID_CLIENT_SECRET = "client-secret";
       config.WORLD_ID_CREDENTIAL_SECRET = "c".repeat(32);
+      config.WORLD_ID_SUBJECT_SECRET = "s".repeat(32);
       vi.mocked(isKeylessConfigured).mockReturnValue(true);
       vi.mocked(consumeKeylessRequest).mockResolvedValue(allowed);
     };

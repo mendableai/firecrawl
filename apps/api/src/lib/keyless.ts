@@ -113,6 +113,8 @@ export function keylessConversionCohort(ip: string): string | undefined {
 }
 
 export function keylessExhaustionTelemetry(ip: string): Record<string, string> {
+  // The conversion cohort joins on a client IP; a World ID bucket has none.
+  if (ip.startsWith(WORLD_ID_IDENTITY_PREFIX)) return {};
   const conversionCohort = keylessConversionCohort(ip);
   return conversionCohort ? { conversionCohort } : {};
 }
@@ -126,9 +128,18 @@ export function keylessTeamId(ip: string): string {
   return `${KEYLESS_TEAM_PREFIX}${ip}`;
 }
 
+// The keyless identity (quota bucket) of a team: a client IP or a World ID
+// identity. Quota keys take it as is; prompts take keylessPromptIp.
 function keylessIpFromTeamId(teamId: string): string | null {
   return teamId.startsWith(KEYLESS_TEAM_PREFIX)
     ? teamId.slice(KEYLESS_TEAM_PREFIX.length)
+    : null;
+}
+
+/** The client IP a signup prompt may key on: none for a World ID bucket. */
+function keylessPromptIp(identity: string | null): string | null {
+  return identity && !identity.startsWith(WORLD_ID_IDENTITY_PREFIX)
+    ? identity
     : null;
 }
 
@@ -264,7 +275,7 @@ export function keylessLimitPromptForTeam(
   req: Parameters<typeof keylessSignupSurface>[0],
 ): ReturnType<typeof keylessLimitPrompt> {
   return keylessLimitPrompt(
-    keylessIpFromTeamId(teamId),
+    keylessPromptIp(keylessIpFromTeamId(teamId)),
     keylessSignupSurface(req),
   );
 }
@@ -292,7 +303,7 @@ export async function keylessLimitBody(
     // controlled 429 into a server error.
   }
   const prompt = keylessLimitPrompt(
-    ip,
+    keylessPromptIp(ip),
     req ? keylessSignupSurface(req) : "api",
   );
   logger.warn("Keyless request blocked", {

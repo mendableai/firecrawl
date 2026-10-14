@@ -32,7 +32,8 @@ export function isWorldIdConfigured(): boolean {
     config.WORLD_ID_ISSUER &&
       config.WORLD_ID_CLIENT_ID &&
       config.WORLD_ID_CLIENT_SECRET &&
-      config.WORLD_ID_CREDENTIAL_SECRET,
+      config.WORLD_ID_CREDENTIAL_SECRET &&
+      config.WORLD_ID_SUBJECT_SECRET,
   );
 }
 
@@ -40,7 +41,8 @@ function issuer(): string {
   return config.WORLD_ID_ISSUER!.replace(/\/+$/, "");
 }
 
-// One key per purpose, all derived from WORLD_ID_CREDENTIAL_SECRET.
+// One key per purpose (credential signing, device handles), derived from
+// WORLD_ID_CREDENTIAL_SECRET. Subject hashes use WORLD_ID_SUBJECT_SECRET.
 function derivedKey(purpose: string): Buffer {
   return createHmac("sha256", config.WORLD_ID_CREDENTIAL_SECRET!)
     .update(`world-id:${purpose}`)
@@ -55,18 +57,26 @@ function decodeCanonicalBase64Url(segment: string): Buffer | null {
 
 /** Keyed, stable pseudonym for a World ID account: the only form we keep. */
 export function worldIdSubjectHash(iss: string, sub: string): string {
-  return createHmac("sha256", derivedKey("subject"))
+  return createHmac("sha256", config.WORLD_ID_SUBJECT_SECRET!)
     .update(`${iss}\n${sub}`)
     .digest("base64url");
 }
 
-export function isWorldIdSubjectAllowed(subjectHash: string): boolean {
-  const allowed = config.WORLD_ID_ALLOWED_SUBJECTS;
-  if (!allowed) return true;
-  return allowed
+function listsSubject(list: string | undefined, subjectHash: string): boolean {
+  return (list ?? "")
     .split(",")
     .map(entry => entry.trim())
     .includes(subjectHash);
+}
+
+export function isWorldIdSubjectDenied(subjectHash: string): boolean {
+  return listsSubject(config.WORLD_ID_DENIED_SUBJECTS, subjectHash);
+}
+
+export function isWorldIdSubjectAllowed(subjectHash: string): boolean {
+  if (isWorldIdSubjectDenied(subjectHash)) return false;
+  const allowed = config.WORLD_ID_ALLOWED_SUBJECTS;
+  return !allowed || listsSubject(allowed, subjectHash);
 }
 
 export function mintWorldIdCredential(
@@ -138,6 +148,7 @@ export function verifyWorldIdCredential(
   const exp = payload.exp as number;
   if (iat > nowSeconds + MAX_FUTURE_IAT_SECONDS) return null;
   if (exp <= nowSeconds || exp - iat > CREDENTIAL_TTL_SECONDS) return null;
+  if (isWorldIdSubjectDenied(payload.sub)) return null;
   return payload.sub;
 }
 
@@ -347,6 +358,9 @@ export async function pollWorldIdDeviceFlow(
     }
     if (!subjectHash) {
       return { outcome: "error", status: 400, error: "invalid_grant" };
+    }
+    if (isWorldIdSubjectDenied(subjectHash)) {
+      return { outcome: "error", status: 403, error: "access_denied" };
     }
     if (!isWorldIdSubjectAllowed(subjectHash)) {
       return { outcome: "not_allowed", subjectHash };

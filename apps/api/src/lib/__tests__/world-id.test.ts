@@ -38,7 +38,9 @@ beforeEach(() => {
   config.WORLD_ID_CLIENT_ID = CLIENT_ID;
   config.WORLD_ID_CLIENT_SECRET = "client-secret";
   config.WORLD_ID_CREDENTIAL_SECRET = "c".repeat(32);
+  config.WORLD_ID_SUBJECT_SECRET = "s".repeat(32);
   config.WORLD_ID_ALLOWED_SUBJECTS = undefined;
+  config.WORLD_ID_DENIED_SUBJECTS = undefined;
 });
 
 afterEach(() => {
@@ -130,6 +132,20 @@ describe("World ID credential", () => {
     ]) {
       expect(verifyWorldIdCredential(bad)).toBeNull();
     }
+  });
+
+  it("stops accepting a denied subject's credential", () => {
+    const { credential } = mintWorldIdCredential(hash);
+    config.WORLD_ID_DENIED_SUBJECTS = hash;
+    expect(verifyWorldIdCredential(credential)).toBeNull();
+  });
+
+  it("keeps subject hashes when the credential secret rotates", () => {
+    const before = worldIdSubjectHash(ISSUER, "human-1");
+    const { credential } = mintWorldIdCredential(before);
+    config.WORLD_ID_CREDENTIAL_SECRET = "r".repeat(32);
+    expect(worldIdSubjectHash(ISSUER, "human-1")).toBe(before);
+    expect(verifyWorldIdCredential(credential)).toBeNull();
   });
 
   it("ignores every credential while World ID is not configured", () => {

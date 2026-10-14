@@ -18,12 +18,16 @@ const { redis } = vi.hoisted(() => {
 vi.mock("../../services/rate-limiter", () => ({ redisRateLimitClient: redis }));
 vi.mock("../../db/connection", () => ({ db: {}, dbRr: {}, dbIndex: {} }));
 
+import { config } from "../../config";
 import {
   consumeKeylessRequest,
+  keylessLimitBody,
   keylessTeamId,
   keylessWorldIdIdentity,
   reserveKeylessCredits,
 } from "../keyless";
+import { keylessFallbackSignupUrl } from "../keyless-signup-link";
+import { logger } from "../logger";
 
 const WORLD_ID = keylessWorldIdIdentity("h".repeat(43));
 
@@ -61,5 +65,30 @@ describe("keyless limits for a World ID identity", () => {
     expect(
       (await reserveKeylessCredits(keylessTeamId("203.0.113.8"), 5)).limit,
     ).toBe(100);
+  });
+
+  it("answers credit exhaustion without IP-keyed links or telemetry", async () => {
+    config.KEYLESS_CONVERSION_HMAC_SECRET = "k".repeat(32);
+    config.KEYLESS_SIGNUP_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
+    redis.ttl.mockResolvedValue(3600);
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+
+    const body = await keylessLimitBody(keylessTeamId(WORLD_ID), "v2_scrape");
+
+    expect(body).toMatchObject({
+      success: false,
+      reason: "credits",
+      signup_url: keylessFallbackSignupUrl("api"),
+      retry_after_seconds: 3600,
+    });
+    expect(redis.ttl).toHaveBeenLastCalledWith(`keyless_credits:${WORLD_ID}`);
+    expect(warn).toHaveBeenCalledWith(
+      "Keyless request blocked",
+      expect.not.objectContaining({ conversionCohort: expect.anything() }),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "Keyless request blocked",
+      expect.not.objectContaining({ signupRef: expect.anything() }),
+    );
   });
 });

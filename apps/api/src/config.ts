@@ -16,6 +16,19 @@ const emptyStringAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 const emptyStringAsDefault = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(value => (value === "" ? undefined : value), schema);
 
+const worldIdSubjectList = (name: string) =>
+  emptyStringAsUndefined(
+    z
+      .string()
+      .refine(
+        value =>
+          value
+            .split(",")
+            .every(entry => /^[A-Za-z0-9_-]{43}$/.test(entry.trim())),
+        `${name} must be comma-separated subject hashes`,
+      ),
+  );
+
 const RESEARCH_PAPER_OPERATIONS = [
   "search",
   "inspect",
@@ -168,20 +181,17 @@ const configSchema = z.object({
   WORLD_ID_CLIENT_ID: emptyStringAsUndefined(z.string().trim().min(1)),
   WORLD_ID_CLIENT_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
   WORLD_ID_CREDENTIAL_SECRET: emptyStringAsUndefined(z.string().trim().min(32)),
+  // Keys the subject hashes (bucket ids, allow and deny lists). Kept apart
+  // from the credential secret so rotating that one revokes credentials
+  // without resetting buckets or the lists.
+  WORLD_ID_SUBJECT_SECRET: emptyStringAsUndefined(z.string().trim().min(32)),
   // Optional comma-separated allowlist of subject hashes. When set, only these
   // verified humans are issued a credential; unset issues one to anyone who
   // verifies.
-  WORLD_ID_ALLOWED_SUBJECTS: emptyStringAsUndefined(
-    z
-      .string()
-      .refine(
-        value =>
-          value
-            .split(",")
-            .every(entry => /^[A-Za-z0-9_-]{43}$/.test(entry.trim())),
-        "WORLD_ID_ALLOWED_SUBJECTS must be comma-separated subject hashes",
-      ),
-  ),
+  WORLD_ID_ALLOWED_SUBJECTS: worldIdSubjectList("WORLD_ID_ALLOWED_SUBJECTS"),
+  // Optional comma-separated subject hashes that are refused: no new
+  // credential, and their existing credentials stop working.
+  WORLD_ID_DENIED_SUBJECTS: worldIdSubjectList("WORLD_ID_DENIED_SUBJECTS"),
   // Optional Spur Context API token (https://docs.spur.us/context-api). When
   // set, keyless requests have their client IP checked against Spur and are
   // refused if the IP fronts anonymizing/rotating infrastructure (VPN/proxy/
