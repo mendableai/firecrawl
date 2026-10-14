@@ -10,6 +10,7 @@ import {
   SitemapError,
   TransportableError,
   UnknownError,
+  UnsupportedSiteError,
 } from "./error";
 import {
   ActionError,
@@ -26,6 +27,7 @@ import {
   PDFPrefetchFailed,
   DocumentPrefetchFailed,
   SiteError,
+  SiteRestrictionError,
   SSLError,
   ProxySelectionError,
   AgentIndexOnlyError,
@@ -40,13 +42,24 @@ import {
   PromptInjectionDetectedError,
   JsonExtractionContentTooLargeError,
   XTwitterConfigurationError,
+  ExchangeRefusedError,
 } from "../scraper/scrapeURL/error";
 import { UnsafeDomainBlockedError } from "./threat-protection/error";
+import {
+  ThirdPartyDataTermsRequiredError,
+  ThirdPartyDataUnsupportedOptionError,
+} from "./exchange";
 
 // TODO: figure out correct typing for this
 const errorMap: Record<ErrorCodes, any> = {
-  // Terms responses are API-level, never transported through workers.
-  THIRD_PARTY_DATA_TERMS_REQUIRED: null,
+  THIRD_PARTY_DATA_TERMS_REQUIRED: ThirdPartyDataTermsRequiredError,
+  THIRD_PARTY_DATA_NOT_FOUND: ExchangeRefusedError,
+  THIRD_PARTY_DATA_UNSUPPORTED_URL: ExchangeRefusedError,
+  THIRD_PARTY_DATA_UNSUPPORTED_OPTION: ThirdPartyDataUnsupportedOptionError,
+  THIRD_PARTY_DATA_NOT_ENABLED: ExchangeRefusedError,
+  THIRD_PARTY_DATA_ENRICHMENT_NOT_ENABLED: ExchangeRefusedError,
+  SAFE_MODE_BLOCKED: null,
+  SCRAPE_SITE_RESTRICTION_BLOCKED: SiteRestrictionError,
   SCRAPE_TIMEOUT: ScrapeJobTimeoutError,
   MAP_TIMEOUT: MapTimeoutError,
   UNKNOWN_ERROR: UnknownError,
@@ -76,6 +89,7 @@ const errorMap: Record<ErrorCodes, any> = {
   SCRAPE_RACED_REDIRECT_ERROR: RacedRedirectError,
   SCRAPE_SITEMAP_ERROR: SitemapError,
   CRAWL_DENIAL: CrawlDenialError,
+  UNSUPPORTED_SITE: UnsupportedSiteError,
   SCRAPE_AUDIO_UNSUPPORTED_URL: AudioUnsupportedUrlError,
   SCRAPE_VIDEO_UNSUPPORTED_URL: VideoUnsupportedUrlError,
   SCRAPE_MEDIA_ACCESS_DENIED: MediaAccessDeniedError,

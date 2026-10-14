@@ -13,6 +13,7 @@ import { createIdempotencyKey } from "../services/idempotency/create";
 import { validateIdempotencyKey } from "../services/idempotency/validate";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { logger } from "../lib/logger";
+import { logAuthDenied } from "../lib/auth-denied-log";
 import {
   httpRequestDurationSeconds,
   getRoutePattern,
@@ -29,10 +30,18 @@ import {
   CREDITS_FEATURE_ID,
 } from "../services/autumn/autumn.service";
 import { getTeamBalance } from "../services/autumn/usage";
-import { getThirdPartyDataTermsRequiredResponse } from "../lib/exchange";
+import {
+  ThirdPartyDataTermsRequiredError,
+  ThirdPartyDataUnsupportedOptionError,
+} from "../lib/exchange";
 import { getExchangeAccessForRequestBody } from "../lib/exchange-request";
+import { isToolsOnlySearch } from "../search/alexandria";
 import { getScrapeZDR } from "../lib/zdr-helpers";
-import { isAgentInteropSecretValid } from "../lib/agent-interop";
+import { isLockdownZeroDataRetention } from "../lib/safe-mode";
+import {
+  agentInteropStatus,
+  isAgentInteropSecretValid,
+} from "../lib/agent-interop";
 
 export function checkCreditsMiddleware(
   _minimum?: number,
@@ -57,6 +66,7 @@ export function checkCreditsMiddleware(
         const sponsor = req.acuc._agentSponsor;
 
         if (sponsor.status === "blocked") {
+          logAuthDenied(req, 403, "agent_key_blocked", req.acuc);
           return res.status(403).json({
             success: false,
             error: "This API key has been blocked by the account holder.",
@@ -66,6 +76,7 @@ export function checkCreditsMiddleware(
         if (sponsor.status === "pending") {
           const deadline = new Date(sponsor.verification_deadline);
           if (deadline < new Date()) {
+            logAuthDenied(req, 403, "agent_key_verification_expired", req.acuc);
             return res.status(403).json({
               success: false,
               error: "sponsor_verification_expired",
@@ -114,6 +125,20 @@ export function checkCreditsMiddleware(
         // If verified, fall through to normal credit check (key is now on real account)
       }
 
+      // Tool discovery is free; provider execution reserves its own credits.
+      const sources = (req.body as any)?.sources;
+      const categories = (req.body as any)?.categories;
+      const toolsOnly =
+        req.path === "/search" && isToolsOnlySearch(sources, categories);
+      if (
+        (req.path === "/scrape" &&
+          (req.body as any)?.alexandria !== undefined) ||
+        toolsOnly
+      ) {
+        req.account = { remainingCredits: Infinity };
+        return next();
+      }
+
       if (!minimum && req.body) {
         minimum = Number(
           (req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1,
@@ -141,8 +166,21 @@ export function checkCreditsMiddleware(
 
       const requestedCredits = minimum ?? 1;
 
+      // No org means no billable identity to gate: keyless and preview teams
+      // carry none, and neither does the DB-authentication bypass. `checkCredits`
+      // answered null for exactly those, so take its fail-open branch here
+      // rather than hand the service an org it would have to go and find.
+      const orgId = req.auth.org_id;
+      if (!orgId) {
+        req.account = { remainingCredits: Infinity };
+        return next();
+      }
+
       const autumnResult = await autumnService.checkCredits({
         teamId: req.auth.team_id,
+        // The ACUC already carries the org, so the credit check does not have
+        // to read `teams.org_id` for it.
+        orgId,
         value: requestedCredits,
         properties: {
           source: "checkCreditsMiddleware",
@@ -183,6 +221,7 @@ export function checkCreditsMiddleware(
           // to the 402 below. A null re-check keeps the fail-open behavior.
           const clampedResult = await autumnService.checkCredits({
             teamId: req.auth.team_id,
+            orgId,
             value: clampedLimit,
             properties: {
               source: "checkCreditsMiddleware:clamp",
@@ -197,7 +236,6 @@ export function checkCreditsMiddleware(
               teamId: req.auth.team_id,
               remainingCredits,
               clampedLimit,
-              request: req.body,
             });
             (req.body as any).limit = clampedLimit;
             return next();
@@ -211,7 +249,6 @@ export function checkCreditsMiddleware(
             teamId: req.auth.team_id,
             minimum,
             remainingCredits,
-            request: req.body,
             path: req.path,
           },
         );
@@ -243,6 +280,7 @@ export function authMiddleware(
   rateLimiterMode: RateLimiterMode,
   options: {
     allowKeyless?: boolean | ((req: RequestWithMaybeAuth) => boolean);
+    allowAgentManagedKey?: boolean;
   } = {},
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
@@ -274,6 +312,9 @@ export function authMiddleware(
           if (auth.status === 401 || auth.agentAuthDiscovery) {
             applyAgentAuthDiscoveryHeader(res);
           }
+          if (auth.retryAfterSeconds) {
+            res.setHeader("Retry-After", String(auth.retryAfterSeconds));
+          }
           return res.status(auth.status).json({
             success: false,
             error: auth.error,
@@ -281,6 +322,7 @@ export function authMiddleware(
             ...(auth.retryAfterSeconds
               ? { retry_after_seconds: auth.retryAfterSeconds }
               : {}),
+            ...(auth.signupUrl ? { signup_url: auth.signupUrl } : {}),
           });
         } else {
           return;
@@ -289,7 +331,7 @@ export function authMiddleware(
 
       const { team_id, org_id, chunk } = auth;
 
-      req.auth = { team_id, org_id };
+      req.auth = { team_id, org_id, agentInterop: agentInteropStatus(req) };
       req.acuc = chunk ?? undefined;
       next();
     })().catch(err => next(err));
@@ -325,11 +367,14 @@ export function blocklistMiddleware(
 }
 
 /**
- * Blocklist gate for single-URL scrape-shaped routes (scrape, crawl), where
- * an Exchange-eligible URL may bypass the blocklist because the exchange
- * engine can serve it. Everything else (map, search, batch scrape, monitors)
- * keeps plain blocklist behavior - batch stays out until its jobs carry the
- * access flags the worker-side recheck needs.
+ * Blocklist gate for single-URL scrape-shaped routes (scrape, crawl), where a
+ * blocklisted URL still passes when the exchange engine can serve it, asks
+ * for the provider's terms when unaccepted terms are all that stands in the
+ * way, and names the request option that keeps a provider out. Unblocked
+ * URLs never consult the Exchange here: engine selection decides for them,
+ * identically on every route, and scrapes them normally when terms are
+ * missing. v2 batch scrape runs the same check per URL in its controller;
+ * map, search and monitors keep plain blocklist behavior.
  */
 export function scrapeBlocklistMiddleware(
   req: RequestWithMaybeACUC<any, any, any>,
@@ -346,44 +391,67 @@ function blocklistGate(
   options: { exchange: boolean },
 ) {
   (async () => {
-    const zeroDataRetention =
-      getScrapeZDR(req.acuc?.flags) === "forced" ||
-      req.body?.zeroDataRetention === true;
-    const exchangeAccess =
-      options.exchange &&
-      typeof req.body.url === "string" &&
-      (await getExchangeAccessForRequestBody({
-        body: req.body,
-        flags: req.acuc?.flags ?? null,
-        url: req.body.url,
-        zeroDataRetention,
-      }));
-    const canUseExchange =
-      typeof exchangeAccess === "object" && exchangeAccess.allowed;
-
-    if (typeof exchangeAccess === "object" && exchangeAccess.termsRequired) {
-      if (!res.headersSent) {
-        return res
-          .status(403)
-          .json(getThirdPartyDataTermsRequiredResponse(exchangeAccess.terms));
-      }
-    }
-
     if (
-      typeof req.body.url === "string" &&
-      !canUseExchange &&
-      isUrlBlocked(req.body.url, req.acuc?.flags ?? null, {
+      typeof req.body.url !== "string" ||
+      !isUrlBlocked(req.body.url, req.acuc?.flags ?? null, {
         team_id: req.acuc?.team_id ?? null,
         org_id: req.acuc?.org_id ?? null,
         origin: typeof req.body.origin === "string" ? req.body.origin : null,
       })
     ) {
-      if (!res.headersSent) {
-        return res.status(403).json({
-          success: false,
-          error: UNSUPPORTED_SITE_MESSAGE,
-        });
+      return next();
+    }
+
+    if (options.exchange) {
+      // Safe Mode lockdown implies ZDR, which keeps the Exchange out.
+      const zeroDataRetention =
+        getScrapeZDR(req.acuc?.flags) === "forced" ||
+        req.body?.zeroDataRetention === true ||
+        isLockdownZeroDataRetention(req.acuc?.flags, req.body?.safeMode);
+      const exchangeAccess = await getExchangeAccessForRequestBody({
+        body: req.body,
+        flags: req.acuc?.flags ?? null,
+        url: req.body.url,
+        blocked: true,
+        zeroDataRetention,
+        teamId: req.acuc?.team_id ?? null,
+        orgId: req.acuc?.org_id ?? null,
+      });
+
+      if (exchangeAccess.allowed) {
+        return next();
       }
+
+      if (exchangeAccess.termsRequired && !res.headersSent) {
+        return res
+          .status(403)
+          .json(
+            new ThirdPartyDataTermsRequiredError(
+              exchangeAccess.terms,
+            ).response(),
+          );
+      }
+
+      if (
+        !exchangeAccess.termsRequired &&
+        exchangeAccess.unsupportedOption !== undefined &&
+        !res.headersSent
+      ) {
+        return res
+          .status(400)
+          .json(
+            new ThirdPartyDataUnsupportedOptionError(
+              exchangeAccess.unsupportedOption,
+            ).response(),
+          );
+      }
+    }
+
+    if (!res.headersSent) {
+      return res.status(403).json({
+        success: false,
+        error: UNSUPPORTED_SITE_MESSAGE,
+      });
     }
     next();
   })().catch(err => next(err));

@@ -22,6 +22,7 @@ describe("MCP action log configuration", () => {
     expect(errors.map(error => error.path)).toEqual([
       "MCP_ACTION_LOG_WRITES_ENABLED",
       "MCP_ACTION_LOG_SECRET",
+      "PUBSUB_CREDENTIALS",
     ]);
   });
 
@@ -31,6 +32,7 @@ describe("MCP action log configuration", () => {
         MCP_ACTION_LOG_STORAGE_ENABLED: true,
         MCP_ACTION_LOG_WRITES_ENABLED: true,
         MCP_ACTION_LOG_SECRET: "secret",
+        PUBSUB_CREDENTIALS: "credentials",
         USE_DB_AUTHENTICATION: true,
       }),
     ).toEqual([]);

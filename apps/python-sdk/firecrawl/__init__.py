@@ -9,7 +9,30 @@ import os
 from .client import Firecrawl, AsyncFirecrawl, FirecrawlApp, AsyncFirecrawlApp
 from .v2.watcher import Watcher
 from .v2.watcher_async import AsyncWatcher
-from .v2.types import AuditMetadata
+from .v2.types import (
+    AuditMetadata,
+    DiscoveredTool,
+    FindToolsData,
+    AlexandriaCall,
+    AlexandriaError,
+    AlexandriaScrapeData,
+    AlexandriaScrapeResult,
+    ExchangeSearchResult,
+)
+from .v2.utils.error_handler import (
+    CrawlJobTimeoutError,
+    FirecrawlError,
+    BadRequestError,
+    UnauthorizedError,
+    PaymentRequiredError,
+    WebsiteNotSupportedError,
+    ProviderTermsRequiredError,
+    RequestTimeoutError,
+    RateLimitError,
+    InternalServerError,
+    DNSResolutionError,
+    TLSError,
+)
 from .v1 import (
     V1FirecrawlApp,
     AsyncV1FirecrawlApp,
@@ -18,7 +41,7 @@ from .v1 import (
     V1ChangeTrackingOptions,
 )
 
-__version__ = "4.42.0"
+__version__ = "4.50.0"
 
 # Define the logger for the Firecrawl project
 logger: logging.Logger = logging.getLogger("firecrawl")
@@ -81,6 +104,25 @@ __all__ = [
     'Watcher',
     'AsyncWatcher',
     'AuditMetadata',
+    'DiscoveredTool',
+    'FindToolsData',
+    'AlexandriaCall',
+    'AlexandriaError',
+    'AlexandriaScrapeData',
+    'AlexandriaScrapeResult',
+    'ExchangeSearchResult',
+    'CrawlJobTimeoutError',
+    'FirecrawlError',
+    'BadRequestError',
+    'UnauthorizedError',
+    'PaymentRequiredError',
+    'WebsiteNotSupportedError',
+    'ProviderTermsRequiredError',
+    'RequestTimeoutError',
+    'RateLimitError',
+    'InternalServerError',
+    'DNSResolutionError',
+    'TLSError',
     'V1FirecrawlApp',
     'AsyncV1FirecrawlApp',
     'V1JsonConfig',

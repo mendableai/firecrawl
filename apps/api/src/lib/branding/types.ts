@@ -1,5 +1,6 @@
 import { Logger } from "winston";
 import { BrandingProfile } from "../../types/branding";
+import { CostTracking } from "../cost-tracking";
 
 export interface ButtonSnapshot {
   index: number;
@@ -17,6 +18,8 @@ export interface ButtonSnapshot {
     bottomLeft?: string;
   };
   shadow?: string | null;
+  /** Distance from the top of the page in px, when the scan measured it. */
+  top?: number;
   // Debug: original color values before conversion to hex
   originalBackgroundColor?: string;
   originalTextColor?: string;
@@ -65,6 +68,8 @@ export interface BrandingLLMInput {
     href?: string;
     source: string;
     logoSvgScore?: number;
+    /** The colors the logo is drawn in, most used first, when readable. */
+    colors?: Array<{ color: string; share: number }>;
   }>;
   brandName?: string;
   /** Full page title (e.g. "AI Innovation Workspace | Miro") — LLM infers brand from this. */
@@ -95,6 +100,9 @@ export interface BrandingLLMInput {
   scrapeId?: string;
   zeroDataRetention?: boolean;
   teamFlags?: { debugBranding?: boolean } | null;
+  /** The branding format's `mode`; see isJevBrandingEnabled. */
+  mode?: "auto" | "fast" | "standard";
+  costTracking: CostTracking;
   logger: Logger;
 }
 
@@ -112,6 +120,9 @@ export interface BrandingScriptReturn {
     classes: string;
     text: string;
     rect: { w: number; h: number };
+    // Scripts older than the position fields don't send them.
+    position?: { top: number; left: number };
+    visible?: boolean;
     colors: {
       text: string;
       background: string;
@@ -175,6 +186,8 @@ export interface BrandingScriptReturn {
     href?: string;
     source: string;
     logoSvgScore?: number;
+    /** The colors the logo is drawn in, most used first, when readable. */
+    colors?: Array<{ color: string; share: number }>;
   }>;
   brandName?: string;
   /** Full page title (e.g. "AI Innovation Workspace | Miro") — LLM can infer brand from this. */

@@ -5,6 +5,7 @@ import { parse } from "tldts";
 import { TeamFlags } from "../../../controllers/v1/types";
 import { db, dbRr } from "../../../db/connection";
 import * as schema from "../../../db/schema";
+import { exchangeClaimsUrl } from "../../../lib/exchange";
 
 configDotenv();
 
@@ -17,6 +18,8 @@ type BlockContext = {
   team_id?: string | null;
   org_id?: string | null;
   origin?: string | null;
+  /** False for a re-check of a request whose hit was already recorded. */
+  record?: boolean;
 };
 
 type BlockHit = {
@@ -56,7 +59,7 @@ function recordHit(
   domain: string,
   context: BlockContext | undefined,
 ): void {
-  if (context === undefined) return;
+  if (context === undefined || context.record === false) return;
   if (config.USE_DB_AUTHENTICATION !== true) return;
   hitBuffer.push({
     id: uuidv7(),
@@ -221,8 +224,13 @@ function findBlockedMatch(
     return null;
   }
 
-  // Check if URL contains any allowed keyword
-  if (allowedKeywords.some(keyword => allowedKeywordMatches(url, keyword))) {
+  // Check if URL contains any allowed keyword. A keyword in a URL the
+  // Exchange claims (a profile slug, or a sub-page like /about) doesn't
+  // exempt it: only the Exchange may serve those.
+  if (
+    allowedKeywords.some(keyword => allowedKeywordMatches(url, keyword)) &&
+    !exchangeClaimsUrl(url)
+  ) {
     return null;
   }
 

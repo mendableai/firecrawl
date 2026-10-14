@@ -4,7 +4,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::serde_helpers::deserialize_string_or_array;
+use crate::serde_helpers::{deserialize_or_none, deserialize_string_or_array};
 
 /// Available output formats for scraping operations.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -334,6 +334,9 @@ pub struct JsonOptions {
     /// Extraction prompt for the LLM agent.
     pub prompt: Option<String>,
     /// Whether to check scraped content for prompt-injection attempts before extraction.
+    #[deprecated(
+        note = "use ScrapeOptions::check_prompt_injection or ParseOptions::check_prompt_injection"
+    )]
     pub check_prompt_injection: Option<bool>,
 }
 
@@ -636,6 +639,33 @@ pub struct DocumentMetadata {
     pub cached_at: Option<String>,
     pub credits_used: Option<u32>,
     pub concurrency_limited: Option<bool>,
+    /// The third-party provider that served an Exchange scrape. `None` for
+    /// any other scrape.
+    #[serde(default, deserialize_with = "deserialize_or_none")]
+    pub provider: Option<ScrapeProvider>,
+}
+
+/// The third-party provider that served an Exchange scrape, what the access
+/// cost in credits, and every provider tried for it in order.
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScrapeProvider {
+    /// The provider that returned the data.
+    pub id: String,
+    pub credits_cost: u32,
+    pub steps: Vec<ScrapeProviderStep>,
+}
+
+/// One provider tried for an Exchange scrape.
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScrapeProviderStep {
+    pub provider: String,
+    /// `matched`, `not_found` or `error`.
+    pub status: String,
+    pub credits_cost: Option<u32>,
 }
 
 /// Extracted attribute result.
@@ -696,6 +726,8 @@ pub struct Document {
     pub pages: Option<Vec<PdfPage>>,
     /// Typed PDF layout blocks, present only when `parsers[].blocks` is true.
     pub blocks: Option<Vec<PdfPageBlocks>>,
+    /// Alexandria domain tools discovered and matched for this document.
+    pub tools: Option<Vec<DiscoveredTool>>,
 }
 
 /// Physical markdown for a single PDF page.
@@ -989,8 +1021,10 @@ pub enum SitemapMode {
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum AgentModel {
+    /// Deprecated: the server runs spark-2 for this value.
     #[serde(rename = "spark-1-pro")]
     Spark1Pro,
+    /// Deprecated: the server runs spark-2 for this value.
     #[serde(rename = "spark-1-mini")]
     Spark1Mini,
     #[serde(rename = "spark-2")]
@@ -1026,6 +1060,79 @@ pub enum AgentEffort {
     Unknown,
 }
 
+/// Agent conversation mode. The server defaults to `Extract`.
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentMode {
+    Extract,
+    /// Answers in `AgentStatusResponse::message` instead of `data`.
+    Chat,
+    /// Read-only catch-all, same rationale as `AgentModel::Unknown`. Do not
+    /// send it in a request.
+    #[serde(other)]
+    Unknown,
+}
+
+/// What the agent does when a provider needs data terms the team has not
+/// accepted. Gated providers are never called in either mode.
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentOnTermsRequired {
+    /// Answer without the gated providers and list them in
+    /// `AgentExchangeSummary::skipped_providers`. The server default.
+    Skip,
+    /// Also end the turn with a `terms` pending approval.
+    Ask,
+    /// Read-only catch-all, same rationale as `AgentModel::Unknown`. Do not
+    /// send it in a request.
+    #[serde(other)]
+    Unknown,
+}
+
+/// Exchange (Alexandria data provider) settings for an agent run, forwarded
+/// as-is: the server owns every default and limit. On a follow-up turn,
+/// omitting it inherits the previous turn's settings.
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentExchangeOptions {
+    /// Defaults to true server-side once exchange options are sent.
+    pub enabled: Option<bool>,
+    /// Provider slugs to pin, at most 5. Omitted or empty allows every
+    /// provider the team can use.
+    pub toolkits: Option<Vec<String>>,
+    /// Maximum provider calls per turn, 1 to 30.
+    pub max_calls: Option<u32>,
+    /// End the turn with a pending approval before any paid provider call.
+    /// Requires `AgentMode::Chat` on every turn of the thread.
+    pub require_approval: Option<bool>,
+    /// Answers the previous turn's pending approval. Requires a thread id.
+    pub approve: Option<AgentExchangeApprove>,
+    /// Refuses the previous turn's pending approval. Requires a thread id.
+    pub decline: Option<AgentExchangeDecline>,
+    pub on_terms_required: Option<AgentOnTermsRequired>,
+}
+
+/// Approves a pending approval. A `terms` approval is accepted as a whole, so
+/// `call_ids` and `always` are ignored on it.
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentExchangeApprove {
+    pub approval_id: String,
+    /// Calls to allow. Omitted allows every pending call.
+    pub call_ids: Option<Vec<String>>,
+    /// Also stop requiring approval for the rest of the thread.
+    pub always: Option<bool>,
+}
+
+/// Declines a pending approval.
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentExchangeDecline {
+    pub approval_id: String,
+}
+
 /// Search source types.
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -1033,6 +1140,7 @@ pub enum SearchSource {
     Web,
     News,
     Images,
+    Alexandria,
 }
 
 /// Search category types.
@@ -1188,6 +1296,63 @@ mod tests {
     }
 
     #[test]
+    fn test_document_metadata_provider() {
+        let json = json!({
+            "metadata": {
+                "sourceURL": "https://profiles.example/in/example-person",
+                "statusCode": 200,
+                "provider": {
+                    "id": "globex",
+                    "creditsCost": 30,
+                    "steps": [
+                        { "provider": "acme", "status": "not_found", "creditsCost": 10 },
+                        { "provider": "globex", "status": "matched", "creditsCost": 20 },
+                        { "provider": "initech", "status": "error" }
+                    ]
+                }
+            }
+        });
+        let doc: Document = serde_json::from_value(json).unwrap();
+        let provider = doc.metadata.unwrap().provider.unwrap();
+        assert_eq!(provider.id, "globex");
+        assert_eq!(provider.credits_cost, 30);
+        assert_eq!(
+            provider.steps,
+            vec![
+                ScrapeProviderStep {
+                    provider: "acme".to_string(),
+                    status: "not_found".to_string(),
+                    credits_cost: Some(10),
+                },
+                ScrapeProviderStep {
+                    provider: "globex".to_string(),
+                    status: "matched".to_string(),
+                    credits_cost: Some(20),
+                },
+                ScrapeProviderStep {
+                    provider: "initech".to_string(),
+                    status: "error".to_string(),
+                    credits_cost: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_document_metadata_provider_absent_or_other_shape() {
+        for metadata in [
+            json!({ "statusCode": 200 }),
+            json!({ "statusCode": 200, "provider": "Example Provider" }),
+            json!({ "statusCode": 200, "provider": ["a", "b"] }),
+        ] {
+            let doc: Document = serde_json::from_value(json!({ "metadata": metadata })).unwrap();
+            let meta = doc.metadata.unwrap();
+            assert_eq!(meta.status_code, Some(200));
+            assert_eq!(meta.provider, None);
+        }
+    }
+
+    #[test]
     fn test_format_menu_round_trip() {
         let format = Format::Menu;
         let serialized = serde_json::to_value(&format).unwrap();
@@ -1312,4 +1477,60 @@ mod tests {
         assert_eq!(pages[1].page_number, 2);
         assert_eq!(pages[1].markdown, "## Intro");
     }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredTool {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub provider: String,
+    pub capability: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credits_cost: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub per_record: Option<bool>,
+    #[serde(default)]
+    pub options: Vec<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response: Option<serde_json::Value>,
+    #[serde(default)]
+    pub examples: std::collections::HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when_to_use: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub returns: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discovery: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribution: Option<serde_json::Value>,
+    #[serde(default)]
+    pub matched_by: Vec<String>,
+    #[serde(default)]
+    pub matched_urls: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requires_one_of: Option<Vec<Vec<String>>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub example: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub concept: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cohorts: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub similarity: Option<f64>,
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ToolDetail {
+    Compact,
+    Summary,
+    Full,
 }
