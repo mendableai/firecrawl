@@ -71,32 +71,45 @@ fn escape_inline(value: &str) -> String {
   out
 }
 
-/// `Intl.NumberFormat("en-US")`: grouped thousands, at most three fraction digits.
+/// `Intl.NumberFormat("en-US")`: grouped thousands, at most three fraction digits. Like
+/// ICU, it rounds the shortest decimal form half away from zero, so 1.2345 gives 1.235.
 fn format_number(value: f64) -> String {
-  let rounded = format!("{:.3}", value.abs());
-  let (integer, fraction) = rounded.split_once('.').unwrap_or((&rounded, ""));
-  let mut grouped = String::new();
-  for (i, c) in integer.chars().enumerate() {
-    if i > 0 && (integer.len() - i) % 3 == 0 {
-      grouped.push(',');
+  let digits = value.abs().to_string();
+  let (integer, fraction) = digits.split_once('.').unwrap_or((&digits, ""));
+  let mut kept = format!("{integer}{fraction:0<3.3}").into_bytes();
+  if fraction.as_bytes().get(3).is_some_and(|x| *x >= b'5') {
+    match kept.iter().rposition(|x| *x != b'9') {
+      Some(i) => {
+        kept[i] += 1;
+        kept[i + 1..].fill(b'0');
+      }
+      None => {
+        kept.fill(b'0');
+        kept.insert(0, b'1');
+      }
     }
-    grouped.push(c);
   }
+  let (integer, fraction) = kept.split_at(kept.len() - 3);
+  let mut out = String::from(if value.is_sign_negative() { "-" } else { "" });
+  for (i, c) in integer.iter().enumerate() {
+    if i > 0 && (integer.len() - i) % 3 == 0 {
+      out.push(',');
+    }
+    out.push(char::from(*c));
+  }
+  let fraction = String::from_utf8_lossy(fraction);
   let fraction = fraction.trim_end_matches('0');
-  let sign = if value < 0.0 && rounded.bytes().any(|x| x.is_ascii_digit() && x != b'0') {
-    "-"
-  } else {
-    ""
-  };
-  match fraction {
-    "" => format!("{sign}{grouped}"),
-    _ => format!("{sign}{grouped}.{fraction}"),
+  if !fraction.is_empty() {
+    out.push('.');
+    out.push_str(fraction);
   }
+  out
 }
 
 fn sanitize_url(url: &str) -> Option<String> {
   let parsed = Url::parse(url).ok()?;
-  matches!(parsed.scheme(), "http" | "https").then(|| parsed.as_str().replace(')', "%29"))
+  matches!(parsed.scheme(), "http" | "https")
+    .then(|| parsed.as_str().replace('(', "%28").replace(')', "%29"))
 }
 
 fn link(label: &str, url: &str) -> String {

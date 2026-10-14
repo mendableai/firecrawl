@@ -84,7 +84,7 @@ async fn log_in(
   }
   let login: Login = response.json().await?;
   if let Some(redis) = redis(&TOKEN_REDIS, "REDIS_URL").await {
-    let ttl = (login.expires_in - 300).max(60).unsigned_abs();
+    let ttl = login.expires_in.saturating_sub(300).max(60).unsigned_abs();
     let stored = redis
       .lock()
       .await

@@ -131,7 +131,7 @@ fn article_document(article: &Article, body: &str, wiki: &WikimediaUrl, url: &st
   let toc: String = article
     .has_parts
     .iter()
-    .map(|x| format!("<li>{}</li>", x.name))
+    .map(|x| format!("<li>{}</li>", escape_html(&x.name)))
     .collect();
   let categories: String = article
     .categories
@@ -139,8 +139,8 @@ fn article_document(article: &Article, body: &str, wiki: &WikimediaUrl, url: &st
     .map(|x| {
       format!(
         "<li><a href=\"{}\">{}</a></li>",
-        x.url.as_deref().unwrap_or_default(),
-        x.name
+        escape_html(x.url.as_deref().unwrap_or_default()),
+        escape_html(&x.name)
       )
     })
     .collect();
