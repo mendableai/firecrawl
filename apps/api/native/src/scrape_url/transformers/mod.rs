@@ -43,6 +43,8 @@ mod markdown;
 mod metadata;
 mod summary;
 mod tokens;
+#[cfg(test)]
+mod properties;
 mod youtube;
 
 #[derive(Debug, thiserror::Error)]

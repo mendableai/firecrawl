@@ -5,6 +5,9 @@ use super::super::{
 };
 use super::TransformerError;
 
+#[cfg(test)]
+mod properties;
+
 /// Field names coerce dropped or found missing, recorded on its span.
 #[derive(Default)]
 struct Coercion {

@@ -71,6 +71,9 @@ tiktoken-rs = "0.12.1"
 [build-dependencies]
 napi-build = "2"
 
+[dev-dependencies]
+hegeltest = { version = "0.49.6", features = ["serde_json"] }
+
 [profile.release]
 lto = true
 strip = "debuginfo"

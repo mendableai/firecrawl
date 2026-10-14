@@ -107,7 +107,9 @@ fn compose_timeout_processing(
     i64::from(pages) * PROCESSING_ESTIMATE_PER_PAGE_MS + PROCESSING_ESTIMATE_BASE_MS
   });
   let remaining_ms = match current.server_estimate {
-    Some(estimate) => estimate.remaining_ms - (now_ms - estimate.observed_at_ms).max(0),
+    Some(estimate) => estimate
+      .remaining_ms
+      .saturating_sub((now_ms - estimate.observed_at_ms).max(0)),
     None => total_ms - (now_ms - current.submitted_at_ms).max(0),
   }
   .max(60_000);

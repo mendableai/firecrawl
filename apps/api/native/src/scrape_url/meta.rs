@@ -15,6 +15,9 @@ use super::raw_page::BrowserCookie;
 use super::rewrite_url::rewrite_url;
 use super::timeout::LargePdfProcessing;
 
+#[cfg(test)]
+mod properties;
+
 pub struct Meta {
   pub id: String,
   pub url: Url,
