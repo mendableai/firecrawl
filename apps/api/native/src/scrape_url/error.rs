@@ -3,8 +3,8 @@ use serde_json::Value;
 use ts_rs::TS;
 
 use super::{
-  options::ProxyMode, parsers::FirePdfError, timeout::ScrapeTimeoutProcessing,
-  transformers::TransformerError,
+  cost_tracking::CostTrackingJson, options::ProxyMode, parsers::FirePdfError,
+  timeout::ScrapeTimeoutProcessing, transformers::TransformerError,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -274,18 +274,39 @@ impl ScrapeURLError {
 
   /// `CODE|{payload}`, the format TS `deserializeTransportableError` reads.
   pub fn to_transport_string(&self) -> String {
-    let payload = serde_json::to_value(self.payload()).unwrap_or_else(|e| {
-      serde_json::json!({
-        "code": "UNKNOWN_ERROR",
-        "message": unknown_error_message(&e.to_string()),
-      })
-    });
-    let code = payload
-      .get("code")
-      .and_then(Value::as_str)
-      .unwrap_or("UNKNOWN_ERROR");
-    format!("{code}|{payload}")
+    transport_string(serde_json::to_value(self.payload()))
   }
+
+  /// [`Self::to_transport_string`] with the scrape's cost tracking in the payload.
+  pub fn to_failure_transport_string(&self, cost_tracking: CostTrackingJson) -> String {
+    transport_string(serde_json::to_value(ScrapeFailure {
+      error: self.payload(),
+      cost_tracking,
+    }))
+  }
+}
+
+fn transport_string(payload: Result<Value, serde_json::Error>) -> String {
+  let payload = payload.unwrap_or_else(|e| {
+    serde_json::json!({
+      "code": "UNKNOWN_ERROR",
+      "message": unknown_error_message(&e.to_string()),
+    })
+  });
+  let code = payload
+    .get("code")
+    .and_then(Value::as_str)
+    .unwrap_or("UNKNOWN_ERROR");
+  format!("{code}|{payload}")
+}
+
+/// A rejected `scrapeUrl`: the error, plus the LLM calls the scrape made before it failed.
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ScrapeFailure {
+  #[serde(flatten)]
+  pub error: ScrapeErrorPayload,
+  pub cost_tracking: CostTrackingJson,
 }
 
 /// Structured payload of a rejected `scrapeUrl` promise, discriminated by
@@ -390,9 +411,9 @@ pub enum ScrapeErrorPayload {
   Panic { message: String },
 }
 
-impl ScrapeErrorPayload {
-  /// Inverse of [`ScrapeURLError::to_transport_string`]. `None` for anything
-  /// that is not a well-formed `scrapeUrl` error.
+impl ScrapeFailure {
+  /// Inverse of [`ScrapeURLError::to_failure_transport_string`]. `None` for
+  /// anything that is not a well-formed `scrapeUrl` error.
   pub fn from_transport_string(transport: &str) -> Option<Self> {
     let (code, payload) = transport.split_once('|')?;
     let payload: Value = serde_json::from_str(payload).ok()?;

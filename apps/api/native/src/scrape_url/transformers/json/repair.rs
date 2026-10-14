@@ -2,7 +2,12 @@ use genai::chat::{ChatMessage, ChatRequest};
 use serde_json::Value;
 use tracing::instrument;
 
-use super::super::super::llm::{self, LlmError};
+use super::super::super::{
+  cost_tracking::calculate_cost,
+  llm::{self, LlmError},
+  meta::Meta,
+};
+use super::generate::with_details;
 
 fn strip_code_fences(text: &str) -> Option<String> {
   let trimmed = text.trim();
@@ -23,6 +28,8 @@ fn strip_code_fences(text: &str) -> Option<String> {
 
 #[instrument(name = "transformers::json::repair_json", skip_all, err)]
 async fn repair_json(
+  meta: &Meta,
+  cost_metadata: &Value,
   text: &str,
   error: &serde_json::Error,
   model: &str,
@@ -41,10 +48,23 @@ async fn repair_json(
     .await
     .map_err(llm::classify_error)?;
 
+  let tokens = llm::usage_tokens(&response.usage);
+  meta.cost_tracking.add_call(
+    with_details(cost_metadata, "repairConfig", None),
+    model,
+    calculate_cost(model, tokens.input, tokens.output),
+    tokens,
+  );
+
   Ok(response.first_text().unwrap_or_default().to_string())
 }
 
-pub(super) async fn parse_llm_json(text: &str, model: &str) -> Result<Value, LlmError> {
+pub(super) async fn parse_llm_json(
+  meta: &Meta,
+  cost_metadata: &Value,
+  text: &str,
+  model: &str,
+) -> Result<Value, LlmError> {
   match serde_json::from_str(text) {
     Ok(x) => Ok(x),
     Err(parse_error) => {
@@ -54,7 +74,7 @@ pub(super) async fn parse_llm_json(text: &str, model: &str) -> Result<Value, Llm
         return Ok(x);
       }
 
-      let repaired = repair_json(text, &parse_error, model).await?;
+      let repaired = repair_json(meta, cost_metadata, text, &parse_error, model).await?;
       let repaired = strip_code_fences(&repaired).unwrap_or(repaired);
       serde_json::from_str(&repaired).map_err(|e| LlmError::InvalidJson(e.to_string()))
     }

@@ -7,6 +7,7 @@ use std::{
 use tokio::time::Instant;
 use url::Url;
 
+use super::cost_tracking::CostTracking;
 use super::feature_flags::FeatureFlag;
 use super::feature_flags::build_feature_flags;
 use super::options::{InternalOptions, ScrapeOptions};
@@ -25,7 +26,8 @@ pub struct Meta {
   /// When the scrape runs out of time; `None` when no `timeout` was given.
   pub deadline: Option<Instant>,
   pub feature_flags: HashSet<FeatureFlag>,
-  // cost_tracking:
+  /// Shared so the result can carry it after a timeout or panic drops the scrape.
+  pub cost_tracking: Arc<CostTracking>,
   // winner_engine:
   /// Cookies the engine returned, for the YouTube, audio and video transformers.
   pub audio_cookies: Vec<BrowserCookie>,
@@ -41,7 +43,7 @@ impl Meta {
     team_id: String,
     options: ScrapeOptions,
     internal_options: InternalOptions,
-    // cost_tracking:
+    cost_tracking: Arc<CostTracking>,
   ) -> Self {
     // NOTE: isn't this fixed by rafa?
     // let ff = build_feature_flags(&options, &internal_options);
@@ -66,6 +68,7 @@ impl Meta {
       feature_flags: build_feature_flags(&options, &internal_options),
       options,
       internal_options,
+      cost_tracking,
       audio_cookies: Vec::new(),
       large_pdf_processing: Arc::default(),
     }

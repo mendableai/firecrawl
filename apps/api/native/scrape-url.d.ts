@@ -14,6 +14,17 @@ export declare namespace ScrapeUrl {
   export type BrandingOptions = { mode?: BrandingMode | null, };
   export type ChangeTrackingMode = "json" | "git-diff";
   export type ChangeTrackingOptions = { prompt?: string | null, schema?: JsonValue | null, modes?: Array<ChangeTrackingMode>, tag?: string | null, };
+  /**
+   * TS `CostTracking.toJSON()`, the shape the worker writes to `cost_tracking`.
+   */
+  export type CostTracking = { calls: Array<CostTrackingCall>, smartScrapeCallCount: number, smartScrapeCost: number, otherCallCount: number, otherCost: number, totalCost: number, };
+  export type CostTrackingCall = { type: CostTrackingCallType, metadata: Record<string, unknown>, cost: number, model: string, tokens?: CostTrackingTokens, 
+  /**
+   * Where the call was recorded; TS records a JS stack here.
+   */
+  stack: string, };
+  export type CostTrackingCallType = "other";
+  export type CostTrackingTokens = { input: number, output: number, };
   export type DeterministicJsonOptions = { prompt?: string | null, schema?: JsonValue | null, };
   export type Document = { markdown?: string, html?: string, rawHtml?: string, rawBase64?: string, links?: Array<string>, images?: Array<string>, screenshot?: string, audio?: string, video?: string, extract?: JsonValue, json?: JsonValue, summary?: string, answer?: string, highlights?: string, pages?: Array<PdfPage>, blocks?: Array<PdfPageBlocks>, warning?: string, attributes?: Array<DocumentAttribute>, actions?: RawPageActions, metadata: DocumentMetadata, };
   export type DocumentAttribute = { selector: string, attribute: string, values: Array<string>, };
@@ -25,10 +36,14 @@ export declare namespace ScrapeUrl {
   /**
    * The team's sold concurrency, snapshotted at request acceptance.
    */
-  teamConcurrency?: number | null, v1OriginalFormat?: V1OriginalFormat | null, agentIndexOnly?: boolean, isPreCrawl?: boolean, };
+  teamConcurrency?: number | null, v1OriginalFormat?: V1OriginalFormat | null, llmTelemetry?: LlmTelemetry | null, agentIndexOnly?: boolean, isPreCrawl?: boolean, };
   export type JavascriptActionContent = { type: string, value: JsonValue, };
   export type JsonOptions = { prompt?: string | null, schema?: JsonValue | null, checkPromptInjection?: boolean | null, };
   export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]: JsonValue } | null;
+  /**
+   * Attributes the JSON extraction's LLM calls to the feature that asked for the scrape.
+   */
+  export type LlmTelemetry = { functionId: string, metadata: { [key in string]: string }, };
   export type Parser = "pdf" | ({ type: "pdf" } & PdfOptions) | "image" | { type: "image" };
   export type PdfBlockItem = { id: string, type: string, label: string | null, bbox: [number, number, number, number] | null, content: string, markdownSpan: [number, number] | null, readingOrder: number, source: string | null, confidence: PdfBlockItemConfidence, };
   export type PdfBlockItemConfidence = { layout: number | null, ocr: number | null, };
@@ -85,10 +100,18 @@ export declare namespace ScrapeUrl {
    * reads; the Rust-specific codes below them also carry a `message`.
    */
   export type ScrapeError = { "code": "CRAWL_DENIAL", reason: string, } | { "code": "SCRAPE_LOCKDOWN_CACHE_MISS" } | { "code": "AGENT_INDEX_ONLY" } | { "code": "SCRAPE_PDF_OCR_REQUIRED", pdfType: PdfType, } | { "code": "SCRAPE_PDF_INSUFFICIENT_TIME_ERROR", pageCount: number, minTimeout: number, } | { "code": "SCRAPE_TIMEOUT", message: string, processing?: ScrapeTimeoutProcessing, } | { "code": "SCRAPE_SITE_ERROR", errorCode: string, } | { "code": "SCRAPE_SSL_ERROR", skipTlsVerification: boolean, } | { "code": "SCRAPE_DNS_RESOLUTION_ERROR", hostname: string, } | { "code": "SCRAPE_UNSUPPORTED_FILE_ERROR", reason: string, } | { "code": "SCRAPE_ACTION_ERROR", errorCode: string, } | { "code": "SCRAPE_PROXY_SELECTION_ERROR" } | { "code": "SCRAPE_ALL_ENGINES_FAILED", fallbackList: Array<string>, message: string, } | { "code": "SCRAPE_ACTIONS_NOT_SUPPORTED", message: string, } | { "code": "SCRAPE_JSON_CONTENT_TOO_LARGE", message: string, } | { "code": "UNKNOWN_ERROR", message: string, } | { "code": "SCRAPE_RELIABLE_RETRIEVAL_ERROR", proxy: ProxyMode, message: string, } | { "code": "SCRAPE_INSECURE_CONNECTION_ERROR", message: string, } | { "code": "SCRAPE_INVALID_URL_ERROR", message: string, } | { "code": "SCRAPE_PDF_FETCH_FAILED", message: string, } | { "code": "SCRAPE_PAGE_LOAD_FAILED", message: string, } | { "code": "SCRAPE_UNCLASSIFIED_ENGINE_ERROR", engine: string, error: string, message: string, } | { "code": "SCRAPE_ENGINE_UNAVAILABLE", engine: string, status: number, message: string, } | { "code": "SCRAPE_NOT_SUPPORTED", feature: string, message: string, } | { "code": "SCRAPE_INVALID_INPUT", argument: string, message: string, } | { "code": "SCRAPE_PANIC", message: string, };
+  /**
+   * A rejected `scrapeUrl`: the error, plus the LLM calls the scrape made before it failed.
+   */
+  export type ScrapeFailure = { costTracking: CostTracking, } & ({ "code": "CRAWL_DENIAL", reason: string, } | { "code": "SCRAPE_LOCKDOWN_CACHE_MISS" } | { "code": "AGENT_INDEX_ONLY" } | { "code": "SCRAPE_PDF_OCR_REQUIRED", pdfType: PdfType, } | { "code": "SCRAPE_PDF_INSUFFICIENT_TIME_ERROR", pageCount: number, minTimeout: number, } | { "code": "SCRAPE_TIMEOUT", message: string, processing?: ScrapeTimeoutProcessing, } | { "code": "SCRAPE_SITE_ERROR", errorCode: string, } | { "code": "SCRAPE_SSL_ERROR", skipTlsVerification: boolean, } | { "code": "SCRAPE_DNS_RESOLUTION_ERROR", hostname: string, } | { "code": "SCRAPE_UNSUPPORTED_FILE_ERROR", reason: string, } | { "code": "SCRAPE_ACTION_ERROR", errorCode: string, } | { "code": "SCRAPE_PROXY_SELECTION_ERROR" } | { "code": "SCRAPE_ALL_ENGINES_FAILED", fallbackList: Array<string>, message: string, } | { "code": "SCRAPE_ACTIONS_NOT_SUPPORTED", message: string, } | { "code": "SCRAPE_JSON_CONTENT_TOO_LARGE", message: string, } | { "code": "UNKNOWN_ERROR", message: string, } | { "code": "SCRAPE_RELIABLE_RETRIEVAL_ERROR", proxy: ProxyMode, message: string, } | { "code": "SCRAPE_INSECURE_CONNECTION_ERROR", message: string, } | { "code": "SCRAPE_INVALID_URL_ERROR", message: string, } | { "code": "SCRAPE_PDF_FETCH_FAILED", message: string, } | { "code": "SCRAPE_PAGE_LOAD_FAILED", message: string, } | { "code": "SCRAPE_UNCLASSIFIED_ENGINE_ERROR", engine: string, error: string, message: string, } | { "code": "SCRAPE_ENGINE_UNAVAILABLE", engine: string, status: number, message: string, } | { "code": "SCRAPE_NOT_SUPPORTED", feature: string, message: string, } | { "code": "SCRAPE_INVALID_INPUT", argument: string, message: string, } | { "code": "SCRAPE_PANIC", message: string, });
   export type ScrapeOptions = { formats: Array<Format>, headers?: { [key in string]: string }, includeTags?: Array<string>, excludeTags?: Array<string>, onlyMainContent: boolean, onlyCleanContent: boolean, timeout?: number | null, waitFor?: number | null, mobile: boolean, parsers?: Array<Parser>, actions?: Array<Action>, location?: ScrapeOptionsLocation, skipTlsVerification?: boolean | null, removeBase64Images: boolean, blockAds: boolean, proxy: "basic" | "stealth" | "enhanced" | "auto", maxAge?: number | null, minAge?: number | null, storeInCache: boolean, lockdown: boolean, profile?: ScrapeOptionsProfile | null, __searchPreviewToken?: string | null, __experimental_omce?: boolean, __experimental_omceDomain?: string | null, __experimental_engpicker?: boolean, __forceFirePDF?: boolean, };
   export type ScrapeOptionsLocation = { country?: string, languages?: Array<string>, };
   export type ScrapeOptionsProfile = { name: string, saveChanges?: boolean, };
   export type ScrapeProxy = "basic" | "stealth";
+  /**
+   * What a successful `scrapeUrl` resolves to.
+   */
+  export type ScrapeResult = { document: Document, costTracking: CostTracking, };
   export type ScrapeTimeoutJobStatus = "queued" | "running";
   /**
    * Details of a SCRAPE_TIMEOUT whose large-PDF job keeps processing server-side.

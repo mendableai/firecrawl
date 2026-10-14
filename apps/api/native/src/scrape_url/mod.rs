@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 // use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -6,9 +6,10 @@ use tracing::{Instrument, Span, field::Empty};
 use url::Url;
 
 use self::{
-  document::{Document, DocumentMetadataCacheState},
+  cost_tracking::CostTracking,
+  document::{Document, DocumentMetadataCacheState, ScrapeResult},
   engines::{EngineOutcome, check_engine_support, get_main_engine, should_elevate_proxy},
-  error::{ScrapeErrorPayload, ScrapeURLError},
+  error::{ScrapeErrorPayload, ScrapeFailure, ScrapeURLError},
   feature_flags::FeatureFlag,
   index::{Index, should_use_index},
   meta::Meta,
@@ -19,6 +20,7 @@ use self::{
 };
 
 mod actions;
+mod cost_tracking;
 mod document;
 mod engines;
 mod error;
@@ -184,8 +186,11 @@ fn ensure_crypto_provider() {
   });
 }
 
-fn napi_error(e: ScrapeURLError) -> napi::Error {
-  napi::Error::new(napi::Status::GenericFailure, e.to_transport_string())
+fn napi_error(e: ScrapeURLError, cost_tracking: &CostTracking) -> napi::Error {
+  napi::Error::new(
+    napi::Status::GenericFailure,
+    e.to_failure_transport_string(cost_tracking.to_json()),
+  )
 }
 
 fn parse_input<T: serde::de::DeserializeOwned>(
@@ -225,7 +230,7 @@ async fn catch_panic<T: Send + 'static>(
 /// `decodeScrapeUrlError`.
 #[napi(
   ts_args_type = "id: string, url: string, teamId: string, options: ScrapeUrl.ScrapeOptions, internalOptions: ScrapeUrl.InternalOptions",
-  ts_return_type = "Promise<ScrapeUrl.Document>"
+  ts_return_type = "Promise<ScrapeUrl.ScrapeResult>"
 )]
 pub async fn scrape_url(
   id: String,
@@ -233,7 +238,6 @@ pub async fn scrape_url(
   team_id: String,
   options: serde_json::Value,
   internal_options: serde_json::Value,
-  // cost_tracking: // TODO:
 ) -> Result<serde_json::Value, napi::Error> {
   // Flushes after the scrape span closes, including when the scrape panicked.
   let _flush = crate::telemetry::FlushGuard;
@@ -269,8 +273,17 @@ pub async fn scrape_url(
     panicked = Empty,
   );
 
+  let cost_tracking = Arc::new(CostTracking::default());
   let result = catch_panic(
-    scrape_url_task(id, url, team_id, options, internal_options).instrument(span.clone()),
+    scrape_url_task(
+      id,
+      url,
+      team_id,
+      options,
+      internal_options,
+      cost_tracking.clone(),
+    )
+    .instrument(span.clone()),
   )
   .await;
 
@@ -285,7 +298,7 @@ pub async fn scrape_url(
     span.in_scope(|| tracing::error!(error = %e));
   }
 
-  result.map_err(napi_error)
+  result.map_err(|e| napi_error(e, &cost_tracking))
 }
 
 async fn scrape_url_task(
@@ -294,12 +307,20 @@ async fn scrape_url_task(
   team_id: String,
   options: serde_json::Value,
   internal_options: serde_json::Value,
+  cost_tracking: Arc<CostTracking>,
 ) -> Result<serde_json::Value, ScrapeURLError> {
   let options: ScrapeOptions = parse_input("options", options)?;
   let internal_options: InternalOptions = parse_input("internalOptions", internal_options)?;
   let url = Url::parse(&url).map_err(|_| ScrapeURLError::InvalidURLError)?;
 
-  let meta = Meta::new(id, url, team_id, options, internal_options);
+  let meta = Meta::new(
+    id,
+    url,
+    team_id,
+    options,
+    internal_options,
+    cost_tracking.clone(),
+  );
 
   let span = Span::current();
   span.record("scrape_url", meta.url.as_str());
@@ -331,12 +352,15 @@ async fn scrape_url_task(
   span.record("timed_out", result.is_err());
   let document = result.map_err(|_| scrape_timeout_error(capped, &large_pdf_processing))??;
 
-  Ok(serde_json::to_value(document)?)
+  Ok(serde_json::to_value(ScrapeResult {
+    document,
+    cost_tracking: cost_tracking.to_json(),
+  })?)
 }
 
 /// Decodes the message of a `scrapeUrl` rejection into its typed payload.
 /// Returns null for errors that did not come from `scrapeUrl`.
-#[napi(catch_unwind, ts_return_type = "ScrapeUrl.ScrapeError | null")]
+#[napi(catch_unwind, ts_return_type = "ScrapeUrl.ScrapeFailure | null")]
 pub fn decode_scrape_url_error(message: String) -> Option<serde_json::Value> {
-  ScrapeErrorPayload::from_transport_string(&message).and_then(|x| serde_json::to_value(x).ok())
+  ScrapeFailure::from_transport_string(&message).and_then(|x| serde_json::to_value(x).ok())
 }

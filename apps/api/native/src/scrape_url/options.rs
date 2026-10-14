@@ -239,6 +239,14 @@ pub enum V1OriginalFormat {
   Json,
 }
 
+/// Attributes the JSON extraction's LLM calls to the feature that asked for the scrape.
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmTelemetry {
+  pub function_id: String,
+  pub metadata: HashMap<String, String>,
+}
+
 /// Per-team flags snapshotted from the account at request acceptance.
 #[derive(Deserialize, Default, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -286,6 +294,7 @@ pub struct InternalOptions {
   // v1_json_agent:
   // v1_json_system_prompt: String
   pub v1_original_format: Option<V1OriginalFormat>,
+  pub llm_telemetry: Option<LlmTelemetry>,
   #[ts(as = "Option<_>", optional)]
   pub agent_index_only: bool, // pre-confirmation agent key: serve from index only, never touch web/Fire Engine // CFR
   // is_parse:

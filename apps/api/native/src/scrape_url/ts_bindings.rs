@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use ts_rs::{Config, TS, TypeVisitor};
 
 use super::{
-  document::Document,
-  error::ScrapeErrorPayload,
+  document::{Document, ScrapeResult},
+  error::{ScrapeErrorPayload, ScrapeFailure},
   options::{InternalOptions, ScrapeOptions},
 };
 
@@ -55,6 +55,8 @@ pub fn render_scrape_url_ts_bindings() -> Result<String, String> {
   collector.visit::<InternalOptions>();
   collector.visit::<Document>();
   collector.visit::<ScrapeErrorPayload>();
+  collector.visit::<ScrapeResult>();
+  collector.visit::<ScrapeFailure>();
   if !collector.clashes.is_empty() {
     return Err(format!(
       "different types render as {}",

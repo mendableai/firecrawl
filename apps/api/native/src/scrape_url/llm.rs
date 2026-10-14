@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 use genai::Client;
 use genai::ServiceTarget;
 use genai::adapter::AdapterKind;
+use genai::chat::Usage;
 use genai::resolver::Endpoint;
+
+use super::cost_tracking::CostTrackingTokens;
 
 static LLM_CLIENT: LazyLock<Result<Client, genai::Error>> = LazyLock::new(|| {
   let openai_base_url = std::env::var("OPENAI_BASE_URL")
@@ -70,6 +73,14 @@ pub fn is_quota_error(e: &genai::Error) -> bool {
   message.contains("Quota exceeded")
     || message.contains("exceeded your current quota")
     || message.contains("rate limit")
+}
+
+pub fn usage_tokens(usage: &Usage) -> CostTrackingTokens {
+  let count = |x: Option<i32>| u64::try_from(x.unwrap_or(0)).unwrap_or(0);
+  CostTrackingTokens {
+    input: count(usage.prompt_tokens),
+    output: count(usage.completion_tokens),
+  }
 }
 
 pub fn classify_error(e: genai::Error) -> LlmError {
