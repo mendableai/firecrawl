@@ -1,4 +1,6 @@
-use serde_json::Value;
+use serde_json::{Value, json};
+
+use super::strict_schema::{to_root_schema, type_includes};
 
 fn resolve_refs(schema: &Value, defs: &serde_json::Map<String, Value>, depth: u32) -> Value {
   if depth > 10 {
@@ -133,66 +135,57 @@ fn normalize_schema(x: &Value) -> Value {
     map.insert("not".to_string(), normalize_schema(&not));
   }
 
-  match map.get("type").and_then(Value::as_str) {
-    Some("object") => {
-      let properties: serde_json::Map<String, Value> = match map.get("properties") {
-        Some(Value::Object(properties)) => properties
-          .iter()
-          .map(|(k, v)| (k.clone(), normalize_schema(v)))
-          .collect(),
-        _ => serde_json::Map::new(),
-      };
-      let required = properties
-        .keys()
-        .cloned()
-        .map(Value::String)
-        .collect::<Vec<_>>();
-      map.insert("properties".to_string(), Value::Object(properties));
-      map.insert("required".to_string(), Value::Array(required));
-      map.insert("additionalProperties".to_string(), Value::Bool(false));
-      Value::Object(map)
-    }
-    Some("array") => {
-      if let Some(items) = map.get("items").cloned() {
-        map.insert("items".to_string(), normalize_schema(&items));
-      }
-      Value::Object(map)
-    }
-    _ => Value::Object(map),
-  }
-}
-
-pub(super) fn normalize_user_schema(schema: &Value) -> Value {
-  let stripped = remove_default_property(schema);
-
-  let wrapped = if stripped.get("type").and_then(Value::as_str) == Some("array") {
-    serde_json::json!({
-      "type": "object",
-      "properties": { "items": schema },
-      "required": ["items"],
-      "additionalProperties": false,
-    })
-  } else if stripped.is_object() && stripped.get("type").is_none() {
-    let properties: serde_json::Map<String, Value> = stripped
-      .as_object()
-      .into_iter()
-      .flatten()
-      .map(|(k, v)| (k.clone(), remove_default_property(v)))
-      .collect();
+  let schema_type = map.get("type");
+  if type_includes(schema_type, "object") {
+    let properties: serde_json::Map<String, Value> = match map.get("properties") {
+      Some(Value::Object(properties)) => properties
+        .iter()
+        .map(|(k, v)| (k.clone(), normalize_schema(v)))
+        .collect(),
+      _ => serde_json::Map::new(),
+    };
     let required = properties
       .keys()
       .cloned()
       .map(Value::String)
       .collect::<Vec<_>>();
-    serde_json::json!({
-      "type": "object",
-      "properties": properties,
-      "required": required,
-      "additionalProperties": false,
-    })
-  } else {
-    stripped
-  };
+    map.insert("properties".to_string(), Value::Object(properties));
+    map.insert("required".to_string(), Value::Array(required));
+    map.insert("additionalProperties".to_string(), Value::Bool(false));
+  } else if type_includes(schema_type, "array")
+    && let Some(items) = map.get("items").cloned()
+  {
+    map.insert("items".to_string(), normalize_schema(&items));
+  }
+  Value::Object(map)
+}
 
-  normalize_schema(&wrapped)
+/// The schema TS `generateCompletions` sends: unsupported keywords removed, a
+/// bare property map made an object schema, and a root array wrapped in one.
+pub(super) fn normalize_user_schema(schema: &Value) -> Value {
+  let mut schema = to_root_schema(&remove_default_property(schema));
+  if type_includes(schema.get("type"), "array") {
+    schema = json!({
+      "type": "object",
+      "properties": { "items": schema },
+      "required": ["items"],
+      "additionalProperties": false,
+    });
+  } else if type_includes(schema.get("type"), "object")
+    && let Value::Object(map) = &mut schema
+  {
+    map.insert("type".to_string(), json!("object"));
+  }
+  normalize_schema(&schema)
+}
+
+/// TS `unwrapRootArray`: the array a root array schema's wrapper object holds.
+pub(super) fn unwrap_root_array(schema: Option<&Value>, extract: Value) -> Value {
+  let is_root_array = schema.is_some_and(|x| type_includes(to_root_schema(x).get("type"), "array"));
+  match extract {
+    Value::Object(mut map) if is_root_array && map.contains_key("items") => {
+      map.remove("items").unwrap_or(Value::Null)
+    }
+    other => other,
+  }
 }

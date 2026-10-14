@@ -47,6 +47,11 @@ pub enum LlmError {
   #[error("LLM output failed to parse as JSON: {0}")]
   InvalidJson(String),
 
+  #[error(
+    "the extracted data exceeded the model's maximum output length, so nothing was returned. Try a schema or prompt that asks for fewer items."
+  )]
+  OutputLimit,
+
   #[error("Failed to generate schema after all attempts. Last error: {0}")]
   SchemaGeneration(String),
 
