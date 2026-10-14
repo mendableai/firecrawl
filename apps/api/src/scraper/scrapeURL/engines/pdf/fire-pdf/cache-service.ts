@@ -9,6 +9,7 @@ import {
 import type { PDFMode } from "../../../../../controllers/v2/types";
 import { robustFetch } from "../../../lib/fetch";
 import {
+  recordSpanException,
   type Span,
   setSpanAttributes,
   withSpan,
@@ -155,6 +156,7 @@ async function lookupWithinSpan(
     meta.abort.throwIfAborted();
     firePdfCacheEventsTotal.inc({ event: "lookup_error", variant: ownVariant });
     setSpanAttributes(span, { "pdf.cache_outcome": "error" });
+    recordSpanException(span, error);
     meta.logger.warn("FirePDF cache lookup failed, proceeding", {
       scrapeId: meta.id,
       error,

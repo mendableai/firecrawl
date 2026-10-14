@@ -20,7 +20,12 @@ import {
   firePdfCacheRefusedWritesTotal,
 } from "../fire-pdf/metrics";
 import crypto from "crypto";
-import { context, propagation, trace } from "@opentelemetry/api";
+import {
+  context,
+  propagation,
+  SpanStatusCode,
+  trace,
+} from "@opentelemetry/api";
 import {
   InMemorySpanExporter,
   type NodeTracerProvider,
@@ -1822,10 +1827,17 @@ describe("FirePDF cache through the lookup service", () => {
       });
     });
 
-    it("records a failed lookup", async () => {
+    it("records a failed lookup as an errored span", async () => {
       fetchMock.mockRejectedValueOnce(new Error("timed out"));
       expect(await lookupSpanAttributes()).toEqual({
         "pdf.cache_outcome": "error",
+      });
+      const [span] = exporter
+        .getFinishedSpans()
+        .filter(s => s.name === "pdf.cache_lookup");
+      expect(span.status).toEqual({
+        code: SpanStatusCode.ERROR,
+        message: "timed out",
       });
     });
   });
