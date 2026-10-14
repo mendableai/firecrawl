@@ -1,10 +1,12 @@
 use std::sync::LazyLock;
+use std::time::Duration;
 
 use genai::Client;
 use genai::ServiceTarget;
 use genai::adapter::AdapterKind;
-use genai::chat::Usage;
+use genai::chat::{ChatOptions, ChatRequest, ChatResponse, Usage};
 use genai::resolver::Endpoint;
+use tracing::{Span, field::Empty, instrument};
 
 use super::cost_tracking::CostTrackingTokens;
 
@@ -50,6 +52,12 @@ pub enum LlmError {
 
   #[error(transparent)]
   Genai(genai::Error),
+
+  #[error("Failed after {attempts} attempts. Last error: {last}")]
+  RetriesExhausted { attempts: u32, last: Box<LlmError> },
+
+  #[error("Failed after {attempts} attempts with non-retryable error: '{last}'")]
+  NotRetryable { attempts: u32, last: Box<LlmError> },
 }
 
 pub fn client() -> Result<&'static Client, LlmError> {
@@ -65,8 +73,15 @@ pub fn model_name_with_override(default: &str) -> String {
   }
 }
 
-pub fn is_quota_error(e: &genai::Error) -> bool {
-  if e.status().is_some_and(|s| s.as_u16() == 429) {
+pub fn is_quota_error(e: &LlmError) -> bool {
+  let status = match e {
+    LlmError::Genai(e) => e.status(),
+    LlmError::RetriesExhausted { last, .. } | LlmError::NotRetryable { last, .. } => {
+      return is_quota_error(last);
+    }
+    _ => None,
+  };
+  if status.is_some_and(|s| s.as_u16() == 429) {
     return true;
   }
   let message = e.to_string();
@@ -89,4 +104,83 @@ pub fn classify_error(e: genai::Error) -> LlmError {
   } else {
     LlmError::Genai(e)
   }
+}
+
+/// The AI SDK's retries around a model call: up to two more attempts on a
+/// retryable error, 2s then 4s apart unless the provider asks for a delay.
+#[instrument(name = "llm::exec_chat", skip(chat_req, options), fields(attempts = Empty), err)]
+pub async fn exec_chat(
+  model: &str,
+  chat_req: ChatRequest,
+  options: Option<&ChatOptions>,
+) -> Result<ChatResponse, LlmError> {
+  const MAX_RETRIES: u32 = 2;
+  let client = client()?;
+  let mut delay = Duration::from_secs(2);
+  let mut attempts = 0;
+  let result = loop {
+    attempts += 1;
+    let error = match client.exec_chat(model, chat_req.clone(), options).await {
+      Ok(x) => break Ok(x),
+      Err(e) => e,
+    };
+    let retry_after = retry_delay(&error, delay);
+    let last = Box::new(classify_error(error));
+    if attempts > MAX_RETRIES {
+      break Err(LlmError::RetriesExhausted { attempts, last });
+    }
+    let Some(retry_after) = retry_after else {
+      break Err(match attempts {
+        1 => *last,
+        _ => LlmError::NotRetryable { attempts, last },
+      });
+    };
+    tokio::time::sleep(retry_after).await;
+    delay *= 2;
+  };
+  Span::current().record("attempts", attempts);
+  result
+}
+
+/// How long to wait before retrying, or `None` when the AI SDK wouldn't retry.
+/// Honors `retry-after-ms` and `retry-after` under a minute.
+fn retry_delay(error: &genai::Error, backoff: Duration) -> Option<Duration> {
+  use genai::webc::Error as WebError;
+  let retryable = match error.status() {
+    Some(status) => matches!(status.as_u16(), 408 | 409 | 429) || status.is_server_error(),
+    None => matches!(
+      error,
+      genai::Error::WebModelCall {
+        webc_error: WebError::Reqwest(_),
+        ..
+      } | genai::Error::WebAdapterCall {
+        webc_error: WebError::Reqwest(_),
+        ..
+      }
+    ),
+  };
+  if !retryable {
+    return None;
+  }
+
+  let header = |name| error.headers()?.get(name)?.to_str().ok();
+  let parse = |x: &str| x.trim().parse::<f64>().ok();
+  let ms = match (
+    header("retry-after-ms").and_then(parse),
+    header("retry-after"),
+  ) {
+    (Some(ms), _) => Some(ms),
+    (None, Some(after)) => parse(after).map(|x| x * 1000.0).or_else(|| {
+      let date = chrono::DateTime::parse_from_rfc2822(after.trim()).ok()?;
+      Some((date.timestamp_millis() - chrono::Utc::now().timestamp_millis()) as f64)
+    }),
+    (None, None) => None,
+  };
+  let backoff_ms = backoff.as_millis() as f64;
+  Some(match ms {
+    Some(ms) if ms >= 0.0 && (ms < 60_000.0 || ms < backoff_ms) => {
+      Duration::from_secs_f64(ms / 1000.0)
+    }
+    _ => backoff,
+  })
 }

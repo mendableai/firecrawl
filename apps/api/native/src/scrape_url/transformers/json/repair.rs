@@ -43,10 +43,7 @@ async fn repair_json(
     )),
   ]);
 
-  let response = llm::client()?
-    .exec_chat(model, chat_req, None)
-    .await
-    .map_err(llm::classify_error)?;
+  let response = llm::exec_chat(model, chat_req, None).await?;
 
   let tokens = llm::usage_tokens(&response.usage);
   meta.cost_tracking.add_call(

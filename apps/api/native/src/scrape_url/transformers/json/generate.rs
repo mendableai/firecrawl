@@ -105,21 +105,14 @@ async fn exec_with_retry<'a>(
     chat_options = chat_options.with_temperature(1.0);
   }
 
-  let client = llm::client()?;
-  match client
-    .exec_chat(&options.model, chat_req.clone(), Some(&chat_options))
-    .await
-  {
+  match llm::exec_chat(&options.model, chat_req.clone(), Some(&chat_options)).await {
     Ok(x) => Ok((x, &options.model, "generateObject")),
     Err(e) if llm::is_quota_error(&e) => Ok((
-      client
-        .exec_chat(&options.retry_model, chat_req, Some(&chat_options))
-        .await
-        .map_err(llm::classify_error)?,
+      llm::exec_chat(&options.retry_model, chat_req, Some(&chat_options)).await?,
       &options.retry_model,
       "generateObject fallback",
     )),
-    Err(e) => Err(llm::classify_error(e).into()),
+    Err(e) => Err(e.into()),
   }
 }
 
