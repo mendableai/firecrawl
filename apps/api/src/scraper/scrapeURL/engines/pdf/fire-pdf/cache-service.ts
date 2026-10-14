@@ -8,6 +8,12 @@ import {
 } from "../../../../../lib/gcs-pdf-cache";
 import type { PDFMode } from "../../../../../controllers/v2/types";
 import { robustFetch } from "../../../lib/fetch";
+import {
+  recordSpanException,
+  type Span,
+  setSpanAttributes,
+  withSpan,
+} from "../../../../../lib/otel-tracer";
 import { safeMarkdownToHtml } from "../markdownToHtml";
 import type { PDFProcessorResult } from "../types";
 import { firePdfCacheEventsTotal } from "./metrics";
@@ -56,13 +62,16 @@ const lookupOutcomeSchema = z.discriminatedUnion("outcome", [
     outcome: z.literal("hit"),
     key: z.string(),
     variant: z.string(),
+    generation: z.string().optional(),
     result: cachedResultSchema,
   }),
   z.object({
     outcome: z.literal("stale"),
     key: z.string(),
     variant: z.string(),
+    generation: z.string().optional(),
     campaign: z.string(),
+    capped: z.boolean().optional(),
     result: cachedResultSchema,
   }),
   z.object({
@@ -87,6 +96,17 @@ export async function lookupCachedResult(
     /** The variant this request would write, for the miss labels. */
     ownVariant: string;
   },
+): Promise<PDFProcessorResult | null> {
+  return withSpan("pdf.cache_lookup", span =>
+    lookupWithinSpan(span, meta, input, args),
+  );
+}
+
+async function lookupWithinSpan(
+  span: Span,
+  meta: Meta,
+  input: PdfCacheKeyInput,
+  args: Parameters<typeof lookupCachedResult>[2],
 ): Promise<PDFProcessorResult | null> {
   const {
     mode,
@@ -135,6 +155,8 @@ export async function lookupCachedResult(
     // The scrape's own abort is not a lookup failure.
     meta.abort.throwIfAborted();
     firePdfCacheEventsTotal.inc({ event: "lookup_error", variant: ownVariant });
+    setSpanAttributes(span, { "pdf.cache_outcome": "error" });
+    recordSpanException(span, error);
     meta.logger.warn("FirePDF cache lookup failed, proceeding", {
       scrapeId: meta.id,
       error,
@@ -153,6 +175,11 @@ export async function lookupCachedResult(
     );
   }
   if (answer.outcome === "miss") {
+    setSpanAttributes(span, {
+      "pdf.cache_outcome": "miss",
+      "pdf.cache_reason": answer.reason,
+      "pdf.cache_campaign": answer.campaign,
+    });
     firePdfCacheEventsTotal.inc({
       event: answer.reason === "refresh" ? "bypass_refresh" : "miss",
       variant: ownVariant,
@@ -160,6 +187,20 @@ export async function lookupCachedResult(
     return null;
   }
   const { result } = answer;
+  setSpanAttributes(span, {
+    "pdf.cache_outcome": answer.outcome,
+    "pdf.cache_reason":
+      answer.outcome === "stale"
+        ? answer.capped
+          ? "capped"
+          : "campaign"
+        : "served",
+    "pdf.cache_variant": answer.variant,
+    "pdf.cache_generation": answer.generation,
+    ...(answer.outcome === "stale" && {
+      "pdf.cache_campaign": answer.campaign,
+    }),
+  });
   // Never an unusable entry, whatever the service says: a sidecar the request
   // needs must be present, a marker request needs a marker entry, and an
   // empty result for a raster image is a stale verdict, not an answer (see
@@ -170,6 +211,10 @@ export async function lookupCachedResult(
     (pageMarkers && result.page_markers !== true) ||
     (sourceKind === "image" && result.markdown.trim().length === 0)
   ) {
+    setSpanAttributes(span, {
+      "pdf.cache_outcome": "miss",
+      "pdf.cache_reason": "unusable",
+    });
     firePdfCacheEventsTotal.inc({ event: "miss", variant: ownVariant });
     return null;
   }
