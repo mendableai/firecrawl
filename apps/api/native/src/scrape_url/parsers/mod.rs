@@ -89,8 +89,14 @@ pub async fn parse_engine_result(
     span.record("parser.signal", signal);
     document::parse_document(meta, result)
   } else if let Some(content_type) = image::image_signal(meta, &result) {
-    span.record("parser", "image");
     span.record("parser.signal", "bytes");
+    if !image::image_ocr_enabled(meta) {
+      span.record("parser", "unsupported");
+      return Err(ScrapeURLError::UnsupportedFileError {
+        reason: result.content_type,
+      });
+    }
+    span.record("parser", "image");
     image::parse_image(meta, result, content_type).await
   } else if is_unsupported_binary(meta, &result) {
     span.record("parser", "unsupported");

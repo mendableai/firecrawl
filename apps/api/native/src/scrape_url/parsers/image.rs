@@ -52,7 +52,7 @@ pub fn image_ocr_enabled(meta: &Meta) -> bool {
   meta.options.parsers.contains(ParserKind::Image) && pdf::image_ocr_configured()
 }
 
-/// The sniffed content type when the page is an image to OCR. The header must claim an
+/// The sniffed content type when the page is a raster image. The header must claim an
 /// image or opaque bytes and the bytes must confirm it, so an HTML error page served as
 /// `image/jpeg` is never OCR'd. rawBase64 requests keep the bytes instead.
 pub fn image_signal(meta: &Meta, result: &RawPageResult) -> Option<&'static str> {
@@ -62,7 +62,6 @@ pub fn image_signal(meta: &Meta, result: &RawPageResult) -> Option<&'static str>
   let media_type = media_type(&result.content_type);
   if !(media_type.starts_with("image/") || media_type == "application/octet-stream")
     || meta.options.formats.contains(FormatKind::RawBase64)
-    || !image_ocr_enabled(meta)
   {
     return None;
   }
