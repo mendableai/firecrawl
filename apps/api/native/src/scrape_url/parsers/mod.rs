@@ -23,11 +23,12 @@ pub enum Parser {
 pub type Parsers = KindedSet<Parser>;
 
 /// TS `specialtyScrapeCheck`'s last step: binary types no parser opens.
-const UNSUPPORTED_BINARY_PREFIXES: [&str; 11] = [
+const UNSUPPORTED_BINARY_PREFIXES: [&str; 12] = [
   "image/",
   "video/",
   "audio/",
   "application/zip",
+  "application/x-zip-compressed",
   "application/x-tar",
   "application/x-rar",
   "application/x-7z",
