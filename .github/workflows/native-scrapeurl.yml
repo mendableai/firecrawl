@@ -58,3 +58,6 @@ jobs:
         run: |
           pnpm ts-bindings
           git diff --exit-code
+        env:
+          # The script only runs cargo; skip pnpm's install of the whole apps/api workspace.
+          pnpm_config_verify_deps_before_run: "false"
