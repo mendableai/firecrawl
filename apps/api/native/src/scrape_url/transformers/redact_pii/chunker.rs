@@ -23,6 +23,10 @@ pub fn chunk_markdown(text: &[u16]) -> Vec<Chunk> {
       if safe_end <= cursor {
         safe_end = tentative_end;
       }
+      // Chunks are sent as strings, so a hard cut must not split a surrogate pair.
+      if (0xD800..=0xDBFF).contains(&text[safe_end - 1]) {
+        safe_end -= 1;
+      }
     }
     chunks.push(Chunk {
       text: text[cursor..safe_end].to_vec(),

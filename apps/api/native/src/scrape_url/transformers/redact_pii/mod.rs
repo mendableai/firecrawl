@@ -169,7 +169,7 @@ fn render_redacted(
       RedactPiiReplaceStyle::Tag => out.extend(format!("<{}>", span.kind).encode_utf16()),
       RedactPiiReplaceStyle::Mask => out.extend(std::iter::repeat_n(
         u16::from(b'*'),
-        (span.end - span.start).max(0) as usize,
+        (span.end.clamp(span.start, len) - span.start) as usize,
       )),
       RedactPiiReplaceStyle::Remove => {}
     }

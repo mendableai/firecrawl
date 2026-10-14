@@ -129,8 +129,8 @@ async fn request(
   let offset = chunk_start as i64;
   let spans = coerce_spans(body.get("spans"))
     .map(|x| RedactionSpan {
-      start: x.start + offset,
-      end: x.end + offset,
+      start: x.start.saturating_add(offset),
+      end: x.end.saturating_add(offset),
       ..x
     })
     .collect();
