@@ -66,6 +66,7 @@ rust_iso3166 = { version = "0.2.0", features = ["serde"] }
 ts-rs = { version = "12.0.1", features = ["serde-json-impl", "chrono-impl", "url-impl", "no-serde-warnings"] }
 serde_path_to_error = "0.1.20"
 serde_with = { version = "3.24.0", default-features = false, features = ["macros"] }
+tiktoken-rs = "0.12.1"
 
 [build-dependencies]
 napi-build = "2"

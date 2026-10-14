@@ -28,6 +28,7 @@ use json::perform_llm_extract;
 use links::derive_links_from_html;
 use markdown::derive_markdown_from_html;
 use metadata::derive_metadata_from_raw_html;
+use summary::perform_summary;
 use youtube::fetch_youtube;
 pub(super) use youtube::is_youtube_video_url;
 
@@ -40,6 +41,8 @@ mod json;
 mod links;
 mod markdown;
 mod metadata;
+mod summary;
+mod tokens;
 mod youtube;
 
 #[derive(Debug, thiserror::Error)]
@@ -82,7 +85,7 @@ generate_execute_tranformers!(
   // TODO: send_document_to_search_index
   perform_llm_extract,
   // TODO: perform_deterministic_json
-  // TODO: perform_summary
+  perform_summary,
   // TODO: perform_query
   derive_attributes_from_html,
   // TODO: perform_agent

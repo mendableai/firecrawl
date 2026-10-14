@@ -6,6 +6,7 @@ use ts_rs::TS;
 use url::Url;
 
 use super::{
+  cost_tracking::CostTrackingJson,
   parsers::{PdfPage, PdfPageBlocks},
   raw_page::{RawPageActions, ScrapeProxy},
 };
@@ -107,4 +108,20 @@ impl Document {
       self.warning.replace(warning.as_ref().to_string());
     }
   }
+
+  /// Puts `warning` before any existing one, like most TS transformers do.
+  pub fn prepend_warning(&mut self, warning: impl AsRef<str>) {
+    self.warning = Some(match self.warning.take() {
+      Some(existing) => format!("{} {existing}", warning.as_ref()),
+      None => warning.as_ref().to_string(),
+    });
+  }
+}
+
+/// What a successful `scrapeUrl` resolves to.
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ScrapeResult {
+  pub document: Document,
+  pub cost_tracking: CostTrackingJson,
 }
