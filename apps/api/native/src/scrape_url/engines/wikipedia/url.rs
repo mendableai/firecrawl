@@ -39,6 +39,7 @@ pub struct WikimediaUrl {
 
 /// An article on a language edition of a Wikimedia project, like `en.wikipedia.org/wiki/<title>`.
 /// `www.` is the project portal, which redirects to a language edition.
+/// Undecodable bytes in the title don't disown the URL, as `WIKIMEDIA_URL_PATTERN` can't tell.
 pub fn parse_wikimedia_url(url: &Url) -> Option<WikimediaUrl> {
   let (lang, domain) = url.host_str()?.split_once('.')?;
   let (domain, suffix) = PROJECTS.into_iter().find(|(x, _)| *x == domain)?;
@@ -54,8 +55,7 @@ pub fn parse_wikimedia_url(url: &Url) -> Option<WikimediaUrl> {
     .filter(|x| !x.is_empty())?;
   Some(WikimediaUrl {
     article_name: percent_decode_str(article)
-      .decode_utf8()
-      .ok()?
+      .decode_utf8_lossy()
       .replace(' ', "_"),
     lang: lang.to_string(),
     domain,
