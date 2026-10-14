@@ -100,6 +100,10 @@ impl<T: Kinded> KindedSet<T> {
     self.0.contains_key(&kind)
   }
 
+  pub fn remove(&mut self, kind: T::Kind) -> Option<T> {
+    self.0.remove(&kind)
+  }
+
   pub fn iter(&self) -> impl Iterator<Item = &T> {
     self.0.values()
   }

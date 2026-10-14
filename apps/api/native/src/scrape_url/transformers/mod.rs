@@ -21,6 +21,8 @@ macro_rules! generate_execute_tranformers {
 
 use attributes::derive_attributes_from_html;
 use base64_images::remove_base64_images;
+pub(super) use branding::BrandingProfile;
+use branding::derive_branding_from_actions;
 use clean_content::perform_clean_content;
 use coerce::coerce_fields_to_formats;
 use html::derive_html_from_raw_html;
@@ -37,6 +39,7 @@ pub(super) use youtube::is_youtube_video_url;
 
 mod attributes;
 mod base64_images;
+mod branding;
 mod clean_content;
 mod coerce;
 mod html;
@@ -76,6 +79,9 @@ pub enum TransformerError {
 
   #[error(transparent)]
   Llm(#[from] LlmError),
+
+  #[error("branding script returned unreadable data: {0}")]
+  BrandingScriptReturn(serde_json::Error),
 }
 
 generate_execute_tranformers!(
@@ -87,7 +93,7 @@ generate_execute_tranformers!(
   perform_prompt_injection_guard,
   derive_links_from_html,
   derive_images_from_html,
-  // TODO: derive_branding_from_actions
+  derive_branding_from_actions,
   derive_metadata_from_raw_html,
   // TODO: fetch_product
   // TODO: fetch_menu

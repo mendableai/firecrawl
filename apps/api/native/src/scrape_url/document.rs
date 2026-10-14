@@ -9,6 +9,7 @@ use super::{
   cost_tracking::CostTrackingJson,
   parsers::{PdfPage, PdfPageBlocks},
   raw_page::{RawPageActions, ScrapeProxy},
+  transformers::BrandingProfile,
 };
 use std::{collections::HashMap, fmt::Display};
 
@@ -85,7 +86,7 @@ pub struct Document {
   pub summary: Option<String>,
   pub answer: Option<String>,
   pub highlights: Option<String>,
-  // branding:
+  pub branding: Option<BrandingProfile>,
   // product:
   // menu:
   pub pages: Option<Vec<PdfPage>>,

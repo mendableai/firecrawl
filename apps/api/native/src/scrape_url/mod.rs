@@ -11,7 +11,9 @@ use self::{
   engines::{EngineOutcome, check_engine_support, get_main_engine, should_elevate_proxy},
   error::{ScrapeErrorPayload, ScrapeFailure, ScrapeURLError},
   feature_flags::FeatureFlag,
+  formats::FormatKind,
   index::{Index, should_use_index},
+  kinded::Kinded,
   meta::Meta,
   options::{InternalOptions, ScrapeOptions},
   raw_page::{RawPage, RawPageSource, ScrapeProxy},
@@ -42,6 +44,23 @@ mod ts_bindings;
 
 pub use self::ts_bindings::render_scrape_url_ts_bindings;
 
+/// Drops branding from a page that can't have it, unless it is the only
+/// format asked for, like TS. Returns the reason for the result's warning.
+fn skip_branding(meta: &mut Meta, reason: &'static str) -> Result<&'static str, ScrapeURLError> {
+  if !meta
+    .options
+    .formats
+    .iter()
+    .any(|x| x.kind() != FormatKind::Branding)
+  {
+    return Err(ScrapeURLError::BrandingNotSupported(reason));
+  }
+  meta.options.formats.remove(FormatKind::Branding);
+  meta.feature_flags.remove(&FeatureFlag::Branding);
+  Span::current().record("branding_skipped", reason);
+  Ok(reason)
+}
+
 async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
   tracing::info!("scrapeURL entered");
 
@@ -60,6 +79,7 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
   };
 
   let should_use_index = should_use_index(&meta);
+  let mut branding_skipped = None;
 
   let index_page = {
     if !should_use_index {
@@ -99,6 +119,15 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
     None => {
       let main_engine = get_main_engine().await;
       Span::current().record("engine", main_engine.get_name());
+
+      if meta.options.formats.contains(FormatKind::Branding)
+        && !main_engine.get_features().contains(FeatureFlag::Branding)
+      {
+        branding_skipped = Some(skip_branding(
+          &mut meta,
+          "Branding extraction requires Chrome CDP (fire-engine).",
+        )?);
+      }
 
       check_engine_support(
         !meta.options.actions.is_empty(),
@@ -140,6 +169,12 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
 
   meta.audio_cookies = std::mem::take(&mut page.result.audio_cookies);
 
+  if meta.options.formats.contains(FormatKind::Branding)
+    && let Some(reason) = parsers::branding_unsupported_reason(&page.result)
+  {
+    branding_skipped = Some(skip_branding(&mut meta, reason)?);
+  }
+
   let cached_at = page.result.cached_at;
   let mut document = parsers::parse_engine_result(&meta, page.result).await?;
   if page.index_attempted {
@@ -164,7 +199,10 @@ async fn _scrape_url(mut meta: Meta) -> Result<Document, ScrapeURLError> {
     ));
   }
 
-  let document = execute_tranformers(&meta, document).await?;
+  let mut document = execute_tranformers(&meta, document).await?;
+  if let Some(reason) = branding_skipped {
+    document.append_warning(format!("Branding was skipped: {reason}"));
+  }
 
   // log metrics
 
@@ -264,6 +302,7 @@ pub async fn scrape_url(
     engine = Empty,
     proxy_elevated = Empty,
     proxy_elevation_reason = Empty,
+    branding_skipped = Empty,
     deadline.timeout_ms = Empty,
     timed_out = Empty,
     large_pdf.job_scrape_id = Empty,

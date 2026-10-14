@@ -78,6 +78,9 @@ pub enum ScrapeURLError {
 
   #[error("actions are not supported by any available engines")]
   ActionsNotSupportedError,
+
+  #[error("{0}")]
+  BrandingNotSupported(&'static str),
   #[error("{0} is not supported yet")]
   NotSupported(&'static str),
 
@@ -218,6 +221,7 @@ impl ScrapeURLError {
       Self::ActionsNotSupportedError => ScrapeErrorPayload::ActionsNotSupported {
         message: "Actions are not supported by any available engines. Actions require Fire Engine (fire-engine) to be enabled.".to_string(),
       },
+      Self::BrandingNotSupported(_) => ScrapeErrorPayload::BrandingNotSupported { message },
       Self::Transformer(TransformerError::JsonContentTooLarge) => {
         ScrapeErrorPayload::JsonContentTooLarge { message }
       }
@@ -368,6 +372,9 @@ pub enum ScrapeErrorPayload {
 
   #[serde(rename = "SCRAPE_ACTIONS_NOT_SUPPORTED")]
   ActionsNotSupported { message: String },
+
+  #[serde(rename = "SCRAPE_BRANDING_NOT_SUPPORTED")]
+  BrandingNotSupported { message: String },
 
   #[serde(rename = "SCRAPE_JSON_CONTENT_TOO_LARGE")]
   JsonContentTooLarge { message: String },

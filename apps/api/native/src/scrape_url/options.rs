@@ -267,8 +267,9 @@ impl ScrapeOptions {
 
   pub fn effective_wait_for(&self) -> i32 {
     match self.wait_for {
-      Some(x) => i32::min(30000, x), // cap at 30s
-      None => {
+      Some(x) if x != 0 => i32::min(30000, x), // cap at 30s
+      // v2 sends 0 by default, which TS treats as unset.
+      _ => {
         if self.formats.contains(FormatKind::Branding) {
           2000 // add some wait time for branding to avoid js errors
         } else {
@@ -302,6 +303,8 @@ pub struct LlmTelemetry {
 pub struct TeamFlags {
   /// Grants the privileged large-PDF size cap.
   pub large_pdfs: Option<bool>,
+  /// Keeps branding's internal `__` fields in the result.
+  pub debug_branding: Option<bool>,
 }
 
 #[derive(Deserialize, Default, TS)]

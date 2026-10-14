@@ -115,6 +115,11 @@ pub struct InternalAction {
   #[serde(flatten)]
   pub action: Action,
 
+  /// Runs an `executeJavascript` action at the visitor's viewport height
+  /// instead of fire-engine's tall capture window.
+  #[serde(rename = "realViewport", skip_serializing_if = "Option::is_none")]
+  pub real_viewport: Option<bool>,
+
   #[serde(skip_serializing_if = "Option::is_none")]
   pub metadata: Option<InternalActionMetadata>,
 }
@@ -129,6 +134,7 @@ impl From<Action> for InternalAction {
   fn from(value: Action) -> Self {
     Self {
       action: value,
+      real_viewport: None,
       metadata: None,
     }
   }

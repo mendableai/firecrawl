@@ -138,6 +138,7 @@ fn document(metadata: DocumentMetadata, actions: Option<RawPageActions>) -> Docu
     summary: None,
     answer: None,
     highlights: None,
+    branding: None,
     pages: None,
     blocks: None,
     warning: None,

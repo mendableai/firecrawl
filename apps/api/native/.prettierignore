@@ -6,3 +6,4 @@ package-template.wasi.cjs
 wasi-worker-browser.mjs
 wasi-worker.mjs
 .yarnrc.yml
+src/scrape_url/engines/fire_engine/branding/script.js

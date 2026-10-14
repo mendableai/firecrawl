@@ -4,7 +4,8 @@ use regex::Regex;
 use tracing::instrument;
 
 use self::{
-  actions::FireEngineActionResultKind,
+  actions::{FireEngineActionResultKind, parse_javascript_return},
+  branding::branding_action,
   scrape::{FireEngineProfile, FireEngineScrapeRequest, FireEngineScrapeRequestEngine},
 };
 use super::super::{
@@ -23,6 +24,7 @@ use super::super::{
 use super::{Engine, EngineOutcome};
 
 mod actions;
+mod branding;
 mod check_status;
 mod delete;
 mod file;
@@ -59,6 +61,7 @@ impl FireEngine {
       fire_engine.job_abandoned = tracing::field::Empty,
       deadline.remaining_ms = tracing::field::Empty,
       javascript_return.parse_error = tracing::field::Empty,
+      javascript_return.lone_surrogates = tracing::field::Empty,
     ),
     err
   )]
@@ -100,7 +103,9 @@ impl FireEngine {
       );
     }
 
-    // TODO: Branding
+    if meta.options.formats.contains(FormatKind::Branding) {
+      actions.push(branding_action());
+    }
 
     if meta.options.formats.contains(FormatKind::Audio)
       || meta.options.formats.contains(FormatKind::Video)
@@ -109,6 +114,7 @@ impl FireEngine {
     {
       actions.push(InternalAction {
         action: Action::GetCookies,
+        real_viewport: None,
         metadata: Some(InternalActionMetadata {
           __firecrawl_internal: Some(true),
         }),
@@ -267,7 +273,7 @@ impl FireEngine {
               FireEngineActionResultKind::ExecuteJavascript {
                 r#return: raw_return,
               } => Some(
-                match serde_json::from_str::<serde_json::Value>(raw_return) {
+                match parse_javascript_return(raw_return) {
                   Ok(value) => {
                     match serde_json::from_value::<JavascriptActionContent>(value.clone()) {
                       Ok(x) => x,

@@ -48,6 +48,7 @@
     "format:toml": "taplo format",
     "format:rs": "cargo fmt",
     "ts-bindings": "cargo run --example ts_bindings",
+    "branding-script": "node scripts/branding-script.mjs",
     "lint": "oxlint .",
     "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version",

@@ -21,6 +21,19 @@ pub enum Parser {
 
 pub type Parsers = KindedSet<Parser>;
 
+/// Why branding can't run on this page, in TS's words; `None` for web pages.
+pub fn branding_unsupported_reason(result: &RawPageResult) -> Option<&'static str> {
+  if pdf::has_pdf_signal(result) {
+    Some("Branding extraction is only supported for HTML web pages. PDFs are not supported.")
+  } else if document::has_document_signal(result) {
+    Some(
+      "Branding extraction is only supported for HTML web pages. Documents (docx, xlsx, etc.) are not supported.",
+    )
+  } else {
+    None
+  }
+}
+
 #[tracing::instrument(
   name = "parsers::parse_engine_result",
   skip(meta, result),
