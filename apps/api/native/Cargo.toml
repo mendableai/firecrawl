@@ -67,6 +67,17 @@ ts-rs = { version = "12.0.1", features = ["serde-json-impl", "chrono-impl", "url
 serde_path_to_error = "0.1.20"
 serde_with = { version = "3.24.0", default-features = false, features = ["macros"] }
 tiktoken-rs = "0.12.1"
+fancy-regex = "0.19"
+futures-util = "0.3"
+google-cloud-auth = "1"
+html5ever = "0.26"
+jsonrepair-rs = "0.2.6"
+oxc_allocator = "=0.116.0"
+oxc_ast = "=0.116.0"
+oxc_ast_visit = "=0.116.0"
+oxc_parser = "=0.116.0"
+oxc_span = "=0.116.0"
+tokio-tungstenite = "0.28"
 
 [build-dependencies]
 napi-build = "2"

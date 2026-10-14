@@ -23,6 +23,7 @@ use attributes::derive_attributes_from_html;
 use base64_images::remove_base64_images;
 use clean_content::perform_clean_content;
 use coerce::coerce_fields_to_formats;
+use deterministic_json::perform_deterministic_json;
 use html::derive_html_from_raw_html;
 use images::derive_images_from_html;
 use json::perform_llm_extract;
@@ -39,6 +40,7 @@ mod attributes;
 mod base64_images;
 mod clean_content;
 mod coerce;
+mod deterministic_json;
 mod html;
 mod images;
 mod json;
@@ -96,7 +98,7 @@ generate_execute_tranformers!(
   // TODO: send_document_to_index
   // TODO: send_document_to_search_index
   perform_llm_extract,
-  // TODO: perform_deterministic_json
+  perform_deterministic_json,
   perform_summary,
   // TODO: perform_query
   derive_attributes_from_html,
