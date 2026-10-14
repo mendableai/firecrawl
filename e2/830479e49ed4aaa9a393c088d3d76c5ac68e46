@@ -1,0 +1,19 @@
+apps/api/src/controllers/v2/scrape-suggestions.test.ts
+  s_d3d128f1db010a::t_693d1f97be5ccf 1-46,48-125,128-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2830479e49ed4aaa9a393c088d3d76c5ac68e46",
+  "prompts": {},
+  "sessions": {
+    "s_d3d128f1db010a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ea94521-d925-45e1-89ac-8dff877ea73a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Developers Digest <124798203+developersdigest@users.noreply.github.com>"
+    }
+  }
+}
