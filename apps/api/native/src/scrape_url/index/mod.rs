@@ -15,6 +15,7 @@ use super::{
   feature_flags::FeatureFlag,
   formats::FormatKind,
   meta::Meta,
+  parsers::image_ocr_enabled,
   raw_page::{RawPageContent, RawPageResult, ScrapeProxy, raw_page_span, record_raw_page},
 };
 
@@ -408,6 +409,16 @@ impl Index {
         && let Some(pdf_parser) = meta.options.parsers.pdf()
         && let Some(max_pages) = pdf_parser.max_pages
         && num_pages > max_pages
+      {
+        return Ok(None);
+      }
+
+      // Cached image OCR output only goes to requests that would OCR the image now.
+      if doc
+        .content_type
+        .as_deref()
+        .is_some_and(|x| x.starts_with("image/"))
+        && !image_ocr_enabled(meta)
       {
         return Ok(None);
       }

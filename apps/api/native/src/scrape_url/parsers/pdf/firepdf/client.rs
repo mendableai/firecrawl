@@ -15,16 +15,18 @@ use super::{
   schema::{JobOptionsWire, RequestMetadata, WirePage, WirePageBlocks},
 };
 
-/// What fire-pdf is handed. Raster images (one-page documents) join here with image OCR.
+/// What fire-pdf is handed: a PDF, or a raster image as a one-page document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceKind {
   Pdf,
+  Image,
 }
 
 impl SourceKind {
   pub fn as_str(self) -> &'static str {
     match self {
       Self::Pdf => "pdf",
+      Self::Image => "image",
     }
   }
 }

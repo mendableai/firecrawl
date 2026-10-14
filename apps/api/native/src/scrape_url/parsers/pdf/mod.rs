@@ -5,12 +5,14 @@ use self::{
   detect::{
     pdf_binary_match, pdf_content_type_match, pdf_file_extension_match, pdf_signature_match,
   },
-  firepdf::{FirePdfConfig, now_ms},
+  firepdf::{FirePdfClient, FirePdfConfig, FirePdfJobOptions, FirePdfRequest, SourceKind, now_ms},
+  inline::fire_pdf_image,
   limits::ensure_ocr_time,
   local::{run_local_pass, text_fallback},
   ocr::{OcrInput, ensure_configured, run_ocr},
-  output::{PageInfo, PdfFacts, indexed_document, parsed_document, raw_document},
+  output::{PageInfo, PdfFacts, image_document, indexed_document, parsed_document, raw_document},
   source::{PdfSource, load_pdf},
+  types::PdfMode,
 };
 use super::super::{
   document::Document,
@@ -33,7 +35,7 @@ mod types;
 
 pub use self::{
   firepdf::FirePdfError,
-  limits::fire_engine_pdf_max_size,
+  limits::{FIRE_PDF_INLINE_HARD_MAX_FILE_SIZE, fire_engine_pdf_max_size},
   types::{PdfOptions, PdfPage, PdfPageBlocks},
 };
 
@@ -147,4 +149,46 @@ pub async fn parse_pdf(
   span.record("pdf.num_pages", facts.num_pages);
   span.record("pdf.total_pages", facts.total_pages);
   Ok(parsed_document(meta, page, parser, parsed, &bytes, facts))
+}
+
+/// Whether the deployment OCRs raster images: FirePDF is configured and `IMAGE_OCR_ENABLED` is on.
+pub fn image_ocr_configured() -> bool {
+  let config = FirePdfConfig::get();
+  config.base_url.is_some() && config.image_ocr_enabled
+}
+
+/// OCRs a raster image as a one-page scanned document. The pdf parser's options do not
+/// apply, as an image has no text layer; only its `refresh` reaches the content cache.
+pub async fn ocr_image(
+  meta: &Meta,
+  result: RawPageResult,
+  content_type: &str,
+) -> Result<Document, ScrapeURLError> {
+  let (page, content) = PageInfo::split(result);
+  let RawPageContent::Bytes(bytes) = content else {
+    return Err(ScrapeURLError::NotSupported(
+      "OCRing a page that is not a file",
+    ));
+  };
+  let mut request = FirePdfRequest::from_meta(meta, meta.deadline.map(deadline_epoch_ms));
+  request.source_kind = SourceKind::Image;
+  let client = FirePdfClient::new(FirePdfConfig::get(), &request).ok_or(FirePdfError::Contract(
+    "Image OCR is unavailable because FirePDF is not configured",
+  ))?;
+  let options = FirePdfJobOptions {
+    max_pages: None,
+    pages_estimate: 1,
+    mode: PdfMode::Ocr,
+    page_markdown: false,
+    blocks: false,
+    page_markers: false,
+    refresh: meta.options.parsers.pdf().is_some_and(|x| x.refresh),
+  };
+  match fire_pdf_image(&client, &bytes, &options).await {
+    Ok(ocr) => Ok(image_document(meta, page, content_type, ocr.into())),
+    Err(FirePdfError::Unopenable) => Err(ScrapeURLError::UnsupportedFileError {
+      reason: content_type.to_string(),
+    }),
+    Err(error) => Err(error.into()),
+  }
 }

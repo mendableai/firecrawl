@@ -60,6 +60,10 @@ pub enum FirePdfError {
   #[error("FirePDF responded with status {0}")]
   Status(u16),
 
+  /// A 400 for bytes fire-pdf cannot open, such as a truncated or corrupt file.
+  #[error("FirePDF responded with status 400")]
+  Unopenable,
+
   #[error("FirePDF response does not match the expected schema: {0}")]
   Schema(String),
 

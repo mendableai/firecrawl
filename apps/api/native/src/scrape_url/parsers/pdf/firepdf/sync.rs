@@ -74,6 +74,13 @@ impl FirePdfClient<'_> {
       .await
       .map_err(FirePdfError::Transport)?;
     span.record("http.status", response.status);
+    if response.status == 400
+      && String::from_utf8_lossy(&response.body)
+        .to_lowercase()
+        .contains("invalid or corrupt")
+    {
+      return Err(FirePdfError::Unopenable);
+    }
     if response.status >= 300 {
       return Err(FirePdfError::Status(response.status));
     }
