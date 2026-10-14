@@ -25,7 +25,7 @@ pub static WIKIMEDIA_URL_PATTERN: LazyLock<String> = LazyLock::new(|| {
     .map(|(domain, _)| domain.replace('.', r"\."))
     .collect::<Vec<_>>()
     .join("|");
-  format!(r"^[a-z][a-z0-9+.-]*://[a-z]{{2,3}}\.(?:{domains})(?::\d+)?/wiki/[^?#]")
+  format!(r"^[a-z][a-z0-9+.-]*://(?!www\.)[a-z]{{2,3}}\.(?:{domains})(?::\d+)?/wiki/[^?#]")
 });
 
 #[derive(Debug, Clone, PartialEq, Eq)]
