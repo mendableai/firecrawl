@@ -56,6 +56,8 @@ describe("page controls", () => {
       "Map",
       "View fullsize",
       "Toggle fullscreen",
+      "Zoom in",
+      "Zoom out",
     ];
     const actions = [
       "Search",
