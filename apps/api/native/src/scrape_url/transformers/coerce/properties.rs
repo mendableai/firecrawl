@@ -113,7 +113,14 @@ async fn coerce_keeps_only_requested_fields_and_is_idempotent(tc: TestCase) {
     ..InternalOptions::default()
   };
   let url = Url::parse(PAGE_URL).unwrap();
-  let meta = Meta::new("p".into(), url, "t".into(), options, internal_options);
+  let meta = Meta::new(
+    "p".into(),
+    url,
+    "t".into(),
+    options,
+    internal_options,
+    Default::default(),
+  );
 
   let text = || gs::optional(gs::text().max_size(8));
   let page = RawPageResult {

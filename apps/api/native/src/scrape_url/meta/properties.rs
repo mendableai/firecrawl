@@ -20,6 +20,7 @@ fn remaining_ms_never_exceeds_the_timeout(tc: TestCase) {
     "t".into(),
     options,
     InternalOptions::default(),
+    Default::default(),
   );
   let cap_ms = DEFAULT_SCRAPE_TIMEOUT.as_millis() as u64;
 

@@ -245,7 +245,14 @@ fn markdown_with_data_images(tc: &TestCase) -> (String, Vec<String>) {
 
 fn meta(options: ScrapeOptions, internal_options: InternalOptions) -> Meta {
   let url = Url::parse(PAGE_URL).unwrap();
-  Meta::new("p".into(), url, "t".into(), options, internal_options)
+  Meta::new(
+    "p".into(),
+    url,
+    "t".into(),
+    options,
+    internal_options,
+    Default::default(),
+  )
 }
 
 async fn rendered_page(meta: &Meta, html: &str) -> Document {

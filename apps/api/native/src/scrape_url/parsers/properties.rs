@@ -222,6 +222,7 @@ async fn parsers_never_panic(tc: TestCase) {
     "t".into(),
     options,
     InternalOptions::default(),
+    Default::default(),
   );
   let result = RawPageResult {
     url,
