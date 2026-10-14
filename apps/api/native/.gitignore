@@ -110,6 +110,7 @@ dist
 # Rust
 /target
 Cargo.lock
+.hegel/
 
 *.node
 .pnp.*

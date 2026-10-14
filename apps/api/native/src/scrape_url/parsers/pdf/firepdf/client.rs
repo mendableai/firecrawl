@@ -72,7 +72,9 @@ impl FirePdfRequest {
   }
 
   pub fn remaining_ms(&self, now_ms: i64) -> Option<i64> {
-    self.deadline_ms.map(|deadline| deadline.saturating_sub(now_ms))
+    self
+      .deadline_ms
+      .map(|deadline| deadline.saturating_sub(now_ms).max(0))
   }
 
   pub(super) fn metadata(&self) -> RequestMetadata<'_> {

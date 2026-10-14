@@ -74,3 +74,6 @@ napi-build = "2"
 [profile.release]
 lto = true
 strip = "debuginfo"
+
+[dev-dependencies]
+hegeltest = { version = "0.49.6", features = ["serde_json"] }

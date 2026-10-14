@@ -364,3 +364,7 @@ async fn scrape_url_task(
 pub fn decode_scrape_url_error(message: String) -> Option<serde_json::Value> {
   ScrapeFailure::from_transport_string(&message).and_then(|x| serde_json::to_value(x).ok())
 }
+
+#[cfg(test)]
+mod tests;
+

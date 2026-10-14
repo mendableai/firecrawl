@@ -47,3 +47,7 @@ pub async fn parse_engine_result(
   );
   Ok(document)
 }
+
+#[cfg(test)]
+mod tests;
+

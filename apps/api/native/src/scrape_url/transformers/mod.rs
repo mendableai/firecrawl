@@ -95,3 +95,7 @@ generate_execute_tranformers!(
   // TODO: fetch_video
   coerce_fields_to_formats,
 );
+
+#[cfg(test)]
+mod tests;
+

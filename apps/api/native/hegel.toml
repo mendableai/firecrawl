@@ -1,0 +1,5 @@
+[profiles.development]
+test_cases = 100
+
+[profiles.ci]
+test_cases = 250

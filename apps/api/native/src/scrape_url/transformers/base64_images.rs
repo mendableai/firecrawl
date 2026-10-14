@@ -15,19 +15,25 @@ pub async fn remove_base64_images(
   mut document: Document,
 ) -> Result<Document, TransformerError> {
   if meta.options.remove_base64_images
-    && let Some(markdown) = document.markdown.as_deref()
+    && let Some(markdown) = document.markdown.take()
   {
+    let pattern = regex!(r"(?s)(!\[.*?\])\(data:image/.*?;base64,.*?\)");
+    let mut current = markdown;
     let mut removed = 0;
-    let replaced = regex!(r"(!\[.*?\])\(data:image/.*?;base64,.*?\)").replace_all(
-      markdown,
-      |caps: &Captures| {
-        removed += 1;
+    loop {
+      let mut pass_removed = 0;
+      let replaced = pattern.replace_all(&current, |caps: &Captures| {
+        pass_removed += 1;
         format!("{}(<Base64-Image-Removed>)", &caps[1])
-      },
-    );
-    let replaced = replaced.into_owned();
+      });
+      removed += pass_removed;
+      if pass_removed == 0 {
+        break;
+      }
+      current = replaced.into_owned();
+    }
     Span::current().record("base64_images.removed", removed);
-    document.markdown = Some(replaced);
+    document.markdown = Some(current);
   }
 
   Ok(document)
