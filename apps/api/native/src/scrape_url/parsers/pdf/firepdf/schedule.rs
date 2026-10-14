@@ -189,7 +189,7 @@ pub fn early_poll_delay(state: &EarlyPollState) -> Option<i64> {
 
 #[cfg(test)]
 mod tests {
-  use std::time::Duration;
+  use std::{sync::Arc, time::Duration};
 
   use hegel::TestCase;
   use hegel::generators as gs;
@@ -231,6 +231,7 @@ mod tests {
         "test-team".to_string(),
         options,
         InternalOptions::default(),
+        Arc::default(),
       );
 
       if let Some(rem) = meta.remaining_ms() {

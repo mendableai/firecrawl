@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use hegel::generators as gs;
 use hegel::{TestCase, one_of};
@@ -17,7 +17,7 @@ use super::super::{
   raw_page::{RawPageActions, ScrapeActionContent, ScrapeProxy},
 };
 use super::{
-  attributes::derive_attributes_from_html, base64_images::remove_base64_images,
+  TransformerError, attributes::derive_attributes_from_html, base64_images::remove_base64_images,
   coerce::coerce_fields_to_formats, html::derive_html_from_raw_html,
   images::derive_images_from_html, links::derive_links_from_html,
   metadata::derive_metadata_from_raw_html,
@@ -167,6 +167,7 @@ fn html_transformers_never_panic(tc: TestCase) {
     "test-team".to_string(),
     options,
     InternalOptions::default(),
+    Arc::default(),
   );
 
   let rt = tokio::runtime::Builder::new_current_thread()
@@ -175,12 +176,19 @@ fn html_transformers_never_panic(tc: TestCase) {
     .expect("tokio runtime");
 
   rt.block_on(async {
-    let _ = derive_html_from_raw_html(&meta, d1).await;
-    let _ = derive_links_from_html(&meta, d2).await;
-    let _ = derive_images_from_html(&meta, d3).await;
-    let _ = derive_metadata_from_raw_html(&meta, d4).await;
-    let _ = derive_attributes_from_html(&meta, d5).await;
-    let _ = remove_base64_images(&meta, d6).await;
+    for res in [
+      derive_html_from_raw_html(&meta, d1).await,
+      derive_links_from_html(&meta, d2).await,
+      derive_images_from_html(&meta, d3).await,
+      derive_metadata_from_raw_html(&meta, d4).await,
+      derive_attributes_from_html(&meta, d5).await,
+      remove_base64_images(&meta, d6).await,
+    ] {
+      assert!(
+        !matches!(res, Err(TransformerError::Join(_))),
+        "blocking transformer task panicked or was cancelled: {res:?}"
+      );
+    }
   });
 }
 
@@ -200,6 +208,7 @@ fn remove_base64_images_idempotent_and_complete(tc: TestCase) {
     "test-team".to_string(),
     options,
     InternalOptions::default(),
+    Arc::default(),
   );
 
   let rt = tokio::runtime::Builder::new_current_thread()
@@ -256,7 +265,7 @@ fn coerce_fields_to_formats_idempotent_and_exact(tc: TestCase) {
   }
   let internal = InternalOptions { v1_original_format: v1_fmt, ..Default::default() };
   let url = Url::parse("https://example.com").expect("valid static URL");
-  let meta = Meta::new("test-id".to_string(), url, "test-team".to_string(), options, internal);
+  let meta = Meta::new("test-id".to_string(), url, "test-team".to_string(), options, internal, Arc::default());
   let doc = tc.draw(generated_document());
   let before = serde_json::to_value(&doc).expect("serialize before");
   let had_actions = doc.actions.as_ref().is_some_and(|a| !a.scrapes.is_empty());

@@ -8,8 +8,9 @@ use tracing::field::{Empty, Field, Visit};
 use tracing_subscriber::{Layer, layer::Context, prelude::*};
 
 use super::{
+  cost_tracking::CostTrackingJson,
   decode_scrape_url_error,
-  error::{ScrapeErrorPayload, ScrapeURLError},
+  error::{ScrapeErrorPayload, ScrapeFailure, ScrapeURLError},
   options::{InternalOptions, ProxyMode, ScrapeOptions},
   parse_input,
   timeout::{
@@ -218,9 +219,12 @@ fn parse_input_options_never_panics_and_reports_path(tc: TestCase) {
         path.as_deref().is_some_and(|p| !p.is_empty()),
         "expected non-empty input.path, got {path:?}"
       );
-      let transport = err.to_transport_string();
+      let transport = err.to_failure_transport_string(CostTrackingJson::default());
       assert!(transport.starts_with("SCRAPE_INVALID_INPUT|"));
-      assert_eq!(ScrapeErrorPayload::from_transport_string(&transport), Some(payload));
+      assert_eq!(
+        ScrapeFailure::from_transport_string(&transport).map(|f| f.error),
+        Some(payload)
+      );
     }
 
     if let Err(err) = parse_input::<InternalOptions>("internalOptions", internal_val) {
@@ -235,9 +239,12 @@ fn parse_input_options_never_panics_and_reports_path(tc: TestCase) {
         path.as_deref().is_some_and(|p| !p.is_empty()),
         "expected non-empty input.path, got {path:?}"
       );
-      let transport = err.to_transport_string();
+      let transport = err.to_failure_transport_string(CostTrackingJson::default());
       assert!(transport.starts_with("SCRAPE_INVALID_INPUT|"));
-      assert_eq!(ScrapeErrorPayload::from_transport_string(&transport), Some(payload));
+      assert_eq!(
+        ScrapeFailure::from_transport_string(&transport).map(|f| f.error),
+        Some(payload)
+      );
     }
   });
 }
@@ -246,12 +253,12 @@ fn parse_input_options_never_panics_and_reports_path(tc: TestCase) {
 fn scrape_error_transport_round_trips(tc: TestCase) {
   let err = tc.draw(scrape_error_gen());
   let expected = err.payload();
-  let transport = err.to_transport_string();
-  let round_tripped = ScrapeErrorPayload::from_transport_string(&transport);
-  assert_eq!(round_tripped.as_ref(), Some(&expected));
+  let transport = err.to_failure_transport_string(CostTrackingJson::default());
+  let round_tripped = ScrapeFailure::from_transport_string(&transport);
+  assert_eq!(round_tripped.as_ref().map(|f| &f.error), Some(&expected));
 
   let decoded_json = decode_scrape_url_error(transport);
-  assert_eq!(decoded_json, serde_json::to_value(&expected).ok());
+  assert_eq!(decoded_json, round_tripped.and_then(|f| serde_json::to_value(f).ok()));
 
   let arbitrary_msg = tc.draw(gs::text().max_size(80));
   let _ = decode_scrape_url_error(arbitrary_msg);

@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 
 use bytes::Bytes;
 use hegel::generators as gs;
@@ -6,6 +6,7 @@ use hegel::{TestCase, one_of};
 use url::Url;
 
 use super::super::{
+  error::ScrapeURLError,
   formats::Format,
   meta::Meta,
   options::{InternalOptions, ScrapeOptions},
@@ -179,8 +180,9 @@ fn parse_fallback_never_panics(tc: TestCase) {
     "test-team".to_string(),
     options,
     InternalOptions::default(),
+    Arc::default(),
   );
-  let _ = parse_fallback(
+  let res = parse_fallback(
     &meta,
     RawPageResult {
       url,
@@ -196,6 +198,7 @@ fn parse_fallback_never_panics(tc: TestCase) {
       filename,
     },
   );
+  assert!(!matches!(res, Err(ScrapeURLError::Panic(_))));
 }
 
 #[hegel::test]
@@ -213,8 +216,9 @@ fn parse_document_never_panics(tc: TestCase) {
     "test-team".to_string(),
     options,
     InternalOptions::default(),
+    Arc::default(),
   );
-  let _ = parse_document(
+  let res = parse_document(
     &meta,
     RawPageResult {
       url,
@@ -230,6 +234,7 @@ fn parse_document_never_panics(tc: TestCase) {
       filename,
     },
   );
+  assert!(!matches!(res, Err(ScrapeURLError::Panic(_))));
 }
 
 #[hegel::test]
@@ -257,6 +262,7 @@ fn parse_pdf_and_engine_result_never_panic(tc: TestCase) {
     "test-team".to_string(),
     options,
     InternalOptions::default(),
+    Arc::default(),
   );
 
   let rt = tokio::runtime::Builder::new_current_thread()
@@ -264,7 +270,7 @@ fn parse_pdf_and_engine_result_never_panic(tc: TestCase) {
     .build()
     .expect("tokio runtime");
 
-  let _ = rt.block_on(parse_pdf(
+  let r1 = rt.block_on(parse_pdf(
     &meta,
     RawPageResult {
       url: url.clone(),
@@ -281,7 +287,8 @@ fn parse_pdf_and_engine_result_never_panic(tc: TestCase) {
     },
     None,
   ));
-  let _ = rt.block_on(parse_engine_result(
+  assert!(!matches!(r1, Err(ScrapeURLError::Panic(_))));
+  let r2 = rt.block_on(parse_engine_result(
     &meta,
     RawPageResult {
       url,
@@ -297,4 +304,5 @@ fn parse_pdf_and_engine_result_never_panic(tc: TestCase) {
       filename: fn2,
     },
   ));
+  assert!(!matches!(r2, Err(ScrapeURLError::Panic(_))));
 }

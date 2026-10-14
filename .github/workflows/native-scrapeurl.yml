@@ -6,6 +6,8 @@ on:
       - mog/scrapeurl-rust
     paths:
       - apps/api/native/**
+      - apps/api/pnpm-lock.yaml
+      - apps/api/pnpm-workspace.yaml
       - .github/workflows/native-scrapeurl.yml
   workflow_dispatch:
 
