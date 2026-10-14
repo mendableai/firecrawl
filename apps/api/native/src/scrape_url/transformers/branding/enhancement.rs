@@ -2,6 +2,7 @@
 
 use serde_json::Value;
 
+#[derive(Clone)]
 pub struct BrandingEnhancement {
   pub cleaned_fonts: Vec<CleanedFont>,
   pub button_classification: ButtonClassification,
@@ -11,11 +12,13 @@ pub struct BrandingEnhancement {
   pub design_system: Option<Value>,
 }
 
+#[derive(Clone)]
 pub struct CleanedFont {
   pub family: String,
   pub role: String,
 }
 
+#[derive(Clone)]
 pub struct ButtonClassification {
   pub primary_button_index: i64,
   pub primary_button_reasoning: String,
@@ -24,6 +27,7 @@ pub struct ButtonClassification {
   pub confidence: f64,
 }
 
+#[derive(Clone)]
 pub struct ColorRoles {
   pub primary_color: String,
   pub secondary_color: Option<String>,
@@ -33,6 +37,7 @@ pub struct ColorRoles {
   pub confidence: f64,
 }
 
+#[derive(Clone)]
 pub struct LlmLogoSelection {
   pub selected_logo_index: i64,
   pub selected_logo_reasoning: Option<String>,

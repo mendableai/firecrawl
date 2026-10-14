@@ -76,5 +76,6 @@ pub fn declared_logo_candidate(declared: &DeclaredLogo, brand_name: Option<&str>
     href: None,
     source: declared.source.to_string(),
     logo_svg_score: None,
+    colors: None,
   }
 }

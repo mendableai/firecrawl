@@ -1,7 +1,9 @@
-//! The part of culori 4.0.2 that branding uses, ported literally: `parse` and
-//! conversion to sRGB for the CSS color syntaxes browsers produce, plus TS
-//! `hexify`. One module per culori color space directory.
+//! The part of culori 4.0.2 that branding uses, ported literally: `parse`,
+//! conversion to sRGB and HSL, `formatHex` and `differenceCiede2000` for the
+//! CSS color syntaxes browsers produce, plus TS `hexify`. One module per culori
+//! color space directory.
 
+mod difference;
 mod hsl;
 mod hwb;
 mod lab;
@@ -16,6 +18,8 @@ mod rgb;
 mod xyz;
 
 use super::js;
+
+pub use difference::ciede2000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -114,6 +118,24 @@ pub fn to_rgb(color: &Color) -> Rgb {
     b: Some(b),
     alpha: color.alpha,
   }
+}
+
+/// culori `hsl(color)` as `[h, s, l]`: an HSL color as parsed, the rest through sRGB.
+pub fn to_hsl(color: &Color) -> [Option<f64>; 3] {
+  match color.mode {
+    Mode::Hsl => color.channels,
+    _ => hsl::rgb_to_hsl(&to_rgb(color)),
+  }
+}
+
+/// culori `formatHex`: `#rrggbb` with each channel clamped to 0..1.
+pub fn format_hex(color: &Color) -> String {
+  let rgb = to_rgb(color);
+  let byte = |c: Option<f64>| {
+    let c = c.filter(|c| !c.is_nan()).unwrap_or(0.0);
+    js::round(js::max(0.0, js::min(1.0, c)) * 255.0) as u8
+  };
+  format!("#{:02x}{:02x}{:02x}", byte(rgb.r), byte(rgb.g), byte(rgb.b))
 }
 
 /// `Math.round(channel * 255)`, and the `#RRGGBB` digits JS prints for it.

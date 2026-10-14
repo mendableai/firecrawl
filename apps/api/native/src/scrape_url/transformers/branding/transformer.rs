@@ -6,6 +6,7 @@ use tracing::{Span, field::Empty, instrument};
 
 use super::super::super::{document::Document, meta::Meta};
 use super::enhancement::{BrandingEnhancement, LLM_FAILED, LlmLogoSelection};
+use super::jev::env_flag;
 use super::js;
 use super::llm::select::{header_html_chunk, limit_buttons};
 use super::llm::{HeuristicPick, LlmInput, enhance_branding_with_llm};
@@ -21,15 +22,7 @@ use super::profile::{
 };
 use super::types::{BrandingScriptReturn, LogoCandidate};
 
-/// zod `stringbool` truthy values.
-static DEBUG_BRANDING: LazyLock<bool> = LazyLock::new(|| {
-  std::env::var("DEBUG_BRANDING").is_ok_and(|x| {
-    matches!(
-      x.trim().to_ascii_lowercase().as_str(),
-      "true" | "1" | "yes" | "on" | "y" | "enabled"
-    )
-  })
-});
+static DEBUG_BRANDING: LazyLock<bool> = LazyLock::new(|| env_flag("DEBUG_BRANDING"));
 
 /// Where the logo came from: whether the model's pick held, the source, and why not.
 fn logo_outcome(

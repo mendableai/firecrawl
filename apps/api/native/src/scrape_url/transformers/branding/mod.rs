@@ -4,6 +4,7 @@
 mod color;
 mod color_roles;
 mod enhancement;
+mod jev;
 mod js;
 mod llm;
 mod logo;

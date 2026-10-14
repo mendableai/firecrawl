@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 use super::types::{BrandingFontSizes, BrandingFontStacks, Corners};
 
-#[derive(Debug, Default, Serialize, TS)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 pub struct BrandingProfile {
@@ -93,7 +93,7 @@ pub struct BrandingColors {
   pub link: String,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BrandingTypography {
   pub font_families: BrandingFontFamilies,
@@ -101,20 +101,20 @@ pub struct BrandingTypography {
   pub font_sizes: BrandingFontSizes,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 pub struct BrandingFontFamilies {
   pub primary: String,
   pub heading: String,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BrandingSpacing {
   pub base_unit: u32,
   pub border_radius: String,
 }
 
-#[derive(Debug, Default, Serialize, TS)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 pub struct BrandingComponents {
@@ -126,7 +126,7 @@ pub struct BrandingComponents {
   pub button_secondary: Option<ButtonStyle>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename = "BrandingInputStyle")]
 pub struct InputStyle {
@@ -138,7 +138,7 @@ pub struct InputStyle {
   pub shadow: Option<String>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 #[ts(rename = "BrandingButtonStyle")]
@@ -154,7 +154,7 @@ pub struct ButtonStyle {
 }
 
 /// `logo` is absent once a model rejects every candidate, and null when none was found.
-#[derive(Debug, Default, Serialize, TS)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BrandingImages {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -198,7 +198,7 @@ pub struct ButtonSnapshot {
   pub original_border_color: Option<String>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename = "BrandingInputSnapshot")]
 pub struct InputSnapshot {
@@ -218,7 +218,7 @@ pub struct InputSnapshot {
   pub shadow: Option<String>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 #[ts(rename = "BrandingLogoReasoning")]
@@ -232,7 +232,7 @@ pub struct LogoReasoning {
   pub source: String,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[ts(rename = "BrandingButtonReasoning")]
 pub struct ButtonReasoning {
   pub primary: ButtonPick,
@@ -240,7 +240,7 @@ pub struct ButtonReasoning {
   pub confidence: f64,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[ts(optional_fields)]
 #[ts(rename = "BrandingButtonPick")]
 pub struct ButtonPick {
@@ -250,14 +250,14 @@ pub struct ButtonPick {
   pub reasoning: String,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 pub struct BrandingConfidence {
   pub buttons: f64,
   pub colors: f64,
   pub overall: f64,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename = "BrandingLlmMetadata")]
 pub struct LlmMetadata {
@@ -265,7 +265,7 @@ pub struct LlmMetadata {
   pub button_classification: LlmButtonMetadata,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 #[ts(rename = "BrandingLlmLogoMetadata")]
@@ -279,7 +279,7 @@ pub struct LlmLogoMetadata {
   pub raw_logo_selection: Option<RawLogoSelection>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 #[ts(rename = "BrandingRawLogoSelection")]
@@ -290,7 +290,7 @@ pub struct RawLogoSelection {
   pub confidence: f64,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(optional_fields)]
 #[ts(rename = "BrandingLlmButtonMetadata")]

@@ -1,12 +1,13 @@
-//! culori's `hsl/`: `hsl()` in both syntaxes and `convertHslToRgb`.
+//! culori's `hsl/`: `hsl()` in both syntaxes, `convertHslToRgb` and `convertRgbToHsl`.
 
 use std::sync::LazyLock;
 
 use regex::Regex;
 
+use super::super::js;
 use super::parse::{Coord, Modern, color, is_hue, is_percentage, value};
 use super::regex::{alpha, number, regex};
-use super::{Color, Mode};
+use super::{Color, Mode, Rgb};
 
 static HSL: LazyLock<Option<Regex>> = LazyLock::new(|| {
   regex(r"^hsla?\({s}*(?:{num}(deg|grad|rad|turn)|{num}){c}{num}%{c}{num}%{s}*{alpha}\)$")
@@ -72,4 +73,27 @@ pub fn hsl_to_rgb([h, s, l]: [Option<f64>; 3]) -> [f64; 3] {
   let m1 = l + s * (if l < 0.5 { l } else { 1.0 - l });
   let m2 = m1 - (m1 - l) * 2.0 * (((h / 60.0) % 2.0) - 1.0).abs();
   by_sector(h, [m1, m2, 2.0 * l - m1])
+}
+
+/// culori's `convertRgbToHsl`, as `[h, s, l]`. A gray has no hue.
+pub fn rgb_to_hsl(rgb: &Rgb) -> [Option<f64>; 3] {
+  let [r, g, b] = [rgb.r, rgb.g, rgb.b].map(|c| c.unwrap_or(0.0));
+  let max = js::max(js::max(r, g), b);
+  let min = js::min(js::min(r, g), b);
+  let s = if max == min {
+    0.0
+  } else {
+    (max - min) / (1.0 - (max + min - 1.0).abs())
+  };
+  let h = (max - min != 0.0).then(|| {
+    60.0
+      * if max == r {
+        (g - b) / (max - min) + if g < b { 6.0 } else { 0.0 }
+      } else if max == g {
+        (b - r) / (max - min) + 2.0
+      } else {
+        (r - g) / (max - min) + 4.0
+      }
+  });
+  [h, Some(s), Some(0.5 * (max + min))]
 }

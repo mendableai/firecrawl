@@ -160,6 +160,16 @@ pub struct LogoCandidate {
   pub href: Option<String>,
   pub source: String,
   pub logo_svg_score: Option<f64>,
+  pub colors: Option<Vec<LogoColor>>,
+}
+
+/// A color the logo is drawn in, and its share of the logo.
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(default)]
+pub struct LogoColor {
+  pub color: String,
+  #[serde(deserialize_with = "number")]
+  pub share: f64,
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]

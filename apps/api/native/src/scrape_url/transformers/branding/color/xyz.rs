@@ -1,8 +1,11 @@
-//! culori's `xyz50/` and `xyz65/`: their conversions to sRGB and the D50 white.
+//! culori's `xyz50/` and `xyz65/`: their conversions from and to sRGB, and the
+//! D50 and D65 whites.
 
-use super::lrgb::lrgb_to_rgb;
+use super::Rgb;
+use super::lrgb::{lrgb_to_rgb, to_srgb_linear};
 
 pub const D50: [f64; 3] = [0.3457 / 0.3585, 1.0, (1.0 - 0.3457 - 0.3585) / 0.3585];
+pub const D65: [f64; 3] = [0.3127 / 0.329, 1.0, (1.0 - 0.3127 - 0.329) / 0.329];
 
 /// culori's `convertXyz50ToRgb`.
 pub fn xyz50_to_rgb([x, y, z]: [f64; 3]) -> [f64; 3] {
@@ -20,4 +23,14 @@ pub fn xyz65_to_rgb([x, y, z]: [f64; 3]) -> [f64; 3] {
     x * -0.9692436362808796 + y * 1.8759675015077204 + 0.0415550574071756 * z,
     x * 0.0556300796969936 - y * 0.2039769588889765 + 1.0569715142428784 * z,
   ])
+}
+
+/// culori's `convertRgbToXyz65`.
+pub fn rgb_to_xyz65(rgb: &Rgb) -> [f64; 3] {
+  let [r, g, b] = [rgb.r, rgb.g, rgb.b].map(|c| to_srgb_linear(c.unwrap_or(0.0)));
+  [
+    0.4123907992659593 * r + 0.357584339383878 * g + 0.1804807884018343 * b,
+    0.2126390058715102 * r + 0.715168678767756 * g + 0.0721923153607337 * b,
+    0.0193308187155918 * r + 0.119194779794626 * g + 0.9505321522496607 * b,
+  ]
 }
