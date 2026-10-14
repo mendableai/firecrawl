@@ -245,6 +245,7 @@ export async function retrieveProviders(input: {
       path: "/v1/retrieve/quote",
       body: { requests: input.calls },
       timeoutMs: Math.min(10000, remaining()),
+      connectors: input.flags?.exchangeRetrieve === true,
     }).catch(error => {
       logger.warn("Provider quote unavailable", { error, chargeId: id });
       return undefined;
@@ -369,6 +370,8 @@ export async function retrieveProviders(input: {
       body: { requests: input.calls },
       timeoutMs: remaining(),
       requestId: id,
+      // The team's own MCP connectors (mcp-...) resolve only when Exchange is told it may use them.
+      connectors: input.flags?.exchangeRetrieve === true,
       // Sent with every execution so Exchange tools that call Firecrawl as the caller
       // (the caller pays) can authenticate upstream. Exchange decides which tools read it.
       ...(input.resultAuthorization
