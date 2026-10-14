@@ -186,12 +186,19 @@ fn css_compound(tc: &TestCase) -> String {
 #[hegel::composite]
 fn attribute_selector(tc: &TestCase) -> AttributesSelector {
   let selector = tc.draw(hegel::one_of!(
-    gs::vecs(gs::tuples!(
+    gs::tuples!(
       css_compound(),
-      gs::sampled_from(&[" ", " > ", " + ", " ~ ", ", "])
-    ))
-    .max_size(3)
-    .map(|parts| parts.into_iter().map(|(a, b)| format!("{a}{b}")).collect()),
+      gs::vecs(gs::tuples!(
+        gs::sampled_from(&[" ", " > ", " + ", " ~ ", ", "]),
+        css_compound()
+      ))
+      .max_size(2)
+    )
+    .map(|(first, rest)| rest
+      .into_iter()
+      .fold(first, |selector, (combinator, compound)| selector
+        + combinator
+        + &compound)),
     gs::text().max_size(16),
   ));
   let attribute = tc.draw(hegel::one_of!(
