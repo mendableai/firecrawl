@@ -21,6 +21,7 @@ macro_rules! generate_execute_tranformers {
 
 use attributes::derive_attributes_from_html;
 use base64_images::remove_base64_images;
+use clean_content::perform_clean_content;
 use coerce::coerce_fields_to_formats;
 use html::derive_html_from_raw_html;
 use images::derive_images_from_html;
@@ -28,12 +29,15 @@ use json::perform_llm_extract;
 use links::derive_links_from_html;
 use markdown::derive_markdown_from_html;
 use metadata::derive_metadata_from_raw_html;
+use prompt_injection_guard::perform_prompt_injection_guard;
+use redact_pii::perform_redact_pii;
 use summary::perform_summary;
 use youtube::fetch_youtube;
 pub(super) use youtube::is_youtube_video_url;
 
 mod attributes;
 mod base64_images;
+mod clean_content;
 mod coerce;
 mod html;
 mod images;
@@ -41,6 +45,8 @@ mod json;
 mod links;
 mod markdown;
 mod metadata;
+mod prompt_injection_guard;
+mod redact_pii;
 mod summary;
 mod tokens;
 mod youtube;
@@ -65,6 +71,9 @@ pub enum TransformerError {
   #[error("The scraped page content is too large for JSON extraction, so extraction was aborted.")]
   JsonContentTooLarge,
 
+  #[error("{0}")]
+  PromptInjectionDetected(String),
+
   #[error(transparent)]
   Llm(#[from] LlmError),
 }
@@ -73,8 +82,9 @@ generate_execute_tranformers!(
   fetch_youtube,
   derive_html_from_raw_html,
   derive_markdown_from_html,
-  // TODO: perform_clean_content
-  // TODO: perform_redact_pii
+  perform_clean_content,
+  perform_redact_pii,
+  perform_prompt_injection_guard,
   derive_links_from_html,
   derive_images_from_html,
   // TODO: derive_branding_from_actions

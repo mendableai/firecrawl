@@ -9,7 +9,6 @@ use super::kinded::{KindedSet, kinded};
 pub struct JsonOptions {
   pub prompt: Option<String>,
   pub schema: Option<serde_json::Value>,
-  pub check_prompt_injection: Option<bool>,
 }
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, TS)]
 #[ts(optional_fields = nullable)]

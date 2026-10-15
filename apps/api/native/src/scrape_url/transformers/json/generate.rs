@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use genai::chat::{
-  ChatMessage, ChatOptions, ChatRequest, ChatResponse, ChatResponseFormat, JsonSpec,
+  ChatMessage, ChatOptions, ChatRequest, ChatResponse, ChatResponseFormat, JsonSpec, StopReason,
 };
 use serde_json::Value;
 use tracing::{Span, field::Empty, instrument};
@@ -12,7 +12,7 @@ use super::super::super::{
   meta::Meta,
 };
 use super::super::{TransformerError, tokens::trim_to_token_limit};
-use super::repair;
+use super::{repair, schema::normalize_user_schema};
 
 /// What TS `generateCompletions` takes besides the markdown.
 pub struct CompletionOptions<'a> {
@@ -20,6 +20,7 @@ pub struct CompletionOptions<'a> {
   pub retry_model: String,
   pub prompt: Option<&'a str>,
   pub system_prompt: Option<&'a str>,
+  /// Normalized for structured outputs here, as TS `generateCompletions` does.
   pub schema: Option<&'a Value>,
   /// TS `costTrackingOptions.metadata`.
   pub cost_metadata: Value,
@@ -68,7 +69,9 @@ pub async fn generate_object(
 
   let (response, model, details) = exec_with_retry(options, ChatRequest::new(messages)).await?;
   let text = response.first_text().unwrap_or_default();
-  let extract = repair::parse_llm_json(meta, &options.cost_metadata, text, model).await?;
+  let hit_output_limit = matches!(response.stop_reason, Some(StopReason::MaxTokens(_)));
+  let extract =
+    repair::parse_llm_json(meta, &options.cost_metadata, text, model, hit_output_limit).await?;
 
   let tokens = llm::usage_tokens(&response.usage);
   let cost = calculate_cost(model, tokens.input, tokens.output);
@@ -98,7 +101,7 @@ async fn exec_with_retry<'a>(
   if let Some(schema) = options.schema {
     chat_options = chat_options.with_response_format(ChatResponseFormat::JsonSpec(JsonSpec::new(
       "scrape_result",
-      schema.clone(),
+      normalize_user_schema(schema),
     )));
   }
   if options.model.starts_with("gpt-5") {

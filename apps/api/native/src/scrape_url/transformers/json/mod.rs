@@ -12,11 +12,12 @@ use super::TransformerError;
 mod generate;
 mod repair;
 mod schema;
+mod strict_schema;
 
 pub(super) use generate::{CompletionOptions, generate_object};
 
 // ~2MB of markdown, well past typical page sizes -- caps worst-case JSON extraction cost/latency.
-const MAX_JSON_EXTRACTION_MARKDOWN_CHARS: usize = 2_000_000;
+pub(super) const MAX_JSON_EXTRACTION_MARKDOWN_CHARS: usize = 2_000_000;
 
 const SCHEMA_GENERATOR_SYSTEM_PROMPT: &str = "You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
 Consider:
@@ -27,16 +28,18 @@ Consider:
 
 Valid JSON schema, has to be simple. No crazy properties. OpenAI has to support it.
 Supported types
-The following types are supported for Structured Outputs:
+The following values of \"type\" are supported for Structured Outputs, written exactly like this (lowercase):
 
-String
-Number
-Boolean
-Integer
-Object
-Array
-Enum
-anyOf
+string
+number
+boolean
+integer
+object
+array
+
+Use \"enum\" as a keyword next to \"type\": \"string\" to restrict values; it is not a type. Use \"anyOf\" for alternatives.
+Every array must define \"items\" as a single schema object. Every property must be a schema object with a \"type\".
+allOf, oneOf, not, and if/then/else are not supported.
 
 Formats are not supported. Min/max are not supported. Anything beyond the above is not supported. Keep it simple with types and descriptions.
 Optionals are not supported.
@@ -44,9 +47,12 @@ DO NOT USE FORMATS.
 Keep it simple. Don't create too many properties, just the ones that are needed. Don't invent properties.
 Return a valid JSON schema object with properties that would capture the information requested in the prompt.";
 
+/// TS `generateSchemaFromPrompt`: up to three tries for a schema strict mode
+/// accepts, falling back to the last unsupported one.
 #[instrument(
   name = "transformers::json::generate_schema_from_prompt",
   skip_all,
+  fields(unsupported_schemas = tracing::field::Empty),
   err
 )]
 async fn generate_schema_from_prompt(meta: &Meta, prompt: &str) -> Result<Value, TransformerError> {
@@ -62,11 +68,23 @@ async fn generate_schema_from_prompt(meta: &Meta, prompt: &str) -> Result<Value,
   };
 
   let mut last_error: Option<TransformerError> = None;
+  let mut last_unsupported: Option<Value> = None;
+  let mut unsupported_schemas = 0;
   for _ in 0..3 {
     match generate_object(meta, &options, "").await {
-      Ok(x) => return Ok(x.extract),
+      Ok(x) if strict_schema::find_strict_schema_violation(&x.extract).is_none() => {
+        return Ok(x.extract);
+      }
+      Ok(x) => {
+        unsupported_schemas += 1;
+        tracing::Span::current().record("unsupported_schemas", unsupported_schemas);
+        last_unsupported = Some(x.extract);
+      }
       Err(e) => last_error = Some(e),
     }
+  }
+  if let Some(schema) = last_unsupported {
+    return Ok(schema);
   }
 
   Err(LlmError::SchemaGeneration(
@@ -96,7 +114,6 @@ fn record_llm_telemetry(meta: &Meta, span: &tracing::Span) {
   fields(
     json.prompt = tracing::field::Empty,
     json.schema = tracing::field::Empty,
-    json.check_prompt_injection = tracing::field::Empty,
     llm.function_id = tracing::field::Empty,
     llm.telemetry = tracing::field::Empty,
   ),
@@ -116,7 +133,6 @@ pub async fn perform_llm_extract(
     "json.schema",
     options.schema.as_ref().map(|x| x.to_string()).as_deref(),
   );
-  span.record("json.check_prompt_injection", options.check_prompt_injection);
   record_llm_telemetry(meta, &span);
 
   let Some(markdown) = document.markdown.as_deref() else {
@@ -141,15 +157,17 @@ pub async fn perform_llm_extract(
     (None, Some(prompt)) => Some(generate_schema_from_prompt(meta, prompt).await?),
     (None, None) => None,
   };
-  let user_schema = user_schema.map(|schema| schema::resolve_schema_refs(&schema));
-  let normalized_schema = user_schema.as_ref().map(schema::normalize_user_schema);
+  // TS extracts without a schema when the generated one is null.
+  let user_schema = user_schema
+    .filter(|schema| !schema.is_null())
+    .map(|schema| schema::resolve_schema_refs(&schema));
 
   let completion_options = CompletionOptions {
     model,
     retry_model: llm::model_name_with_override("gpt-4.1-mini"),
     prompt: options.prompt.as_deref(),
     system_prompt: None,
-    schema: normalized_schema.as_ref(),
+    schema: user_schema.as_ref(),
     cost_metadata: json!({
       "module": "scrapeURL",
       "method": "extractData",
@@ -171,7 +189,9 @@ pub async fn perform_llm_extract(
   if extract.is_none() && warning.is_none() {
     document.prepend_warning("JSON extraction did not produce a result.");
   }
-  let extract = extract.unwrap_or(Value::Null);
+  let extract = extract.map_or(Value::Null, |x| {
+    schema::unwrap_root_array(user_schema.as_ref(), x)
+  });
 
   if meta.internal_options.v1_original_format == Some(V1OriginalFormat::Extract) {
     document.extract = Some(extract);
