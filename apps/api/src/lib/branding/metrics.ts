@@ -1,4 +1,5 @@
-import { Counter, Histogram } from "prom-client";
+import { Counter, Gauge, Histogram } from "prom-client";
+import { config } from "../../config";
 
 // Fixed labels only: never team ids or anything from the page.
 
@@ -26,6 +27,22 @@ export const brandingJevDurationSeconds = new Histogram({
   // Up to the default timeout with its one retry.
   buckets: [0.1, 0.15, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10],
 });
+
+// Each pod reports the share it was started with; pods that disagree are
+// running an older config.
+export const brandingJevRolloutPercent = new Gauge({
+  name: "firecrawl_branding_jev_rollout_percent",
+  help: "Share of teams this process sends to Jev, from its own config: 0 without a TypeSafe key, 100 with BRANDING_JEV on, else BRANDING_JEV_ROLLOUT_PERCENT",
+  collect() {
+    this.set(effectiveJevRolloutPercent());
+  },
+});
+
+function effectiveJevRolloutPercent(): number {
+  if (!config.TYPESAFE_API_KEY) return 0;
+  if (config.BRANDING_JEV === true) return 100;
+  return config.BRANDING_JEV_ROLLOUT_PERCENT;
+}
 
 export type JevCallOutcome =
   | "ok"
