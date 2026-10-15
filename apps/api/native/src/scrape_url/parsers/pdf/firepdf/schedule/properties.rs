@@ -12,7 +12,17 @@ fn remaining_ms(tc: &TestCase) -> Option<i64> {
       .min_value(-CLOCK_MS)
       .max_value(MAX_DEADLINE_MS * 2),
     gs::integers::<i64>().min_value(-CLOCK_MS),
+    gs::integers::<i64>(),
   )))
+}
+
+/// A clock reading: realistic epoch milliseconds, or any i64.
+#[hegel::composite]
+fn epoch_ms(tc: &TestCase) -> i64 {
+  tc.draw(hegel::one_of!(
+    gs::integers::<i64>().min_value(0).max_value(CLOCK_MS),
+    gs::integers::<i64>(),
+  ))
 }
 
 #[hegel::test]
@@ -32,10 +42,11 @@ fn job_deadlines_stay_inside_the_caller_window(tc: TestCase) {
   assert!((MIN_DEADLINE_MS..=MAX_DEADLINE_MS).contains(&by_reference));
   assert!(by_reference >= caller_window);
 
+  let inline = compute_inline_job_deadline_ms(caller_window);
+  assert!(inline >= MIN_DEADLINE_MS, "{inline}");
   if remaining.is_some_and(|x| x < MIN_ASYNC_CALLER_WINDOW_MS) {
     return;
   }
-  let inline = compute_inline_job_deadline_ms(caller_window);
   assert!(
     inline >= MIN_DEADLINE_MS + INLINE_SUBMIT_SLACK_MS,
     "{inline}"
@@ -46,11 +57,12 @@ fn job_deadlines_stay_inside_the_caller_window(tc: TestCase) {
 #[hegel::test]
 fn polls_never_wait_past_the_polling_deadline(tc: TestCase) {
   let configured_wait = tc.draw(gs::integers::<i64>().min_value(0));
-  let until_deadline = tc.draw(
+  let until_deadline = tc.draw(hegel::one_of!(
     gs::integers::<i64>()
       .min_value(-CLOCK_MS)
       .max_value(CLOCK_MS),
-  );
+    gs::integers::<i64>(),
+  ));
   let wait = long_poll_wait_for(configured_wait, until_deadline);
   if wait != 0 {
     assert!((LONG_POLL_MIN_WAIT_MS..=LONG_POLL_MAX_WAIT_MS).contains(&wait));
@@ -63,20 +75,22 @@ fn polls_never_wait_past_the_polling_deadline(tc: TestCase) {
     gs::integers::<i64>()
       .min_value(POLL_FLOOR_MS)
       .max_value(POLL_CAP_MS),
+    gs::integers::<i64>(),
   ));
   let retry_after = tc.draw(gs::optional(gs::integers::<i64>()));
   let random = tc.draw(gs::floats::<f64>().min_value(0.0).max_value(1.0));
   let delay = next_poll_delay(previous, retry_after, random);
   assert!((POLL_FLOOR_MS..=POLL_CAP_MS).contains(&delay), "{delay}");
 
-  let now = tc.draw(gs::integers::<i64>().min_value(0).max_value(CLOCK_MS));
-  let job_deadline = tc.draw(gs::optional(
-    gs::integers::<i64>().min_value(0).max_value(CLOCK_MS * 2),
-  ));
+  let now = tc.draw(epoch_ms());
+  let job_deadline = tc.draw(gs::optional(epoch_ms()));
   let aligned = align_poll_delay(delay, now, job_deadline);
   assert!(aligned <= delay);
   if let Some(job_deadline) = job_deadline {
-    let latest = (job_deadline + JOB_DEADLINE_POLL_GRACE_MS).max(now + POLL_FLOOR_MS);
-    assert!(now + aligned <= latest, "{now} + {aligned} > {latest}");
+    let latest = job_deadline
+      .saturating_add(JOB_DEADLINE_POLL_GRACE_MS)
+      .max(now.saturating_add(POLL_FLOOR_MS));
+    let lands = now.saturating_add(aligned);
+    assert!(lands <= latest, "{now} + {aligned} > {latest}");
   }
 }
