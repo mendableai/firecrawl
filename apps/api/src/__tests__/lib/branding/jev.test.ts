@@ -28,7 +28,7 @@ import {
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
 import {
-  brandingAnswersTotal,
+  brandingRoutedTotal,
   brandingJevBreakerOpensTotal,
   brandingJevCallsTotal,
 } from "../../../lib/branding/metrics";
@@ -941,8 +941,8 @@ describe("branding metrics", () => {
       jevOk: await value(brandingJevCallsTotal, jevOk),
       rateLimited: await value(brandingJevCallsTotal, rateLimited),
       timedOut: await value(brandingJevCallsTotal, timedOut),
-      byJev: await value(brandingAnswersTotal, byJev),
-      fellBack: await value(brandingAnswersTotal, fellBack),
+      byJev: await value(brandingRoutedTotal, byJev),
+      fellBack: await value(brandingRoutedTotal, fellBack),
     };
 
     respondWith(jevResponse());
@@ -961,8 +961,8 @@ describe("branding metrics", () => {
     expect(await value(brandingJevCallsTotal, timedOut)).toBe(
       before.timedOut + 1,
     );
-    expect(await value(brandingAnswersTotal, byJev)).toBe(before.byJev + 1);
-    expect(await value(brandingAnswersTotal, fellBack)).toBe(
+    expect(await value(brandingRoutedTotal, byJev)).toBe(before.byJev + 1);
+    expect(await value(brandingRoutedTotal, fellBack)).toBe(
       before.fellBack + 2,
     );
   });
@@ -983,12 +983,12 @@ describe("branding metrics", () => {
 
   it("counts teams outside the rollout as answered by the LLM", async () => {
     const outside = { model: "llm", reason: "not_in_rollout" };
-    const before = await value(brandingAnswersTotal, outside);
+    const before = await value(brandingRoutedTotal, outside);
     config.BRANDING_JEV_TEAM_IDS = [];
 
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
 
-    expect(await value(brandingAnswersTotal, outside)).toBe(before + 1);
+    expect(await value(brandingRoutedTotal, outside)).toBe(before + 1);
     expect(mocks.systemOne).not.toHaveBeenCalled();
   });
 });

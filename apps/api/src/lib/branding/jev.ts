@@ -968,14 +968,14 @@ export async function enhanceBrandingWithJev(
         { shadow },
         (Date.now() - started) / 1000,
       );
+      count(
+        error instanceof RateLimitError
+          ? "rate_limited"
+          : error instanceof APITimeoutError
+            ? "timeout"
+            : "error",
+      );
     }
-    count(
-      error instanceof RateLimitError
-        ? "rate_limited"
-        : error instanceof APITimeoutError
-          ? "timeout"
-          : "error",
-    );
     input.logger.warn(
       options.shadow
         ? "Jev branding shadow call failed"

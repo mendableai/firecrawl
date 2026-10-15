@@ -2,9 +2,9 @@ import { Counter, Histogram } from "prom-client";
 
 // Fixed labels only: never team ids or anything from the page.
 
-export const brandingAnswersTotal = new Counter({
-  name: "firecrawl_branding_answers_total",
-  help: "Branding requests by the model that answered them and why: jev (rollout), or llm when the team isn't in the rollout, Jev was unavailable, or Jev was unsure of the logo",
+export const brandingRoutedTotal = new Counter({
+  name: "firecrawl_branding_routed_total",
+  help: "Branding requests by the model they were sent to and why: jev (rollout), or llm when the team isn't in the rollout, Jev was unavailable, or Jev was unsure of the logo; counted before the model answers",
   labelNames: ["model", "reason"],
 });
 
@@ -23,7 +23,8 @@ export const brandingJevDurationSeconds = new Histogram({
   name: "firecrawl_branding_jev_duration_seconds",
   help: "Jev branding call time, for calls that reached TypeSafe",
   labelNames: ["shadow"],
-  buckets: [0.1, 0.15, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3],
+  // Up to the default timeout with its one retry.
+  buckets: [0.1, 0.15, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10],
 });
 
 export type JevCallOutcome =
@@ -41,7 +42,7 @@ for (const [model, reason] of [
   ["llm", "jev_unavailable"],
   ["llm", "logo_escalation"],
 ]) {
-  brandingAnswersTotal.inc({ model, reason }, 0);
+  brandingRoutedTotal.inc({ model, reason }, 0);
 }
 for (const shadow of ["true", "false"]) {
   for (const outcome of [

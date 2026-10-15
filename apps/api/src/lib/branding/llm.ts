@@ -5,7 +5,7 @@ import { calculateCost } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { CostLimitExceededError } from "../cost-tracking";
 import { BrandingEnhancement, getBrandingEnhancementSchema } from "./schema";
 import { enhanceBrandingWithJev, isJevBrandingEnabled } from "./jev";
-import { brandingAnswersTotal } from "./metrics";
+import { brandingRoutedTotal } from "./metrics";
 import { shadowJev, shouldShadowJev } from "./jev-shadow";
 import { buildBrandingPrompt } from "./prompt";
 import { BrandingLLMInput } from "./types";
@@ -111,7 +111,7 @@ export async function enhanceBrandingWithLLM(
 
   const triedJev = isJevBrandingEnabled(input);
   if (!triedJev) {
-    brandingAnswersTotal.inc({ model: "llm", reason: "not_in_rollout" });
+    brandingRoutedTotal.inc({ model: "llm", reason: "not_in_rollout" });
   } else {
     const jev = await enhanceBrandingWithJev(input);
     const escalateBelow = config.BRANDING_JEV_ESCALATE_BELOW;
@@ -120,10 +120,10 @@ export async function enhanceBrandingWithLLM(
       jev?.logoConfidence !== undefined &&
       jev.logoConfidence < escalateBelow;
     if (jev && !unsureOfLogo) {
-      brandingAnswersTotal.inc({ model: "jev", reason: "rollout" });
+      brandingRoutedTotal.inc({ model: "jev", reason: "rollout" });
       return jev.enhancement;
     }
-    brandingAnswersTotal.inc({
+    brandingRoutedTotal.inc({
       model: "llm",
       reason: jev ? "logo_escalation" : "jev_unavailable",
     });
