@@ -118,6 +118,9 @@ describe("/v2/search/gov", () => {
     await flush();
 
     expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "INDEX_DAILY_LIMIT" }),
+    );
     expect(res.setHeader).toHaveBeenCalledWith(
       "Retry-After",
       expect.any(String),

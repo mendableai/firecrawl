@@ -344,17 +344,6 @@ function createResearchController(
     }
 
     const params = parsed.data as ResearchQueryParams;
-    const index = indexForEndpointKind(endpoint.kind);
-    if (index) {
-      const indexBudget = await reserveIndexDailyCalls(authedReq.auth.team_id, {
-        [index]: 1,
-      });
-      if (!indexBudget.ok) {
-        chargeKeylessCredits(authedReq.auth.team_id, 0).catch(() => {});
-        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
-        return researchError(res, 429, indexDailyLimitMessage(indexBudget));
-      }
-    }
     const targetHint = endpoint.targetHint(params, authedReq);
     await logRequest({
       id: jobId,
@@ -369,6 +358,26 @@ function createResearchController(
       api_key_id: authedReq.acuc?.api_key_id ?? null,
     });
 
+    // After the request is on record, as on /v2/search, so a failed log spends
+    // nothing; given back below if the index is not configured.
+    let releaseIndexCall = async () => {};
+    const index = indexForEndpointKind(endpoint.kind);
+    if (index) {
+      const indexBudget = await reserveIndexDailyCalls(authedReq.auth.team_id, {
+        [index]: 1,
+      });
+      if (!indexBudget.ok) {
+        chargeKeylessCredits(authedReq.auth.team_id, 0).catch(() => {});
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return res.status(429).json({
+          success: false,
+          code: "INDEX_DAILY_LIMIT",
+          error: indexDailyLimitMessage(indexBudget),
+        });
+      }
+      releaseIndexCall = indexBudget.release;
+    }
+
     let statusCode = 500;
     let responseBody: any = null;
     let error: string | undefined;
@@ -382,6 +391,7 @@ function createResearchController(
         queryKeys,
       );
       if (!upstream) {
+        await releaseIndexCall();
         statusCode = 404;
         error = "Research service is not configured";
         return res.status(404).end();

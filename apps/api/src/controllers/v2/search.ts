@@ -422,6 +422,7 @@ async function searchControllerInner(
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
           success: false,
+          code: "INDEX_DAILY_LIMIT",
           error: indexDailyLimitMessage(indexBudget),
         });
       }
