@@ -72,8 +72,8 @@ pub fn align_poll_delay(delay_ms: i64, now_ms: i64, job_deadline_at_ms: Option<i
     return delay_ms;
   };
   let until_target = job_deadline_at_ms
-    .saturating_add(JOB_DEADLINE_POLL_GRACE_MS)
-    .saturating_sub(now_ms);
+    .saturating_sub(now_ms)
+    .saturating_add(JOB_DEADLINE_POLL_GRACE_MS);
   if until_target <= 0 {
     delay_ms.min(POLL_FLOOR_MS)
   } else {
