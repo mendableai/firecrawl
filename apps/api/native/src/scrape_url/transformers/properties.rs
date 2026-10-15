@@ -4,6 +4,8 @@ use hegel::{
 };
 use url::Url;
 
+use crate::{_transform_html_inner, TransformHtmlOptions};
+
 use super::super::{
   document::Document,
   error::{ScrapeErrorPayload, ScrapeURLError},
@@ -85,6 +87,14 @@ const TEXT: &[&str] = &[
   "\u{0}",
 ];
 
+/// srcset descriptors; Rust's float parser reads the first five as NaN, infinite or negative.
+const DESCRIPTORS: &[&str] = &[
+  "NaNx", "NaNw", "infx", "-infw", "1e400x", "-1x", "-0x", "0x", "1.5x", "2x", "640w", "x", "w", "",
+];
+
+/// OMCE signatures, real-shaped (`v1:<mode>:<hash>`) or missing their colons.
+const SIGNATURES: &[&str] = &["v1:c:", "v1:cit:0f", "v1::", "::", ":", "v1", "nocolon", ""];
+
 const PSEUDO: &[&str] = &[
   ":first-child",
   ":nth-child(2n+1)",
@@ -133,7 +143,7 @@ fn html_text(tc: &TestCase) -> String {
 #[hegel::composite]
 fn html_node(tc: &TestCase, depth: u32) -> String {
   if depth == 0 || tc.draw(gs::weighted_booleans(0.3)) {
-    return tc.draw(html_text());
+    return tc.draw(hegel::one_of!(html_text(), image()));
   }
   let tag = tc.draw(gs::sampled_from(TAGS));
   let quote = tc.draw(gs::sampled_from(&["\"", "'", ""]));
@@ -150,6 +160,43 @@ fn html_node(tc: &TestCase, depth: u32) -> String {
     String::new()
   };
   format!("<{tag}{attributes}>{children}{close}")
+}
+
+/// A srcset list, sometimes long enough (21+ candidates) for the sort's order checks to run.
+#[hegel::composite]
+fn srcset(tc: &TestCase) -> String {
+  let long = tc.draw(gs::booleans());
+  let candidate = gs::tuples!(
+    gs::text().alphabet("abc./-_09").min_size(1).max_size(8),
+    hegel::one_of!(
+      gs::sampled_from(DESCRIPTORS).map(|x: &str| x.to_string()),
+      gs::tuples!(gs::integers::<i32>(), gs::sampled_from(&["x", "w"]))
+        .map(|(n, unit)| format!("{n}{unit}")),
+    )
+  )
+  .map(|(url, descriptor)| format!("{url} {descriptor}"));
+  let candidates = tc.draw(
+    gs::vecs(candidate)
+      .min_size(if long { 21 } else { 0 })
+      .max_size(if long { 40 } else { 4 }),
+  );
+  candidates.join(", ")
+}
+
+#[hegel::composite]
+fn image(tc: &TestCase) -> String {
+  let attribute = tc.draw(gs::sampled_from(&["srcset", "data-srcset"]));
+  let src = tc.draw(gs::optional(url_text()));
+  let src = src.map_or_else(String::new, |x| format!(" src=\"{x}\""));
+  format!("<img {attribute}=\"{}\"{src}>", tc.draw(srcset()))
+}
+
+#[hegel::composite]
+fn omce_signature(tc: &TestCase) -> String {
+  tc.draw(hegel::one_of!(
+    gs::sampled_from(SIGNATURES).map(|x: &str| x.to_string()),
+    gs::text().max_size(16),
+  ))
 }
 
 #[hegel::composite]
@@ -300,6 +347,14 @@ async fn html_transformers_never_panic(tc: TestCase) {
   .into_iter()
   .collect();
   let meta = meta(options, InternalOptions::default());
+  let _ = _transform_html_inner(TransformHtmlOptions {
+    html: html.clone(),
+    url: PAGE_URL.to_string(),
+    include_tags: tc.draw(gs::vecs(css_compound()).max_size(2)),
+    exclude_tags: tc.draw(gs::vecs(css_compound()).max_size(2)),
+    only_main_content: tc.draw(gs::booleans()),
+    omce_signatures: tc.draw(gs::optional(gs::vecs(omce_signature()).max_size(4))),
+  });
   let mut document = rendered_page(&meta, &html).await;
   document.html = Some(html);
 
