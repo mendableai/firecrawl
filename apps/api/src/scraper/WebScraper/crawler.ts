@@ -315,6 +315,10 @@ export class WebCrawler {
     }
 
     const scope = getCrawlScope(this.initialUrl);
+    const stripWww = (hostname: string) => hostname.replace(/^www\./, "");
+    const initialHostname = stripWww(new URL(this.initialUrl).hostname);
+    const baseHostname = stripWww(new URL(this.baseUrl).hostname);
+    const baseDomain = extractBaseDomain(this.baseUrl);
 
     const filteredLinks = sitemapLinks
       .filter(link => {
@@ -400,8 +404,6 @@ export class WebCrawler {
           }
         }
 
-        // Normalize the initial URL and the link to account for www and non-www versions
-        const normalizedInitialUrl = new URL(this.initialUrl);
         let normalizedLink;
         try {
           normalizedLink = new URL(link);
@@ -411,15 +413,7 @@ export class WebCrawler {
           }
           return false;
         }
-        const initialHostname = normalizedInitialUrl.hostname.replace(
-          /^www\./,
-          "",
-        );
-        const baseHostname = new URL(this.baseUrl).hostname.replace(
-          /^www\./,
-          "",
-        );
-        const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
+        const linkHostname = stripWww(normalizedLink.hostname);
 
         // Mirror the native filter's host scoping: links are compared to the
         // base URL (the page being crawled), external links are only followed
@@ -432,8 +426,8 @@ export class WebCrawler {
           ) &&
           !(
             this.allowSubdomains &&
-            extractBaseDomain(link) !== null &&
-            extractBaseDomain(link) === extractBaseDomain(this.baseUrl)
+            baseDomain !== null &&
+            extractBaseDomain(link) === baseDomain
           )
         ) {
           if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
