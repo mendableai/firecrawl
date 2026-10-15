@@ -1,6 +1,6 @@
 //! Which Wikimedia URLs the Enterprise API serves, and the article title they name.
 
-use std::time::Duration;
+use std::{sync::LazyLock, time::Duration};
 
 use percent_encoding::percent_decode_str;
 use serde::Deserialize;
@@ -18,6 +18,16 @@ const PROJECTS: [(&str, &str); 7] = [
   ("wikivoyage.org", "wikivoyage"),
 ];
 
+/// JavaScript RegExp source matching the URLs `parse_wikimedia_url` accepts.
+pub static WIKIMEDIA_URL_PATTERN: LazyLock<String> = LazyLock::new(|| {
+  let domains = PROJECTS
+    .iter()
+    .map(|(domain, _)| domain.replace('.', r"\."))
+    .collect::<Vec<_>>()
+    .join("|");
+  format!(r"^[a-z][a-z0-9+.-]*://(?!www\.)[a-z]{{2,3}}\.(?:{domains})(?::\d+)?/wiki/[^?#]")
+});
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WikimediaUrl {
   pub article_name: String,
@@ -29,6 +39,7 @@ pub struct WikimediaUrl {
 
 /// An article on a language edition of a Wikimedia project, like `en.wikipedia.org/wiki/<title>`.
 /// `www.` is the project portal, which redirects to a language edition.
+/// Undecodable bytes in the title don't disown the URL, as `WIKIMEDIA_URL_PATTERN` can't tell.
 pub fn parse_wikimedia_url(url: &Url) -> Option<WikimediaUrl> {
   let (lang, domain) = url.host_str()?.split_once('.')?;
   let (domain, suffix) = PROJECTS.into_iter().find(|(x, _)| *x == domain)?;
@@ -44,8 +55,7 @@ pub fn parse_wikimedia_url(url: &Url) -> Option<WikimediaUrl> {
     .filter(|x| !x.is_empty())?;
   Some(WikimediaUrl {
     article_name: percent_decode_str(article)
-      .decode_utf8()
-      .ok()?
+      .decode_utf8_lossy()
       .replace(' ', "_"),
     lang: lang.to_string(),
     domain,
