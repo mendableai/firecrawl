@@ -49,6 +49,8 @@ mod prompt_injection_guard;
 mod redact_pii;
 mod summary;
 mod tokens;
+#[cfg(test)]
+mod properties;
 mod youtube;
 
 #[derive(Debug, thiserror::Error)]

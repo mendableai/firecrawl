@@ -1,5 +1,8 @@
 //! Deadline math and poll cadence for fire-pdf async jobs.
 
+#[cfg(test)]
+mod properties;
+
 /// `deadline_at - now` must fall in `[MIN_DEADLINE_MS, MAX_DEADLINE_MS]` per the /jobs contract.
 pub const MIN_DEADLINE_MS: i64 = 5_000;
 pub const MAX_DEADLINE_MS: i64 = 30 * 60 * 1_000;

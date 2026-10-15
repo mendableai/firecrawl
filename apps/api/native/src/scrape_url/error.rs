@@ -7,6 +7,9 @@ use super::{
   timeout::ScrapeTimeoutProcessing, transformers::TransformerError,
 };
 
+#[cfg(test)]
+mod properties;
+
 #[derive(Debug, thiserror::Error)]
 pub enum ScrapeURLError {
   #[error("URL blocked by robots.txt: {reason}")]
@@ -24,7 +27,7 @@ pub enum ScrapeURLError {
   #[error(
     "The PDF has {page_count} pages, which requires more processing time than your current timeout allows. PDF processing time scales with page count - larger PDFs need longer timeouts. To successfully scrape this PDF, increase the timeout parameter in your scrape request to at least {min_timeout}ms ({} seconds). For very large PDFs, consider using a timeout of {} seconds or more to account for network variability.",
     .min_timeout.div_ceil(1000),
-    (.min_timeout * 3).div_ceil(2000)
+    .min_timeout.saturating_mul(3).div_ceil(2000)
   )]
   PDFInsufficientTimeError { page_count: u32, min_timeout: u64 },
 

@@ -111,6 +111,9 @@ dist
 /target
 Cargo.lock
 
+# Hegel failing-example database
+.hegel/
+
 *.node
 .pnp.*
 /npm

@@ -11,6 +11,8 @@ pub use self::pdf::{FirePdfError, PdfPage, PdfPageBlocks, fire_engine_pdf_max_si
 mod document;
 mod fallback;
 mod pdf;
+#[cfg(test)]
+mod properties;
 
 #[kinded(noun = "parser", default = [Pdf, Image])]
 #[derive(Debug, Clone, PartialEq, Eq)]
