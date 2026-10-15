@@ -415,13 +415,33 @@ export class WebCrawler {
           /^www\./,
           "",
         );
+        const baseHostname = new URL(this.baseUrl).hostname.replace(
+          /^www\./,
+          "",
+        );
         const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
 
-        // Ensure the protocol and hostname match, and the path starts with the initial URL's path
-        // commented to able to handling external link on allowExternalContentLinks
-        // if (linkHostname !== initialHostname) {
-        //   return false;
-        // }
+        // Mirror the native filter's host scoping: links are compared to the
+        // base URL (the page being crawled), external links are only followed
+        // from pages on the initial host, and allowSubdomains admits any host
+        // with the same registrable domain.
+        if (
+          linkHostname !== baseHostname &&
+          !(
+            this.allowExternalContentLinks && initialHostname === baseHostname
+          ) &&
+          !(
+            this.allowSubdomains &&
+            extractBaseDomain(link) !== null &&
+            extractBaseDomain(link) === extractBaseDomain(this.baseUrl)
+          )
+        ) {
+          if (config.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} HOSTNAME FAIL`);
+          }
+          denialReasons.set(link, DenialReason.EXTERNAL_LINK);
+          return false;
+        }
 
         if (!this.allowBackwardCrawling) {
           if (!isWithinCrawlScope(normalizedLink.pathname, scope)) {
