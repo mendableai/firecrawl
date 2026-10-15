@@ -1842,3 +1842,72 @@ describe("FirePDF cache through the lookup service", () => {
     });
   });
 });
+
+describe("FirePDF cache and parse table formats", () => {
+  const originalTableFormat = config.PARSE_FIRE_PDF_TABLE_FORMAT;
+
+  function parseMeta() {
+    const meta = makeMeta();
+    meta.internalOptions.isParse = true;
+    return meta;
+  }
+
+  async function lookupAndSave(meta: any) {
+    const cached = await tryGetCached(
+      meta,
+      "BASE64",
+      "auto",
+      undefined,
+      1,
+      false,
+      false,
+    );
+    await maybeSaveResult({
+      meta,
+      base64Content: "BASE64",
+      mode: "auto",
+      maxPages: undefined,
+      includePageMarkdown: false,
+      includeBlocks: false,
+      result: { markdown: "fresh", html: "<p>fresh</p>", pagesProcessed: 1 },
+    });
+    return cached;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCached.mockResolvedValue({ markdown: "cached", html: "<p>cached</p>" });
+    saveCached.mockResolvedValue("saved-key");
+  });
+
+  afterEach(() => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = originalTableFormat;
+  });
+
+  it("neither reads nor writes for a parse request with a table format", async () => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = "dynamic";
+
+    expect(await lookupAndSave(parseMeta())).toBeNull();
+    expect(getCached).not.toHaveBeenCalled();
+    expect(saveCached).not.toHaveBeenCalled();
+  });
+
+  it("keeps the cache for parse when the table format is off", async () => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = "off";
+
+    expect(await lookupAndSave(parseMeta())).toMatchObject({
+      markdown: "cached",
+    });
+    expect(getCached).toHaveBeenCalled();
+    expect(saveCached).toHaveBeenCalled();
+  });
+
+  it("keeps the cache for scrape requests", async () => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = "dynamic";
+
+    expect(await lookupAndSave(makeMeta())).toMatchObject({
+      markdown: "cached",
+    });
+    expect(saveCached).toHaveBeenCalled();
+  });
+});

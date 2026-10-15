@@ -436,6 +436,18 @@ const configSchema = z.object({
   // cache service when one is configured; beyond the budget the request is
   // served normally. 0 disables the option.
   FIRE_PDF_CACHE_REFRESH_PER_MINUTE: z.coerce.number().int().min(0).default(10),
+  // /v2/parse sends every PDF (auto/ocr mode) to FirePDF: no direct
+  // text-layer extraction, no FIRE_PDF_PERCENT sampling, no MinerU
+  // diversion. Explicit `mode: "fast"` keeps direct extraction. FirePDF
+  // failures still fall back to MinerU / pdf-parse. Needs FIRE_PDF_ENABLE.
+  PARSE_PDF_ALWAYS_FIRE_PDF: z.stringbool().default(true),
+  // Table rendering FirePDF applies to /v2/parse documents. `dynamic` keeps
+  // pipe tables where they are lossless and HTML where structure needs it
+  // (merged cells, large tables); `off` sends no format (pipe tables).
+  // Any explicit format puts the request outside the FirePDF content cache.
+  PARSE_FIRE_PDF_TABLE_FORMAT: z
+    .enum(["off", "markdown", "html", "dynamic"])
+    .default("dynamic"),
   // Raster image OCR of image URLs and parse uploads through FirePDF (see
   // lib/image-ocr-gate.ts). Needs FIRE_PDF_BASE_URL.
   IMAGE_OCR_ENABLED: z.stringbool().default(false),
