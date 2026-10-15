@@ -2,7 +2,9 @@ use tokio::time::Instant;
 use tracing::{Span, field::Empty};
 
 use self::{
-  detect::{pdf_binary_match, pdf_content_type_match, pdf_file_extension_match},
+  detect::{
+    pdf_binary_match, pdf_content_type_match, pdf_file_extension_match, pdf_signature_match,
+  },
   firepdf::{FirePdfConfig, now_ms},
   limits::ensure_ocr_time,
   local::{run_local_pass, text_fallback},
@@ -35,23 +37,22 @@ pub use self::{
   types::{PdfOptions, PdfPage, PdfPageBlocks},
 };
 
-pub fn has_pdf_signal(result: &RawPageResult) -> bool {
-  let is_pdf_content_type = pdf_content_type_match(&result.content_type);
-
-  let is_pdf_binary = match &result.content {
-    RawPageContent::Bytes(bytes) => pdf_binary_match(bytes),
+/// Why a page goes to the PDF parser, or `None` if nothing says it is a PDF.
+pub fn pdf_signal(result: &RawPageResult) -> Option<&'static str> {
+  if pdf_content_type_match(&result.content_type) {
+    return Some("content_type");
+  }
+  match &result.content {
     // fire-engine only hands off verified PDFs.
-    RawPageContent::BytesOffloaded(_) => true,
-    _ => false,
-  };
-
-  let is_pdf_file_extension = result
+    RawPageContent::BytesOffloaded(_) => return Some("offloaded"),
+    RawPageContent::Bytes(bytes) if pdf_signature_match(bytes) => return Some("bytes"),
+    _ => {}
+  }
+  result
     .filename
-    .as_ref()
-    .map(|x| pdf_file_extension_match(x))
-    .unwrap_or(false);
-
-  is_pdf_content_type || is_pdf_binary || is_pdf_file_extension
+    .as_deref()
+    .is_some_and(pdf_file_extension_match)
+    .then_some("filename")
 }
 
 /// The scrape deadline on the epoch-millisecond clock fire-pdf's deadline contract uses.

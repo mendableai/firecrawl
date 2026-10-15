@@ -1,32 +1,74 @@
 use std::collections::HashMap;
 
 use base64::Engine;
-use bytes::Bytes;
 
-use super::super::{
-  document::{Document, DocumentMetadata, DocumentMetadataCacheState},
-  error::ScrapeURLError,
-  formats::FormatKind,
-  meta::Meta,
-  raw_page::{RawPageContent, RawPageResult},
+use super::{
+  super::{
+    document::{Document, DocumentMetadata, DocumentMetadataCacheState},
+    error::ScrapeURLError,
+    formats::FormatKind,
+    meta::Meta,
+    raw_page::{RawPageContent, RawPageResult},
+  },
+  media_type,
 };
 
-fn document_content_type_match(content_type: &str) -> bool {
-  let normalized = content_type.to_lowercase();
+/// TS `DOCUMENT_CONTENT_TYPE_TO_EXTENSION`.
+const DOCUMENT_CONTENT_TYPE_TO_EXTENSION: [(&str, &str); 17] = [
+  (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "docx",
+  ),
+  ("application/vnd.ms-word.document.macroenabled.12", "docm"),
+  ("application/msword", "doc"),
+  (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xlsx",
+  ),
+  ("application/vnd.ms-excel", "xls"),
+  ("application/vnd.ms-excel.sheet.macroenabled.12", "xlsm"),
+  (
+    "application/vnd.ms-excel.sheet.binary.macroenabled.12",
+    "xlsb",
+  ),
+  (
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "pptx",
+  ),
+  ("application/vnd.ms-powerpoint", "ppt"),
+  (
+    "application/vnd.ms-powerpoint.presentation.macroenabled.12",
+    "pptm",
+  ),
+  ("application/vnd.oasis.opendocument.text", "odt"),
+  ("application/vnd.oasis.opendocument.spreadsheet", "ods"),
+  ("application/vnd.oasis.opendocument.presentation", "odp"),
+  ("application/rtf", "rtf"),
+  ("text/rtf", "rtf"),
+  ("application/epub+zip", "epub"),
+  ("text/csv", "csv"),
+];
 
-  normalized == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    || normalized == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    || normalized == "application/vnd.ms-excel"
-    || normalized == "application/msword"
-    || normalized == "application/rtf"
-    || normalized == "text/rtf"
-    || normalized == "application/vnd.oasis.opendocument.text"
+fn document_extension_from_content_type(content_type: &str) -> Option<&'static str> {
+  let media_type = media_type(content_type);
+  DOCUMENT_CONTENT_TYPE_TO_EXTENSION
+    .iter()
+    .find(|(x, _)| *x == media_type)
+    .map(|(_, extension)| *extension)
 }
 
-fn document_binary_match(bytes: &Bytes) -> bool {
-  bytes.starts_with(&[0x50, 0x4b, 0x03]) // base64: UEsD
-    || bytes.starts_with(&[0xd0, 0xcf, 0x11, 0xe0]) // base64: 0M8R4K
-}
+/// A ZIP signature under these is a real archive, not a mislabeled Office file.
+const ZIP_ARCHIVE_MEDIA_TYPES: [&str; 3] = [
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/java-archive",
+];
+
+/// The local file header every OOXML/ODF container starts with.
+const ZIP_SIGNATURE: &[u8] = b"PK\x03\x04";
+
+/// The OLE2/CFB header of legacy Office files (.doc, .xls, .ppt).
+const OLE2_SIGNATURE: &[u8] = &[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
 
 fn document_file_extension_match(filename: &str) -> bool {
   filename.ends_with(".docx")
@@ -37,22 +79,24 @@ fn document_file_extension_match(filename: &str) -> bool {
     || filename.ends_with(".xls")
 }
 
-pub fn has_document_signal(result: &RawPageResult) -> bool {
-  let is_document_content_type = document_content_type_match(&result.content_type);
-
-  let is_document_binary = match &result.content {
-    RawPageContent::Bytes(bytes) => document_binary_match(bytes),
-    RawPageContent::IndexFakeHTML(_, _) => false, // it is impossible to identify an indexed document
-    _ => false,
-  };
-
-  let is_document_file_extension = result
+/// Why a page goes to the document parser, or `None` if nothing says it is a document.
+pub fn document_signal(result: &RawPageResult) -> Option<&'static str> {
+  if document_extension_from_content_type(&result.content_type).is_some() {
+    return Some("content_type");
+  }
+  let media_type = media_type(&result.content_type);
+  if let RawPageContent::Bytes(bytes) = &result.content
+    && (bytes.starts_with(OLE2_SIGNATURE)
+      || (bytes.starts_with(ZIP_SIGNATURE)
+        && !ZIP_ARCHIVE_MEDIA_TYPES.contains(&media_type.as_str())))
+  {
+    return Some("bytes");
+  }
+  result
     .filename
-    .as_ref()
-    .map(|x| document_file_extension_match(x))
-    .unwrap_or(false);
-
-  is_document_content_type || is_document_binary || is_document_file_extension
+    .as_deref()
+    .is_some_and(document_file_extension_match)
+    .then_some("filename")
 }
 
 #[tracing::instrument(name = "parsers::document::parse_document", skip_all, err)]
@@ -65,13 +109,18 @@ pub fn parse_document(meta: &Meta, result: RawPageResult) -> Result<Document, Sc
           .as_deref()
           .map(|ext| ext.trim_start_matches('.'))
           .and_then(anydoc::Format::from_extension)
+          .or_else(|| {
+            document_extension_from_content_type(&result.content_type)
+              .and_then(anydoc::Format::from_extension)
+          })
       });
 
-      let markdown = anydoc::to_markdown_bytes(bytes.as_ref(), format).map_err(|e| {
-        ScrapeURLError::UnsupportedFileError {
-          reason: format!("failed to convert document: {e}"),
-        }
-      })?;
+      let markdown =
+        crate::document::document_to_markdown(bytes.as_ref(), format).map_err(|e| {
+          ScrapeURLError::UnsupportedFileError {
+            reason: format!("failed to convert document: {e}"),
+          }
+        })?;
       let html = markdown::to_html_with_options(&markdown, &markdown::Options::gfm())
         .map_err(|e| ScrapeURLError::Internal(e.to_string()))?;
 

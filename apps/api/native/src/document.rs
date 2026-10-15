@@ -51,8 +51,16 @@ pub fn convert_document_to_markdown(data: &[u8], extension_hint: Option<String>)
       .and_then(anydoc::Format::from_extension)
   });
 
-  let markdown = anydoc::to_markdown_bytes(data, format)
-    .map_err(|e| Error::new(Status::GenericFailure, e.to_string()))?;
+  document_to_markdown(data, format).map_err(|e| Error::new(Status::GenericFailure, e.to_string()))
+}
+
+/// Markdown for a document in `format` (detected from the bytes when `None`), with a
+/// DOCX's headers above its body and its footers below.
+pub(crate) fn document_to_markdown(
+  data: &[u8],
+  format: Option<anydoc::Format>,
+) -> std::result::Result<String, anydoc::ConvertError> {
+  let markdown = anydoc::to_markdown_bytes(data, format)?;
 
   if format != Some(anydoc::Format::Docx) {
     return Ok(markdown);
