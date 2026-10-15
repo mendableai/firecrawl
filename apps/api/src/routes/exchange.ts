@@ -253,6 +253,27 @@ exchangeRouter.delete(
   wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
 );
 
+exchangeRouter.get(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+exchangeRouter.post(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+exchangeRouter.patch(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+exchangeRouter.delete(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+
 exchangeRouter.post(
   "/retrieve",
   authMiddleware(RateLimiterMode.Exchange, { allowAgentManagedKey: true }),
