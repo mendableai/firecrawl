@@ -84,7 +84,7 @@ fn vertex_auth(
     if model.adapter_kind != AdapterKind::Vertex {
       return Ok(None);
     }
-    // Own task, like the GCS client calls (FIRE-86).
+    // Own task, like the GCS client calls: building these futures inline can overflow a tokio worker stack.
     let token = tokio::spawn(async {
       let credentials = vertex_credentials().await?;
       credentials.access_token().await.map_err(|e| e.to_string())
