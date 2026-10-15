@@ -53,8 +53,8 @@ import {
 import { wantsDeveloperCategory } from "../../search/developer";
 import { wantsGovCategory } from "../../search/gov";
 import {
-  indexDailyLimitMessage,
-  reserveIndexDailyCalls,
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
 } from "../../lib/index-daily-limit";
 import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
@@ -413,17 +413,14 @@ async function searchControllerInner(
       reservedKeylessCredits = projectedKeylessCredits;
     }
 
-    // Last gate before the search runs, so a refused request spends nothing.
     if (wantsGovCategory(categories)) {
-      const indexBudget = await reserveIndexDailyCalls(req.auth.team_id, {
-        gov: 1,
-      });
+      const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
       if (!indexBudget.ok) {
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
           success: false,
           code: "INDEX_DAILY_LIMIT",
-          error: indexDailyLimitMessage(indexBudget),
+          error: govIndexDailyLimitMessage(indexBudget),
         });
       }
     }

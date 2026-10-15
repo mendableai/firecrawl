@@ -215,7 +215,6 @@ export async function providerScrapeController(
   }
 
   if (result.status !== 200) {
-    // Only the daily index limit; other refusals are relayed unchanged.
     const refused = result.body as {
       code?: unknown;
       retryAfterSeconds?: unknown;

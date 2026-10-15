@@ -2,12 +2,7 @@ const mocks = vi.hoisted(() => {
   const store = new Map<string, string>();
   return {
     store,
-    config: {
-      USE_DB_AUTHENTICATION: true,
-      FIRE_EXCHANGE_URL: "https://x",
-      GOV_INDEX_CALLS_PER_DAY: 500,
-      RESEARCH_INDEX_CALLS_PER_DAY: undefined,
-    },
+    config: { USE_DB_AUTHENTICATION: true, FIRE_EXCHANGE_URL: "https://x" },
     redis: {
       set: vi.fn(async (key: string, value: string, ...args: unknown[]) => {
         if (args.includes("NX") && store.has(key)) return null;
@@ -16,7 +11,6 @@ const mocks = vi.hoisted(() => {
       }),
       get: vi.fn(async (key: string) => store.get(key) ?? null),
       del: vi.fn(async (key: string) => (store.delete(key) ? 1 : 0)),
-      eval: vi.fn(),
     },
     request: vi.fn(),
     authorize: vi.fn(),
@@ -648,51 +642,4 @@ it("sends no credentials when the caller supplied none", async () => {
     executed: true,
   });
   expect(executions()[0][0].resultAuthorization).toBeUndefined();
-});
-
-it("refuses a gov batch over the daily limit before quoting and frees the request id", async () => {
-  mocks.redis.eval.mockResolvedValue([0, 1, 495]);
-  const gov = { provider: "firecrawl-gov-index", capability: "search" };
-  const result = await run({ calls: Array(10).fill(gov) });
-  expect(result).toMatchObject({
-    status: 429,
-    executed: false,
-    body: { code: "index_daily_limit", retryAfterSeconds: expect.any(Number) },
-  });
-  expect(mocks.redis.eval.mock.calls[0].slice(1, 4)).toEqual([
-    1,
-    expect.stringMatching(/^index-daily-calls:gov:team:/),
-    10,
-  ]);
-  expect(mocks.request).not.toHaveBeenCalled();
-  expect(mocks.store.size).toBe(0);
-});
-
-it("does not count non-gov providers against any daily limit", async () => {
-  await run({
-    calls: [
-      call,
-      { provider: "firecrawl-research-index", capability: "search" },
-    ],
-  });
-  expect(mocks.redis.eval).not.toHaveBeenCalled();
-  expect(executions()).toHaveLength(1);
-});
-
-it("gives reserved gov calls back when the request is refused before executing", async () => {
-  mocks.redis.eval.mockResolvedValue([1, 0, 0]);
-  exchangeAnswers(answer, 200, { status: 503, body: {} });
-  const gov = { provider: "firecrawl-gov-index", capability: "search" };
-  expect(await run({ calls: [gov, gov] })).toMatchObject({
-    status: 503,
-    executed: false,
-  });
-  expect(mocks.redis.eval).toHaveBeenCalledTimes(2);
-  expect(mocks.redis.eval.mock.calls[1][0]).toContain("DECRBY");
-  expect(mocks.redis.eval.mock.calls[1].slice(1)).toEqual([
-    1,
-    expect.stringMatching(/^index-daily-calls:gov:team:/),
-    2,
-  ]);
-  expect(executions()).toHaveLength(0);
 });

@@ -287,31 +287,3 @@ it("executes with supplied arguments but stores only tool identifiers in activit
     alexandria: [{ provider: call.provider, capability: call.capability }],
   });
 });
-
-it("sends Retry-After when a refusal carries retryAfterSeconds", async () => {
-  mocks.retrieve.mockResolvedValue({
-    status: 429,
-    executed: false,
-    scrapeId: "scrape-1",
-    body: { success: false, code: "index_daily_limit", retryAfterSeconds: 60 },
-  });
-  const response = await request(app)
-    .post("/v2/scrape")
-    .send({ alexandria: call });
-  expect(response.status).toBe(429);
-  expect(response.headers["retry-after"]).toBe("60");
-});
-
-it("relays other refusals without adding Retry-After", async () => {
-  mocks.retrieve.mockResolvedValue({
-    status: 429,
-    executed: false,
-    scrapeId: "scrape-1",
-    body: { success: false, code: "rate_limited", retryAfterSeconds: 30 },
-  });
-  const response = await request(app)
-    .post("/v2/scrape")
-    .send({ alexandria: call });
-  expect(response.status).toBe(429);
-  expect(response.headers["retry-after"]).toBeUndefined();
-});

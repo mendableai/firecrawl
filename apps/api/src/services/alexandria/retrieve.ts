@@ -4,9 +4,8 @@ import { config } from "../../config";
 import type { TeamFlags } from "../../controllers/v2/types";
 import { reportExchangeUsageBilling } from "../../lib/exchange";
 import {
-  indexCallsForProviders,
-  indexDailyLimitMessage,
-  reserveIndexDailyCalls,
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
 } from "../../lib/index-daily-limit";
 import { logger } from "../../lib/logger";
 import {
@@ -228,10 +227,9 @@ export async function retrieveProviders(input: {
     apiKeyId: input.apiKeyId,
   };
   const remaining = () => Math.max(1, record.deadline - Date.now());
-  // Index calls reserved below are given back on any exit before execution.
-  let releaseIndexCalls = async () => {};
+  let releaseGovCalls: (() => Promise<void>) | undefined;
   const refuse = async (response: ExchangeResponse, executed = false) => {
-    if (!executed) await releaseIndexCalls();
+    if (!executed && releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key);
     return { ...response, executed, scrapeId: input.scrapeId };
   };
@@ -248,18 +246,20 @@ export async function retrieveProviders(input: {
     );
     if (denied) return refuse(denied);
 
-    const indexBudget = await reserveIndexDailyCalls(
-      input.teamId,
-      indexCallsForProviders(input.calls),
-    );
-    if (!indexBudget.ok)
-      return refuse(
-        refusal(429, indexDailyLimitMessage(indexBudget), {
-          code: "index_daily_limit",
-          retryAfterSeconds: indexBudget.retryAfterSeconds,
-        }),
-      );
-    releaseIndexCalls = indexBudget.release;
+    const govCalls = input.calls.filter(
+      call => call.provider === "firecrawl-gov-index",
+    ).length;
+    if (govCalls > 0) {
+      const indexBudget = await reserveGovIndexCalls(input.teamId, govCalls);
+      if (!indexBudget.ok)
+        return refuse(
+          refusal(429, govIndexDailyLimitMessage(indexBudget), {
+            code: "index_daily_limit",
+            retryAfterSeconds: indexBudget.retryAfterSeconds,
+          }),
+        );
+      releaseGovCalls = indexBudget.release;
+    }
 
     const quote = await exchangeRequest({
       teamId: input.teamId,
@@ -338,7 +338,7 @@ export async function retrieveProviders(input: {
       lockId = hold.lockId;
     }
   } catch (error) {
-    await releaseIndexCalls();
+    if (releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key).catch(() => {});
     throw error;
   }

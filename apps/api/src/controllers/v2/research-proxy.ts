@@ -9,9 +9,8 @@ import {
 } from "../../lib/research-upstream";
 import { chargeKeylessCredits } from "../../lib/keyless";
 import {
-  indexDailyLimitMessage,
-  indexForEndpointKind,
-  reserveIndexDailyCalls,
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
 } from "../../lib/index-daily-limit";
 import { billTeam } from "../../services/billing/credit_billing";
 import { getEffectiveSearchForcedKind } from "../../lib/safe-mode";
@@ -358,24 +357,19 @@ function createResearchController(
       api_key_id: authedReq.acuc?.api_key_id ?? null,
     });
 
-    // After the request is on record, as on /v2/search, so a failed log spends
-    // nothing; given back below if the index is not configured.
-    let releaseIndexCall = async () => {};
-    const index = indexForEndpointKind(endpoint.kind);
-    if (index) {
-      const indexBudget = await reserveIndexDailyCalls(authedReq.auth.team_id, {
-        [index]: 1,
-      });
+    let releaseGovCall: (() => Promise<void>) | undefined;
+    if (endpoint.kind === "gov_search") {
+      const indexBudget = await reserveGovIndexCalls(authedReq.auth.team_id, 1);
       if (!indexBudget.ok) {
         chargeKeylessCredits(authedReq.auth.team_id, 0).catch(() => {});
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
           success: false,
           code: "INDEX_DAILY_LIMIT",
-          error: indexDailyLimitMessage(indexBudget),
+          error: govIndexDailyLimitMessage(indexBudget),
         });
       }
-      releaseIndexCall = indexBudget.release;
+      releaseGovCall = indexBudget.release;
     }
 
     let statusCode = 500;
@@ -391,7 +385,7 @@ function createResearchController(
         queryKeys,
       );
       if (!upstream) {
-        await releaseIndexCall();
+        if (releaseGovCall) await releaseGovCall();
         statusCode = 404;
         error = "Research service is not configured";
         return res.status(404).end();
