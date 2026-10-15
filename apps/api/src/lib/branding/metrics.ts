@@ -4,7 +4,7 @@ import { Counter, Histogram } from "prom-client";
 
 export const brandingRoutedTotal = new Counter({
   name: "firecrawl_branding_routed_total",
-  help: "Branding requests by the model they were sent to and why: jev (rollout), or llm when the team isn't in the rollout, Jev was unavailable, or Jev was unsure of the logo; counted before the model answers",
+  help: "Each branding request once, by the model it was finally sent to and why: jev (rollout), or llm when the team isn't in the rollout, Jev was unavailable (failed or breaker open), or Jev was unsure of the logo; every Jev attempt is in firecrawl_branding_jev_calls_total",
   labelNames: ["model", "reason"],
 });
 
