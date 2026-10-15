@@ -3,6 +3,10 @@ import { z } from "zod";
 import { config } from "../../config";
 import type { TeamFlags } from "../../controllers/v2/types";
 import { reportExchangeUsageBilling } from "../../lib/exchange";
+import {
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
+} from "../../lib/index-daily-limit";
 import { logger } from "../../lib/logger";
 import {
   autumnService,
@@ -223,7 +227,9 @@ export async function retrieveProviders(input: {
     apiKeyId: input.apiKeyId,
   };
   const remaining = () => Math.max(1, record.deadline - Date.now());
+  let releaseGovCalls: (() => Promise<void>) | undefined;
   const refuse = async (response: ExchangeResponse, executed = false) => {
+    if (!executed && releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key);
     return { ...response, executed, scrapeId: input.scrapeId };
   };
@@ -239,6 +245,21 @@ export async function retrieveProviders(input: {
       input.orgId,
     );
     if (denied) return refuse(denied);
+
+    const govCalls = input.calls.filter(
+      call => call.provider === "firecrawl-gov-index",
+    ).length;
+    if (govCalls > 0) {
+      const indexBudget = await reserveGovIndexCalls(input.teamId, govCalls);
+      if (!indexBudget.ok)
+        return refuse(
+          refusal(429, govIndexDailyLimitMessage(indexBudget), {
+            code: "index_daily_limit",
+            retryAfterSeconds: indexBudget.retryAfterSeconds,
+          }),
+        );
+      releaseGovCalls = indexBudget.release;
+    }
 
     const quote = await exchangeRequest({
       teamId: input.teamId,
@@ -317,6 +338,7 @@ export async function retrieveProviders(input: {
       lockId = hold.lockId;
     }
   } catch (error) {
+    if (releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key).catch(() => {});
     throw error;
   }

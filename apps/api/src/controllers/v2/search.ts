@@ -52,6 +52,10 @@ import {
 } from "../../lib/key-restriction";
 import { wantsDeveloperCategory } from "../../search/developer";
 import { wantsGovCategory } from "../../search/gov";
+import {
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
+} from "../../lib/index-daily-limit";
 import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
@@ -407,6 +411,18 @@ async function searchControllerInner(
           .json(await keylessLimitBody(req.auth.team_id, "v2_search", req));
       }
       reservedKeylessCredits = projectedKeylessCredits;
+    }
+
+    if (wantsGovCategory(categories)) {
+      const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
+      if (!indexBudget.ok) {
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return res.status(429).json({
+          success: false,
+          code: "INDEX_DAILY_LIMIT",
+          error: govIndexDailyLimitMessage(indexBudget),
+        });
+      }
     }
 
     const result = await executeSearch(
