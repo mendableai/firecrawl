@@ -131,6 +131,7 @@ impl Engine for PlaywrightEngine {
       timezone: None,
       filename: None,
       audio_cookies: Vec::new(),
+      postprocessors_used: None,
     }))
   }
 }

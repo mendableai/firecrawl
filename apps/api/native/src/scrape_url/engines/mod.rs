@@ -2,7 +2,10 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use self::{fetch::FetchEngine, fire_engine::FireEngine, playwright::PlaywrightEngine};
+use self::{
+  fetch::FetchEngine, fire_engine::FireEngine, playwright::PlaywrightEngine,
+  wikipedia::WikipediaEngine, x_twitter::XTwitterEngine,
+};
 
 use tracing::Instrument;
 
@@ -17,6 +20,11 @@ use super::{
 mod fetch;
 mod fire_engine;
 mod playwright;
+mod special;
+mod wikipedia;
+mod x_twitter;
+
+pub use self::special::{get_special_engine, preempts_index, scrape_special};
 
 pub trait Engine {
   const NAME: &'static str;
@@ -36,6 +44,8 @@ pub enum EngineKind {
   Fetch(FetchEngine),
   FireEngine(FireEngine),
   Playwright(PlaywrightEngine),
+  Wikipedia(WikipediaEngine),
+  XTwitter(XTwitterEngine),
 }
 
 impl EngineKind {
@@ -44,6 +54,8 @@ impl EngineKind {
       EngineKind::Fetch(_) => fetch::FetchEngine::NAME,
       EngineKind::FireEngine(_) => fire_engine::FireEngine::NAME,
       EngineKind::Playwright(_) => playwright::PlaywrightEngine::NAME,
+      EngineKind::Wikipedia(_) => WikipediaEngine::NAME,
+      EngineKind::XTwitter(_) => XTwitterEngine::NAME,
     }
   }
 
@@ -52,6 +64,8 @@ impl EngineKind {
       EngineKind::Fetch(_) => fetch::FetchEngine::FEATURES,
       EngineKind::FireEngine(_) => fire_engine::FireEngine::FEATURES,
       EngineKind::Playwright(_) => playwright::PlaywrightEngine::FEATURES,
+      EngineKind::Wikipedia(_) => WikipediaEngine::FEATURES,
+      EngineKind::XTwitter(_) => XTwitterEngine::FEATURES,
     }
   }
 
@@ -70,6 +84,8 @@ impl EngineKind {
       EngineKind::Fetch(_) => fetch::FetchEngine::SPECIAL_REGEX,
       EngineKind::FireEngine(_) => fire_engine::FireEngine::SPECIAL_REGEX,
       EngineKind::Playwright(_) => playwright::PlaywrightEngine::SPECIAL_REGEX,
+      EngineKind::Wikipedia(_) => WikipediaEngine::SPECIAL_REGEX,
+      EngineKind::XTwitter(_) => XTwitterEngine::SPECIAL_REGEX,
     }
   }
 
@@ -90,6 +106,8 @@ impl EngineKind {
         EngineKind::Fetch(x) => x.scrape(meta, proxy).await,
         EngineKind::FireEngine(x) => x.scrape(meta, proxy).await,
         EngineKind::Playwright(x) => x.scrape(meta, proxy).await,
+        EngineKind::Wikipedia(x) => x.scrape(meta, proxy).await,
+        EngineKind::XTwitter(x) => x.scrape(meta, proxy).await,
       }
     }
     .instrument(span.clone())

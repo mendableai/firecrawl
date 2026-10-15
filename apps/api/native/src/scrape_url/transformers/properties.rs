@@ -267,6 +267,7 @@ async fn rendered_page(meta: &Meta, html: &str) -> Document {
     audio_cookies: Vec::new(),
     proxy_used: ScrapeProxy::Basic,
     timezone: None,
+    postprocessors_used: None,
     filename: None,
   };
   parse_engine_result(meta, result).await.unwrap()

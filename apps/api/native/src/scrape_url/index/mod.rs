@@ -437,6 +437,7 @@ impl Index {
         timezone: None,
         filename: None,
         audio_cookies: Vec::new(),
+        postprocessors_used: None,
       }))
     } else {
       if let IndexEntrySource::Cache(index_cache) = source {

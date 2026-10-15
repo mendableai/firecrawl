@@ -81,6 +81,10 @@ pub enum ScrapeURLError {
 
   #[error("actions are not supported by any available engines")]
   ActionsNotSupportedError,
+
+  #[error("X/Twitter scraping requires XAI_API_KEY to be configured.")]
+  XTwitterConfigurationError,
+
   #[error("{0} is not supported yet")]
   NotSupported(&'static str),
 
@@ -221,6 +225,7 @@ impl ScrapeURLError {
       Self::ActionsNotSupportedError => ScrapeErrorPayload::ActionsNotSupported {
         message: "Actions are not supported by any available engines. Actions require Fire Engine (fire-engine) to be enabled.".to_string(),
       },
+      Self::XTwitterConfigurationError => ScrapeErrorPayload::XTwitterConfiguration { message },
       Self::Transformer(TransformerError::JsonContentTooLarge) => {
         ScrapeErrorPayload::JsonContentTooLarge { message }
       }
@@ -377,6 +382,8 @@ pub enum ScrapeErrorPayload {
 
   #[serde(rename = "SCRAPE_PROMPT_INJECTION_DETECTED")]
   PromptInjectionDetected { message: String },
+  #[serde(rename = "SCRAPE_X_TWITTER_CONFIGURATION_ERROR")]
+  XTwitterConfiguration { message: String },
 
   #[serde(rename = "UNKNOWN_ERROR")]
   Unknown { message: String },

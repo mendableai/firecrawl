@@ -320,6 +320,7 @@ impl FireEngine {
         })
         .flatten()
         .collect(),
+      postprocessors_used: None,
     }))
   }
 }
