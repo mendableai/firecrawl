@@ -67,6 +67,15 @@ function isZeroDataRetentionContext(ctx: Context): boolean {
   return ctx.getValue(ZERO_DATA_RETENTION_CONTEXT_KEY) === true;
 }
 
+/**
+ * Whether the caller runs under `withZeroDataRetention` (or a ZDR `withSpan`),
+ * for code that must also switch off telemetry it controls directly, such as
+ * the AI SDK's `experimental_telemetry`.
+ */
+export function isZeroDataRetentionActive(): boolean {
+  return isZeroDataRetentionContext(context.active());
+}
+
 // Traces flagged ZDR after their root span started (a `*.zero_data_retention`
 // attribute set from inside a *recording* span). Descendants started afterwards
 // are not recorded and spans of these traces still in flight are dropped when
@@ -273,6 +282,9 @@ function cleanAttributes(
   return cleaned;
 }
 
+// Spans marked failed by `recordSpanException`; `withSpan` keeps their error status.
+const erroredSpans = new WeakSet<Span>();
+
 interface SpanOptions {
   attributes?: SpanAttributeInput;
   kind?: SpanKind;
@@ -297,7 +309,9 @@ export async function withSpan<T>(
       async span => {
         try {
           const result = await fn(span);
-          span.setStatus({ code: SpanStatusCode.OK });
+          if (!erroredSpans.has(span)) {
+            span.setStatus({ code: SpanStatusCode.OK });
+          }
           return result;
         } catch (error) {
           recordSpanException(span, error);
@@ -315,6 +329,7 @@ export async function withSpan<T>(
  * failures that are handled (returned) rather than thrown out of `withSpan`.
  */
 export function recordSpanException(span: Span, error: unknown): void {
+  erroredSpans.add(span);
   span.recordException(error instanceof Error ? error : String(error));
   span.setStatus({
     code: SpanStatusCode.ERROR,

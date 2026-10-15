@@ -121,6 +121,34 @@ export class SSLError extends TransportableError {
   }
 }
 
+type ExchangeRefusalCode =
+  | "THIRD_PARTY_DATA_NOT_FOUND"
+  | "THIRD_PARTY_DATA_UNSUPPORTED_URL"
+  | "THIRD_PARTY_DATA_NOT_ENABLED"
+  | "THIRD_PARTY_DATA_ENRICHMENT_NOT_ENABLED";
+
+// A definitive answer from the Exchange about this URL: the provider holds no
+// record for it, does not serve it, or the team is not entitled to the
+// provider. Another attempt cannot change it, so it surfaces as-is instead of
+// as an engine failure.
+export class ExchangeRefusedError extends TransportableError {
+  constructor(code: ExchangeRefusalCode, message: string) {
+    super(code, message);
+  }
+
+  static deserialize(
+    code: ErrorCodes,
+    data: ReturnType<typeof this.prototype.serialize>,
+  ) {
+    const x = new ExchangeRefusedError(
+      code as ExchangeRefusalCode,
+      data.message,
+    );
+    x.stack = data.stack;
+    return x;
+  }
+}
+
 export class SiteError extends TransportableError {
   constructor(public errorCode: string) {
     const errorExplanations: Record<string, string> = {
@@ -636,7 +664,7 @@ export class PromptInjectionDetectedError extends TransportableError {
     super(
       "SCRAPE_PROMPT_INJECTION_DETECTED",
       message ??
-        "The scraped page content appears to contain a prompt injection attempt, so JSON extraction was aborted for safety.",
+        "The scraped page content appears to contain a prompt injection attempt, so the scrape was aborted for safety.",
     );
   }
 

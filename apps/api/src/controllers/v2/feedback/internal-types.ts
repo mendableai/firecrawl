@@ -42,18 +42,17 @@ export type FeedbackJobRow = {
   created_at: string;
   is_successful: boolean | null;
   options: unknown;
-  /** Total results returned by the job (search only; combined across web/news/images). */
-  num_results?: number | null;
   /**
-   * Per-source result counts (search only), e.g. `{"web":3,"images":0}`. Null on
-   * rows written before the column existed, and on searches logged by v0/v1.
+   * Per-source result counts (search only), e.g. `{"web":3,"images":0}`, read
+   * from the Bigtable feedback job. Null on jobs written before the field
+   * existed; `{}` means the search ran and every group was empty.
    */
   num_results_by_source?: unknown;
   /**
    * Which vertical served each position (search only), e.g.
    * `{"web":{"1":"developer"}}`. Sparse: untagged results and untagged groups
-   * are absent. Null on rows written before the column existed, on searches
-   * logged by v0/v1, and on zero-data-retention searches.
+   * are absent. Null on jobs written before the field existed and on
+   * zero-data-retention searches.
    */
   result_categories?: unknown;
   feedback_deadline_ms?: number;
@@ -85,7 +84,7 @@ export type FeedbackRecordResult = {
 export type RefundPolicySnapshot = {
   version: "feedback_refund_v1";
   enabled: boolean;
-  endpoint: EndpointFeedbackEndpoint;
+  endpoint: EndpointFeedbackEndpoint | "alexandria";
   mode: "none" | "flat" | "percentage_with_cap";
   refundableRatings: FeedbackRating[];
   matchedReason: string;

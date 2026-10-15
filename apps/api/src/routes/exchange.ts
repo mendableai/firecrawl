@@ -8,6 +8,7 @@ import {
 import express, { Request, Response } from "express";
 import { Agent, fetch } from "undici";
 import { config } from "../config";
+import { recordAlexandriaActivity } from "../lib/alexandria-activity";
 import { logger as rootLogger } from "../lib/logger";
 import type { RequestWithAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
@@ -43,7 +44,10 @@ function upstreamBase(): string | null {
 
 function exchangeProxy(
   timeout: number,
-  options: { requiresRetrieveFlag?: boolean } = {},
+  options: {
+    requiresRetrieveFlag?: boolean;
+    opensFeedbackWindow?: boolean;
+  } = {},
 ) {
   const requiresRetrieveFlag = options.requiresRetrieveFlag !== false;
   const dispatcher = dispatcherFor(timeout);
@@ -85,6 +89,10 @@ function exchangeProxy(
           ),
           ...(hasBody ? { "content-type": "application/json" } : {}),
           "x-exchange-team-id": authedReq.auth.team_id,
+          // Built here, never forwarded from the caller: the connectors whitelist is this flag.
+          ...(authedReq.acuc?.flags?.exchangeRetrieve
+            ? { "x-exchange-connectors": "true" }
+            : {}),
         },
         body: hasBody ? JSON.stringify(req.body ?? {}) : undefined,
         signal: AbortSignal.timeout(timeout),
@@ -97,6 +105,10 @@ function exchangeProxy(
       }
 
       const text = await upstream.text();
+      // Awaited so feedback sent right after this response sees the window.
+      if (options.opensFeedbackWindow && upstream.ok) {
+        await recordAlexandriaActivity(authedReq.auth.team_id);
+      }
       let body: unknown;
       try {
         body = text ? JSON.parse(text) : null;
@@ -157,8 +169,15 @@ export const exchangeRouter = express.Router();
 // Dashboard and publisher routes below stay on the flat Labs limit.
 exchangeRouter.get(
   "/discover{/*path}",
-  authMiddleware(RateLimiterMode.ExchangeDiscover),
-  wrap(exchangeProxy(DISCOVER_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+  authMiddleware(RateLimiterMode.ExchangeDiscover, {
+    allowAgentManagedKey: true,
+  }),
+  wrap(
+    exchangeProxy(DISCOVER_TIMEOUT_MS, {
+      requiresRetrieveFlag: false,
+      opensFeedbackWindow: true,
+    }),
+  ),
 );
 
 // These read-only discovery routes remain authenticated; they do not execute paid tools.
@@ -193,9 +212,50 @@ exchangeRouter.post(
   wrap(exchangeProxy(DISCOVER_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );
 
+exchangeRouter.get(
+  "/enrichment/preferences",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+exchangeRouter.put(
+  "/enrichment/preferences",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+exchangeRouter.post(
+  "/enrichment/plan",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+
+// A team's own MCP connectors (Alexandria connectors): the catalogue, and adding, listing,
+// syncing, changing and removing its connections. Behind the exchangeRetrieve flag, the same
+// flag that tells Exchange the team may use them. Connecting and syncing reach the team's server
+// and list its tools before answering, so writes get the longer timeout.
+exchangeRouter.get(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+exchangeRouter.post(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(RETRIEVE_TIMEOUT_MS)),
+);
+exchangeRouter.patch(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(RETRIEVE_TIMEOUT_MS)),
+);
+exchangeRouter.delete(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+
 exchangeRouter.post(
   "/retrieve",
-  authMiddleware(RateLimiterMode.Exchange),
+  authMiddleware(RateLimiterMode.Exchange, { allowAgentManagedKey: true }),
   wrap((req, res) =>
     providerScrapeController(req as RequestWithAuth<any, any, any>, res, true),
   ),
@@ -257,7 +317,7 @@ exchangeRouter.get(
 
 exchangeRouter.post(
   "/publisher/bounties",
-  authMiddleware(RateLimiterMode.Labs),
+  authMiddleware(RateLimiterMode.Labs, { allowAgentManagedKey: true }),
   bountyBlocklistMiddleware,
   wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );

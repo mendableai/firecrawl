@@ -15,7 +15,6 @@ import {
   RefundPolicySnapshot,
   ValuableResultInput,
 } from "./internal-types";
-import { recordJobStorePostgresFallback } from "../../../lib/job-store-fallback";
 
 type DbError = { code?: string } & Record<string, unknown>;
 
@@ -36,8 +35,8 @@ type ValuableResultDocument = {
   /**
    * Which vertical served this result, as the response tagged it — `developer`
    * for an index-served hit, `github` / `research` / `pdf` for a URL-derived
-   * one. Absent when the result carried no category, or when the search row
-   * predates `result_categories`. This is the attribution half of the label:
+   * one. Absent when the result carried no category, or when the feedback job
+   * predates `resultCategories`. This is the attribution half of the label:
    * `requestedSource` says where in `data` the result sat, `category` says who
    * answered.
    */
@@ -72,10 +71,10 @@ function searchFeedbackResultDocumentId(
 }
 
 /**
- * Number of results in each `data` group, read from the persisted per-source
- * counts. Returns null when the row predates `num_results_by_source` or carries
- * an unrecognised shape, so callers fall back to a looser bound rather than
- * silently treating every group as empty.
+ * Number of results each `data` group returned, as the feedback job recorded
+ * it. Returns null when the job predates the field or carries an unrecognised
+ * shape — which is not the same as an empty object, meaning the search ran and
+ * every group was empty.
  */
 function resultCountsBySource(
   job: FeedbackJobRow,
@@ -85,6 +84,9 @@ function resultCountsBySource(
     return null;
   }
 
+  // An object with no usable entries still counts as known: the search ran
+  // and no group this API can address returned anything, which rejects every
+  // position. Only a missing or non-object value is unknown.
   const entries = Object.entries(counts as Record<string, unknown>).filter(
     (entry): entry is [SearchResultType, number] =>
       entry[0] in RESULT_DOCUMENT_TYPES &&
@@ -92,14 +94,13 @@ function resultCountsBySource(
       Number.isInteger(entry[1]) &&
       entry[1] >= 0,
   );
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
+  return Object.fromEntries(entries);
 }
 
 /**
- * Vertical that served each position, read from the persisted per-result
- * categories. Returns null when the row predates `result_categories` or
- * carries an unrecognised shape — which is not the same as an empty object,
- * meaning the search ran with nothing tagged.
+ * Vertical that served each position, as the feedback job recorded it. Returns
+ * null when the job predates the field or carries an unrecognised shape, which
+ * again is not the same as an empty object.
  */
 function resultCategoriesBySource(
   job: FeedbackJobRow,
@@ -136,98 +137,23 @@ function resultCategoriesBySource(
 }
 
 /**
- * Source types the search requested, normalised from the stored request body.
- * Returns null when the shape is unrecognised, so callers fall back to a looser
- * bound instead of guessing.
- *
- * "Unrecognised" includes rows whose request body was never persisted at all:
- * zero-data-retention searches log only `{enterprise}`, and rows served from
- * the Bigtable fast path carry no options. Those say nothing about which
- * sources were asked for, and assuming web-only would bound every news and
- * images group to 0 — silently discarding every legitimate label from those
- * groups. Unknown is the safe answer; the looser count/limit bound still
- * applies.
- */
-function requestedSourceTypes(job: FeedbackJobRow): Set<string> | null {
-  if (job.zero_data_retention) return null;
-
-  const options = job.options as
-    | { sources?: unknown; enterprise?: unknown }
-    | null
-    | undefined;
-  if (options === null || options === undefined) return null;
-
-  const sources = options.sources;
-  if (sources === undefined || sources === null) {
-    // ZDR rows reaching this through PostgreSQL keep only `enterprise`, so the
-    // absent `sources` is redaction rather than the ["web"] prefault.
-    const enterprise = options.enterprise;
-    if (
-      Array.isArray(enterprise) &&
-      enterprise.some(kind => kind === "zdr" || kind === "anon")
-    ) {
-      return null;
-    }
-    // `sources` prefaults to ["web"], so an absent value means web-only.
-    return new Set(["web"]);
-  }
-  if (!Array.isArray(sources)) return null;
-
-  const types = sources.map(entry =>
-    typeof entry === "string"
-      ? entry
-      : (entry as { type?: unknown } | null)?.type,
-  );
-  return types.every((type): type is string => typeof type === "string")
-    ? new Set(types)
-    : null;
-}
-
-/**
  * Highest 1-indexed position addressable in `data[source]`, or null when the
- * job row carries no usable bound.
+ * job carries no usable bound.
  *
- * Prefers the exact per-source count, which bounds every group exactly.
- *
- * Rows written before that column existed fall back to `min(limit, num_results)`
- * per group — each group is sliced to `limit` independently in
- * `search/execute.ts`, so that bounds a group even though the combined
- * `num_results` does not — and a source the request never asked for is bounded
- * to 0, since it cannot have returned anything.
- *
- * That fallback is deliberately not exact: a source that *was* requested but
- * returned nothing still gets a positive bound, so a hallucinated position in
- * an empty group can slip through. Reconstructing the real count is impossible
- * for those rows (the response bodies live in GCS, not Postgres). The exposure
- * is bounded by SEARCH_FEEDBACK_MAX_AGE_SEC — feedback is only accepted within ~2
- * minutes of the search — so this path only covers searches run in the couple
- * of minutes spanning the migration deploy, and closes on its own after that.
+ * The per-source counts bound every group exactly, so there is no looser
+ * fallback to reach for: a group the counts do not mention returned nothing
+ * and has no valid position. Null means the job predates the field — feedback
+ * is only accepted within SEARCH_FEEDBACK_MAX_AGE_SEC of the search, so that
+ * only covers searches run in the couple of minutes spanning the deploy, and
+ * closes on its own.
  */
 function maxResultPosition(
   job: FeedbackJobRow,
   source: SearchResultType,
 ): number | null {
   const counts = resultCountsBySource(job);
-  if (counts !== null) return counts[source] ?? 0;
-
-  // Without per-source counts, the requested source list is the only thing
-  // separating "this group was empty" from "this group is unbounded".
-  const requested = requestedSourceTypes(job);
-  if (requested !== null && !requested.has(source)) return 0;
-
-  const numResults =
-    typeof job.num_results === "number" &&
-    Number.isInteger(job.num_results) &&
-    job.num_results >= 0
-      ? job.num_results
-      : null;
-  if (numResults === null) return null;
-
-  const limit = (job.options as { limit?: unknown } | null)?.limit;
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit <= 0) {
-    return numResults;
-  }
-  return Math.min(numResults, limit);
+  if (counts === null) return null;
+  return counts[source] ?? 0;
 }
 
 function valuableResultDocuments(
@@ -238,7 +164,7 @@ function valuableResultDocuments(
 
   // Rejects hallucinated positions, which would otherwise be stored as
   // false-positive relevance labels. Zero is a real bound: a group that
-  // returned nothing — or was never requested — has no valuable positions.
+  // returned nothing has no valuable positions.
   const maxPositions = new Map<SearchResultType, number | null>();
   const seen = new Set<string>();
   const categories = resultCategoriesBySource(job);
@@ -280,13 +206,6 @@ function valuableResultDocuments(
   });
 }
 
-const JOB_TABLES = {
-  search: schema.searches,
-  scrape: schema.scrapes,
-  parse: schema.parses,
-  map: schema.maps,
-} as const;
-
 function feedbackMetadata(
   options: FeedbackRecordOptions,
   valuableResultDocs: ValuableResultDocument[],
@@ -314,188 +233,49 @@ function feedbackMetadata(
   };
 }
 
-/**
- * Fills in the search columns the Bigtable feedback record does not carry.
- *
- * The Bigtable row holds what the refund and window checks need — team,
- * endpoint, deadline, credits — and nothing about the results themselves.
- * Position feedback needs three more columns to bound and attribute each
- * `{source, position}`, so they are read separately, and only for a caller
- * that actually sent positions.
- *
- * A miss here leaves the job as the fast path returned it, which keeps the
- * established "unknown bound" behaviour rather than discarding the labels:
- * `logSearch` writes the Bigtable record before the `searches` row, so a
- * caller fast enough to beat that insert would otherwise lose real feedback.
- */
-type SearchResultColumns = {
-  options: unknown;
-  num_results: number | null;
-  num_results_by_source: unknown;
-  result_categories: unknown;
-};
-
-function selectSearchResultColumns(
-  conn: typeof db | typeof dbRr,
-  jobId: string,
-  dbTeamId: string,
-): Promise<SearchResultColumns[]> {
-  return conn
-    .select({
-      options: schema.searches.options,
-      num_results: schema.searches.num_results,
-      num_results_by_source: schema.searches.num_results_by_source,
-      result_categories: schema.searches.result_categories,
-    })
-    .from(schema.searches)
-    .where(
-      and(eq(schema.searches.id, jobId), eq(schema.searches.team_id, dbTeamId)),
-    )
-    .limit(1) as unknown as Promise<SearchResultColumns[]>;
-}
-
-async function withSearchResultColumns(
-  job: FeedbackJobRow,
-  jobId: string,
-  dbTeamId: string,
-): Promise<FeedbackJobRow> {
-  let row: SearchResultColumns | null = null;
-
-  try {
-    [row] = await selectSearchResultColumns(dbRr, jobId, dbTeamId);
-  } catch (error) {
-    // A replica error says nothing about whether the row exists, and dropping
-    // the bounds on it would accept any position. Ask the primary before
-    // giving them up.
-    try {
-      [row] = await selectSearchResultColumns(db, jobId, dbTeamId);
-    } catch (retryError) {
-      logger.warn("Could not read search columns for feedback positions", {
-        error,
-        retryError,
-        jobId,
-        module: "feedback-store",
-        method: "withSearchResultColumns",
-      });
-      return job;
-    }
-  }
-
-  // No row is the expected Bigtable-before-PostgreSQL race — `logSearch`
-  // writes the feedback record first, so a prompt caller can arrive between
-  // the two. Not an anomaly, so not logged; the positions stay unbounded
-  // rather than being discarded.
-  if (!row) return job;
-
-  return {
-    ...job,
-    options: row.options ?? null,
-    num_results: row.num_results ?? null,
-    num_results_by_source: row.num_results_by_source ?? null,
-    result_categories: row.result_categories ?? null,
-  };
-}
-
 export async function lookupFeedbackJob(
   endpoint: EndpointFeedbackEndpoint,
   jobId: string,
   dbTeamId: string,
-  /**
-   * Whether the caller sent `valuableResults`. Only then does the Bigtable
-   * fast path need the supplementary read above; a rating-only submission —
-   * the common case — is served entirely from Bigtable as before.
-   */
-  needsSearchResults = false,
 ): Promise<FeedbackJobRow | null> {
-  let bigtableFailed = false;
+  let job;
   try {
-    const job = await readFeedbackJob(jobId);
-    if (job) {
-      const storedEndpoint = endpointForRefundClass(job.refundClass);
-      if (job.teamId !== dbTeamId || storedEndpoint !== endpoint) return null;
-
-      const feedbackWindowSec =
-        endpoint === "search"
-          ? config.SEARCH_FEEDBACK_MAX_AGE_SEC
-          : config.FEEDBACK_MAX_AGE_SEC;
-      const row: FeedbackJobRow = {
-        endpoint,
-        id: jobId,
-        request_id: job.requestId,
-        team_id: job.teamId,
-        credits_cost: job.creditsBilled,
-        created_at: new Date(
-          job.feedbackDeadlineMs - feedbackWindowSec * 1000,
-        ).toISOString(),
-        is_successful: job.succeeded,
-        options: null,
-        feedback_deadline_ms: job.feedbackDeadlineMs,
-        refund_class: job.refundClass,
-        zero_data_retention: job.zeroDataRetention,
-      };
-
-      // Not for a zero-data-retention job: its feedback is dropped before it
-      // reaches the result bounds, and those columns are redacted for it
-      // anyway, so there is nothing to read and no reason to go looking.
-      return endpoint === "search" &&
-        needsSearchResults &&
-        !job.zeroDataRetention
-        ? withSearchResultColumns(row, jobId, dbTeamId)
-        : row;
-    }
+    job = await readFeedbackJob(jobId);
   } catch (error) {
-    bigtableFailed = true;
-    logger.warn(
-      "Bigtable feedback job read failed; falling back to PostgreSQL",
-      {
-        error,
-        jobId,
-        endpoint,
-      },
-    );
+    logger.warn("Bigtable feedback job read failed", {
+      error,
+      jobId,
+      endpoint,
+    });
+    return null;
   }
+  if (!job) return null;
 
-  const table = JOB_TABLES[endpoint] as any;
-  const [row] = await dbRr
-    .select({
-      id: table.id,
-      request_id: table.request_id,
-      team_id: table.team_id,
-      credits_cost: table.credits_cost,
-      created_at: table.created_at,
-      options: table.options,
-      ...(endpoint === "map" ? {} : { is_successful: table.is_successful }),
-      ...(endpoint === "search"
-        ? {
-            num_results: table.num_results,
-            num_results_by_source: table.num_results_by_source,
-            result_categories: table.result_categories,
-          }
-        : {}),
-    })
-    .from(table)
-    .where(and(eq(table.id, jobId), eq(table.team_id, dbTeamId)))
-    .limit(1);
+  const storedEndpoint = endpointForRefundClass(job.refundClass);
+  if (job.teamId !== dbTeamId || storedEndpoint !== endpoint) return null;
 
-  if (!row) return null;
-  if (!bigtableFailed) {
-    recordJobStorePostgresFallback("feedback_job", jobId, { endpoint });
-  }
-
+  const feedbackWindowSec =
+    endpoint === "search"
+      ? config.SEARCH_FEEDBACK_MAX_AGE_SEC
+      : config.FEEDBACK_MAX_AGE_SEC;
   return {
     endpoint,
-    id: row.id,
-    request_id: row.request_id ?? null,
-    team_id: row.team_id,
-    credits_cost: row.credits_cost ?? 0,
-    created_at: row.created_at,
-    is_successful: endpoint === "map" ? true : (row.is_successful ?? null),
-    options: row.options ?? null,
-    num_results: endpoint === "search" ? (row.num_results ?? null) : null,
+    id: jobId,
+    request_id: job.requestId,
+    team_id: job.teamId,
+    credits_cost: job.creditsBilled,
+    created_at: new Date(
+      job.feedbackDeadlineMs - feedbackWindowSec * 1000,
+    ).toISOString(),
+    is_successful: job.succeeded,
+    options: null,
+    feedback_deadline_ms: job.feedbackDeadlineMs,
+    refund_class: job.refundClass,
+    zero_data_retention: job.zeroDataRetention,
     num_results_by_source:
-      endpoint === "search" ? (row.num_results_by_source ?? null) : null,
+      endpoint === "search" ? (job.numResultsBySource ?? null) : null,
     result_categories:
-      endpoint === "search" ? (row.result_categories ?? null) : null,
+      endpoint === "search" ? (job.resultCategories ?? null) : null,
   };
 }
 
@@ -524,11 +304,6 @@ export async function insertFeedback(params: {
     job,
     options.feedback.valuableResults,
   );
-  const valuableSources = [
-    ...(options.feedback.valuableSources ?? []),
-    ...valuableResultDocs,
-  ];
-
   try {
     await db.insert(schema.search_feedback).values({
       id: feedbackId,
@@ -543,7 +318,10 @@ export async function insertFeedback(params: {
       issue_types: options.feedback.issues ?? [],
       tags: options.feedback.tags ?? [],
       comment: options.feedback.note ?? null,
-      valuable_sources: valuableSources,
+      valuable_sources: [
+        ...(options.feedback.valuableSources ?? []),
+        ...valuableResultDocs,
+      ],
       missing_content: options.feedback.missingContent ?? [],
       query_suggestions: options.feedback.querySuggestions ?? null,
       metadata: feedbackMetadata(options, valuableResultDocs),

@@ -13,6 +13,13 @@ vi.mock("./record", () => ({
     throw new Error("Alexandria must not enter the job/refund path");
   },
 }));
+vi.mock("../../../lib/alexandria-activity", () => ({
+  hasRecentAlexandriaActivity: async () => true,
+}));
+vi.mock("../../../services/autumn/autumn.service", () => ({
+  CREDITS_FEATURE_ID: "CREDITS",
+  autumnService: { refundCredits: async () => true },
+}));
 
 // Opt in with a local PostgreSQL database. Each run owns an isolated schema
 // holding a copy of the Alexandria feedback tables, including constraints.
@@ -28,10 +35,14 @@ CREATE TABLE alexandria_feedback (
   requested_host text GENERATED ALWAYS AS (lower(substring(requested_url from '^[A-Za-z][A-Za-z0-9+.-]*://(?:[^@/?#]*@)?([^/?#:]+)'))) STORED,
   requested_functionality text NOT NULL,
   rationale text NOT NULL,
+  objective text,
   origin text,
   integration text,
   schema_version integer NOT NULL DEFAULT 2,
-  created_at timestamptz NOT NULL DEFAULT now()
+  credits_refunded integer NOT NULL DEFAULT 0 CHECK (credits_refunded >= 0),
+  refund_policy jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE alexandria_feedback_providers (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -121,16 +132,42 @@ suite("Alexandria feedback HTTP and PostgreSQL persistence", () => {
   });
 
   it("persists the minimum payload and independent sessions without inventing job IDs", async () => {
-    const first = await submit(minimal);
-    const second = await submit(minimal);
+    const websiteCap = config.ALEXANDRIA_FEEDBACK_WEBSITE_DAILY_CAP_CREDITS;
+    config.ALEXANDRIA_FEEDBACK_WEBSITE_DAILY_CAP_CREDITS = 1;
+    let first: request.Response;
+    let second: request.Response;
+    try {
+      first = await submit(minimal);
+      second = await submit(minimal);
+    } finally {
+      config.ALEXANDRIA_FEEDBACK_WEBSITE_DAILY_CAP_CREDITS = websiteCap;
+    }
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect(second.body.feedbackId).not.toBe(first.body.feedbackId);
+    expect(first.body).toMatchObject({
+      creditsRefunded: 1,
+      creditsRefundedToday: 1,
+    });
+    expect(second.body).toMatchObject({
+      creditsRefunded: 0,
+      creditsRefundedToday: 1,
+      websiteCapReached: true,
+    });
     const { rows } = await pool.query(
-      "SELECT * FROM alexandria_feedback WHERE team_id = $1",
+      "SELECT * FROM alexandria_feedback WHERE team_id = $1 ORDER BY credits_refunded DESC",
       [teamId],
     );
     expect(rows).toHaveLength(2);
+    expect(rows.map(row => row.id)).toEqual([
+      first.body.feedbackId,
+      second.body.feedbackId,
+    ]);
+    expect(rows.map(row => row.credits_refunded)).toEqual([1, 0]);
+    expect(rows.map(row => row.refund_policy.matchedReason)).toEqual([
+      "alexandria_feedback",
+      "website_cap_reached",
+    ]);
     for (const row of rows) {
       expect(row).toMatchObject({
         team_id: teamId,
@@ -142,6 +179,7 @@ suite("Alexandria feedback HTTP and PostgreSQL persistence", () => {
         requested_functionality:
           minimal.requestedWebsite.requestedFunctionality,
         rationale: minimal.rationale,
+        objective: null,
         origin: "api",
         integration: null,
         schema_version: 2,
@@ -183,8 +221,10 @@ suite("Alexandria feedback HTTP and PostgreSQL persistence", () => {
         why: "The second page request timed out.",
       },
     ];
+    const objective = "Build a list of open federal IT contracts to bid on.";
     const response = await submit({
       ...minimal,
+      objective,
       providerFeedback,
       capabilityFeedback,
       integration: "cli",
@@ -192,13 +232,14 @@ suite("Alexandria feedback HTTP and PostgreSQL persistence", () => {
     expect(response.status).toBe(200);
     const feedbackId = response.body.feedbackId;
     const parent = await pool.query(
-      "SELECT rating, rationale, integration FROM alexandria_feedback WHERE id = $1",
+      "SELECT rating, rationale, objective, integration FROM alexandria_feedback WHERE id = $1",
       [feedbackId],
     );
     expect(parent.rows).toEqual([
       {
         rating: minimal.rating,
         rationale: minimal.rationale,
+        objective,
         integration: "cli",
       },
     ]);

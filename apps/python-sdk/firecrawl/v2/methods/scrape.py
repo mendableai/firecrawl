@@ -15,6 +15,7 @@ from ..types import (
     AlexandriaScrapeData,
     AlexandriaScrapeResult,
 )
+from ..utils.agent_hints import agent_hint_metadata
 from ..utils.normalize import normalize_document_input
 from ..utils import FirecrawlError, HttpClient, handle_response_error, prepare_scrape_options, validate_scrape_options
 from ..utils.auto_resume import ResumeTracker
@@ -86,14 +87,18 @@ def scrape(
 
         body = response.json()
         if not body.get("success"):
-            raise Exception(body.get("error", "Unknown error occurred"))
+            handle_response_error(response, "scrape")
 
         document_data = body.get("data", {})
-        normalized = normalize_document_input(document_data)
+        normalized = {**normalize_document_input(document_data), **agent_hint_metadata(body)}
         return Document(**normalized)
 
 
 MAX_ALEXANDRIA_CALLS = 10
+# Matches the API's default and maximum execution timeout for Alexandria calls.
+MAX_ALEXANDRIA_TIMEOUT_MS = 120_000
+# Extra time for the API to deliver a response after its execution deadline.
+ALEXANDRIA_RESPONSE_MARGIN_MS = 30_000
 
 
 def _prepare_scrape_alexandria_request(
@@ -152,6 +157,12 @@ def _alexandria_request_id(request_id: Optional[str]) -> str:
     return value
 
 
+def _alexandria_transport_timeout(timeout: Optional[int]) -> float:
+    """Return the HTTP timeout in seconds for an Alexandria request."""
+    execution_ms = min(timeout if timeout is not None else MAX_ALEXANDRIA_TIMEOUT_MS, MAX_ALEXANDRIA_TIMEOUT_MS)
+    return (execution_ms + ALEXANDRIA_RESPONSE_MARGIN_MS) / 1000
+
+
 def scrape_alexandria(client: HttpClient, calls, *, timeout: Optional[int] = None,
                     integration: Optional[str] = None, request_id: Optional[str] = None) -> AlexandriaScrapeData:
     payload = _prepare_scrape_alexandria_request(calls, timeout=timeout, integration=integration)
@@ -159,7 +170,7 @@ def scrape_alexandria(client: HttpClient, calls, *, timeout: Optional[int] = Non
     headers = {**client._prepare_headers(), "x-request-id": request_id}
     try:
         response = client.post("/v2/scrape", payload, headers=headers,
-                                    timeout=(min(timeout if timeout is not None else 50000, 50000) + 30000) / 1000)
+                                    timeout=_alexandria_transport_timeout(timeout))
         if response.status_code != 200 or not response.json().get("success"):
             handle_response_error(response, "scrape alexandria")
         return _parse_scrape_alexandria_response(response.json(), request_id)
@@ -224,7 +235,7 @@ def interact(
 
     payload = response.json()
     if not payload.get("success"):
-        raise Exception(payload.get("error", "Unknown error occurred"))
+        raise FirecrawlError(payload.get("error", "Unknown error occurred"))
 
     normalized = dict(payload)
     if "exitCode" in normalized and "exit_code" not in normalized:

@@ -1,4 +1,4 @@
-import { describe, expect, jest, test } from "@jest/globals";
+import { describe, expect, vi, test } from "vitest";
 import {
   getAgentStatus,
   getAgentThread,
@@ -6,7 +6,7 @@ import {
 } from "../../../v2/methods/agent";
 
 const okPost = () =>
-  jest.fn().mockResolvedValue({
+  vi.fn().mockResolvedValue({
     status: 200,
     data: { success: true, id: "agent-job", threadId: "thread-1", threadTurn: 2 },
   });
@@ -51,7 +51,7 @@ describe("v2.agent threads unit", () => {
   });
 
   test("getAgentStatus parses a chat-mode status payload", async () => {
-    const get = jest.fn().mockResolvedValue({
+    const get = vi.fn().mockResolvedValue({
       status: 200,
       data: {
         success: true,
@@ -95,7 +95,7 @@ describe("v2.agent threads unit", () => {
   });
 
   test("getAgentStatus parses a status payload without the thread fields", async () => {
-    const get = jest.fn().mockResolvedValue({
+    const get = vi.fn().mockResolvedValue({
       status: 200,
       data: {
         success: true,
@@ -116,7 +116,7 @@ describe("v2.agent threads unit", () => {
   });
 
   test("getAgentThread hits the thread endpoint", async () => {
-    const get = jest.fn().mockResolvedValue({
+    const get = vi.fn().mockResolvedValue({
       status: 200,
       data: {
         success: true,
@@ -150,7 +150,7 @@ describe("v2.agent threads unit", () => {
   });
 
   test("getAgentThread appends includeData when requested", async () => {
-    const get = jest.fn().mockResolvedValue({
+    const get = vi.fn().mockResolvedValue({
       status: 200,
       data: { success: true, thread: { id: "thread-1", runs: [] } },
     });
@@ -160,5 +160,127 @@ describe("v2.agent threads unit", () => {
     expect(get).toHaveBeenCalledWith(
       "/v2/agent/threads/thread-1?includeData=true",
     );
+  });
+  test("startAgent forwards exchange.onTermsRequired and a terms approve", async () => {
+    const post = okPost();
+    const exchange = {
+      onTermsRequired: "ask" as const,
+      approve: { approvalId: "0199aaaa-0000-7000-8000-000000000000" },
+    };
+
+    await startAgent({ post } as any, {
+      prompt: "Continue",
+      threadId: "thread-1",
+      exchange,
+    });
+
+    expect(post).toHaveBeenCalledWith("/v2/agent", {
+      prompt: "Continue",
+      threadId: "thread-1",
+      exchange,
+    });
+  });
+
+  test("startAgent forwards exchange.onTermsRequired skip", async () => {
+    const post = okPost();
+
+    await startAgent({ post } as any, {
+      prompt: "Find the key business contact at exa.ai",
+      exchange: { onTermsRequired: "skip" },
+    });
+
+    expect(post).toHaveBeenCalledWith("/v2/agent", {
+      prompt: "Find the key business contact at exa.ai",
+      exchange: { onTermsRequired: "skip" },
+    });
+  });
+
+  test("getAgentStatus parses skippedProviders, requiresAction and a terms approval", async () => {
+    const approvalId = "0199aaaa-0000-7000-8000-000000000000";
+    const get = vi.fn().mockResolvedValue({
+      status: 200,
+      data: {
+        success: true,
+        status: "completed",
+        data: null,
+        model: "spark-2",
+        expiresAt: "2026-09-02T00:00:00.000Z",
+        exchange: {
+          enabled: true,
+          onTermsRequired: "ask",
+          paidCalls: 0,
+          creditsUsed: null,
+          skippedProviders: [
+            {
+              provider: "apollo",
+              name: "Apollo",
+              capability: "people/search",
+              adds: "verified work emails",
+              reason: "terms_required",
+              version: "F-1.0.0",
+              termsUrl: "https://www.firecrawl.dev/app/alexandria/apollo",
+            },
+          ],
+          requiresAction: {
+            type: "accept_terms",
+            approvalId,
+            providers: [
+              {
+                provider: "apollo",
+                name: "Apollo",
+                version: "F-1.0.0",
+                digest: null,
+                url: "https://www.firecrawl.dev/app/alexandria/apollo",
+                show: {
+                  provider: "firecrawl",
+                  capability: "terms/show",
+                  options: { provider: "apollo" },
+                },
+                accept: {
+                  provider: "firecrawl",
+                  capability: "terms/accept",
+                  options: {
+                    provider: "apollo",
+                    version: "F-1.0.0",
+                    digest: null,
+                    confirmed: true,
+                  },
+                },
+              },
+            ],
+          },
+        },
+        pendingApproval: {
+          id: approvalId,
+          kind: "terms",
+          reason: "Apollo could add verified work emails.",
+          calls: [],
+          terms: [
+            {
+              provider: "apollo",
+              name: "Apollo",
+              version: "F-1.0.0",
+              digest: null,
+              url: "https://www.firecrawl.dev/app/alexandria/apollo",
+            },
+          ],
+          resolution: null,
+        },
+      },
+    });
+
+    const status = await getAgentStatus({ get } as any, "agent-job");
+
+    expect(status.exchange!.onTermsRequired).toBe("ask");
+    expect(status.exchange!.skippedProviders![0].reason).toBe("terms_required");
+    const action = status.exchange!.requiresAction!;
+    expect(action.approvalId).toBe(approvalId);
+    expect(action.providers[0].accept.capability).toBe("terms/accept");
+    expect(action.providers[0].accept.options.digest).toBeNull();
+    const pending = status.pendingApproval!;
+    expect(pending.kind).toBe("terms");
+    if (pending.kind !== "terms") throw new Error("expected a terms approval");
+    expect(pending.calls).toEqual([]);
+    expect(pending.terms[0].provider).toBe("apollo");
   });
 });

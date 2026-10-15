@@ -44,7 +44,9 @@ import {
 import { isUrlBlocked } from "../../WebScraper/utils/blocklist";
 import { hasCustomRequestContext } from "../lib/request-context";
 import {
-  canUseExchangeForRequest,
+  getExchangeAccessForRequest,
+  ThirdPartyDataTermsRequiredError,
+  ThirdPartyDataUnsupportedOptionError,
   type ExchangeScrapeMetadata,
 } from "../../../lib/exchange";
 
@@ -156,7 +158,6 @@ export type EngineScrapeResult = {
   markdown?: string;
   pages?: Array<{ pageNumber: number; markdown: string }>;
   blocks?: PdfPageBlocks[];
-  json?: unknown;
   statusCode: number;
   error?: string;
 
@@ -665,27 +666,55 @@ export async function buildFallbackList(meta: Meta): Promise<
     !meta.internalOptions.agentIndexOnly &&
     meta.internalOptions.forceEngine === undefined
   ) {
-    if (
-      await canUseExchangeForRequest({
-        url: meta.rewrittenUrl ?? meta.url,
-        formats: meta.options.formats,
-        actions: meta.options.actions,
-        headers: meta.options.headers,
-        waitFor: meta.options.waitFor,
-        mobile: meta.options.mobile,
-        location: meta.options.location,
-        proxy: meta.options.proxy,
-        blockAds: meta.options.blockAds,
-        profile: meta.options.profile,
-        atsv: meta.internalOptions.atsv,
-        minAge: meta.options.minAge,
-        includeTags: meta.options.includeTags,
-        excludeTags: meta.options.excludeTags,
-        zeroDataRetention: meta.internalOptions.zeroDataRetention,
-        lockdown: meta.options.lockdown,
-        flags: meta.internalOptions.teamFlags ?? null,
-      })
-    ) {
+    const url = meta.rewrittenUrl ?? meta.url;
+    const betaTeam =
+      meta.internalOptions.teamFlags?.professionalProfileCompanyDataBeta ===
+      true;
+    let blocked = false;
+    try {
+      blocked = isUrlBlocked(url, meta.internalOptions.teamFlags ?? null, {
+        team_id: meta.internalOptions.teamId ?? null,
+        org_id: meta.internalOptions.orgId ?? null,
+        origin: null,
+        record: false,
+      });
+    } catch (error) {
+      // Beta teams fail closed, as they always have. Anyone else keeps the
+      // normal engines, since an unreadable blocklist must not fail every
+      // scrape.
+      if (betaTeam) {
+        meta.logger.warn("Exchange blocklist check failed; failing closed", {
+          error,
+        });
+        return [];
+      }
+    }
+
+    const exchangeAccess = await getExchangeAccessForRequest({
+      url,
+      teamId: meta.internalOptions.teamId ?? null,
+      orgId: meta.internalOptions.orgId ?? null,
+      blocked,
+      formats: meta.options.formats,
+      actions: meta.options.actions,
+      headers: meta.options.headers,
+      waitFor: meta.options.waitFor,
+      mobile: meta.options.mobile,
+      location: meta.options.location,
+      proxy: meta.options.proxy,
+      blockAds: meta.options.blockAds,
+      profile: meta.options.profile,
+      atsv: meta.internalOptions.atsv,
+      minAge: meta.options.minAge,
+      includeTags: meta.options.includeTags,
+      excludeTags: meta.options.excludeTags,
+      zeroDataRetention: meta.internalOptions.zeroDataRetention,
+      lockdown: meta.options.lockdown,
+      redactPII: meta.options.redactPII,
+      flags: meta.internalOptions.teamFlags ?? null,
+    });
+    if (exchangeAccess.allowed) {
+      meta.exchangeProviderId = exchangeAccess.provider.id;
       return [
         {
           engine: "exchange",
@@ -694,37 +723,21 @@ export async function buildFallbackList(meta: Meta): Promise<
       ];
     }
 
-    // A blocked URL can only have been admitted by the Exchange bypass in
-    // blocklistMiddleware, which only applies to flagged orgs; if the
-    // Exchange is no longer usable by execution time (catalog changed,
-    // service down), fail closed rather than letting normal engines scrape
-    // a blocklisted site. An error here also fails closed: this branch only
-    // runs for flagged orgs, and a retryable scrape failure is preferable
-    // to scraping a potentially blocklisted site with normal engines.
-    if (
-      meta.internalOptions.teamFlags?.professionalProfileCompanyDataBeta ===
-      true
-    ) {
-      try {
-        if (
-          isUrlBlocked(
-            meta.rewrittenUrl ?? meta.url,
-            meta.internalOptions.teamFlags ?? null,
-            {
-              team_id: meta.internalOptions.teamId ?? null,
-              org_id: meta.internalOptions.orgId ?? null,
-              origin: null,
-            },
-          )
-        ) {
-          return [];
-        }
-      } catch (error) {
-        meta.logger.warn("Exchange blocklist re-check failed; failing closed", {
-          error,
-        });
-        return [];
+    // A blocked URL can only have been admitted (by scrapeBlocklistMiddleware
+    // or batch scrape) for the Exchange; if it can no longer serve it (catalog
+    // changed, service down), fail closed rather than letting normal engines
+    // scrape a blocklisted site. Unblocked URLs whose provider wants
+    // unaccepted terms or rejects an option fall through and scrape normally.
+    if (blocked) {
+      if (exchangeAccess.termsRequired) {
+        throw new ThirdPartyDataTermsRequiredError(exchangeAccess.terms);
       }
+      if (exchangeAccess.unsupportedOption !== undefined) {
+        throw new ThirdPartyDataUnsupportedOptionError(
+          exchangeAccess.unsupportedOption,
+        );
+      }
+      return [];
     }
   }
 
@@ -932,7 +945,11 @@ export async function buildFallbackList(meta: Meta): Promise<
     }
   }
 
-  if (isXTwitterUrl(meta.url) && _engines.includes("x-twitter")) {
+  if (
+    !meta.options.profile &&
+    isXTwitterUrl(meta.url) &&
+    _engines.includes("x-twitter")
+  ) {
     _engines.length = 0;
     _engines.push("x-twitter");
   } else if (!isXTwitterUrl(meta.url)) {
@@ -961,6 +978,17 @@ export async function buildFallbackList(meta: Meta): Promise<
       : _engines;
 
   for (const engine of currentEngines) {
+    // A profile must never fall back to fetching anonymous content. File parsers
+    // may consume bytes already fetched by the authenticated browser.
+    if (
+      meta.options.profile &&
+      !engine.includes("chrome-cdp") &&
+      !(engine === "pdf" && meta.pdfPrefetch) &&
+      !(engine === "document" && meta.documentPrefetch) &&
+      !(engine === "image" && meta.imagePrefetch)
+    )
+      continue;
+
     const supportedFlags = new Set([
       ...Object.entries(engineOptions[engine].features)
         .filter(

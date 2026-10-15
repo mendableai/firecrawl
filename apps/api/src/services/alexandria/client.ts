@@ -17,8 +17,14 @@ export async function exchangeRequest(input: {
   maximumCredits?: number;
   resultAuthorization?: string;
   termsIdentity?: { organizationId: string; apiKeyId: string };
+  /**
+   * The team may use its own MCP connectors (Alexandria connectors). Sent for teams with the
+   * `exchangeRetrieve` flag, which is the connectors whitelist; Exchange reads it as the grant.
+   */
+  connectors?: boolean;
 }): Promise<ExchangeResponse> {
-  if (!config.FIRE_EXCHANGE_URL) throw new Error("Alexandria is not configured");
+  if (!config.FIRE_EXCHANGE_URL)
+    throw new Error("Alexandria is not configured");
   const base = config.FIRE_EXCHANGE_URL.replace(/\/+$/, "");
   const response = await fetch(base + input.path, {
     method: input.body === undefined ? "GET" : "POST",
@@ -38,6 +44,7 @@ export async function exchangeRequest(input: {
           }
         : {}),
       "x-exchange-extended-catalog-access": "true",
+      ...(input.connectors ? { "x-exchange-connectors": "true" } : {}),
       ...(input.requestId ? { "x-request-id": input.requestId } : {}),
       ...(input.maximumCredits === undefined
         ? {}

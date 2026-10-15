@@ -349,6 +349,9 @@ export async function browserCreateRaw(
     ttl?: number;
     activityTtl?: number;
     recordSession?: boolean;
+    streamWebView?: boolean;
+    profile?: { name: string; saveChanges?: boolean };
+    location?: Record<string, unknown>;
   },
   identity: Identity,
 ) {
@@ -396,10 +399,7 @@ export async function browserReplayPageRaw(
 ) {
   return await request(TEST_API_URL)
     .get(
-      "/v2/interact/" +
-        encodeURIComponent(sessionId) +
-        "/replay/" +
-        encodeURIComponent(pageId),
+      `/v2/interact/${encodeURIComponent(sessionId)}/replay/${encodeURIComponent(pageId)}`,
     )
     .set("Authorization", `Bearer ${identity.apiKey}`)
     .send();
@@ -504,7 +504,7 @@ export async function asyncCrawlWaitForFinish(
   return x.body;
 }
 
-async function crawlErrors(
+export async function crawlErrors(
   id: string,
   identity: Identity,
 ): Promise<Exclude<CrawlErrorsResponse, ErrorResponse>> {

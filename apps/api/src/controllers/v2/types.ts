@@ -1,12 +1,16 @@
+import type { AgentInteropStatus } from "../../lib/agent-interop";
+import type { ThirdPartyDataTermsRequiredError } from "../../lib/exchange";
 import { Request, Response } from "express";
 import { hasCategory } from "../../lib/search-query-builder";
 import { config } from "../../config";
 import { z } from "zod";
+import { browserProfileNameSchema } from "../../lib/browser-profiles";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { hasReachableHost } from "../../lib/url-utils";
 import { countries } from "../../lib/validate-country";
 import { includesFormat } from "../../lib/format-utils";
 import { addPathRegexIssues, pathPatternsSchema } from "../../lib/crawl-regex";
+import { addStrictSchemaIssue } from "../../lib/openai-strict-schema";
 import {
   ExtractorOptions,
   PageOptions,
@@ -358,12 +362,17 @@ const jsonFormatWithOptions = z.strictObject({
     .transform(val => normalizeSchemaForOpenAI(val))
     .refine(val => validateSchemaForOpenAI(val), {
       message: OPENAI_SCHEMA_ERROR_MESSAGE,
-    }),
+    })
+    .superRefine(addStrictSchemaIssue),
   prompt: z.string().max(10000).optional(),
+  // Deprecated: lifted into the top-level checkPromptInjection at parse time.
   checkPromptInjection: z.boolean().optional(),
 });
 
-export type JsonFormatWithOptions = z.output<typeof jsonFormatWithOptions>;
+export type JsonFormatWithOptions = Omit<
+  z.output<typeof jsonFormatWithOptions>,
+  "checkPromptInjection"
+>;
 
 // "Deterministic JSON" — same shape as json mode, but extraction is performed by
 // reusable-json-mode (a cached, reusable JS extractor run in the code-sandbox)
@@ -393,7 +402,8 @@ const changeTrackingFormatWithOptions = z.strictObject({
     .transform(val => normalizeSchemaForOpenAI(val))
     .refine(val => validateSchemaForOpenAI(val), {
       message: OPENAI_SCHEMA_ERROR_MESSAGE,
-    }),
+    })
+    .superRefine(addStrictSchemaIssue),
   modes: z.enum(["json", "git-diff"]).array().optional().prefault([]),
   tag: z.string().or(z.null()).prefault(null),
 });
@@ -457,6 +467,15 @@ const queryFormatWithOptions = z.strictObject({
 
 type QueryFormatWithOptions = z.output<typeof queryFormatWithOptions>;
 
+// Which engine answers branding decisions: "fast" (Jev), "standard" (the
+// LLM) or "auto" (the LLM for now). Internal for now: honored only for teams
+// listed in BRANDING_JEV_TEAM_IDS and ignored for everyone else
+// (lib/branding/jev.ts).
+const brandingFormatWithOptions = z.strictObject({
+  type: z.literal("branding"),
+  mode: z.enum(["auto", "fast", "standard"]).optional(),
+});
+
 export type FormatObject =
   | { type: "markdown" }
   | { type: "html" }
@@ -473,7 +492,7 @@ export type FormatObject =
   | QuestionFormatWithOptions
   | HighlightsFormatWithOptions
   | QueryFormatWithOptions
-  | { type: "branding" }
+  | z.output<typeof brandingFormatWithOptions>
   | { type: "product" }
   | { type: "menu" }
   | { type: "audio" }
@@ -740,7 +759,7 @@ const redactPIISchema = z
   });
 // inferred shape: RedactPIIOptions | undefined after the transform
 
-const baseScrapeOptions = z.strictObject({
+const scrapeOptionFields = z.strictObject({
   formats: z
     .preprocess(
       val => {
@@ -766,7 +785,7 @@ const baseScrapeOptions = z.strictObject({
           changeTrackingFormatWithOptions,
           screenshotFormatWithOptions,
           attributesFormatWithOptions,
-          z.strictObject({ type: z.literal("branding") }),
+          brandingFormatWithOptions,
           z.strictObject({ type: z.literal("product") }),
           z.strictObject({ type: z.literal("menu") }),
           questionFormatWithOptions,
@@ -829,6 +848,7 @@ const baseScrapeOptions = z.strictObject({
   minAge: z.int().gte(0).optional(),
   storeInCache: z.boolean().prefault(true),
   lockdown: z.boolean().prefault(false),
+  checkPromptInjection: z.boolean().prefault(false),
   safeMode: z.boolean().optional(),
   redactPII: redactPIISchema,
   // Enterprise: per-request field-level override of the org's threat
@@ -838,7 +858,7 @@ const baseScrapeOptions = z.strictObject({
 
   profile: z
     .object({
-      name: z.string().min(1).max(128),
+      name: browserProfileNameSchema,
       saveChanges: z.boolean().default(true),
     })
     .optional(),
@@ -850,6 +870,24 @@ const baseScrapeOptions = z.strictObject({
   __experimental_engpicker: z.boolean().prefault(false).optional(),
   __forceFirePDF: z.boolean().prefault(false).optional(),
 });
+
+const baseScrapeOptions = scrapeOptionFields
+  .refine(options => !(options.profile && options.lockdown), {
+    message: "Profiles require live browsing and cannot be used with lockdown.",
+    path: ["profile"],
+  })
+  .refine(
+    options =>
+      !(
+        options.checkPromptInjection &&
+        options.formats.some(f => f.type === "rawBase64")
+      ),
+    {
+      message:
+        "checkPromptInjection scans page markdown and cannot be used with the rawBase64 format.",
+      path: ["checkPromptInjection"],
+    },
+  );
 
 type ScrapeOptionsBase = z.infer<typeof baseScrapeOptions>;
 
@@ -879,6 +917,34 @@ export const applyScrapeOptionsDefaults = <T extends ScrapeOptionsBase>(
       : true),
 });
 
+/**
+ * Folds the deprecated json-format checkPromptInjection into the top-level
+ * flag and drops it from the format. Also accepts raw stored monitor options.
+ */
+export function liftCheckPromptInjection<
+  T extends { formats?: unknown[]; checkPromptInjection?: unknown },
+>(options: T): T {
+  let requestedOnFormat = false;
+  const formats = options.formats?.map(format => {
+    if (
+      typeof format !== "object" ||
+      format === null ||
+      !("checkPromptInjection" in format)
+    ) {
+      return format;
+    }
+    const { checkPromptInjection, ...rest } = format;
+    requestedOnFormat ||= checkPromptInjection === true;
+    return rest;
+  });
+  return {
+    ...options,
+    formats,
+    checkPromptInjection:
+      options.checkPromptInjection === true || requestedOnFormat,
+  };
+}
+
 // Base transform function that handles both nullable and non-nullable cases
 // Uses generic type to preserve all fields from extended schemas
 const extractTransformImpl = <T extends ScrapeOptionsBase | undefined>(
@@ -886,7 +952,7 @@ const extractTransformImpl = <T extends ScrapeOptionsBase | undefined>(
 ): T extends undefined ? undefined : T => {
   if (!obj) return obj as T extends undefined ? undefined : T;
   // Handle timeout
-  let result = applyScrapeOptionsDefaults(obj);
+  let result = liftCheckPromptInjection(applyScrapeOptionsDefaults(obj));
   if (
     obj.formats.find(x => typeof x === "object" && x.type === "json") &&
     obj.timeout === 30000
@@ -995,7 +1061,8 @@ const extractOptions = z
       .transform(val => normalizeSchemaForOpenAI(val))
       .refine(val => validateSchemaForOpenAI(val), {
         message: OPENAI_SCHEMA_ERROR_MESSAGE,
-      }),
+      })
+      .superRefine(addStrictSchemaIssue),
     limit: z.int().positive().finite().optional(),
     ignoreSitemap: z.boolean().prefault(false),
     includeSubdomains: z.boolean().prefault(true),
@@ -1052,6 +1119,11 @@ const agentWebhookSchema = createWebhookSchema([
 
 // Forwarded verbatim to the agent service, which owns every default and the
 // per-thread inheritance rules; the gateway only validates the shape.
+// The one list of onTermsRequired modes: the request schema and the response
+// summary type both derive from it.
+const AGENT_ON_TERMS_REQUIRED = ["skip", "ask"] as const;
+type AgentOnTermsRequired = (typeof AGENT_ON_TERMS_REQUIRED)[number];
+
 const agentExchangeSchema = z.strictObject({
   enabled: z.boolean().optional(),
   toolkits: z.array(z.string()).optional(),
@@ -1069,6 +1141,13 @@ const agentExchangeSchema = z.strictObject({
       approvalId: z.string().uuid(),
     })
     .optional(),
+  // What to do when a provider the agent would use needs data terms the team
+  // has not accepted: "skip" (the agent service's default) or "ask".
+  // Gated providers are never called in any mode, and there is deliberately
+  // no auto-accept: terms are only accepted by a human-authorized
+  // terms/accept or in the dashboard. Omitted on a follow-up turn means the
+  // previous turn's value.
+  onTermsRequired: z.enum(AGENT_ON_TERMS_REQUIRED).optional(),
 });
 
 export const agentRequestSchema = z
@@ -1125,7 +1204,7 @@ export const agentRequestSchema = z
 export type AgentRequest = z.infer<typeof agentRequestSchema>;
 // export type AgentRequestInput = z.input<typeof agentRequestSchema>;
 
-const scrapeRequestSchemaBase = baseScrapeOptions.extend({
+const scrapeRequestSchemaBase = baseScrapeOptions.safeExtend({
   url: URL,
   origin: z.string().optional().prefault("api"),
   integration: integrationSchema.optional().transform(val => val || null),
@@ -1185,7 +1264,7 @@ const uploadedParseFileSchema = z.custom<UploadedParseFile>(
   },
 );
 
-const parseRequestSchemaBase = baseScrapeOptions.extend({
+const parseRequestSchemaBase = baseScrapeOptions.safeExtend({
   origin: z.string().optional().prefault("api"),
   integration: integrationSchema.optional().transform(val => val || null),
   zeroDataRetention: z.boolean().optional(),
@@ -1217,7 +1296,7 @@ export const parseRequestSchema = strictWithMessage(parseRequestSchemaBase)
 export type ParseRequest = z.infer<typeof parseRequestSchema>;
 export type ParseRequestInput = z.input<typeof parseRequestSchemaBase>;
 
-const batchScrapeRequestSchemaBase = baseScrapeOptions.extend({
+const batchScrapeRequestSchemaBase = baseScrapeOptions.safeExtend({
   urls: URL.array().min(1),
   origin: z.string().optional().prefault("api"),
   integration: integrationSchema.optional().transform(val => val || null),
@@ -1241,23 +1320,24 @@ export const batchScrapeRequestSchema = strictWithMessage(
   .refine(waitForRefine, waitForRefineOpts)
   .transform(extractTransformRequired);
 
-const batchScrapeRequestSchemaNoURLValidationBase = baseScrapeOptions.extend({
-  urls: z.string().array().min(1),
-  origin: z.string().optional().prefault("api"),
-  integration: integrationSchema.optional().transform(val => val || null),
-  webhook: webhookSchema.optional(),
-  appendToId: z.uuid().optional(),
-  ignoreInvalidURLs: z.boolean().prefault(true),
-  maxConcurrency: z.int().positive().optional(),
-  zeroDataRetention: z.boolean().optional(),
-  __agentInterop: z
-    .object({
-      auth: z.string(),
-      requestId: z.string(),
-      shouldBill: z.boolean(),
-    })
-    .optional(),
-});
+const batchScrapeRequestSchemaNoURLValidationBase =
+  baseScrapeOptions.safeExtend({
+    urls: z.string().array().min(1),
+    origin: z.string().optional().prefault("api"),
+    integration: integrationSchema.optional().transform(val => val || null),
+    webhook: webhookSchema.optional(),
+    appendToId: z.uuid().optional(),
+    ignoreInvalidURLs: z.boolean().prefault(true),
+    maxConcurrency: z.int().positive().optional(),
+    zeroDataRetention: z.boolean().optional(),
+    __agentInterop: z
+      .object({
+        auth: z.string(),
+        requestId: z.string(),
+        shouldBill: z.boolean(),
+      })
+      .optional(),
+  });
 
 export const batchScrapeRequestSchemaNoURLValidation = strictWithMessage(
   batchScrapeRequestSchemaNoURLValidationBase,
@@ -1399,6 +1479,14 @@ export const mapRequestSchema = strictWithMessage(
 export type MapRequest = z.infer<typeof mapRequestSchema>;
 export type MapRequestInput = z.input<typeof mapRequestSchema>;
 
+/** The third-party provider that served an Exchange scrape, what the access
+ * cost, and every provider tried for it in order. */
+export type DocumentProvider = {
+  id: string;
+  creditsCost: number;
+  steps: { provider: string; status: string; creditsCost?: number }[];
+};
+
 export type Document = {
   title?: string;
   description?: string;
@@ -1515,6 +1603,7 @@ export type Document = {
     indexId?: string; // ID used to store the document in the index (GCS)
     concurrencyLimited?: boolean;
     concurrencyQueueDurationMs?: number;
+    provider?: DocumentProvider;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
@@ -1635,9 +1724,39 @@ export type AgentSuggestion = {
   prompt: string;
 };
 
-export type AgentPendingApproval = {
+// A provider the agent would have used but could not, because the team has
+// not accepted its data terms.
+type AgentTermsGate = {
+  provider: string;
+  name: string;
+  logo?: string;
+  capability?: string;
+  // What it would have added, in the agent's words.
+  adds?: string;
+  // The gating agreement version and document digest terms/accept needs.
+  // digest is null when the catalog published none; terms/show returns it.
+  version: string;
+  digest: string | null;
+  // Where a person accepts the terms in the dashboard.
+  url: string;
+};
+
+type AgentPendingApprovalBase = {
   id: string;
   reason: string;
+  resolution: null | {
+    approved: boolean;
+    // Calls approved. Ignored on terms offers.
+    callIds: string[];
+    always: boolean;
+    byRunId: string;
+  };
+};
+
+// Paid calls waiting for approval. `kind` is absent on items written before
+// terms offers existed.
+type AgentPendingCallsApproval = AgentPendingApprovalBase & {
+  kind?: "calls";
   calls: {
     id: string;
     provider: string;
@@ -1646,23 +1765,82 @@ export type AgentPendingApproval = {
     more?: Record<string, unknown>[];
     creditsEstimate: number | null;
   }[];
-  resolution: null | {
-    approved: boolean;
-    callIds: string[];
-    always: boolean;
-    byRunId: string;
-  };
+  terms?: never;
 };
+
+// Providers whose data terms need accepting ("ask" mode). `calls`
+// stays empty so clients reading only the calls shape see nothing to run.
+type AgentPendingTermsApproval = AgentPendingApprovalBase & {
+  kind: "terms";
+  calls: [];
+  terms: AgentTermsGate[];
+};
+
+export type AgentPendingApproval =
+  | AgentPendingCallsApproval
+  | AgentPendingTermsApproval;
 
 // What a run did with Exchange, as the agent service reports it. `toolkits` and
 // `requireApproval` are what the run resolved to after thread inheritance, so
 // they describe the run rather than echoing the request.
+type AgentSkippedProvider = {
+  provider: string;
+  name: string;
+  capability?: string;
+  adds?: string;
+  reason: "terms_required";
+  version: string;
+  termsUrl: string;
+};
+
+// The Exchange calls a calling agent makes to accept a provider's terms once
+// its user has explicitly agreed. The agent service never executes them.
+type AgentTermsRequiredAction = {
+  type: "accept_terms";
+  // The `terms` pending approval that answers this: accept the terms, then
+  // continue the thread with `exchange.approve: { approvalId }` (or decline).
+  approvalId: string;
+  providers: {
+    provider: string;
+    name: string;
+    capability?: string;
+    adds?: string;
+    version: string;
+    // null when the catalog published no digest; terms/show returns it.
+    digest: string | null;
+    url: string;
+    show: {
+      provider: "firecrawl";
+      capability: "terms/show";
+      options: { provider: string };
+    };
+    accept: {
+      provider: "firecrawl";
+      capability: "terms/accept";
+      options: {
+        provider: string;
+        version: string;
+        // null when the catalog published no digest; terms/show returns it.
+        digest: string | null;
+        confirmed: true;
+      };
+    };
+  }[];
+};
+
 export type AgentExchangeSummary = {
   enabled: boolean;
   toolkits?: string[];
   requireApproval?: boolean;
+  onTermsRequired?: AgentOnTermsRequired;
   paidCalls: number;
   creditsUsed: number | null;
+  // The terms fields below (and onTermsRequired) appear only when the agent
+  // service's terms gate is on for the thread; it is rolling out.
+  // Gated providers that would have helped and were not used. Any mode.
+  skippedProviders?: AgentSkippedProvider[];
+  // "ask" mode, when a terms offer ended the turn.
+  requiresAction?: AgentTermsRequiredAction;
 };
 
 export type AgentResponse =
@@ -1684,6 +1862,11 @@ export type AgentStatusResponse =
       status: "processing" | "completed" | "failed";
       error?: string;
       data?: any;
+      /** Best-effort JSON on a failed run; `data` remains completed-only. */
+      partial?: unknown;
+      /** Only present when the caller supplied a JSON Schema. */
+      partialSchemaValid?: boolean;
+      stopReason?: "credit_limit_reached";
       model?: "spark-1-pro" | "spark-1-mini" | "spark-2";
       effort?: "low" | "medium" | "high";
       expiresAt: string;
@@ -1718,6 +1901,9 @@ type AgentThreadRun = {
   message: string | null;
   // Only present when the request asked for includeData.
   data?: unknown;
+  partial?: unknown;
+  partialSchemaValid?: boolean;
+  stopReason?: "credit_limit_reached";
   suggestions?: AgentSuggestion[] | null;
   pendingApproval?: AgentPendingApproval | null;
   exchange?: AgentExchangeSummary | null;
@@ -1894,6 +2080,7 @@ export type CrawlErrorsResponse =
         url: string;
         code?: ErrorCodes;
         error: string;
+        requiresAction?: ThirdPartyDataTermsRequiredError["requiresAction"];
       }[];
       robotsBlocked: string[];
     };
@@ -1901,6 +2088,9 @@ export type CrawlErrorsResponse =
 type AuthObject = {
   team_id: string;
   org_id?: string | null;
+  // Set only by authMiddleware from the raw request; controllers may re-parse
+  // the body and drop `__agentInterop`, so read this instead.
+  agentInterop?: AgentInteropStatus;
 };
 
 type Account = {
@@ -1947,6 +2137,8 @@ export type TeamFlags = {
   bypassCreditChecks?: boolean;
   debugBranding?: boolean;
   maxBrowserSessions?: number;
+  // grants the privileged large-PDF size cap (PDF_BY_REFERENCE_MAX_BYTES_PRIVILEGED)
+  largePdfs?: boolean;
   researchBeta?: boolean;
   menuBeta?: boolean;
   enrichBeta?: boolean;
@@ -2175,6 +2367,9 @@ export function fromV1ScrapeOptions(
           }
         : {}),
       location: v1ScrapeOptions.location ?? v1ScrapeOptions.geolocation,
+      checkPromptInjection: (
+        v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract
+      )?.checkPromptInjection,
       formats: v1ScrapeOptions.formats
         .map(x => {
           // json and extract is standardized down to extract fmt in v1 -- fine to take one and dismiss the other
@@ -2184,7 +2379,6 @@ export function fromV1ScrapeOptions(
               type: "json",
               schema: opts?.schema,
               prompt: opts?.prompt,
-              checkPromptInjection: opts?.checkPromptInjection ?? false,
             };
             return fmt;
           } else if (x === "json") {
@@ -2195,7 +2389,6 @@ export function fromV1ScrapeOptions(
                 type: "json",
                 schema: opts.schema,
                 prompt: opts.prompt,
-                checkPromptInjection: opts.checkPromptInjection ?? false,
               };
               return includesFormat(v1ScrapeOptions.formats as any, "extract")
                 ? null
@@ -2301,6 +2494,10 @@ const developerCategoryOptions = z.strictObject({
   type: z.literal("developer"),
 });
 
+const govCategoryOptions = z.strictObject({
+  type: z.literal("gov"),
+});
+
 const developerCategoryAliases = new Set([
   "repo",
   "code",
@@ -2384,13 +2581,14 @@ export const searchRequestSchema = z
       .preprocess(
         normalizeDeveloperCategoryAliases,
         z.union([
-          z.array(z.enum(["github", "research", "pdf", "developer"])),
+          z.array(z.enum(["github", "research", "pdf", "developer", "gov"])),
           z.array(
             z.union([
               githubCategoryOptions,
               researchCategoryOptions,
               pdfCategoryOptions,
               developerCategoryOptions,
+              govCategoryOptions,
             ]),
           ),
         ]),
@@ -2417,7 +2615,7 @@ export const searchRequestSchema = z
     __searchPreviewToken: z.string().optional(),
     threatProtection: threatProtectionOverrideSchema.optional(),
     scrapeOptions: baseScrapeOptions
-      .extend({
+      .safeExtend({
         formats: z
           .preprocess(
             val => {
@@ -2470,6 +2668,10 @@ export const searchRequestSchema = z
     const categories = x.categories ?? [];
     return !hasCategory(categories, "developer") || categories.length === 1;
   }, "the developer category cannot be combined with other categories")
+  .refine(x => {
+    const categories = x.categories ?? [];
+    return !hasCategory(categories, "gov") || categories.length === 1;
+  }, "the gov category cannot be combined with other categories")
   .refine(x => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform(x => {
     const country =
@@ -2536,6 +2738,10 @@ export const searchRequestSchema = z
             case "developer":
               return {
                 type: "developer" as const,
+              };
+            case "gov":
+              return {
+                type: "gov" as const,
               };
             default:
               return { type: c as any };
@@ -2820,6 +3026,7 @@ export type EndpointFeedbackResponse =
       creditsRefunded: number;
       alreadySubmitted?: boolean;
       dailyCapReached?: boolean;
+      websiteCapReached?: boolean;
       creditsRefundedToday?: number;
       dailyRefundCap?: number;
       warning?: string;

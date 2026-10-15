@@ -7,9 +7,14 @@ import {
   idmux,
   Identity,
 } from "./lib";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../../../db/connection";
 import * as schema from "../../../db/schema";
+import { clickhouseClient } from "../../../lib/clickhouse-client";
+import {
+  readFeedbackJob,
+  writeFeedbackJob,
+} from "../../../lib/feedback-job-store";
 
 let identity: Identity;
 let secondaryIdentity: Identity;
@@ -34,13 +39,33 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
   it.concurrent(
     "records feedback and refunds 1 credit on first submission",
     async () => {
-      const raw = await searchRawFull(
-        { query: "firecrawl", limit: 3 },
-        identity,
-      );
+      const body = {
+        query: "firecrawl",
+        objective: "Find official Firecrawl information",
+        clientModel: "claude-sonnet-4-6",
+        limit: 3,
+      };
+      const raw = await searchRawFull(body, identity);
       expect(raw.statusCode).toBe(200);
       expect(typeof raw.body.id).toBe("string");
       expect((raw.body.data?.web ?? []).length).toBeGreaterThan(0);
+
+      // The searches row lands in ClickHouse a few seconds after the publish.
+      let searchRow: { options: unknown } | undefined;
+      for (let attempt = 0; attempt < 30 && !searchRow; attempt++) {
+        const result = await clickhouseClient!.query({
+          query:
+            "SELECT options FROM searches FINAL WHERE id = {id: UUID} AND team_id = {teamId: UUID} AND created_at >= now() - INTERVAL 1 DAY",
+          query_params: { id: raw.body.id, teamId: identity.teamId },
+          format: "JSONEachRow",
+        });
+        const [row] = await result.json<{ options: string | null }>();
+        if (row) searchRow = { options: JSON.parse(row.options ?? "null") };
+        else await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      expect(searchRow?.options).toMatchObject({ query: "firecrawl" });
+      expect(searchRow?.options).not.toHaveProperty("objective");
+      expect(searchRow?.options).not.toHaveProperty("clientModel");
 
       const result = await searchFeedback(
         raw.body.id,
@@ -52,7 +77,6 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
               reason: "Most directly answered the question.",
             },
           ],
-          valuableResults: [{ source: "web", position: 1 }],
           missingContent: [
             {
               topic: "Enterprise pricing",
@@ -74,329 +98,12 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
       expect(result.creditsRefunded).toBe(1);
       expect(result.alreadySubmitted).toBeFalsy();
       expect(typeof result.feedbackId).toBe("string");
-
-      const documentId = `search:${raw.body.id}:web:0`;
       const [feedbackRow] = await db
-        .select({
-          valuable_sources: schema.search_feedback.valuable_sources,
-          metadata: schema.search_feedback.metadata,
-        })
+        .select({ searchId: schema.search_feedback.search_id })
         .from(schema.search_feedback)
-        .where(eq(schema.search_feedback.id, result.feedbackId))
+        .where(eq(schema.search_feedback.id, result.feedbackId!))
         .limit(1);
-
-      expect(feedbackRow).toBeTruthy();
-      expect(feedbackRow.valuable_sources).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ url: raw.body.data.web[0].url }),
-          expect.objectContaining({
-            documentId,
-            searchId: raw.body.id,
-            resultType: "web",
-            resultIndex: 0,
-            position: 1,
-            source: "position",
-          }),
-        ]),
-      );
-      expect(feedbackRow.metadata).toEqual(
-        expect.objectContaining({
-          valuableResults: [{ source: "web", position: 1 }],
-          valuableResultDocumentIds: [documentId],
-        }),
-      );
-    },
-    90000,
-  );
-
-  // `source` says which `data` group a result sat in; `category` says which
-  // vertical served it. For a developer-category search those are "web" and
-  // "developer" — the tag is the only thing that separates our own index from
-  // an ordinary Google hit at the same position.
-  it.concurrent(
-    "records the serving vertical alongside the position",
-    async () => {
-      const raw = await searchRawFull(
-        {
-          query: "firecrawl retry backoff",
-          limit: 3,
-          categories: ["developer"],
-        },
-        identity,
-      );
-      expect(raw.statusCode).toBe(200);
-      const searchId = raw.body.id;
-      const web = raw.body.data?.web ?? [];
-      expect(web.length).toBeGreaterThan(0);
-      // Developer hits are returned in the web group, each tagged.
-      expect(web[0].category).toBe("developer");
-
-      const [searchRow] = await db
-        .select({ result_categories: schema.searches.result_categories })
-        .from(schema.searches)
-        .where(
-          and(
-            eq(schema.searches.id, searchId),
-            eq(schema.searches.team_id, identity.teamId),
-          ),
-        )
-        .limit(1);
-      expect(searchRow?.result_categories).toEqual(
-        expect.objectContaining({
-          web: expect.objectContaining({ "1": "developer" }),
-        }),
-      );
-
-      const result = await searchFeedback(
-        searchId,
-        {
-          rating: "good",
-          valuableResults: [
-            { source: "web", position: 1, reason: "Answered it outright." },
-          ],
-        },
-        identity,
-      );
-      expect(result.success).toBe(true);
-
-      const [feedbackRow] = await db
-        .select({
-          valuable_sources: schema.search_feedback.valuable_sources,
-          metadata: schema.search_feedback.metadata,
-        })
-        .from(schema.search_feedback)
-        .where(eq(schema.search_feedback.id, result.feedbackId))
-        .limit(1);
-
-      expect(feedbackRow.valuable_sources).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            documentId: `search:${searchId}:web:0`,
-            requestedSource: "web",
-            position: 1,
-            category: "developer",
-            source: "position",
-          }),
-        ]),
-      );
-      expect(feedbackRow.metadata).toEqual(
-        expect.objectContaining({
-          valuableResults: [
-            { source: "web", position: 1, category: "developer" },
-          ],
-        }),
-      );
-    },
-    90000,
-  );
-
-  // Each group is numbered from 1 independently, so the same position in two
-  // groups is two different results.
-  it.concurrent(
-    "records mixed-source positions against the right group",
-    async () => {
-      const raw = await searchRawFull(
-        {
-          query: "firecrawl mixed source feedback",
-          limit: 3,
-          sources: ["web", "news"],
-        },
-        identity,
-      );
-      expect(raw.statusCode).toBe(200);
-      const searchId = raw.body.id;
-      expect((raw.body.data?.web ?? []).length).toBeGreaterThan(0);
-      expect((raw.body.data?.news ?? []).length).toBeGreaterThan(0);
-
-      const result = await searchFeedback(
-        searchId,
-        {
-          rating: "good",
-          valuableResults: [
-            { source: "web", position: 1 },
-            { source: "news", position: 1, reason: "Broke the story." },
-          ],
-        },
-        identity,
-      );
-      expect(result.success).toBe(true);
-
-      const [feedbackRow] = await db
-        .select({
-          valuable_sources: schema.search_feedback.valuable_sources,
-          metadata: schema.search_feedback.metadata,
-        })
-        .from(schema.search_feedback)
-        .where(eq(schema.search_feedback.id, result.feedbackId))
-        .limit(1);
-
-      expect(feedbackRow).toBeTruthy();
-      expect(feedbackRow.valuable_sources).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            documentId: `search:${searchId}:web:0`,
-            resultType: "web",
-            resultIndex: 0,
-            position: 1,
-          }),
-          expect.objectContaining({
-            documentId: `search:${searchId}:news:0`,
-            resultType: "news",
-            resultIndex: 0,
-            position: 1,
-            reason: "Broke the story.",
-          }),
-        ]),
-      );
-      expect(feedbackRow.metadata).toEqual(
-        expect.objectContaining({
-          valuableResults: [
-            { source: "web", position: 1 },
-            { source: "news", position: 1 },
-          ],
-          valuableResultDocumentIds: [
-            `search:${searchId}:web:0`,
-            `search:${searchId}:news:0`,
-          ],
-        }),
-      );
-    },
-    90000,
-  );
-
-  // A group that returned nothing — or was never requested — can have no
-  // valuable positions, so zero is a real bound rather than "unknown count".
-  it.concurrent(
-    "bounds each group by its own result count",
-    async () => {
-      const raw = await searchRawFull(
-        { query: "firecrawl per source bound", limit: 3 },
-        identity,
-      );
-      expect(raw.statusCode).toBe(200);
-      const searchId = raw.body.id;
-      expect((raw.body.data?.web ?? []).length).toBeGreaterThan(0);
-
-      // A web-only search: news/images returned nothing, and the combined
-      // num_results is deliberately left high enough that a combined bound
-      // would have let every one of these positions through.
-      await db
-        .update(schema.searches)
-        .set({
-          num_results: 20,
-          num_results_by_source: { web: 2, images: 0, news: 0 },
-        })
-        .where(
-          and(
-            eq(schema.searches.id, searchId),
-            eq(schema.searches.team_id, identity.teamId),
-          ),
-        );
-
-      const result = await searchFeedback(
-        searchId,
-        {
-          rating: "good",
-          valuableResults: [
-            { source: "web", position: 2 },
-            { source: "web", position: 3 },
-            { source: "news", position: 1 },
-            { source: "images", position: 1 },
-          ],
-        },
-        identity,
-      );
-      expect(result.success).toBe(true);
-
-      const [feedbackRow] = await db
-        .select({ metadata: schema.search_feedback.metadata })
-        .from(schema.search_feedback)
-        .where(eq(schema.search_feedback.id, result.feedbackId))
-        .limit(1);
-
-      expect(feedbackRow).toBeTruthy();
-      expect(feedbackRow.metadata).toEqual(
-        expect.objectContaining({
-          valuableResults: [{ source: "web", position: 2 }],
-          valuableResultDocumentIds: [`search:${searchId}:web:1`],
-        }),
-      );
-    },
-    90000,
-  );
-
-  // Rows written before num_results_by_source existed still have to reject
-  // hallucinated positions.
-  it.concurrent(
-    "falls back to limit when per-source counts are missing",
-    async () => {
-      const raw = await searchRawFull(
-        { query: "firecrawl legacy bound", limit: 3 },
-        identity,
-      );
-      expect(raw.statusCode).toBe(200);
-      const searchId = raw.body.id;
-
-      const [searchRow] = await db
-        .select({ options: schema.searches.options })
-        .from(schema.searches)
-        .where(
-          and(
-            eq(schema.searches.id, searchId),
-            eq(schema.searches.team_id, identity.teamId),
-          ),
-        )
-        .limit(1);
-      expect(searchRow).toBeTruthy();
-
-      // Stand in for a pre-migration row from a web+news search.
-      await db
-        .update(schema.searches)
-        .set({
-          num_results: 6,
-          num_results_by_source: null,
-          options: {
-            ...((searchRow.options as Record<string, unknown> | null) ?? {}),
-            limit: 3,
-            sources: [{ type: "web" }, { type: "news" }],
-          },
-        })
-        .where(
-          and(
-            eq(schema.searches.id, searchId),
-            eq(schema.searches.team_id, identity.teamId),
-          ),
-        );
-
-      const result = await searchFeedback(
-        searchId,
-        {
-          rating: "good",
-          valuableResults: [
-            { source: "web", position: 1 },
-            { source: "web", position: 5 },
-            // images was never requested, so it cannot have returned anything
-            // even though the combined num_results leaves room for it.
-            { source: "images", position: 1 },
-          ],
-        },
-        identity,
-      );
-      expect(result.success).toBe(true);
-
-      const [feedbackRow] = await db
-        .select({ metadata: schema.search_feedback.metadata })
-        .from(schema.search_feedback)
-        .where(eq(schema.search_feedback.id, result.feedbackId))
-        .limit(1);
-
-      expect(feedbackRow).toBeTruthy();
-      expect(feedbackRow.metadata).toEqual(
-        expect.objectContaining({
-          valuableResults: [{ source: "web", position: 1 }],
-          valuableResultDocumentIds: [`search:${searchId}:web:0`],
-        }),
-      );
+      expect(feedbackRow?.searchId).toBe(raw.body.id);
     },
     90000,
   );
@@ -744,17 +451,26 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
       expect(raw.statusCode).toBe(200);
       const searchId = raw.body.id;
 
-      await new Promise(r => setTimeout(r, 750));
-      const aged = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      await db
-        .update(schema.searches)
-        .set({ created_at: aged })
-        .where(
-          and(
-            eq(schema.searches.id, searchId),
-            eq(schema.searches.team_id, identity.teamId),
-          ),
-        );
+      // Back-date the feedback job (its deadline enforces the window) rather
+      // than waiting out the configured window.
+      let job = await readFeedbackJob(searchId);
+      for (let attempt = 0; attempt < 30 && !job; attempt++) {
+        await new Promise(r => setTimeout(r, 1000));
+        job = await readFeedbackJob(searchId);
+      }
+      expect(job).not.toBeNull();
+      expect(
+        await writeFeedbackJob({
+          endpoint: "search",
+          jobId: searchId,
+          requestId: job!.requestId,
+          teamId: identity.teamId,
+          succeeded: job!.succeeded,
+          creditsBilled: job!.creditsBilled,
+          zeroDataRetention: job!.zeroDataRetention,
+          completedAt: new Date(Date.now() - 60 * 60 * 1000),
+        }),
+      ).toBe(true);
 
       const failed = await searchFeedbackWithFailure(
         searchId,
@@ -765,6 +481,165 @@ describeIf(TEST_PRODUCTION)("Search feedback tests", () => {
         identity,
       );
       expect((failed as any).feedbackErrorCode).toBe("FEEDBACK_WINDOW_EXPIRED");
+    },
+    90000,
+  );
+
+  // Positions are bounded and attributed from the feedback job, which is what
+  // `lookupFeedbackJob` reads. Seeding it directly is how these tests control
+  // the per-source counts without depending on what the live search returned.
+  async function seedFeedbackJob(
+    searchId: string,
+    extra: {
+      numResultsBySource?: Record<string, number>;
+      resultCategories?: Record<string, Record<string, string>>;
+    },
+  ) {
+    let job = await readFeedbackJob(searchId);
+    for (let attempt = 0; attempt < 30 && !job; attempt++) {
+      await new Promise(r => setTimeout(r, 1000));
+      job = await readFeedbackJob(searchId);
+    }
+    expect(job).not.toBeNull();
+    expect(
+      await writeFeedbackJob({
+        endpoint: "search",
+        jobId: searchId,
+        requestId: job!.requestId,
+        teamId: identity.teamId,
+        succeeded: job!.succeeded,
+        creditsBilled: job!.creditsBilled,
+        zeroDataRetention: job!.zeroDataRetention,
+        ...extra,
+      }),
+    ).toBe(true);
+  }
+
+  async function feedbackMetadataFor(feedbackId: string) {
+    const [row] = await db
+      .select({ metadata: schema.search_feedback.metadata })
+      .from(schema.search_feedback)
+      .where(eq(schema.search_feedback.id, feedbackId))
+      .limit(1);
+    expect(row).toBeTruthy();
+    return row.metadata as Record<string, unknown>;
+  }
+
+  it.concurrent(
+    "bounds each group by its own result count",
+    async () => {
+      const raw = await searchRawFull(
+        { query: "firecrawl grouped bounds", limit: 3 },
+        identity,
+      );
+      expect(raw.statusCode).toBe(200);
+      const searchId = raw.body.id;
+
+      await seedFeedbackJob(searchId, {
+        numResultsBySource: { web: 2, images: 0, news: 3 },
+      });
+
+      const result = await searchFeedback(
+        searchId,
+        {
+          rating: "good",
+          valuableResults: [
+            { source: "web", position: 2 },
+            // Past the web group, though the combined total leaves room.
+            { source: "web", position: 3 },
+            { source: "news", position: 3 },
+            // images returned nothing, so no position in it is real.
+            { source: "images", position: 1 },
+          ],
+        },
+        identity,
+      );
+      expect(result.success).toBe(true);
+
+      expect(await feedbackMetadataFor(result.feedbackId)).toEqual(
+        expect.objectContaining({
+          valuableResults: [
+            { source: "web", position: 2 },
+            { source: "news", position: 3 },
+          ],
+          valuableResultDocumentIds: [
+            `search:${searchId}:web:1`,
+            `search:${searchId}:news:2`,
+          ],
+        }),
+      );
+    },
+    90000,
+  );
+
+  it.concurrent(
+    "records the serving vertical alongside the position",
+    async () => {
+      const raw = await searchRawFull(
+        { query: "firecrawl vertical label", limit: 3 },
+        identity,
+      );
+      expect(raw.statusCode).toBe(200);
+      const searchId = raw.body.id;
+
+      await seedFeedbackJob(searchId, {
+        numResultsBySource: { web: 2, images: 0, news: 0 },
+        resultCategories: { web: { "1": "developer" } },
+      });
+
+      const result = await searchFeedback(
+        searchId,
+        {
+          rating: "good",
+          valuableResults: [
+            { source: "web", position: 1 },
+            // Tagged by nothing, so it carries a position but no category.
+            { source: "web", position: 2 },
+          ],
+        },
+        identity,
+      );
+      expect(result.success).toBe(true);
+
+      expect(await feedbackMetadataFor(result.feedbackId)).toEqual(
+        expect.objectContaining({
+          valuableResults: [
+            { source: "web", position: 1, category: "developer" },
+            { source: "web", position: 2 },
+          ],
+        }),
+      );
+    },
+    90000,
+  );
+
+  it.concurrent(
+    "keeps positions unbounded when the job predates the counts",
+    async () => {
+      const raw = await searchRawFull(
+        { query: "firecrawl legacy job", limit: 3 },
+        identity,
+      );
+      expect(raw.statusCode).toBe(200);
+      const searchId = raw.body.id;
+
+      // No counts: a job written before the field existed. Unknown bound, so
+      // the label is kept rather than discarded.
+      await seedFeedbackJob(searchId, {});
+
+      const result = await searchFeedback(
+        searchId,
+        { rating: "good", valuableResults: [{ source: "news", position: 2 }] },
+        identity,
+      );
+      expect(result.success).toBe(true);
+
+      expect(await feedbackMetadataFor(result.feedbackId)).toEqual(
+        expect.objectContaining({
+          valuableResults: [{ source: "news", position: 2 }],
+          valuableResultDocumentIds: [`search:${searchId}:news:1`],
+        }),
+      );
     },
     90000,
   );

@@ -68,6 +68,7 @@ class BaseResponse(BaseModel, Generic[T]):
     """Base response structure for all API responses."""
 
     success: bool
+    agent_hints: Optional[List[str]] = None
     data: Optional[T] = None
     error: Optional[str] = None
     warning: Optional[str] = None
@@ -497,6 +498,7 @@ class PdfPage(BaseModel):
 class Document(BaseModel):
     """A scraped document."""
 
+    agent_hints: Optional[List[str]] = None
     markdown: Optional[str] = None
     html: Optional[str] = None
     raw_html: Optional[str] = None
@@ -620,8 +622,8 @@ SourceOption = Union[str, Source]
 class Category(BaseModel):
     """Configuration for a search category.
 
-    Categories narrow ordinary **web search**. They do not switch `search()` to
-    a different index.
+    Most categories narrow ordinary **web search**; "developer" and "gov" switch
+    `search()` to their own index.
 
     Supported categories:
     - "github": Restrict web results to github.com (a `site:` filter)
@@ -633,6 +635,8 @@ class Category(BaseModel):
     - "pdf": Filter results to PDF files (adds filetype:pdf to search)
     - "developer": Developer-index results (issues, pull requests, READMEs and
       documentation) served in `web`; cannot be combined with other categories
+    - "gov": Government Index results served in `web`; cannot be combined
+      with other categories
 
     .. warning::
        ``categories=["research"]`` is **not** Firecrawl's research paper index.
@@ -694,6 +698,7 @@ class JsonFormat(Format):
     type: Literal["json"] = "json"
     prompt: Optional[str] = None
     schema: Optional[Any] = None
+    # Deprecated: use the top-level ScrapeOptions.check_prompt_injection.
     check_prompt_injection: Optional[bool] = None
 
 
@@ -915,6 +920,12 @@ class ScrapeOptions(BaseModel):
     min_age: Optional[int] = None
     store_in_cache: Optional[bool] = None
     lockdown: Optional[bool] = None
+    # Scans the page content for prompt injection with any format except
+    # rawBase64, before LLM-backed formats run. A detection fails the scrape.
+    # Adds 4 credits when the check scans the whole page.
+    check_prompt_injection: Optional[bool] = Field(
+        default=None, alias="checkPromptInjection"
+    )
     redact_pii: Optional[Union[bool, RedactPIIOptions]] = Field(
         default=None, alias="redactPII"
     )
@@ -951,6 +962,21 @@ class ScrapeOptions(BaseModel):
 # Parse accepts a strict subset of scrape options; unsupported fields are
 # rejected by parse-specific request preparation.
 ParseOptions = ScrapeOptions
+
+
+ParseFormatKind = Union[Literal["document", "image"], str]
+
+
+class ParseFormat(BaseModel):
+    """A file format accepted by the parse endpoint."""
+
+    model_config = {"populate_by_name": True}
+
+    format: str
+    kind: ParseFormatKind
+    extensions: List[str]
+    mime_types: List[str] = Field(alias="mimeTypes")
+    available: bool
 
 
 class ScrapeRequest(BaseModel):
@@ -1009,12 +1035,14 @@ class CrawlResponse(BaseModel):
 class CrawlJob(BaseModel):
     """Crawl job status and progress data."""
 
+    id: Optional[str] = None
     status: Literal["scraping", "completed", "failed", "cancelled"]
     total: int = 0
     completed: int = 0
     credits_used: int = 0
     expires_at: Optional[datetime] = None
     next: Optional[str] = None
+    warning: Optional[str] = None
     data: List[Document] = []
 
 
@@ -1255,6 +1283,7 @@ class MapRequest(BaseModel):
 class MapData(BaseModel):
     """Map results data."""
 
+    agent_hints: Optional[List[str]] = None
     links: List["SearchResult"]
 
 
@@ -1551,9 +1580,86 @@ class AgentExchangeOptions(BaseModel):
     toolkits: Optional[List[str]] = None
     max_calls: Optional[int] = Field(default=None, alias="maxCalls")
     require_approval: Optional[bool] = Field(default=None, alias="requireApproval")
-    # Answers a pending_approval from the previous turn of the thread.
+    # Answers a pending_approval from the previous turn of the thread. A
+    # "terms" approval is accepted or declined as a whole: callIds and always
+    # are ignored on it.
     approve: Optional[Dict[str, Any]] = None
     decline: Optional[Dict[str, Any]] = None
+    # What to do when a provider the agent would use needs data terms the team
+    # has not accepted. Gated providers are never called in any mode:
+    # - "skip" (server default): answer with accepted providers only and list
+    #   the gated ones in exchange.skipped_providers.
+    # - "ask": the same, plus exchange.requires_action and a "terms"
+    #   pending_approval. Get your user's explicit consent, call terms/accept,
+    #   then continue the thread with approve={"approvalId": ...}.
+    # There is no auto-accept mode. Omitted on a follow-up turn inherits the
+    # previous turn's value.
+    on_terms_required: Optional[Literal["skip", "ask"]] = Field(
+        default=None, alias="onTermsRequired"
+    )
+
+
+class AgentSkippedProvider(BaseModel):
+    """A gated provider the run would have used but did not."""
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+    provider: Optional[str] = None
+    name: Optional[str] = None
+    capability: Optional[str] = None
+    # What it would have added, in the agent's words.
+    adds: Optional[str] = None
+    # "terms_required".
+    reason: Optional[str] = None
+    # The gating terms version.
+    version: Optional[str] = None
+    # Where a person accepts the terms in the dashboard.
+    terms_url: Optional[str] = Field(default=None, alias="termsUrl")
+
+
+class AgentExchangeCall(BaseModel):
+    """An Exchange call spelled out for the caller to make (terms/show, terms/accept)."""
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+    provider: Optional[str] = None
+    capability: Optional[str] = None
+    options: Optional[Dict[str, Any]] = None
+
+
+class AgentTermsActionProvider(BaseModel):
+    """One provider whose terms the caller can view and accept."""
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+    provider: Optional[str] = None
+    name: Optional[str] = None
+    capability: Optional[str] = None
+    adds: Optional[str] = None
+    version: Optional[str] = None
+    # None when the catalog published no digest; terms/show returns it.
+    digest: Optional[str] = None
+    url: Optional[str] = None
+    show: Optional[AgentExchangeCall] = None
+    # Only call this after the user has explicitly agreed to the terms. Its
+    # options.digest is None when the catalog published none; terms/show
+    # returns it.
+    accept: Optional[AgentExchangeCall] = None
+
+
+class AgentTermsRequiredAction(BaseModel):
+    """The exact calls to view and accept gated providers' terms. Never run for you."""
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+    # "accept_terms".
+    type: Optional[str] = None
+    # Always set by the server: the "terms" pending_approval that answers this.
+    # After the user agrees and terms/accept succeeds, continue the thread with
+    # approve={"approvalId": ...}, or refuse with decline. Optional here only so a
+    # malformed payload cannot break status polling.
+    approval_id: Optional[str] = Field(default=None, alias="approvalId")
+    providers: Optional[List[AgentTermsActionProvider]] = None
 
 
 class AgentExchangeSummary(BaseModel):
@@ -1565,8 +1671,17 @@ class AgentExchangeSummary(BaseModel):
     # What the run resolved to after thread inheritance, not what it requested.
     toolkits: Optional[List[str]] = None
     require_approval: Optional[bool] = Field(default=None, alias="requireApproval")
+    on_terms_required: Optional[str] = Field(default=None, alias="onTermsRequired")
     paid_calls: Optional[int] = Field(default=None, alias="paidCalls")
     credits_used: Optional[int] = Field(default=None, alias="creditsUsed")
+    # Gated providers that would have helped and were not used. Any mode.
+    skipped_providers: Optional[List[AgentSkippedProvider]] = Field(
+        default=None, alias="skippedProviders"
+    )
+    # "ask" mode, when a terms offer ended the turn.
+    requires_action: Optional[AgentTermsRequiredAction] = Field(
+        default=None, alias="requiresAction"
+    )
 
 
 class AgentSuggestion(BaseModel):
@@ -1602,16 +1717,48 @@ class PendingApprovalResolution(BaseModel):
     by_run_id: Optional[str] = Field(default=None, alias="byRunId")
 
 
+class PendingApprovalTerms(BaseModel):
+    """A provider in a "terms" pending approval."""
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+    provider: Optional[str] = None
+    name: Optional[str] = None
+    logo: Optional[str] = None
+    capability: Optional[str] = None
+    adds: Optional[str] = None
+    version: Optional[str] = None
+    # None when the catalog published no digest; terms/show returns it.
+    digest: Optional[str] = None
+    url: Optional[str] = None
+
+
 class PendingApproval(BaseModel):
-    """A turn that ended waiting for the caller to allow or refuse paid calls."""
+    """A turn that ended waiting for the caller.
+
+    Two shapes, told apart by ``kind``:
+
+    - calls (``kind`` "calls", or None on items written before terms offers):
+      allow or refuse the paid ``calls``.
+    - terms (``kind`` "terms"): accept the listed providers' data ``terms``;
+      ``calls`` is always empty. Use ``is_terms`` to branch.
+
+    One model rather than a pydantic discriminated union, so an item with an
+    unknown ``kind`` still parses and status polling keeps working.
+    """
 
     model_config = {"populate_by_name": True, "extra": "allow"}
 
     id: Optional[str] = None
+    kind: Optional[str] = None
     reason: Optional[str] = None
     calls: Optional[List[PendingApprovalCall]] = None
+    terms: Optional[List[PendingApprovalTerms]] = None
     resolution: Optional[PendingApprovalResolution] = None
 
+    @property
+    def is_terms(self) -> bool:
+        return self.kind == "terms"
 
 class AgentResponse(BaseModel):
     """Response for agent operations (start/status/final)."""
@@ -1622,6 +1769,10 @@ class AgentResponse(BaseModel):
     id: Optional[str] = None
     status: Optional[Literal["processing", "completed", "failed"]] = None
     data: Optional[Any] = None
+    # Best-effort result on a failed run; never a completed `data` value.
+    partial: Optional[Any] = None
+    partial_schema_valid: Optional[bool] = Field(default=None, alias="partialSchemaValid")
+    stop_reason: Optional[str] = Field(default=None, alias="stopReason")
     error: Optional[str] = None
     # Deliberately a plain str, not a Literal: this is server-provided and new
     # models ship without an SDK release, so a narrow type turns an unknown
@@ -1715,6 +1866,9 @@ class AgentThreadRun(BaseModel):
     message: Optional[str] = None
     # Only present when the request asked for include_data.
     data: Optional[Any] = None
+    partial: Optional[Any] = None
+    partial_schema_valid: Optional[bool] = Field(default=None, alias="partialSchemaValid")
+    stop_reason: Optional[str] = Field(default=None, alias="stopReason")
     suggestions: Optional[List[AgentSuggestion]] = None
     pending_approval: Optional[PendingApproval] = Field(
         default=None, alias="pendingApproval"
@@ -1968,6 +2122,7 @@ class BrowserExecuteResponse(BaseModel):
     stderr: Optional[str] = None
     exit_code: Optional[int] = None
     killed: Optional[bool] = None
+    truncated: Optional[bool] = None
     error: Optional[str] = None
 
 
@@ -1975,6 +2130,7 @@ class BrowserDeleteResponse(BaseModel):
     """Response from deleting a browser session."""
 
     success: bool
+    status: Optional[str] = None
     session_duration_ms: Optional[int] = None
     credits_billed: Optional[int] = None
     error: Optional[str] = None
@@ -2265,6 +2421,22 @@ class DeveloperSearchResponse(BaseModel):
     sources: Optional[List[DeveloperSearchSourceStatus]] = None
 
 
+class GovSearchRequest(BaseModel):
+    """Request for the Government Index search endpoint."""
+
+    query: str
+    k: Optional[int] = Field(default=None, ge=1, le=100)
+
+
+class GovSearchData(BaseModel):
+    web: List[SearchResultWeb]
+
+
+class GovSearchResponse(BaseModel):
+    success: bool
+    data: GovSearchData
+
+
 class SearchRequest(BaseModel):
     """Request for search operations."""
 
@@ -2358,6 +2530,7 @@ SearchResult = LinkResult
 class SearchData(BaseModel):
     """Search results grouped by source type."""
 
+    agent_hints: Optional[List[str]] = None
     warning: Optional[str] = None
     web: Optional[List[Union[SearchResultWeb, Document]]] = None
     news: Optional[List[Union[SearchResultNews, Document]]] = None
@@ -2420,11 +2593,18 @@ class JobStatus(BaseModel):
 class CrawlError(BaseModel):
     """A crawl error."""
 
+    model_config = {"populate_by_name": True}
+
     id: str
     timestamp: Optional[datetime] = None
     url: str
     code: Optional[str] = None
     error: str
+    # Set when the page needs provider terms accepted first:
+    # {"type": "accept_terms", "terms", "version", "url"}.
+    requires_action: Optional[Dict[str, Any]] = Field(
+        default=None, alias="requiresAction"
+    )
 
 
 class CrawlErrorsResponse(BaseModel):

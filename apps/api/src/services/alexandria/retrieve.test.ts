@@ -337,7 +337,7 @@ it.each([
     options: { requestId: "source" },
   },
   { provider: "other", capability: "bash", options: { requestId: "source" } },
-])("does not forward credentials for other calls: %j", async other => {
+])("forwards credentials with execution for mixed calls: %j", async other => {
   exchangeAnswers({
     success: true,
     creditsCost: 0,
@@ -350,11 +350,11 @@ it.each([
   expect(
     await run({ calls: [call, other], resultAuthorization: "Bearer caller" }),
   ).toMatchObject({ status: 200, executed: true });
-  expect(executions()[0][0].resultAuthorization).toBeUndefined();
+  expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
 });
 
 it.each([123, null, false, {}, []])(
-  "never forwards credentials for a non-string Bash requestId: %j",
+  "forwards credentials with execution for a non-string Bash requestId: %j",
   async requestId => {
     const bash = {
       provider: "firecrawl",
@@ -369,7 +369,7 @@ it.each([123, null, false, {}, []])(
       await run({ calls: [call, bash], resultAuthorization: "Bearer caller" }),
     ).toMatchObject({ status: 400 });
     expect(executions()).toHaveLength(1);
-    expect(executions()[0][0].resultAuthorization).toBeUndefined();
+    expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
   },
 );
 
@@ -493,4 +493,153 @@ it("does not derive terms credential identity from numeric API-key IDs", async (
     if (!execution) throw new Error("Expected a provider execution");
     expect(execution[0].termsIdentity).toBeUndefined();
   }
+});
+
+const sqlCall = {
+  provider: "firecrawl",
+  capability: "sql",
+  options: { query: "SHOW TABLES IN apollo LIMIT 10" },
+};
+it("forwards standalone SQL credentials only to execution without retaining them", async () => {
+  exchangeAnswers({
+    success: true,
+    creditsCost: 0,
+    results: [
+      { ...sqlCall, creditsCost: 0, data: { kind: "tables", items: [] } },
+    ],
+  });
+  expect(
+    await run({ calls: [sqlCall], resultAuthorization: "Bearer caller" }),
+  ).toMatchObject({ status: 200, executed: true });
+  expect(executions()).toHaveLength(1);
+  expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
+  expect(
+    mocks.request.mock.calls
+      .filter(([arg]) => arg.path !== "/v1/retrieve")
+      .every(([arg]) => arg.resultAuthorization === undefined),
+  ).toBe(true);
+  expect([...mocks.store.values()].join("")).not.toContain("Bearer caller");
+});
+it.each([
+  { name: "SQL first", calls: [sqlCall, call] },
+  { name: "SQL last", calls: [call, sqlCall] },
+  { name: "two SQL calls", calls: [sqlCall, sqlCall] },
+])("rejects batched SQL before side effects: $name", async ({ calls }) => {
+  expect(
+    await run({ calls, resultAuthorization: "Bearer caller" }),
+  ).toMatchObject({ status: 400, executed: false });
+  expect(mocks.request).not.toHaveBeenCalled();
+  expect(mocks.authorize).not.toHaveBeenCalled();
+  expect(mocks.lock).not.toHaveBeenCalled();
+  expect(mocks.store.size).toBe(0);
+});
+it("forwards credentials with execution for another provider's sql capability", async () => {
+  const other = { ...sqlCall, provider: "other" };
+  exchangeAnswers({
+    success: true,
+    creditsCost: 0,
+    results: [{ ...other, creditsCost: 0, data: {} }],
+  });
+  expect(
+    await run({ calls: [other], resultAuthorization: "Bearer caller" }),
+  ).toMatchObject({ status: 200, executed: true });
+  expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
+});
+
+const enrichmentCall = {
+  provider: "firecrawl",
+  capability: "enrich",
+  options: { url: "https://ca.linkedin.com/in/example", format: "json" },
+};
+it("forwards standalone enrichment credentials only to execution without retaining them", async () => {
+  exchangeAnswers({
+    success: true,
+    creditsCost: 0,
+    results: [
+      {
+        ...enrichmentCall,
+        creditsCost: 0,
+        data: { status: "disabled", steps: [] },
+      },
+    ],
+  });
+  expect(
+    await run({
+      calls: [enrichmentCall],
+      resultAuthorization: "Bearer caller",
+    }),
+  ).toMatchObject({ status: 200, executed: true });
+  expect(executions()).toHaveLength(1);
+  expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
+  expect(
+    mocks.request.mock.calls
+      .filter(([arg]) => arg.path !== "/v1/retrieve")
+      .every(([arg]) => arg.resultAuthorization === undefined),
+  ).toBe(true);
+  expect([...mocks.store.values()].join("")).not.toContain("Bearer caller");
+});
+it.each([
+  { name: "enrichment first", calls: [enrichmentCall, call] },
+  { name: "enrichment last", calls: [call, enrichmentCall] },
+  { name: "two enrichment calls", calls: [enrichmentCall, enrichmentCall] },
+])(
+  "rejects batched enrichment before side effects: $name",
+  async ({ calls }) => {
+    expect(
+      await run({ calls, resultAuthorization: "Bearer caller" }),
+    ).toMatchObject({ status: 400, executed: false });
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.authorize).not.toHaveBeenCalled();
+    expect(mocks.lock).not.toHaveBeenCalled();
+    expect(mocks.store.size).toBe(0);
+  },
+);
+it("forwards credentials with execution for another provider's enrich capability", async () => {
+  const other = { ...enrichmentCall, provider: "other" };
+  exchangeAnswers({
+    success: true,
+    creditsCost: 0,
+    results: [{ ...other, creditsCost: 0, data: {} }],
+  });
+  expect(
+    await run({ calls: [other], resultAuthorization: "Bearer caller" }),
+  ).toMatchObject({ status: 200, executed: true });
+  expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
+});
+
+it("forwards credentials with execution for any provider, never to quote or authorization, and never retains them", async () => {
+  const plain = {
+    provider: "fred",
+    capability: "series/observations",
+    options: { series_id: "GDP" },
+  };
+  exchangeAnswers({
+    success: true,
+    creditsCost: 0,
+    results: [{ ...plain, creditsCost: 0, data: {} }],
+  });
+  expect(
+    await run({ calls: [plain], resultAuthorization: "Bearer caller" }),
+  ).toMatchObject({ status: 200, executed: true });
+  expect(executions()).toHaveLength(1);
+  expect(executions()[0][0].resultAuthorization).toBe("Bearer caller");
+  expect(
+    mocks.request.mock.calls
+      .filter(([arg]) => arg.path !== "/v1/retrieve")
+      .every(([arg]) => arg.resultAuthorization === undefined),
+  ).toBe(true);
+  expect([...mocks.store.values()].join("")).not.toContain("Bearer caller");
+});
+
+it("sends no credentials when the caller supplied none", async () => {
+  exchangeAnswers({
+    success: true,
+    creditsCost: 0,
+    results: [{ ...call, creditsCost: 0, data: {} }],
+  });
+  expect(await run({ calls: [call] })).toMatchObject({
+    status: 200,
+    executed: true,
+  });
+  expect(executions()[0][0].resultAuthorization).toBeUndefined();
 });

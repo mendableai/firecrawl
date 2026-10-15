@@ -32,10 +32,38 @@ describe("calculateCreditsToBeBilled", () => {
       {} as any,
       undefined,
       undefined,
-      { handled: true, creditsCost: 12 },
+      { provider: { id: "acme", creditsCost: 12, steps: [] } },
     );
 
     expect(credits).toBe(12);
+  });
+
+  it("adds format surcharges on top of an Exchange access", async () => {
+    const credits = await calculateCreditsToBeBilled(
+      {
+        formats: [{ type: "json", prompt: "name" }],
+      } as any,
+      {
+        teamId: "team-id",
+        orgId: null,
+      },
+      {
+        metadata: {
+          statusCode: 200,
+          url: "https://profiles.example/person/example-person",
+          proxyUsed: "basic",
+        },
+      } as any,
+      {
+        totalCost: 0,
+      } as any,
+      {} as any,
+      undefined,
+      undefined,
+      { provider: { id: "acme", creditsCost: 12, steps: [] } },
+    );
+
+    expect(credits).toBe(16);
   });
 
   it("bills X/Twitter scrapes at 30 credits", async () => {
@@ -245,15 +273,19 @@ describe("calculateCreditsToBeBilled", () => {
   const billScrape = (args: {
     lockdown?: boolean;
     json?: boolean;
+    deterministicJson?: boolean;
     guard?: boolean;
     guardVerdicts?: ("clean" | "injection" | "none")[];
   }) =>
     calculateCreditsToBeBilled(
       {
         lockdown: args.lockdown,
+        checkPromptInjection: args.guard,
         formats: args.json
-          ? [{ type: "json", schema: {}, checkPromptInjection: args.guard }]
-          : [{ type: "markdown" }],
+          ? [{ type: "json", schema: {} }]
+          : args.deterministicJson
+            ? [{ type: "deterministicJson", schema: {} }]
+            : [{ type: "markdown" }],
       } as any,
       {
         teamId: "team-id",
@@ -297,6 +329,14 @@ describe("calculateCreditsToBeBilled", () => {
     expect(await billScrape({ json: true, guard: true })).toBe(9);
   });
 
+  it("bills the prompt injection guard on a markdown-only scrape (5 credits)", async () => {
+    expect(await billScrape({ guard: true })).toBe(5);
+  });
+
+  it("keeps the guard fee on top of the deterministicJson flat rate", async () => {
+    expect(await billScrape({ deterministicJson: true, guard: true })).toBe(7);
+  });
+
   it("drops the guard fee when any chunk got no verdict", async () => {
     expect(
       await billScrape({
@@ -322,7 +362,8 @@ describe("calculateCreditsToBeBilled", () => {
   ) =>
     calculateCreditsToBeBilled(
       {
-        formats: [{ type: "json", schema: {}, checkPromptInjection: true }],
+        checkPromptInjection: true,
+        formats: [{ type: "markdown" }],
       } as any,
       {
         teamId: "team-id",

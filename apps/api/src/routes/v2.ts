@@ -23,6 +23,7 @@ import {
   parseUploadRefPayloadMiddleware,
   parseUploadUrlController,
 } from "../controllers/v2/parse-upload";
+import { parseFormatsController } from "../controllers/v2/parse-formats";
 import { batchScrapeController } from "../controllers/v2/batch-scrape";
 import { crawlController } from "../controllers/v2/crawl";
 import { crawlParamsPreviewController } from "../controllers/v2/crawl-params-preview";
@@ -63,17 +64,15 @@ import { agentSnapshotController } from "../controllers/v2/agent-snapshot";
 import { agentSkillController } from "../controllers/v2/agent-skill";
 import { agentThreadController } from "../controllers/v2/agent-thread";
 import {
+  browserProfileDeleteController,
   browserCreateController,
   browserExecuteController,
   browserDeleteController,
   browserListController,
-  browserProfileDeleteController,
-  browserWebhookDestroyedController,
-} from "../controllers/v2/browser";
-import {
   browserReplayController,
   browserReplayPageController,
-} from "../controllers/v2/browser-replay";
+  browserStatusController,
+} from "../controllers/v2/browser";
 import { activityController } from "../controllers/v1/activity";
 import {
   getTeamThreatProtectionController,
@@ -90,6 +89,7 @@ import {
 import { supportProxyController } from "../controllers/v2/support-proxy";
 import {
   createDeveloperRouter,
+  createGovRouter,
   createResearchRouter,
 } from "../controllers/v2/research-proxy";
 import {
@@ -190,7 +190,10 @@ registerMcpActionLogReadRoute(
 v2Router.post(
   "/search",
   researchCategoryNoticeMiddleware,
-  authMiddleware(RateLimiterMode.Search, { allowKeyless: true }),
+  authMiddleware(RateLimiterMode.Search, {
+    allowKeyless: true,
+    allowAgentManagedKey: true,
+  }),
   countryCheck,
   checkCreditsMiddleware(undefined, SEARCH_CREDITS_FEATURE_ID),
   blocklistMiddleware,
@@ -208,6 +211,12 @@ v2Router.post(
   "/feedback",
   authMiddleware(RateLimiterMode.Account),
   wrap(feedbackController),
+);
+
+v2Router.get(
+  "/parse/formats",
+  authMiddleware(RateLimiterMode.Account),
+  wrap(parseFormatsController),
 );
 
 v2Router.post(
@@ -235,7 +244,10 @@ v2Router.post(
 
 v2Router.post(
   "/scrape",
-  authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
+  authMiddleware(RateLimiterMode.Scrape, {
+    allowKeyless: true,
+    allowAgentManagedKey: true,
+  }),
   countryCheck,
   checkCreditsMiddleware(1),
   scrapeBlocklistMiddleware,
@@ -265,7 +277,7 @@ v2Router.delete(
 
 v2Router.post(
   "/batch/scrape",
-  authMiddleware(RateLimiterMode.Scrape),
+  authMiddleware(RateLimiterMode.Scrape, { allowAgentManagedKey: true }),
   countryCheck,
   checkCreditsMiddleware(),
   blocklistMiddleware,
@@ -341,14 +353,14 @@ v2Router.ws(
 
 v2Router.get(
   "/batch/scrape/:jobId",
-  authMiddleware(RateLimiterMode.CrawlStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus, { allowAgentManagedKey: true }),
   validateJobIdParam,
   wrap((req: any, res: any) => crawlStatusController(req, res, true)),
 );
 
 v2Router.delete(
   "/batch/scrape/:jobId",
-  authMiddleware(RateLimiterMode.CrawlStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus, { allowAgentManagedKey: true }),
   validateJobIdParam,
   wrap(crawlCancelController),
 );
@@ -625,7 +637,7 @@ v2Router.post("/slack/events", wrap(slackEventsController));
 
 v2Router.post(
   ["/browser", "/interact"],
-  authMiddleware(RateLimiterMode.Browser),
+  authMiddleware(RateLimiterMode.Browser, { allowAgentManagedKey: true }),
   countryCheck,
   checkCreditsMiddleware(2),
   wrap(browserCreateController),
@@ -663,13 +675,16 @@ v2Router.delete(
 
 v2Router.delete(
   ["/browser/:sessionId", "/interact/:sessionId"],
-  authMiddleware(RateLimiterMode.BrowserExecute),
+  authMiddleware(RateLimiterMode.BrowserExecute, {
+    allowAgentManagedKey: true,
+  }),
   wrap(browserDeleteController),
 );
 
-v2Router.post(
-  "/browser/webhook/destroyed",
-  wrap(browserWebhookDestroyedController),
+v2Router.get(
+  ["/browser/:sessionId", "/interact/:sessionId"],
+  authMiddleware(RateLimiterMode.BrowserExecute),
+  wrap(browserStatusController),
 );
 
 // Support agent proxy — forwards to the support-agent service.
@@ -712,5 +727,15 @@ if (config.RESEARCH_PROXY_URL) {
     "/developer",
     authMiddleware(RateLimiterMode.DeveloperSearch),
     createDeveloperRouter(),
+  );
+}
+
+if (config.SEARCH_PLATFORM_URL) {
+  v2Router.use(
+    "/search/gov",
+    authMiddleware(RateLimiterMode.GovSearch, {
+      allowKeyless: true,
+    }),
+    createGovRouter(),
   );
 }

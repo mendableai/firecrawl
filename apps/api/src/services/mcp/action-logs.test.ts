@@ -1,6 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 
+const ch = vi.hoisted(() => ({
+  client: { query: vi.fn() } as { query: ReturnType<typeof vi.fn> } | null,
+  logMcpActionLog: vi.fn(),
+}));
+vi.mock("../../lib/clickhouse-client", () => ({
+  get clickhouseClient() {
+    return ch.client;
+  },
+}));
+vi.mock("../logging/log_job", () => ({
+  logMcpActionLog: ch.logMcpActionLog,
+}));
 vi.mock("../../db/rpc", () => ({
   authCreditUsageChunkFromTeam: vi.fn((db: any, teamId: string) =>
     db.getTeamPolicy(teamId),
@@ -9,14 +21,10 @@ vi.mock("../../db/rpc", () => ({
 import {
   authorizeMcpActionLogViewer,
   decodeMcpActionLogCursor,
-  encodeMcpActionLogCursor,
   listMcpActionLogs,
   normalizeMcpActionLogInput,
-  purgeMcpActionLogsForTeam,
   recordMcpActionLog,
   resolveMcpActionLogTeamPolicy,
-  startMcpActionLogRetentionWorker,
-  startMcpActionLogRetentionWorkerIfEnabled,
   validateMcpActionLogActor,
 } from "./action-logs";
 
@@ -131,6 +139,72 @@ describe("MCP action log contract", () => {
     );
   });
 
+  it("accepts the hosted MCP search resource", () => {
+    expect(
+      input({ resource: "https://mcp.firecrawl.dev/v2/mcp-search" }).resource,
+    ).toBe("https://mcp.firecrawl.dev/v2/mcp-search");
+  });
+
+  it("stores an optional, normalized objective with secret-like values redacted", () => {
+    expect(input()).toMatchObject({ objective: null, api_job_id: null });
+    expect(
+      input({
+        tool_name: "firecrawl_find_tools",
+        objective: "Pick a tool to extract product prices",
+      }),
+    ).toMatchObject({
+      objective: "Pick a tool to extract product prices",
+      api_job_id: null,
+    });
+    expect(input({ objective: null }).objective).toBeNull();
+    expect(input({ objective: "   " }).objective).toBeNull();
+    expect(
+      input({ objective: "  Compare pricing pages\nfor three vendors  " })
+        .objective,
+    ).toBe("Compare pricing pages for three vendors");
+    expect(
+      input({ objective: "Check docs using Bearer abc.def and fc-123abc" })
+        .objective,
+    ).toBe("Check docs using [redacted] and [redacted]");
+    expect(input({ objective: "Find\u0085the\u009fdocs" }).objective).toBe(
+      "Find the docs",
+    );
+    const started = performance.now();
+    expect(input({ objective: "eyJ-".repeat(16_000) }).objective).toBe(
+      "[redacted]",
+    );
+    expect(performance.now() - started).toBeLessThan(500);
+    const cutJwt = `${`fc-${"x".repeat(96)} `.repeat(39)}eyJhbGciOi.eyJ${"a".repeat(200)}.c2ln`;
+    expect(input({ objective: cutJwt }).objective).toBe(
+      `${"[redacted] ".repeat(39)}[redacted]`,
+    );
+    expect(input({ objective: "x".repeat(1200) }).objective).toBe(
+      "x".repeat(1000),
+    );
+    expect(input({ objective: `${"x".repeat(999)}\u{1F600}` }).objective).toBe(
+      "x".repeat(999),
+    );
+    expect(() => input({ objective: 42 })).toThrow(
+      "objective must be a string",
+    );
+  });
+
+  it("stores an optional API job ID with the standard text limits", () => {
+    expect(input({ api_job_id: " 0190a5d4-7b10-7cc3 " }).api_job_id).toBe(
+      "0190a5d4-7b10-7cc3",
+    );
+    expect(input({ api_job_id: "" }).api_job_id).toBeNull();
+    expect(() => input({ api_job_id: "j".repeat(129) })).toThrow(
+      "api_job_id must be at most 128 characters",
+    );
+    expect(() => input({ api_job_id: "fc-secret" })).toThrow(
+      "api_job_id must not contain secret-like values",
+    );
+    expect(() => input({ api_job_id: 7 })).toThrow(
+      "api_job_id must be a string",
+    );
+  });
+
   it("validates API-key and OAuth actors against the claimed team", async () => {
     const apiKeyDb = {
       select: vi.fn(() => ({
@@ -198,24 +272,30 @@ describe("MCP action log contract", () => {
     expect(primaryDb.getTeamPolicy).toHaveBeenCalledWith(TEAM_ID);
   });
 
-  it("reports stored and duplicate deliveries correctly", async () => {
-    const returning = vi.fn().mockResolvedValue([]);
-    const onConflictDoNothing = vi.fn(() => ({ returning }));
-    const values = vi.fn(() => ({ onConflictDoNothing }));
-    const db = { insert: () => ({ values }) };
-
-    await expect(recordMcpActionLog(db as any, input())).resolves.toEqual({
-      disposition: "duplicate",
-      id: null,
-    });
-    expect(onConflictDoNothing).toHaveBeenCalledTimes(1);
-    expect((values.mock.calls as any)[0][0]).not.toHaveProperty("user_agent");
-
-    returning.mockResolvedValueOnce([{ id: REQUEST_ID }]);
-    await expect(recordMcpActionLog(db as any, input())).resolves.toEqual({
-      disposition: "stored",
+  it("publishes accepted events keyed by the MCP request ID", async () => {
+    ch.logMcpActionLog.mockReset().mockResolvedValue(undefined);
+    await expect(
+      recordMcpActionLog(
+        input({
+          objective: "Find the refund policy",
+          api_job_id: REQUEST_ID,
+          user_agent: "Claude/1.0",
+        }),
+      ),
+    ).resolves.toEqual({ disposition: "accepted", id: REQUEST_ID });
+    const row = ch.logMcpActionLog.mock.calls[0][0];
+    expect(row).toMatchObject({
       id: REQUEST_ID,
+      request_id: REQUEST_ID,
+      team_id: TEAM_ID,
+      api_key_id: "123",
+      objective: "Find the refund policy",
+      api_job_id: REQUEST_ID,
     });
+    expect(row).not.toHaveProperty("user_agent");
+
+    ch.logMcpActionLog.mockRejectedValueOnce(new Error("publish failed"));
+    await expect(recordMcpActionLog(input())).rejects.toThrow("publish failed");
   });
 
   it("requires the API-key owner to be a team admin or owner for listing", async () => {
@@ -258,96 +338,79 @@ describe("MCP action log contract", () => {
     ).rejects.toThrow("An owner-bound API key is required");
   });
 
-  it("purges all retained rows for a team on the supplied primary DB", async () => {
-    const where = vi.fn().mockResolvedValue(undefined);
-    const db = { delete: vi.fn(() => ({ where })) };
-    await purgeMcpActionLogsForTeam(db as any, TEAM_ID);
-    expect(db.delete).toHaveBeenCalledTimes(1);
-    expect(where).toHaveBeenCalledTimes(1);
-  });
-
-  it("runs bounded retention independently on an unrefed, stoppable timer", async () => {
-    const db = { execute: vi.fn().mockResolvedValue(undefined) };
-    let callback: (() => void) | undefined;
-    const timer = { unref: vi.fn() };
-    const clear = vi.fn();
-    const worker = startMcpActionLogRetentionWorker({
-      db,
-      intervalMs: 1234,
-      setIntervalFn: (next, interval) => {
-        callback = next;
-        expect(interval).toBe(1234);
-        return timer;
-      },
-      clearIntervalFn: clear,
-    });
-    await worker.ready;
-    expect(db.execute).toHaveBeenCalled();
-    expect(timer.unref).toHaveBeenCalledTimes(1);
-    callback?.();
-    await vi.waitFor(() =>
-      expect(db.execute.mock.calls.length).toBeGreaterThan(1),
-    );
-    worker.stop();
-    expect(clear).toHaveBeenCalledWith(timer);
-  });
-
-  it("does not touch storage when retention is disabled", () => {
-    const db = { execute: vi.fn() };
-    const setIntervalFn = vi.fn();
-    expect(
-      startMcpActionLogRetentionWorkerIfEnabled({
-        enabled: false,
-        db,
-        setIntervalFn,
-      }),
-    ).toBeNull();
-    expect(db.execute).not.toHaveBeenCalled();
-    expect(setIntervalFn).not.toHaveBeenCalled();
-  });
-
-  it("paginates non-expired rows with stable cursors", async () => {
+  it("paginates non-expired ClickHouse rows with stable cursors", async () => {
     const rows = [
       {
         id: REQUEST_ID,
         api_key_id: "9007199254740993",
-        created_at: "2026-07-10T10:03:00.000Z",
+        created_at: "2026-07-10T10:03:00.123456789Z",
       },
-      { id: USER_ID, api_key_id: null, created_at: "2026-07-10T10:02:00.000Z" },
+      {
+        id: USER_ID,
+        api_key_id: null,
+        created_at: "2026-07-10T10:02:00.000000000Z",
+      },
     ];
-    const execute = vi.fn().mockResolvedValue(undefined);
-    const db = {
-      execute,
-      select: () => ({
-        from() {
-          return this;
-        },
-        where() {
-          return this;
-        },
-        orderBy() {
-          return this;
-        },
-        limit: () => Promise.resolve(rows),
-      }),
+    ch.client = {
+      query: vi.fn().mockResolvedValue({ json: async () => rows }),
     };
-    const result = await listMcpActionLogs(db as any, TEAM_ID, { limit: 1 });
+    const result = await listMcpActionLogs(TEAM_ID, { limit: 1 });
     expect(result.data).toEqual(rows.slice(0, 1));
     expect(result.data[0].api_key_id).toBe("9007199254740993");
     expect(decodeMcpActionLogCursor(result.nextCursor!)).toEqual({
       id: rows[0].id,
       created_at: rows[0].created_at,
     });
-    expect(execute).not.toHaveBeenCalled();
+    const first = ch.client.query.mock.calls[0][0];
+    expect(first.query).toContain("FROM mcp_action_logs AS log FINAL");
+    expect(first.query).toContain("log.team_id = {teamId: UUID}");
+    expect(first.query).toContain("INTERVAL 30 DAY");
+    expect(first.query).not.toContain("{beforeId: UUID}");
+    expect(first.query_params).toEqual({ teamId: TEAM_ID, limit: 2 });
 
-    const cursor = encodeMcpActionLogCursor(rows[0]);
-    expect(decodeMcpActionLogCursor(cursor)).toEqual({
-      id: rows[0].id,
-      created_at: rows[0].created_at,
+    await listMcpActionLogs(TEAM_ID, { limit: 500, cursor: result.nextCursor });
+    const second = ch.client.query.mock.calls[1][0];
+    expect(second.query).toContain(
+      "(log.created_at, log.id) < (parseDateTime64BestEffort({before: String}, 9), {beforeId: UUID})",
+    );
+    expect(second.query_params).toEqual({
+      teamId: TEAM_ID,
+      limit: 101,
+      before: rows[0].created_at,
+      beforeId: rows[0].id,
     });
-    expect(() => decodeMcpActionLogCursor("bad")).toThrow("cursor is invalid");
 
-    const complete = await listMcpActionLogs(db as any, TEAM_ID, { limit: 2 });
+    expect(() => decodeMcpActionLogCursor("bad")).toThrow("cursor is invalid");
+    await expect(listMcpActionLogs(TEAM_ID, { cursor: "bad" })).rejects.toThrow(
+      "cursor is invalid",
+    );
+
+    const complete = await listMcpActionLogs(TEAM_ID, { limit: 2 });
     expect(complete.data[1].api_key_id).toBeNull();
+    expect(complete.nextCursor).toBeNull();
+  });
+
+  it("never selects the objective or API job ID for the team-readable list", async () => {
+    ch.client = { query: vi.fn().mockResolvedValue({ json: async () => [] }) };
+    await listMcpActionLogs(TEAM_ID);
+    const sql = ch.client.query.mock.calls[0][0].query as string;
+    const columns = sql.slice(0, sql.indexOf(" FROM "));
+    expect(columns).toContain("tool_name");
+    expect(columns).not.toContain("objective");
+    expect(columns).not.toContain("api_job_id");
+  });
+
+  it("reports storage as unavailable when the read fails", async () => {
+    ch.client = { query: vi.fn().mockRejectedValue(new Error("timeout")) };
+    await expect(listMcpActionLogs(TEAM_ID)).rejects.toThrow(
+      "MCP action log storage is unavailable",
+    );
+  });
+
+  it("reports storage as unavailable without ClickHouse", async () => {
+    ch.client = null;
+    await expect(listMcpActionLogs(TEAM_ID)).rejects.toThrow(
+      "MCP action log storage is unavailable",
+    );
   });
 });

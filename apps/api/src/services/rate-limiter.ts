@@ -37,6 +37,7 @@ const fallbackRateLimits: Record<RateLimiterMode, number> = {
   supportDocsSearch: 3,
   research: 100,
   developerSearch: 100,
+  govSearch: 100,
   labs: 1000,
   exchange: 100,
   // Catalogue reads only; no paid tool runs behind them.
@@ -135,7 +136,9 @@ export function getAutumnRateLimiter(
  * traffic (a valid `__agentInterop` secret) is floored at this multiplier so a
  * free team's agent runs are limited like hobby rather than at ×1; see
  * buildAuthenticatedRateLimiter in controllers/auth.ts. Paid plans already
- * meet or exceed it, so the floor only ever lifts free.
+ * meet or exceed it, so the floor only ever lifts free. Pairs with
+ * HOBBY_CONCURRENCY_LIMIT in lib/concurrency-limit.ts; change both if the
+ * hobby plan in firecrawl-web autumn.config.ts changes.
  */
 export const HOBBY_RATE_LIMIT_MULTIPLIER = 10;
 
