@@ -86,8 +86,8 @@ pub struct Document {
   pub answer: Option<String>,
   pub highlights: Option<String>,
   // branding:
-  // product:
-  // menu:
+  pub product: Option<Value>,
+  pub menu: Option<Value>,
   pub pages: Option<Vec<PdfPage>>,
   pub blocks: Option<Vec<PdfPageBlocks>>,
   pub warning: Option<String>,

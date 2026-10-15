@@ -95,6 +95,8 @@ pub fn parse_fallback(meta: &Meta, result: RawPageResult) -> Result<Document, Sc
     summary: None,
     answer: None,
     highlights: None,
+    product: None,
+    menu: None,
     attributes: None,
     actions: result.actions,
     warning: None,
