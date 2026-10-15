@@ -132,10 +132,9 @@ export async function reserveIndexDailyCalls(
     INDEXES[index].limit()!,
   ]);
 
-  try {
-    const [admitted, refused, used] = (await withTimeout(
-      redisRateLimitClient.eval(
-        `
+  const pending = Promise.resolve().then(() =>
+    redisRateLimitClient.eval(
+      `
 local ttl = ARGV[#ARGV]
 for i, key in ipairs(KEYS) do
   local current = tonumber(redis.call("GET", key) or "0")
@@ -151,18 +150,18 @@ for i, key in ipairs(KEYS) do
 end
 return {1, 0, 0}
 `,
-        keys.length,
-        ...keys,
-        ...args,
-        ttl,
-      ),
-    )) as [number, number, number];
+      keys.length,
+      ...keys,
+      ...args,
+      ttl,
+    ),
+  ) as Promise<[number, number, number]>;
+  const release = () => releaseCalls(teamId, keys, requested, usage);
 
-    if (admitted === 1)
-      return {
-        ok: true,
-        release: () => releaseCalls(teamId, keys, requested, usage),
-      };
+  try {
+    const [admitted, refused, used] = await withTimeout(pending);
+
+    if (admitted === 1) return { ok: true, release };
     const index = requested[refused - 1];
     const reservation = {
       ok: false as const,
@@ -179,7 +178,16 @@ return {1, 0, 0}
       teamId,
       error,
     });
-    return { ok: true, release: noRelease };
+    // The command may still land once Redis answers. A request refused before
+    // it ran gives back whatever that late reservation took, without waiting.
+    return {
+      ok: true,
+      release: async () => {
+        void pending
+          .then(([admitted]) => (admitted === 1 ? release() : undefined))
+          .catch(() => {});
+      },
+    };
   }
 }
 

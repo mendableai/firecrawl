@@ -4,7 +4,11 @@ const { counters, redisEval } = vi.hoisted(() => {
   const counters = new Map<string, number>();
   // Mirrors the reservation script: every budget must fit, or nothing is spent.
   const redisEval = vi.fn(
-    async (script: string, keyCount: number, ...rest: unknown[]) => {
+    async (
+      script: string,
+      keyCount: number,
+      ...rest: unknown[]
+    ): Promise<unknown> => {
       const keys = rest.slice(0, keyCount) as string[];
       const args = rest.slice(keyCount) as number[];
       if (script.includes("DECRBY")) {
@@ -101,6 +105,27 @@ describe("index daily limit", () => {
       await reserveIndexDailyCalls("team", { research: 10_000 }, NOW),
     ).toMatchObject({ ok: true });
     expect(redisEval).not.toHaveBeenCalled();
+  });
+
+  it("gives back a reservation that lands after the timeout", async () => {
+    vi.useFakeTimers();
+    let land!: () => void;
+    redisEval.mockImplementationOnce(
+      (...args: Parameters<typeof redisEval>) =>
+        new Promise(resolve => {
+          land = () => resolve(redisEval.getMockImplementation()!(...args));
+        }),
+    );
+    const reserving = reserveIndexDailyCalls("team", { gov: 7 }, NOW);
+    await vi.advanceTimersByTimeAsync(500);
+    const reservation = await reserving;
+    vi.useRealTimers();
+    expect(reservation.ok).toBe(true);
+    if (reservation.ok) await reservation.release();
+    land();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(counters.get("index-daily-calls:gov:team:2026-10-15")).toBe(0);
   });
 
   it("allows the request when Redis is unavailable", async () => {

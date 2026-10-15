@@ -215,10 +215,16 @@ export async function providerScrapeController(
   }
 
   if (result.status !== 200) {
-    const retryAfter = (result.body as { retryAfterSeconds?: unknown } | null)
-      ?.retryAfterSeconds;
-    if (typeof retryAfter === "number")
-      res.setHeader("Retry-After", String(retryAfter));
+    // Only the daily index limit; other refusals are relayed unchanged.
+    const refused = result.body as {
+      code?: unknown;
+      retryAfterSeconds?: unknown;
+    } | null;
+    if (
+      refused?.code === "index_daily_limit" &&
+      typeof refused.retryAfterSeconds === "number"
+    )
+      res.setHeader("Retry-After", String(refused.retryAfterSeconds));
     return res.status(result.status).json(result.body);
   }
   const answer = answerSchema.parse(result.body);
