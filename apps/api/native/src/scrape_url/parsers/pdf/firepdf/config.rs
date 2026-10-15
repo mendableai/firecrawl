@@ -66,6 +66,8 @@ pub struct FirePdfConfig {
   pub gcs_input_bucket: String,
   /// fire-engine's large-PDF handoff bucket, the allowlist for inbound references.
   pub fire_engine_pdf_gcs_bucket: Option<String>,
+  /// Raster image OCR for the whole deployment; it also needs `base_url`.
+  pub image_ocr_enabled: bool,
 }
 
 impl FirePdfConfig {
@@ -93,6 +95,7 @@ impl FirePdfConfig {
         .unwrap_or_else(|| "firecrawl-pdf-pipeline".to_string()),
       fire_engine_pdf_gcs_bucket: env_string("FIRE_ENGINE_PDF_GCS_BUCKET")
         .map(|x| x.trim().to_string()),
+      image_ocr_enabled: env_bool("IMAGE_OCR_ENABLED", false),
     }
   }
 

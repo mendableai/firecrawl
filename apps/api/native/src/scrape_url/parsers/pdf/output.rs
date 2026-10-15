@@ -166,6 +166,23 @@ pub fn indexed_document(
   document
 }
 
+/// A raster image's OCR output. Images report no page counts.
+pub fn image_document(meta: &Meta, page: PageInfo, content_type: &str, parsed: Parsed) -> Document {
+  let facts = PdfFacts {
+    num_pages: None,
+    total_pages: None,
+    title: None,
+  };
+  let mut document = document(
+    metadata(meta, &page, content_type.to_string(), facts),
+    page.actions,
+  );
+  document.markdown = Some(parsed.markdown);
+  document.raw_html = Some(parsed.html);
+  document.screenshot = page.screenshot;
+  document
+}
+
 /// The file itself, base64'd, when PDF parsing is off. It travels inline, so it keeps the historical cap.
 pub fn raw_document(
   meta: &Meta,

@@ -7,10 +7,14 @@ use super::{
   raw_page::{RawPageContent, RawPageResult},
 };
 
-pub use self::pdf::{FirePdfError, PdfPage, PdfPageBlocks, fire_engine_pdf_max_size};
+pub use self::{
+  image::image_ocr_enabled,
+  pdf::{FirePdfError, PdfPage, PdfPageBlocks, fire_engine_pdf_max_size},
+};
 
 mod document;
 mod fallback;
+mod image;
 mod pdf;
 #[cfg(test)]
 mod properties;
@@ -84,6 +88,16 @@ pub async fn parse_engine_result(
     span.record("parser", "document");
     span.record("parser.signal", signal);
     document::parse_document(meta, result)
+  } else if let Some(content_type) = image::image_signal(meta, &result) {
+    span.record("parser.signal", "bytes");
+    if !image::image_ocr_enabled(meta) {
+      span.record("parser", "unsupported");
+      return Err(ScrapeURLError::UnsupportedFileError {
+        reason: result.content_type,
+      });
+    }
+    span.record("parser", "image");
+    image::parse_image(meta, result, content_type).await
   } else if is_unsupported_binary(meta, &result) {
     span.record("parser", "unsupported");
     return Err(ScrapeURLError::UnsupportedFileError {

@@ -18,7 +18,7 @@ mod sync;
 
 pub use self::{
   by_reference::{ByReferenceAttempt, by_reference_reachable},
-  client::{FirePdfClient, FirePdfJobOptions, FirePdfRequest, FirePdfResult},
+  client::{FirePdfClient, FirePdfJobOptions, FirePdfRequest, FirePdfResult, SourceKind},
   config::FirePdfConfig,
   error::{FallbackReason, FirePdfError},
   gcs_input::{Handoff, download_handoff},
