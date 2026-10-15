@@ -52,6 +52,10 @@ import {
 } from "../../lib/key-restriction";
 import { wantsDeveloperCategory } from "../../search/developer";
 import { wantsGovCategory } from "../../search/gov";
+import {
+  indexDailyLimitMessage,
+  reserveIndexDailyCalls,
+} from "../../lib/index-daily-limit";
 import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
@@ -236,6 +240,19 @@ async function searchControllerInner(
         success: false,
         error: "Agent interop is not enabled.",
       });
+    }
+
+    if (wantsGovCategory(categories)) {
+      const indexBudget = await reserveIndexDailyCalls(req.auth.team_id, {
+        gov: 1,
+      });
+      if (!indexBudget.ok) {
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return res.status(429).json({
+          success: false,
+          error: indexDailyLimitMessage(indexBudget),
+        });
+      }
     }
 
     // Safe Mode: validate the per-request param up front and reject scrape

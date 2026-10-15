@@ -8,6 +8,11 @@ import {
   fetchResearchUpstream,
 } from "../../lib/research-upstream";
 import { chargeKeylessCredits } from "../../lib/keyless";
+import {
+  indexDailyLimitMessage,
+  indexForEndpointKind,
+  reserveIndexDailyCalls,
+} from "../../lib/index-daily-limit";
 import { billTeam } from "../../services/billing/credit_billing";
 import { getEffectiveSearchForcedKind } from "../../lib/safe-mode";
 import {
@@ -339,6 +344,17 @@ function createResearchController(
     }
 
     const params = parsed.data as ResearchQueryParams;
+    const index = indexForEndpointKind(endpoint.kind);
+    if (index) {
+      const indexBudget = await reserveIndexDailyCalls(authedReq.auth.team_id, {
+        [index]: 1,
+      });
+      if (!indexBudget.ok) {
+        chargeKeylessCredits(authedReq.auth.team_id, 0).catch(() => {});
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return researchError(res, 429, indexDailyLimitMessage(indexBudget));
+      }
+    }
     const targetHint = endpoint.targetHint(params, authedReq);
     await logRequest({
       id: jobId,

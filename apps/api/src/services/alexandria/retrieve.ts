@@ -3,6 +3,11 @@ import { z } from "zod";
 import { config } from "../../config";
 import type { TeamFlags } from "../../controllers/v2/types";
 import { reportExchangeUsageBilling } from "../../lib/exchange";
+import {
+  indexCallsForProviders,
+  indexDailyLimitMessage,
+  reserveIndexDailyCalls,
+} from "../../lib/index-daily-limit";
 import { logger } from "../../lib/logger";
 import {
   autumnService,
@@ -239,6 +244,18 @@ export async function retrieveProviders(input: {
       input.orgId,
     );
     if (denied) return refuse(denied);
+
+    const indexBudget = await reserveIndexDailyCalls(
+      input.teamId,
+      indexCallsForProviders(input.calls),
+    );
+    if (!indexBudget.ok)
+      return refuse(
+        refusal(429, indexDailyLimitMessage(indexBudget), {
+          code: "index_daily_limit",
+          retryAfterSeconds: indexBudget.retryAfterSeconds,
+        }),
+      );
 
     const quote = await exchangeRequest({
       teamId: input.teamId,

@@ -99,6 +99,16 @@ const configSchema = z.object({
   // Express
   EXPRESS_TRUST_PROXY: z.coerce.number().optional(),
 
+  // Free index calls each team may make per UTC day, shared by every path into
+  // the index (dedicated endpoints and the Alexandria provider). Unset means
+  // the index is not limited. See lib/index-daily-limit.ts.
+  GOV_INDEX_CALLS_PER_DAY: z.coerce.number().int().nonnegative().default(500),
+  RESEARCH_INDEX_CALLS_PER_DAY: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .optional(),
+
   // Keyless free tier (scrape/search/interact without an API key, per-IP/day).
   // Non-negative integers; 0 means "enabled but no budget", unset means "off".
   KEYLESS_CREDITS_PER_DAY: z.coerce.number().int().nonnegative().optional(),
