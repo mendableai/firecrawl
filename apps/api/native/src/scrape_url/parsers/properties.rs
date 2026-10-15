@@ -235,6 +235,7 @@ async fn parsers_never_panic(tc: TestCase) {
     audio_cookies: Vec::new(),
     proxy_used: ScrapeProxy::Basic,
     timezone: None,
+    postprocessors_used: None,
     filename,
   };
 

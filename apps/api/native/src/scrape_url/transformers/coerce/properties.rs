@@ -134,6 +134,7 @@ async fn coerce_keeps_only_requested_fields_and_is_idempotent(tc: TestCase) {
     audio_cookies: Vec::new(),
     proxy_used: ScrapeProxy::Basic,
     timezone: None,
+    postprocessors_used: None,
     filename: None,
   };
   let mut document = parse_engine_result(&meta, page).await.unwrap();
