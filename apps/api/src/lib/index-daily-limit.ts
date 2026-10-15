@@ -2,7 +2,7 @@ import { config } from "../config";
 import { redisRateLimitClient } from "../services/rate-limiter";
 import { logger } from "./logger";
 
-export type GovIndexDailyReservation =
+type GovIndexDailyReservation =
   | { ok: true; release: () => Promise<void> }
   | {
       ok: false;

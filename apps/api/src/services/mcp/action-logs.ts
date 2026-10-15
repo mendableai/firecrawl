@@ -99,7 +99,7 @@ function objective(value: unknown) {
   return normalized || null;
 }
 
-export type McpActionLogInput = {
+type McpActionLogInput = {
   team_id: string;
   user_id: string | null;
   api_key_id: string | null;
