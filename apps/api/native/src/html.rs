@@ -562,12 +562,11 @@ fn _transform_html_inner(
           };
 
           if let Some((last_index, _)) = last_token.char_indices().last() {
-            if let Some(parsed_size) = last_token[..last_index]
+            last_token[..last_index]
               .parse::<f64>()
               .ok()
               .filter(|x| x.is_finite())
-            {
-              Some(ImageSource {
+              .map(|parsed_size| ImageSource {
                 url: if last_token_used {
                   tok[0..tok.len() - 1].join(" ")
                 } else {
@@ -576,9 +575,6 @@ fn _transform_html_inner(
                 size: parsed_size,
                 is_x: last_token.ends_with('x'),
               })
-            } else {
-              None
-            }
           } else {
             None
           }
