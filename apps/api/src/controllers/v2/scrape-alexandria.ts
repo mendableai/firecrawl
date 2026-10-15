@@ -214,7 +214,13 @@ export async function providerScrapeController(
     );
   }
 
-  if (result.status !== 200) return res.status(result.status).json(result.body);
+  if (result.status !== 200) {
+    const retryAfter = (result.body as { retryAfterSeconds?: unknown } | null)
+      ?.retryAfterSeconds;
+    if (typeof retryAfter === "number")
+      res.setHeader("Retry-After", String(retryAfter));
+    return res.status(result.status).json(result.body);
+  }
   const answer = answerSchema.parse(result.body);
   if (legacy) {
     if (legacyBody && "requests" in legacyBody) return res.json(answer);

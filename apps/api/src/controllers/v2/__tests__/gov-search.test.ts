@@ -39,6 +39,9 @@ vi.mock("../../../lib/logger", () => ({
 import { createGovRouter } from "../research-proxy";
 import { billTeam } from "../../../services/billing/credit_billing";
 import { keylessTeamId } from "../../../lib/keyless";
+import { redisRateLimitClient } from "../../../services/rate-limiter";
+
+const redisEval = vi.spyOn(redisRateLimitClient, "eval");
 
 const TEAM_ID = "11111111-1111-1111-1111-111111111111";
 const KEYLESS_TEAM_ID = keylessTeamId("203.0.113.7");
@@ -104,9 +107,24 @@ beforeEach(() => {
   mocks.logRequest.mockResolvedValue(undefined);
   mocks.logResearchEndpoint.mockResolvedValue(undefined);
   mocks.fetchGovUpstream.mockResolvedValue(upstreamWith([WEB_RESULT]));
+  redisEval.mockResolvedValue([1, 0, 0]);
 });
 
 describe("/v2/search/gov", () => {
+  it("refuses a team over its daily gov limit without calling the index", async () => {
+    redisEval.mockResolvedValue([0, 1, 500]);
+    const res = makeRes();
+    await handler("get")(makeReq("GET", { query: "food labeling rules" }), res);
+    await flush();
+
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.setHeader).toHaveBeenCalledWith(
+      "Retry-After",
+      expect.any(String),
+    );
+    expect(mocks.fetchGovUpstream).not.toHaveBeenCalled();
+  });
+
   it.each(["GET", "POST"] as const)(
     "serves a %s request for free",
     async method => {

@@ -242,19 +242,6 @@ async function searchControllerInner(
       });
     }
 
-    if (wantsGovCategory(categories)) {
-      const indexBudget = await reserveIndexDailyCalls(req.auth.team_id, {
-        gov: 1,
-      });
-      if (!indexBudget.ok) {
-        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
-        return res.status(429).json({
-          success: false,
-          error: indexDailyLimitMessage(indexBudget),
-        });
-      }
-    }
-
     // Safe Mode: validate the per-request param up front and reject scrape
     // options it forbids (the worker backstop would otherwise strip them
     // silently). Domain controls force threat protection over the results.
@@ -424,6 +411,20 @@ async function searchControllerInner(
           .json(await keylessLimitBody(req.auth.team_id, "v2_search", req));
       }
       reservedKeylessCredits = projectedKeylessCredits;
+    }
+
+    // Last gate before the search runs, so a refused request spends nothing.
+    if (wantsGovCategory(categories)) {
+      const indexBudget = await reserveIndexDailyCalls(req.auth.team_id, {
+        gov: 1,
+      });
+      if (!indexBudget.ok) {
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return res.status(429).json({
+          success: false,
+          error: indexDailyLimitMessage(indexBudget),
+        });
+      }
     }
 
     const result = await executeSearch(

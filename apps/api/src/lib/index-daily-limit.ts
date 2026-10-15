@@ -65,7 +65,11 @@ export function indexForEndpointKind(kind: string): FreeIndex | undefined {
 }
 
 export type IndexDailyReservation =
-  | { ok: true }
+  | {
+      ok: true;
+      /** Gives the reserved calls back, for a request refused before it ran. */
+      release: () => Promise<void>;
+    }
   | {
       ok: false;
       index: FreeIndex;
@@ -74,6 +78,25 @@ export type IndexDailyReservation =
       requested: number;
       retryAfterSeconds: number;
     };
+
+// An unreachable Redis queues commands instead of failing, so bound the wait
+// to keep the fail-open promise.
+const REDIS_TIMEOUT_MS = 500;
+
+function withTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("Redis did not answer in time")),
+        REDIS_TIMEOUT_MS,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+const noRelease = async () => {};
 
 function secondsUntilNextUtcDay(now: Date): number {
   const next = Date.UTC(
@@ -97,7 +120,7 @@ export async function reserveIndexDailyCalls(
   const requested = FREE_INDEXES.filter(
     index => (usage[index] ?? 0) > 0 && INDEXES[index].limit() !== undefined,
   );
-  if (requested.length === 0) return { ok: true };
+  if (requested.length === 0) return { ok: true, release: noRelease };
 
   const day = now.toISOString().slice(0, 10);
   const ttl = secondsUntilNextUtcDay(now);
@@ -110,8 +133,9 @@ export async function reserveIndexDailyCalls(
   ]);
 
   try {
-    const [admitted, refused, used] = (await redisRateLimitClient.eval(
-      `
+    const [admitted, refused, used] = (await withTimeout(
+      redisRateLimitClient.eval(
+        `
 local ttl = ARGV[#ARGV]
 for i, key in ipairs(KEYS) do
   local current = tonumber(redis.call("GET", key) or "0")
@@ -127,13 +151,18 @@ for i, key in ipairs(KEYS) do
 end
 return {1, 0, 0}
 `,
-      keys.length,
-      ...keys,
-      ...args,
-      ttl,
+        keys.length,
+        ...keys,
+        ...args,
+        ttl,
+      ),
     )) as [number, number, number];
 
-    if (admitted === 1) return { ok: true };
+    if (admitted === 1)
+      return {
+        ok: true,
+        release: () => releaseCalls(teamId, keys, requested, usage),
+      };
     const index = requested[refused - 1];
     const reservation = {
       ok: false as const,
@@ -150,7 +179,36 @@ return {1, 0, 0}
       teamId,
       error,
     });
-    return { ok: true };
+    return { ok: true, release: noRelease };
+  }
+}
+
+// Best effort: the counters are on the reserved day's keys, clamped at zero.
+async function releaseCalls(
+  teamId: string,
+  keys: string[],
+  requested: FreeIndex[],
+  usage: IndexCalls,
+): Promise<void> {
+  try {
+    await withTimeout(
+      redisRateLimitClient.eval(
+        `
+for i, key in ipairs(KEYS) do
+  local current = tonumber(redis.call("GET", key) or "0")
+  if current > 0 then
+    redis.call("DECRBY", key, math.min(current, tonumber(ARGV[i])))
+  end
+end
+return 1
+`,
+        keys.length,
+        ...keys,
+        ...requested.map(index => usage[index]!),
+      ),
+    );
+  } catch (error) {
+    logger.warn("Free index daily limit release failed", { teamId, error });
   }
 }
 

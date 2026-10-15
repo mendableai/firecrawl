@@ -228,7 +228,10 @@ export async function retrieveProviders(input: {
     apiKeyId: input.apiKeyId,
   };
   const remaining = () => Math.max(1, record.deadline - Date.now());
+  // Index calls reserved below are given back on any exit before execution.
+  let releaseIndexCalls = async () => {};
   const refuse = async (response: ExchangeResponse, executed = false) => {
+    if (!executed) await releaseIndexCalls();
     await redisRateLimitClient.del(key);
     return { ...response, executed, scrapeId: input.scrapeId };
   };
@@ -256,6 +259,7 @@ export async function retrieveProviders(input: {
           retryAfterSeconds: indexBudget.retryAfterSeconds,
         }),
       );
+    releaseIndexCalls = indexBudget.release;
 
     const quote = await exchangeRequest({
       teamId: input.teamId,
@@ -334,6 +338,7 @@ export async function retrieveProviders(input: {
       lockId = hold.lockId;
     }
   } catch (error) {
+    await releaseIndexCalls();
     await redisRateLimitClient.del(key).catch(() => {});
     throw error;
   }
