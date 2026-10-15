@@ -463,7 +463,8 @@ fn _transform_html_inner(
 
       let modes = signatures
         .iter()
-        .map(|x| Into::<SignatureMode>::into(x.split(':').nth(1).unwrap().to_string()))
+        .filter_map(|x| x.split(':').nth(1))
+        .map(|x| Into::<SignatureMode>::into(x.to_string()))
         .collect::<HashSet<_>>();
 
       for mode in modes {
@@ -561,7 +562,11 @@ fn _transform_html_inner(
           };
 
           if let Some((last_index, _)) = last_token.char_indices().last() {
-            if let Ok(parsed_size) = last_token[..last_index].parse() {
+            if let Some(parsed_size) = last_token[..last_index]
+              .parse::<f64>()
+              .ok()
+              .filter(|x| x.is_finite())
+            {
               Some(ImageSource {
                 url: if last_token_used {
                   tok[0..tok.len() - 1].join(" ")
@@ -590,11 +595,7 @@ fn _transform_html_inner(
         }
       }
 
-      sizes.sort_by(|a, b| {
-        b.size
-          .partial_cmp(&a.size)
-          .unwrap_or(std::cmp::Ordering::Equal)
-      });
+      sizes.sort_by(|a, b| b.size.total_cmp(&a.size));
 
       if let Some(biggest) = sizes.first() {
         img
