@@ -141,6 +141,15 @@ describe("Alexandria connector routes on the Exchange proxy", () => {
       "/exchange/connectors/mcp-deepwiki/tools/read_wiki_structure",
       "/v1/connectors/mcp-deepwiki/tools/read_wiki_structure",
     ],
+    ["get", "/exchange/team-skills", "/v1/team-skills"],
+    ["post", "/exchange/team-skills", "/v1/team-skills"],
+    ["patch", "/exchange/team-skills/item-1", "/v1/team-skills/item-1"],
+    ["delete", "/exchange/team-skills/item-1", "/v1/team-skills/item-1"],
+    [
+      "get",
+      "/exchange/team-skills/references?q=fred",
+      "/v1/team-skills/references?q=fred",
+    ],
   ] as const)(
     "forwards %s %s for a team with exchangeRetrieve, granting connectors",
     async (method, path, upstreamPath) => {
