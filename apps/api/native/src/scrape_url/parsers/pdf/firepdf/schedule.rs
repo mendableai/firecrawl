@@ -50,7 +50,8 @@ fn round(x: f64) -> i64 {
 
 /// Exponential backoff from the floor with +0-20% jitter, capped; fire-pdf's hint is a floor.
 pub fn next_poll_delay(prev: i64, retry_after_ms: Option<i64>, random: f64) -> i64 {
-  let candidate = (prev * 2)
+  let candidate = prev
+    .saturating_mul(2)
     .max(retry_after_ms.unwrap_or(0))
     .max(POLL_FLOOR_MS);
   POLL_CAP_MS.min(round(candidate as f64 * (1.0 + random * 0.2)))
@@ -62,7 +63,7 @@ pub fn compute_inline_job_deadline_ms(caller_window_ms: i64) -> i64 {
     INLINE_JOB_DEADLINE_MARGIN_MIN_MS,
     INLINE_JOB_DEADLINE_MARGIN_MAX_MS,
   );
-  MIN_DEADLINE_MS.max(caller_window_ms - margin)
+  MIN_DEADLINE_MS.max(caller_window_ms.saturating_sub(margin))
 }
 
 /// Caps a poll delay so a poll lands just after the job deadline, and polls at the floor past it.
@@ -70,7 +71,9 @@ pub fn align_poll_delay(delay_ms: i64, now_ms: i64, job_deadline_at_ms: Option<i
   let Some(job_deadline_at_ms) = job_deadline_at_ms else {
     return delay_ms;
   };
-  let until_target = job_deadline_at_ms + JOB_DEADLINE_POLL_GRACE_MS - now_ms;
+  let until_target = job_deadline_at_ms
+    .saturating_add(JOB_DEADLINE_POLL_GRACE_MS)
+    .saturating_sub(now_ms);
   if until_target <= 0 {
     delay_ms.min(POLL_FLOOR_MS)
   } else {
@@ -94,7 +97,7 @@ pub fn compute_by_reference_deadline_ms(remaining_ms: Option<i64>, pages_estimat
 pub fn long_poll_wait_for(configured_ms: i64, ms_until_deadline: i64) -> i64 {
   let wait = configured_ms
     .min(LONG_POLL_MAX_WAIT_MS)
-    .min(ms_until_deadline - LONG_POLL_DEADLINE_SLACK_MS);
+    .min(ms_until_deadline.saturating_sub(LONG_POLL_DEADLINE_SLACK_MS));
   if wait >= LONG_POLL_MIN_WAIT_MS {
     wait
   } else {

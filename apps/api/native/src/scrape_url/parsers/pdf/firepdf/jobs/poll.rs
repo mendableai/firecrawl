@@ -90,7 +90,10 @@ impl<'a> PollLoop<'a> {
       let pause_ms = POLL_FLOOR_MS.max(POLL_CAP_MS.min(self.retry_after_ms.unwrap_or(0)));
       let fits_after_pause = long_poll_wait_for(
         plan.long_poll_wait_ms,
-        plan.polling_deadline - io::now_ms() - pause_ms,
+        plan
+          .polling_deadline
+          .saturating_sub(io::now_ms())
+          .saturating_sub(pause_ms),
       ) > 0;
       if fits_after_pause {
         io::sleep(pause_ms).await;
@@ -102,7 +105,10 @@ impl<'a> PollLoop<'a> {
       return Err(FirePdfError::Async(FallbackReason::PollingTimeout));
     }
     let wait_ms = if self.long_poll_active && !scheduled_this_round {
-      long_poll_wait_for(plan.long_poll_wait_ms, plan.polling_deadline - io::now_ms())
+      long_poll_wait_for(
+        plan.long_poll_wait_ms,
+        plan.polling_deadline.saturating_sub(io::now_ms()),
+      )
     } else {
       0
     };
@@ -140,7 +146,7 @@ impl<'a> PollLoop<'a> {
       io::now_ms(),
       plan.job_deadline_at_ms,
     )
-    .min((plan.polling_deadline - io::now_ms()).max(0));
+    .min(plan.polling_deadline.saturating_sub(io::now_ms()).max(0));
     io::sleep(delay).await;
     early
   }
