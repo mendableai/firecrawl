@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { generateObject } from "ai";
+import { APITimeoutError, RateLimitError } from "@typesafe-ai/sdk";
 
 const mocks = vi.hoisted(() => ({ systemOne: vi.fn() }));
 
@@ -26,6 +27,11 @@ import {
   resetJevBreaker,
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
+import {
+  brandingRoutedTotal,
+  brandingJevBreakerOpensTotal,
+  brandingJevCallsTotal,
+} from "../../../lib/branding/metrics";
 import { mergeBrandingResults } from "../../../lib/branding/merge";
 import { BrandingLLMInput } from "../../../lib/branding/types";
 import { CostTracking } from "../../../lib/cost-tracking";
@@ -909,5 +915,80 @@ describe("Jev request building", () => {
     expect(buildJevRequest(input).fonts).toEqual([
       { family: "Cormorant Garamond", count: 15, role: undefined },
     ]);
+  });
+});
+
+describe("branding metrics", () => {
+  const value = async (
+    metric: {
+      get: () => Promise<{ values: { labels: object; value: number }[] }>;
+    },
+    labels: Record<string, string> = {},
+  ) =>
+    (await metric.get()).values.find(v =>
+      Object.entries(labels).every(
+        ([k, want]) => (v.labels as Record<string, string>)[k] === want,
+      ),
+    )?.value ?? 0;
+
+  it("counts which model answered and how each Jev call ended", async () => {
+    const jevOk = { outcome: "ok", shadow: "false" };
+    const rateLimited = { outcome: "rate_limited", shadow: "false" };
+    const timedOut = { outcome: "timeout", shadow: "false" };
+    const byJev = { model: "jev", reason: "rollout" };
+    const fellBack = { model: "llm", reason: "jev_unavailable" };
+    const before = {
+      jevOk: await value(brandingJevCallsTotal, jevOk),
+      rateLimited: await value(brandingJevCallsTotal, rateLimited),
+      timedOut: await value(brandingJevCallsTotal, timedOut),
+      byJev: await value(brandingRoutedTotal, byJev),
+      fellBack: await value(brandingRoutedTotal, fellBack),
+    };
+
+    respondWith(jevResponse());
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    mocks.systemOne.mockRejectedValueOnce(
+      new RateLimitError(429, {}, new Headers()),
+    );
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    mocks.systemOne.mockRejectedValueOnce(new APITimeoutError(1500));
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(await value(brandingJevCallsTotal, jevOk)).toBe(before.jevOk + 1);
+    expect(await value(brandingJevCallsTotal, rateLimited)).toBe(
+      before.rateLimited + 1,
+    );
+    expect(await value(brandingJevCallsTotal, timedOut)).toBe(
+      before.timedOut + 1,
+    );
+    expect(await value(brandingRoutedTotal, byJev)).toBe(before.byJev + 1);
+    expect(await value(brandingRoutedTotal, fellBack)).toBe(
+      before.fellBack + 2,
+    );
+  });
+
+  it("counts the breaker opening and the calls it skips", async () => {
+    const skipped = { outcome: "breaker_open", shadow: "false" };
+    const opensBefore = await value(brandingJevBreakerOpensTotal);
+    const skippedBefore = await value(brandingJevCallsTotal, skipped);
+    mocks.systemOne.mockRejectedValue(new Error("529 high traffic"));
+
+    for (let i = 0; i < 6; i++) {
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    }
+
+    expect(await value(brandingJevBreakerOpensTotal)).toBe(opensBefore + 1);
+    expect(await value(brandingJevCallsTotal, skipped)).toBe(skippedBefore + 1);
+  });
+
+  it("counts teams outside the rollout as answered by the LLM", async () => {
+    const outside = { model: "llm", reason: "not_in_rollout" };
+    const before = await value(brandingRoutedTotal, outside);
+    config.BRANDING_JEV_TEAM_IDS = [];
+
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(await value(brandingRoutedTotal, outside)).toBe(before + 1);
+    expect(mocks.systemOne).not.toHaveBeenCalled();
   });
 });

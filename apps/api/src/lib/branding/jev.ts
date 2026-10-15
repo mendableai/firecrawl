@@ -11,6 +11,13 @@ import { config } from "../../config";
 import { setSpanAttributes, SpanKind, withSpan } from "../otel-tracer";
 import { sampled } from "../rollout";
 import { getTypeSafeClient } from "../typesafe";
+import { APITimeoutError, RateLimitError } from "@typesafe-ai/sdk";
+import {
+  brandingJevBreakerOpensTotal,
+  brandingJevCallsTotal,
+  brandingJevDurationSeconds,
+  JevCallOutcome,
+} from "./metrics";
 import { BrandingEnhancement } from "./schema";
 import { BrandingLLMInput } from "./types";
 
@@ -42,6 +49,7 @@ function recordJevFailure(input: BrandingLLMInput): void {
   consecutiveFailures++;
   if (consecutiveFailures >= BREAKER_FAILURES && !isJevBreakerOpen()) {
     breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
+    brandingJevBreakerOpensTotal.inc();
     input.logger.warn("Jev branding calls failing, using the LLM for a while", {
       consecutiveFailures,
       cooldownMs: BREAKER_COOLDOWN_MS,
@@ -902,7 +910,14 @@ export async function enhanceBrandingWithJev(
   options: { shadow?: boolean } = {},
 ): Promise<JevBrandingResult | null> {
   const typesafe = getTypeSafeClient();
-  if (!typesafe || isJevBreakerOpen()) return null;
+  if (!typesafe) return null;
+  const shadow = options.shadow ? "true" : "false";
+  const count = (outcome: JevCallOutcome) =>
+    brandingJevCallsTotal.inc({ outcome, shadow });
+  if (isJevBreakerOpen()) {
+    count("breaker_open");
+    return null;
+  }
   const started = Date.now();
   let request: JevRequest;
   let response: JevResponse;
@@ -947,7 +962,20 @@ export async function enhanceBrandingWithJev(
     );
   } catch (error) {
     // Only TypeSafe's own failures say anything about its health.
-    if (called) recordJevFailure(input);
+    if (called) {
+      recordJevFailure(input);
+      brandingJevDurationSeconds.observe(
+        { shadow },
+        (Date.now() - started) / 1000,
+      );
+      count(
+        error instanceof RateLimitError
+          ? "rate_limited"
+          : error instanceof APITimeoutError
+            ? "timeout"
+            : "error",
+      );
+    }
     input.logger.warn(
       options.shadow
         ? "Jev branding shadow call failed"
@@ -962,6 +990,7 @@ export async function enhanceBrandingWithJev(
   // A call that started before the breaker opened and succeeds late doesn't
   // close it: the next failure after the cooldown should reopen it at once.
   if (!isJevBreakerOpen()) consecutiveFailures = 0;
+  brandingJevDurationSeconds.observe({ shadow }, (Date.now() - started) / 1000);
 
   const inputTokens = response.usage?.input_tokens ?? 0;
   const outputTokens = response.usage?.output_tokens ?? 0;
@@ -978,6 +1007,7 @@ export async function enhanceBrandingWithJev(
     result = mapJevAnswers(request, response);
   } catch (error) {
     // A successful call whose answers don't have the expected shape.
+    count("unusable");
     input.logger.warn(
       options.shadow
         ? "Jev branding shadow answers unusable"
@@ -989,6 +1019,7 @@ export async function enhanceBrandingWithJev(
     );
     return null;
   }
+  count("ok");
   input.logger.info("Jev branding call", {
     model: response.model,
     shadow: options.shadow === true,

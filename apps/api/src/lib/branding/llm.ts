@@ -5,6 +5,7 @@ import { calculateCost } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { CostLimitExceededError } from "../cost-tracking";
 import { BrandingEnhancement, getBrandingEnhancementSchema } from "./schema";
 import { enhanceBrandingWithJev, isJevBrandingEnabled } from "./jev";
+import { brandingRoutedTotal } from "./metrics";
 import { shadowJev, shouldShadowJev } from "./jev-shadow";
 import { buildBrandingPrompt } from "./prompt";
 import { BrandingLLMInput } from "./types";
@@ -109,14 +110,23 @@ export async function enhanceBrandingWithLLM(
   const logger = input.logger;
 
   const triedJev = isJevBrandingEnabled(input);
-  if (triedJev) {
+  if (!triedJev) {
+    brandingRoutedTotal.inc({ model: "llm", reason: "not_in_rollout" });
+  } else {
     const jev = await enhanceBrandingWithJev(input);
     const escalateBelow = config.BRANDING_JEV_ESCALATE_BELOW;
     const unsureOfLogo =
       escalateBelow !== undefined &&
       jev?.logoConfidence !== undefined &&
       jev.logoConfidence < escalateBelow;
-    if (jev && !unsureOfLogo) return jev.enhancement;
+    if (jev && !unsureOfLogo) {
+      brandingRoutedTotal.inc({ model: "jev", reason: "rollout" });
+      return jev.enhancement;
+    }
+    brandingRoutedTotal.inc({
+      model: "llm",
+      reason: jev ? "logo_escalation" : "jev_unavailable",
+    });
     if (jev) {
       logger.info("Jev unsure of the logo, escalating branding to the LLM", {
         logoConfidence: jev.logoConfidence,
