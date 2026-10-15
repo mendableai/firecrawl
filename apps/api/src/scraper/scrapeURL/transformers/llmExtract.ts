@@ -31,6 +31,11 @@ import { CostTracking } from "../../../lib/cost-tracking";
 import { isZeroDataRetentionActive } from "../../../lib/otel-tracer";
 import { isAgentExtractModelValid } from "../../../controllers/v1/types";
 import { hasFormatOfType } from "../../../lib/format-utils";
+import {
+  extractionProviderCost,
+  selectExtractionRoute,
+} from "../../../lib/extraction-provider";
+import { config } from "../../../config";
 
 // Smart model selection based on schema
 function detectRecursiveSchema(schema: any): boolean {
@@ -310,6 +315,8 @@ function lookupModelCost(
   for (const id of candidates) {
     if (modelCosts[id]) return modelCosts[id];
   }
+  const providerCost = extractionProviderCost(model);
+  if (providerCost) return providerCost;
   for (const id of candidates) {
     const price = modelPrices[id];
     if (
@@ -1057,9 +1064,19 @@ export async function performLLMExtract(
       zeroDataRetention: meta.internalOptions.zeroDataRetention,
     };
 
-    const { extractedDataArray, warning, costLimitExceededTokenUsage } =
-      await extractData({
-        extractOptions: generationOptions,
+    // Optional extraction provider: routed by team cohort, with the default
+    // model as a per-request fallback; or mirrored (shadow) without using
+    // the result. The agent path is never routed.
+    const route = useAgent
+      ? "default"
+      : selectExtractionRoute({
+          teamId: meta.internalOptions.teamId,
+          zeroDataRetention: !!meta.internalOptions.zeroDataRetention,
+          inputBytes: Buffer.byteLength(document.markdown ?? "", "utf8"),
+        });
+    const extractWith = (options: GenerateCompletionsOptions) =>
+      extractData({
+        extractOptions: options,
         urls: [meta.rewrittenUrl ?? meta.url],
         useAgent,
         checkPromptInjection: meta.options.checkPromptInjection,
@@ -1069,6 +1086,50 @@ export async function performLLMExtract(
           functionId: llmFunctionId,
         },
       });
+    const providerOptions = (): GenerateCompletionsOptions => ({
+      ...generationOptions,
+      model: getModel(config.EXTRACTION_PROVIDER_MODEL, "extraction"),
+      retryModel: getModel(modelSelection.modelName, "openai"),
+    });
+
+    let extraction: Awaited<ReturnType<typeof extractWith>>;
+    if (route === "provider") {
+      try {
+        extraction = await extractWith(providerOptions());
+      } catch (error) {
+        meta.logger.warn(
+          "Extraction provider failed, falling back to the default model",
+          { error: (error as Error).message },
+        );
+        extraction = await extractWith(generationOptions);
+      }
+    } else {
+      extraction = await extractWith(generationOptions);
+      if (route === "shadow") {
+        // Fire and forget: the provider's own telemetry records the outcome;
+        // nothing is billed to the team and nothing changes in the response.
+        void extractWith({
+          ...providerOptions(),
+          costTrackingOptions: {
+            costTracking: new CostTracking(),
+            metadata: {
+              module: "scrapeURL",
+              method: "performLLMExtract/shadow",
+            },
+          },
+          metadata: {
+            ...generationOptions.metadata,
+            functionId: "performLLMExtract/shadow",
+          },
+        }).catch(error => {
+          meta.logger.debug("Extraction provider shadow call failed", {
+            error: (error as Error).message,
+          });
+        });
+      }
+    }
+    const { extractedDataArray, warning, costLimitExceededTokenUsage } =
+      extraction;
 
     if (warning) {
       document.warning =

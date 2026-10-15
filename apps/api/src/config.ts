@@ -579,6 +579,27 @@ const configSchema = z.object({
 
   // AI/ML
   MODEL_NAME: z.string().optional(),
+  // Optional OpenAI-compatible provider for JSON extraction. Traffic is routed
+  // by team cohort (stable hash) at ROLLOUT_PERCENT, mirrored without using the
+  // result at SHADOW_PERCENT, and always routed for TEAM_IDS. Any failure falls
+  // back to the default model for that request.
+  EXTRACTION_PROVIDER_BASE_URL: z.string().optional(),
+  EXTRACTION_PROVIDER_API_KEY: z.string().optional(),
+  EXTRACTION_PROVIDER_MODEL: z.string().default("extraction-v1"),
+  EXTRACTION_PROVIDER_ROLLOUT_PERCENT: z.coerce
+    .number()
+    .min(0)
+    .max(100)
+    .default(0),
+  EXTRACTION_PROVIDER_SHADOW_PERCENT: z.coerce
+    .number()
+    .min(0)
+    .max(100)
+    .default(0),
+  EXTRACTION_PROVIDER_TEAM_IDS: z.string().optional(),
+  EXTRACTION_PROVIDER_MAX_INPUT_BYTES: z.coerce.number().default(400_000),
+  EXTRACTION_PROVIDER_INPUT_COST_PER_MTOK: z.coerce.number().default(0.07),
+  EXTRACTION_PROVIDER_OUTPUT_COST_PER_MTOK: z.coerce.number().default(0.2),
   MODEL_EMBEDDING_NAME: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
   VERTEX_CREDENTIALS: z.string().optional(),
