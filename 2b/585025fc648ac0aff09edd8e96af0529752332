@@ -1,0 +1,19 @@
+apps/api/src/routes/exchange.ts
+  s_e5cbfbc5fcf183::t_792e25203f84ba 256-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b585025fc648ac0aff09edd8e96af0529752332",
+  "prompts": {},
+  "sessions": {
+    "s_e5cbfbc5fcf183": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6a1ef26-5e62-43f0-9963-d8a7db7eac55",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Developers Digest <124798203+developersdigest@users.noreply.github.com>"
+    }
+  }
+}
