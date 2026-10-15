@@ -31,6 +31,7 @@ import {
   brandingRoutedTotal,
   brandingJevBreakerOpensTotal,
   brandingJevCallsTotal,
+  brandingJevRolloutPercent,
 } from "../../../lib/branding/metrics";
 import { mergeBrandingResults } from "../../../lib/branding/merge";
 import { BrandingLLMInput } from "../../../lib/branding/types";
@@ -990,5 +991,21 @@ describe("branding metrics", () => {
 
     expect(await value(brandingRoutedTotal, outside)).toBe(before + 1);
     expect(mocks.systemOne).not.toHaveBeenCalled();
+  });
+});
+
+describe("rollout gauge", () => {
+  it("reports the share of teams this process sends to Jev", async () => {
+    const read = async () =>
+      (await brandingJevRolloutPercent.get()).values[0]?.value;
+
+    config.BRANDING_JEV_ROLLOUT_PERCENT = 75;
+    expect(await read()).toBe(75);
+
+    config.BRANDING_JEV = true;
+    expect(await read()).toBe(100);
+
+    config.TYPESAFE_API_KEY = undefined;
+    expect(await read()).toBe(0);
   });
 });
