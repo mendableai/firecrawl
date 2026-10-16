@@ -31,7 +31,10 @@ export function declaredContentLength(
 
 /**
  * Whether a downloaded PDF stops short of its end: fewer bytes than the
- * response declared, or no end-of-file marker near the end of the file.
+ * response declared, or a file that does not end with an end-of-file marker.
+ * Only whitespace may follow the last marker: an incremental update cut off
+ * partway leaves the previous revision's marker in the tail, followed by the
+ * new revision's partial objects.
  */
 export async function isTruncatedPdf(
   filePath: string,
@@ -44,7 +47,9 @@ export async function isTruncatedPdf(
     const length = Math.min(size, EOF_SEARCH_BYTES);
     const tail = Buffer.alloc(length);
     await fh.read(tail, 0, length, size - length);
-    return !tail.includes("%%EOF");
+    const marker = tail.lastIndexOf("%%EOF");
+    if (marker === -1) return true;
+    return !/^[\s\0]*$/.test(tail.subarray(marker + 5).toString("latin1"));
   } finally {
     await fh.close();
   }

@@ -124,6 +124,16 @@ describe("isTruncatedPdf", () => {
     expect(await isTruncatedPdf(await tempFile(CUT_PDF))).toBe(true);
   });
 
+  it("flags an incremental update cut off after the previous revision's marker", async () => {
+    const update = Buffer.concat([
+      FULL_PDF,
+      Buffer.from(
+        "3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\nxref\n0 4",
+      ),
+    ]);
+    expect(await isTruncatedPdf(await tempFile(update))).toBe(true);
+  });
+
   it("flags fewer bytes than the response declared, even with a marker", async () => {
     expect(
       await isTruncatedPdf(await tempFile(FULL_PDF), FULL_PDF.length + 1),

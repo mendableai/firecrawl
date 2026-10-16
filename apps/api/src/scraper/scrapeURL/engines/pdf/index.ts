@@ -168,25 +168,28 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
 
   if (!shouldParse) {
     if (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null) {
+      const prefetch = await completeTruncatedHandoff(
+        meta,
+        meta.pdfPrefetch,
+        PDF_DOWNLOAD_MAX_FILE_SIZE,
+      );
       // The raw path returns the file base64'd inline in the response, so it
       // keeps the historical cap even when a large prefetch (fire-engine GCS
       // handoff) materialized a bigger file on disk for the parse path.
-      const prefetchSize = (await stat(meta.pdfPrefetch.filePath)).size;
+      const prefetchSize = (await stat(prefetch.filePath)).size;
       if (prefetchSize > PDF_DOWNLOAD_MAX_FILE_SIZE) {
         throw new UnsupportedFileError("File exceeds size limit");
       }
-      const content = (await readFile(meta.pdfPrefetch.filePath)).toString(
-        "base64",
-      );
+      const content = (await readFile(prefetch.filePath)).toString("base64");
       return {
-        url: meta.pdfPrefetch.url ?? meta.rewrittenUrl ?? meta.url,
-        statusCode: meta.pdfPrefetch.status,
+        url: prefetch.url ?? meta.rewrittenUrl ?? meta.url,
+        statusCode: prefetch.status,
 
         html: content,
         markdown: content,
 
         contentType: "application/pdf",
-        proxyUsed: meta.pdfPrefetch.proxyUsed,
+        proxyUsed: prefetch.proxyUsed,
       };
     } else {
       const file = await fetchPdfFileGuardingProxyFailure(meta, () =>
