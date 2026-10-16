@@ -55,15 +55,71 @@ export async function isTruncatedPdf(
   }
 }
 
-async function readHead(filePath: string): Promise<Buffer> {
+async function readRange(
+  filePath: string,
+  position: number,
+  length: number,
+): Promise<Buffer> {
   const fh = await open(filePath, "r");
   try {
-    const head = Buffer.alloc(PDF_SNIFF_WINDOW);
-    const { bytesRead } = await fh.read(head, 0, head.length, 0);
-    return head.subarray(0, bytesRead);
+    const buf = Buffer.alloc(length);
+    const { bytesRead } = await fh.read(buf, 0, length, position);
+    return buf.subarray(0, bytesRead);
   } finally {
     await fh.close();
   }
+}
+
+function readHead(filePath: string): Promise<Buffer> {
+  return readRange(filePath, 0, PDF_SNIFF_WINDOW);
+}
+
+// How much of the handoff a re-downloaded copy must reproduce byte for byte:
+// its start and the bytes just before the cut.
+const SAME_FILE_HEAD_BYTES = 64 * 1024;
+const SAME_FILE_TAIL_BYTES = 4 * 1024;
+
+/**
+ * Whether `copy` starts with the same bytes as `handoff`: the handoff's first
+ * 64 KB and its last 4 KB must appear at the same offsets in the copy. A
+ * different file — another language or region variant, a page served without
+ * the session's cookies, an A/B variant — fails this.
+ */
+export async function startsWithSameBytes(
+  handoff: string,
+  copy: string,
+): Promise<boolean> {
+  const handoffBytes = await fileSize(handoff);
+  if ((await fileSize(copy)) < handoffBytes) return false;
+  const headLength = Math.min(handoffBytes, SAME_FILE_HEAD_BYTES);
+  const tailStart = Math.max(0, handoffBytes - SAME_FILE_TAIL_BYTES);
+  for (const [position, length] of [
+    [0, headLength],
+    [tailStart, handoffBytes - tailStart],
+  ]) {
+    const [a, b] = await Promise.all([
+      readRange(handoff, position, length),
+      readRange(copy, position, length),
+    ]);
+    if (!a.equals(b)) return false;
+  }
+  return true;
+}
+
+/**
+ * Why the file must not be downloaded again outside the browser engine: the
+ * request asked for a location or a non-basic proxy, or the handoff itself
+ * came through the stealth proxy. A direct download would leave that network
+ * path and could reach a different (or blocked) copy of the file.
+ */
+function networkSetupRequiresBrowser(meta: Meta, prefetch: PdfPrefetch) {
+  const proxy = meta.options.proxy;
+  return (
+    meta.options.location !== undefined ||
+    (proxy !== undefined && proxy !== "basic" && proxy !== "auto") ||
+    prefetch.proxyUsed !== "basic" ||
+    meta.featureFlags.has("stealthProxy")
+  );
 }
 
 async function fileSize(filePath: string): Promise<number> {
@@ -84,8 +140,10 @@ async function removeQuietly(filePath: string): Promise<void> {
  * ends when the response stream does, even when the connection closed
  * before the whole body arrived. Parsing such a prefix finds no pages, or
  * silently loses every page past the cut. When the handoff looks cut off,
- * download the file again directly and use that copy if it is a complete
- * PDF (or at least a longer one). Any failure keeps the handoff as it was.
+ * download the file again directly — once, and only when the request did
+ * not ask for a location or a non-basic proxy — and use that copy if it
+ * continues the handoff byte for byte and is a complete PDF (or at least a
+ * longer one). Anything else keeps the handoff as it was.
  */
 export async function completeTruncatedHandoff(
   meta: Meta,
@@ -116,6 +174,11 @@ export async function completeTruncatedHandoff(
       ...extra,
     });
 
+  if (networkSetupRequiresBrowser(meta, prefetch)) {
+    report("skipped_proxy");
+    return prefetch;
+  }
+
   let refetched: Awaited<ReturnType<typeof downloadFile>>;
   try {
     refetched = await download(
@@ -143,6 +206,9 @@ export async function completeTruncatedHandoff(
   if (!refetched.response.ok) return keepHandoff("refetch_bad_status");
   if (!isPdfBuffer(await readHead(refetchedPath))) {
     return keepHandoff("refetch_not_pdf");
+  }
+  if (!(await startsWithSameBytes(prefetch.filePath, refetchedPath))) {
+    return keepHandoff("refetch_mismatch");
   }
   const complete = !(await isTruncatedPdf(
     refetchedPath,
