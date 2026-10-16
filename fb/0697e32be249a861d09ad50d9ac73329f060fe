@@ -1,0 +1,38 @@
+apps/api/.env.example
+  s_55eb374d574d1c::t_9fe3779b20c787 84-91
+apps/api/src/scraper/scrapeURL/transformers/llmExtract.ts
+  s_55eb374d574d1c::t_c46f151bba50b2 34-38,318-319,1067-1079,1089-1132
+apps/api/src/lib/extraction-provider.test.ts
+  s_55eb374d574d1c::t_77c14a8af7ae9c 26-29,66-70,74-78,85-89,91-99,106-110,113-115,122-127,129-132
+  s_55eb374d574d1c::t_c46f151bba50b2 1-25,30-65,71-73,79-84,90,100-105,111-112,116-121,128,133-137
+apps/api/src/lib/generic-ai.ts
+  s_55eb374d574d1c::t_576a1568438ef0 82
+  s_55eb374d574d1c::t_c46f151bba50b2 22-23,42-47,79-81
+apps/api/src/__tests__/snips/v2/extraction-provider.test.ts
+  s_55eb374d574d1c::t_77c14a8af7ae9c 17-35,38-49
+  s_55eb374d574d1c::t_c46f151bba50b2 1-16,36-37
+apps/api/src/config.ts
+  s_55eb374d574d1c::t_77c14a8af7ae9c 589-598
+  s_55eb374d574d1c::t_c46f151bba50b2 582-588,599-602
+apps/api/src/lib/branding/color-roles.ts
+  s_55eb374d574d1c::t_c14018a3d1ef3f 58
+apps/api/src/lib/extraction-provider.ts
+  s_55eb374d574d1c::t_71ebe0beb34b66 14,16
+  s_55eb374d574d1c::t_c46f151bba50b2 1-13,15,17-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb0697e32be249a861d09ad50d9ac73329f060fe",
+  "prompts": {},
+  "sessions": {
+    "s_55eb374d574d1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23d62988-955b-47cc-bd5a-28edb2957b32",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,33 @@
+apps/api/src/lib/branding/llm.ts
+  s_3002048a2ce37a::t_74b8a80a87c1de 111-112,116-117,119
+apps/api/src/controllers/v2/types.ts
+  s_3002048a2ce37a::t_74b8a80a87c1de 470-471
+apps/api/src/config.ts
+  s_3002048a2ce37a::t_74b8a80a87c1de 561-563
+apps/api/src/lib/branding/jev.ts
+  s_3002048a2ce37a::t_74b8a80a87c1de 87-89,904,972
+  s_3002048a2ce37a::t_c70a411d6a8954 954,963-966,990-993
+  s_3002048a2ce37a::t_d090768b8b0864 43
+apps/api/src/__tests__/lib/branding/jev.test.ts
+  s_3002048a2ce37a::t_c70a411d6a8954 682-683,686,688-689,691-693,862-865,898,911-912,914
+apps/api/src/lib/branding/metrics.ts
+  s_3002048a2ce37a::t_5efb7e373f18fe 1,7,13-14,39-40,45-53
+apps/api/.env.example
+  s_3002048a2ce37a::t_85264b370f7eaf 73,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "297257d34f95473927675b7b27a7b29dbd2b2811",
+  "prompts": {},
+  "sessions": {
+    "s_3002048a2ce37a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fabc48ca-b328-4b9d-9e17-ee599b54f859",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Abimael Martell <1450169+abimaelmartell@users.noreply.github.com>"
+    }
+  }
+}
