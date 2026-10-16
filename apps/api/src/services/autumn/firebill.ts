@@ -81,8 +81,9 @@ type FirebillCause =
 /**
  * The fields a billing success line carries so a monitor can join it, by
  * idempotency key, to firebill's own settlement line and to the reconciler's
- * amount verdicts. `expectedValue` is the amount as firebill receives it: a
- * refund made positive, a finalize's override or hold as the caller sent it.
+ * amount verdicts. `expectedValue` is the amount the operation should bill: a
+ * track's value, a refund's made positive, a confirm's override else its hold,
+ * and 0 for a release, which bills nothing whatever it held.
  */
 function billingSuccessFields(
   operation: "track" | "refund" | "finalize",
