@@ -1,0 +1,31 @@
+apps/api/src/config.ts
+  s_55eb374d574d1c::t_d00b558117b68e 19-30,598-602,605,611,619-631,757-768
+apps/api/src/lib/generic-ai.ts
+  s_55eb374d574d1c::t_acd239f44d037d 24-26
+  s_55eb374d574d1c::t_2f990b6d54191d 81-82,84,91
+apps/api/src/__tests__/snips/v2/extraction-provider.test.ts
+  s_55eb374d574d1c::t_2f990b6d54191d 9-16,55
+apps/api/src/lib/extraction-provider.test.ts
+  s_55eb374d574d1c::t_2f990b6d54191d 79
+apps/api/src/scraper/scrapeURL/transformers/llmExtract.ts
+  s_55eb374d574d1c::t_2f990b6d54191d 315-318,1076-1078,1105-1107,1111,1116,1118-1119,1125
+  s_55eb374d574d1c::t_acd239f44d037d 1110,1113-1115,1120-1122
+apps/api/.env.example
+  s_55eb374d574d1c::t_822eea21bba95b 93-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdbbbab488c023895621058d1b4d1ff8987353a2",
+  "prompts": {},
+  "sessions": {
+    "s_55eb374d574d1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23d62988-955b-47cc-bd5a-28edb2957b32",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Abimael Martell <1450169+abimaelmartell@users.noreply.github.com>"
+    }
+  }
+}
