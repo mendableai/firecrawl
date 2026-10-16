@@ -665,7 +665,7 @@ const configSchema = z.object({
 
   // Miscellaneous
   // The commit the image was built from, set by the Dockerfile's GIT_SHA.
-  FIRECRAWL_BUILD_SHA: z.string().optional(),
+  FIRECRAWL_BUILD_SHA: emptyStringAsUndefined(z.string().trim().min(1)),
   IDMUX_URL: z.string().optional(),
   GITHUB_RUN_NUMBER: z.string().optional(),
   GITHUB_REF_NAME: z.string().optional(),

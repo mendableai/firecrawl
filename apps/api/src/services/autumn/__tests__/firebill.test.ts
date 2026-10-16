@@ -872,6 +872,14 @@ describe("firebillFinalize", () => {
 
     vi.mocked(logger.info).mockClear();
     answer({ success: true });
+    await firebillFinalize({ ...finalizeParams, heldValue: 5 });
+    expect(logger.info).toHaveBeenCalledWith(
+      "firebill finalize succeeded",
+      expect.objectContaining({ expectedValue: 5 }),
+    );
+
+    vi.mocked(logger.info).mockClear();
+    answer({ success: true });
     await firebillFinalize({
       ...finalizeParams,
       action: "release",
