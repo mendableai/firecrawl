@@ -588,6 +588,10 @@ const configSchema = z.object({
     .min(0)
     .max(100)
     .default(0),
+  // Point /search web results on known documentation hosts at the page for the
+  // version the query names (search/version-pin.ts), for listed teams
+  // (comma-separated). Off for everyone else.
+  SEARCH_VERSION_PIN_TEAM_IDS: delimitedList(",").optional(),
 
   // AI/ML
   MODEL_NAME: z.string().optional(),

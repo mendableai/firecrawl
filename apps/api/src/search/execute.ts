@@ -17,6 +17,7 @@ import {
 import { searchDeveloperCategory, wantsDeveloperCategory } from "./developer";
 import { searchGovCategory, wantsGovCategory } from "./gov";
 import { removeExplicitResults } from "./safe-search";
+import { pinResultVersions } from "./version-pin";
 import {
   highlightsEnvReady,
   runIndexedSearchHighlights,
@@ -198,6 +199,24 @@ export async function executeSearch(
       }
       indexResults = indexResults.filter(x => isAllowed(x.url));
     }
+  }
+
+  // Before the safe-search filter and slicing, which keep at most `limit`
+  // results, so a result dropped as a duplicate is backfilled. Skipped under a
+  // threat policy, which scanned the original URLs, not the pinned ones. Uses
+  // the user's original query, not the domain-filtered upstream query.
+  if (
+    searchResponse.web?.length &&
+    context.apiVersion === "v2" &&
+    config.SEARCH_VERSION_PIN_TEAM_IDS?.includes(teamId) &&
+    !(threatPolicy && threatPolicy.mode !== "off")
+  ) {
+    searchResponse.web = await pinResultVersions(
+      searchResponse.web,
+      query,
+      limit,
+      logger,
+    );
   }
 
   // The filter shares results with TypeSafe, so zero data retention and

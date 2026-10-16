@@ -59,6 +59,7 @@ vi.mock("./safe-search", () => ({
 
 import { executeSearch } from "./execute";
 import { searchRequestSchema } from "../controllers/v2/types";
+import { config } from "../config";
 
 const logger = {
   info: vi.fn(),
@@ -297,5 +298,89 @@ describe("executeSearch gov category", () => {
     expect(result.response).toEqual({ web: [govResult] });
     expect(result.indexResultsCount).toBe(1);
     expect(result.searchCredits).toBe(0);
+  });
+});
+
+describe("executeSearch version pin", () => {
+  const oracle8 =
+    "https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html";
+  const oracle21 =
+    "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html";
+  const saved = config.SEARCH_VERSION_PIN_TEAM_IDS;
+
+  afterEach(() => {
+    config.SEARCH_VERSION_PIN_TEAM_IDS = saved;
+    vi.restoreAllMocks();
+  });
+
+  const query = {
+    ...options([]),
+    query: "Java 21 ExecutorService shutdownNow",
+  };
+  const listed = { ...context, teamId: "team-pin" };
+
+  beforeEach(() => {
+    config.SEARCH_VERSION_PIN_TEAM_IDS = ["team-pin"];
+  });
+
+  function mockFetch() {
+    return vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      url: oracle21,
+      headers: new Headers(),
+      body: null,
+    } as unknown as Response);
+  }
+
+  it("pins result URLs only for listed teams on v2", async () => {
+    const fetch = mockFetch();
+    mocks.search.mockImplementation(async () => ({
+      web: [{ url: oracle8, title: "ExecutorService", description: "" }],
+    }));
+    mocks.checkUrlsAgainstThreatPolicy.mockResolvedValue({
+      decisionsByUrl: new Map(),
+    });
+
+    for (const skipped of [
+      context,
+      { ...listed, apiVersion: "v1" },
+      // The threat policy scanned the original URLs, not the pinned ones.
+      { ...listed, threatProtectionPolicy: { mode: "block" } },
+    ]) {
+      const result = await executeSearch(query, skipped as any, logger);
+      expect(result.response.web?.map(x => x.url)).toEqual([oracle8]);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+
+    const pinned = await executeSearch(query, listed, logger);
+    expect(pinned.response.web?.map(x => x.url)).toEqual([oracle21]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("pins before the safe-search filter keeps `limit` results", async () => {
+    mockFetch();
+    mocks.search.mockImplementation(async () => ({
+      web: [oracle8, oracle21, "https://example.com/a"].map(url => ({
+        url,
+        title: "ExecutorService",
+        description: "",
+      })),
+    }));
+    mocks.removeExplicitResults.mockImplementation(
+      async (response: any, limit: number) => {
+        response.web = response.web.slice(0, limit);
+      },
+    );
+
+    const result = await executeSearch(
+      { ...query, limit: 2, safe: true },
+      listed,
+      logger,
+    );
+    expect(result.response.web?.map(x => x.url)).toEqual([
+      oracle21,
+      "https://example.com/a",
+    ]);
   });
 });
