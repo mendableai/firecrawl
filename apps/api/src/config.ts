@@ -597,6 +597,9 @@ const configSchema = z.object({
     .max(100)
     .default(0),
   EXTRACTION_PROVIDER_TEAM_IDS: z.string().optional(),
+  // Let any team pick the provider per request (json format `model`); off =
+  // only teams in TEAM_IDS may.
+  EXTRACTION_PROVIDER_REQUEST_OPT_IN: z.stringbool().optional(),
   EXTRACTION_PROVIDER_MAX_INPUT_BYTES: z.coerce.number().default(400_000),
   EXTRACTION_PROVIDER_INPUT_COST_PER_MTOK: z.coerce.number().default(0.07),
   EXTRACTION_PROVIDER_OUTPUT_COST_PER_MTOK: z.coerce.number().default(0.2),

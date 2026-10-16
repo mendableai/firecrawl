@@ -1073,7 +1073,13 @@ export async function performLLMExtract(
           teamId: meta.internalOptions.teamId,
           zeroDataRetention: !!meta.internalOptions.zeroDataRetention,
           inputBytes: Buffer.byteLength(document.markdown ?? "", "utf8"),
+          requestedModel: jsonFormat.model,
         });
+    if (jsonFormat.model !== undefined && route !== "provider") {
+      document.warning =
+        "The requested extraction model is not available for this request; the default model was used." +
+        (document.warning ? " " + document.warning : "");
+    }
     const extractWith = (options: GenerateCompletionsOptions) =>
       extractData({
         extractOptions: options,

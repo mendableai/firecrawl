@@ -2,6 +2,7 @@ import { config } from "../config";
 import {
   cohortBucket,
   extractionProviderCost,
+  isRequestedModelSupported,
   selectExtractionRoute,
 } from "./extraction-provider";
 
@@ -132,6 +133,67 @@ describe("extraction provider routing", () => {
         });
         expect(extractionProviderCost("gpt-4o-mini")).toBeUndefined();
       },
+    );
+  });
+
+  it("honours a requested model for listed teams, or for everyone with the opt-in switch", () => {
+    const cfg = {
+      EXTRACTION_PROVIDER_BASE_URL: "http://provider.local/v1",
+      EXTRACTION_PROVIDER_MODEL: "extraction-v1",
+      EXTRACTION_PROVIDER_ROLLOUT_PERCENT: 0,
+      EXTRACTION_PROVIDER_SHADOW_PERCENT: 0,
+    };
+    withConfig(
+      {
+        ...cfg,
+        EXTRACTION_PROVIDER_TEAM_IDS: "team-a",
+        EXTRACTION_PROVIDER_REQUEST_OPT_IN: false,
+      },
+      () => {
+        expect(
+          selectExtractionRoute({ ...base, requestedModel: "extraction-v1" }),
+        ).toBe("provider");
+        expect(
+          selectExtractionRoute({
+            ...base,
+            teamId: "team-b",
+            requestedModel: "extraction-v1",
+          }),
+        ).toBe("default");
+        expect(
+          selectExtractionRoute({ ...base, requestedModel: "something-else" }),
+        ).toBe("default");
+        expect(
+          selectExtractionRoute({
+            ...base,
+            requestedModel: "extraction-v1",
+            zeroDataRetention: true,
+          }),
+        ).toBe("default");
+      },
+    );
+    withConfig(
+      {
+        ...cfg,
+        EXTRACTION_PROVIDER_TEAM_IDS: undefined,
+        EXTRACTION_PROVIDER_REQUEST_OPT_IN: true,
+      },
+      () => {
+        expect(
+          selectExtractionRoute({
+            ...base,
+            teamId: "team-b",
+            requestedModel: "extraction-v1",
+          }),
+        ).toBe("provider");
+      },
+    );
+    withConfig({ ...cfg }, () => {
+      expect(isRequestedModelSupported("extraction-v1")).toBe(true);
+      expect(isRequestedModelSupported("gpt-4o-mini")).toBe(false);
+    });
+    withConfig({ ...cfg, EXTRACTION_PROVIDER_BASE_URL: undefined }, () =>
+      expect(isRequestedModelSupported("extraction-v1")).toBe(false),
     );
   });
 });

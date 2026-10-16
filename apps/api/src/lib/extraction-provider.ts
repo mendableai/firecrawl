@@ -10,6 +10,10 @@ import { config } from "../config";
  * SHADOW_PERCENT buckets are mirrored (the provider is called, the result is
  * discarded). Teams listed in TEAM_IDS are always routed. Zero-data-retention
  * requests and inputs over MAX_INPUT_BYTES stay on the default model.
+ *
+ * A request may also name the provider model explicitly (json format `model`);
+ * that routes it regardless of cohort when the team is listed in TEAM_IDS or
+ * REQUEST_OPT_IN is on. Unknown model names are rejected at validation.
  */
 type ExtractionRoute = "provider" | "shadow" | "default";
 
@@ -31,17 +35,33 @@ function allowlistedTeams(): Set<string> {
   );
 }
 
+/** Model names a request may ask for in the json format `model` field. */
+export function isRequestedModelSupported(model: string): boolean {
+  return (
+    isExtractionProviderConfigured() &&
+    model === config.EXTRACTION_PROVIDER_MODEL
+  );
+}
+
 export function selectExtractionRoute(input: {
   teamId: string | undefined;
   zeroDataRetention: boolean;
   inputBytes: number;
+  requestedModel?: string;
 }): ExtractionRoute {
   if (!isExtractionProviderConfigured()) return "default";
   if (input.zeroDataRetention) return "default";
   if (input.inputBytes > config.EXTRACTION_PROVIDER_MAX_INPUT_BYTES)
     return "default";
   if (!input.teamId) return "default";
-  if (allowlistedTeams().has(input.teamId)) return "provider";
+  const listed = allowlistedTeams().has(input.teamId);
+  if (input.requestedModel !== undefined) {
+    return isRequestedModelSupported(input.requestedModel) &&
+      (listed || config.EXTRACTION_PROVIDER_REQUEST_OPT_IN)
+      ? "provider"
+      : "default";
+  }
+  if (listed) return "provider";
   const bucket = cohortBucket(input.teamId);
   if (bucket < config.EXTRACTION_PROVIDER_ROLLOUT_PERCENT) return "provider";
   if (

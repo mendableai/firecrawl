@@ -1,4 +1,10 @@
-import { scrape, scrapeTimeout, idmux, Identity } from "./lib";
+import {
+  scrape,
+  scrapeWithFailure,
+  scrapeTimeout,
+  idmux,
+  Identity,
+} from "./lib";
 
 // Runs only where an extraction provider is configured for the API under test
 // (EXTRACTION_PROVIDER_BASE_URL with a 100% rollout or the test team allowlisted).
@@ -47,3 +53,26 @@ beforeAll(async () => {
     );
   },
 );
+
+describe("JSON format model option", () => {
+  it.concurrent(
+    "rejects a model that is not available",
+    async () => {
+      const response = await scrapeWithFailure(
+        {
+          url: "https://firecrawl.dev",
+          formats: [
+            {
+              type: "json",
+              model: "not-a-configured-extraction-model",
+              schema: { type: "object", properties: { x: { type: "string" } } },
+            },
+          ],
+        },
+        identity,
+      );
+      expect(response.error).toContain("Unsupported extraction model");
+    },
+    scrapeTimeout,
+  );
+});
