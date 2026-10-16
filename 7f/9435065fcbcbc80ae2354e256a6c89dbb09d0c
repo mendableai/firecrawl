@@ -1,0 +1,32 @@
+apps/api/src/lib/extraction-provider.ts
+  s_55eb374d574d1c::t_30188992702d50 13-16,38-45,50,57-64
+apps/api/src/__tests__/snips/v2/extraction-provider.test.ts
+  s_55eb374d574d1c::t_30188992702d50 1-7,56-78
+apps/api/src/config.ts
+  s_55eb374d574d1c::t_30188992702d50 600-602
+apps/api/src/lib/extraction-provider.test.ts
+  s_55eb374d574d1c::t_30188992702d50 5,138-197
+  s_55eb374d574d1c::t_ddefd72ef892e3 198
+apps/api/src/controllers/v2/types.ts
+  s_55eb374d574d1c::t_30188992702d50 6,369-376
+apps/api/src/scraper/scrapeURL/transformers/llmExtract.ts
+  s_55eb374d574d1c::t_30188992702d50 1076,1078-1082
+apps/api/.env.example
+  s_55eb374d574d1c::t_ab9b331e8eeac6 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f9435065fcbcbc80ae2354e256a6c89dbb09d0c",
+  "prompts": {},
+  "sessions": {
+    "s_55eb374d574d1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23d62988-955b-47cc-bd5a-28edb2957b32",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Abimael Martell <1450169+abimaelmartell@users.noreply.github.com>"
+    }
+  }
+}
