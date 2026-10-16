@@ -305,7 +305,10 @@ describe("branding with Jev", () => {
 
     const [request, options] = mocks.systemOne.mock.calls[0];
     expect(request.model).toBe("jev-latest");
-    expect(options).toEqual({ timeout: 5000, retry: { maxRetries: 1 } });
+    expect(options).toEqual({
+      timeout: 5000,
+      retry: { maxRetries: 1, apiTimeoutError: false },
+    });
     expect(Object.keys(request.questions.logo.criteria)).toEqual([
       "logo_0",
       "logo_1",

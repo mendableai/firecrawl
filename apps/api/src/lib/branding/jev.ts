@@ -936,7 +936,9 @@ export async function enhanceBrandingWithJev(
           },
           {
             timeout: config.BRANDING_JEV_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS,
-            retry: { maxRetries: 1 },
+            // A call that ran out of time is answered by the LLM instead:
+            // retrying it doubles the wait, and the load on a slow TypeSafe.
+            retry: { maxRetries: 1, apiTimeoutError: false },
           },
         );
         setSpanAttributes(span, {
