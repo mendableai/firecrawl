@@ -21,7 +21,9 @@ type Provider =
   | "deepinfra"
   | "vertex"
   | "extraction";
-const defaultProvider: Provider = config.OLLAMA_BASE_URL ? "ollama" : "openai";
+const defaultProvider: Exclude<Provider, "extraction"> = config.OLLAMA_BASE_URL
+  ? "ollama"
+  : "openai";
 
 const providerList: Record<Provider, any> = {
   openai: createOpenAI({
@@ -76,16 +78,17 @@ export function getModel(
   if (provider === "openai" && modelName.startsWith("o3-mini")) {
     return withUsageTelemetry(providerList.openai.chat(modelName));
   }
-  // The extraction provider speaks Chat Completions, not the Responses API.
+  // The extraction provider speaks Chat Completions, not the Responses API,
+  // and is not subject to the MODEL_NAME override.
   if (provider === "extraction") {
-    return withUsageTelemetry(providerList.extraction.chat(modelName));
+    return withUsageTelemetry(providerList.extraction.chat(name));
   }
   return withUsageTelemetry(providerList[provider](modelName));
 }
 
 export function getEmbeddingModel(
   name: string,
-  provider: Provider = defaultProvider,
+  provider: Exclude<Provider, "extraction"> = defaultProvider,
 ) {
   return config.MODEL_EMBEDDING_NAME
     ? providerList[provider].embedding(config.MODEL_EMBEDDING_NAME)

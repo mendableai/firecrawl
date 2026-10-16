@@ -6,9 +6,14 @@ import {
   Identity,
 } from "./lib";
 
-// Runs only where an extraction provider is configured for the API under test
-// (EXTRACTION_PROVIDER_BASE_URL with a 100% rollout or the test team allowlisted).
-const configured = !!process.env.EXTRACTION_PROVIDER_BASE_URL;
+// Runs only where the API under test is guaranteed to route to the provider:
+// a configured base URL and either a 100% rollout or the per-request opt-in.
+const configured =
+  !!process.env.EXTRACTION_PROVIDER_BASE_URL &&
+  (process.env.EXTRACTION_PROVIDER_ROLLOUT_PERCENT === "100" ||
+    ["true", "1"].includes(
+      (process.env.EXTRACTION_PROVIDER_REQUEST_OPT_IN ?? "").toLowerCase(),
+    ));
 
 let identity: Identity;
 
@@ -47,6 +52,7 @@ beforeAll(async () => {
         );
         expect(response.json).toBeDefined();
         expect(typeof response.json.company_name).toBe("string");
+        expect(typeof response.json.tagline).toBe("string");
         expect(response.json.company_name.toLowerCase()).toContain("firecrawl");
       },
       scrapeTimeout,

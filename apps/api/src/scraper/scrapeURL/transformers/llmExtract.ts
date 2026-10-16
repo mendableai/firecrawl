@@ -312,11 +312,13 @@ function lookupModelCost(
   const slash = model.indexOf("/");
   if (slash !== -1) candidates.push(model.slice(slash + 1));
 
+  // The configured extraction provider is priced from config even if its
+  // name collides with a static entry.
+  const providerCost = extractionProviderCost(model);
+  if (providerCost) return providerCost;
   for (const id of candidates) {
     if (modelCosts[id]) return modelCosts[id];
   }
-  const providerCost = extractionProviderCost(model);
-  if (providerCost) return providerCost;
   for (const id of candidates) {
     const price = modelPrices[id];
     if (
@@ -1071,7 +1073,9 @@ export async function performLLMExtract(
       ? "default"
       : selectExtractionRoute({
           teamId: meta.internalOptions.teamId,
-          zeroDataRetention: !!meta.internalOptions.zeroDataRetention,
+          zeroDataRetention:
+            !!meta.internalOptions.zeroDataRetention ||
+            isZeroDataRetentionActive(),
           inputBytes: Buffer.byteLength(document.markdown ?? "", "utf8"),
           requestedModel: jsonFormat.model,
         });
@@ -1098,14 +1102,27 @@ export async function performLLMExtract(
       retryModel: getModel(modelSelection.modelName, "openai"),
     });
 
+    // extractData reports generation failures as a warning rather than
+    // throwing, so both paths count as a provider failure.
+    const PROVIDER_FAILURE = "JSON extraction failed:";
     let extraction: Awaited<ReturnType<typeof extractWith>>;
     if (route === "provider") {
+      let attempt: Awaited<ReturnType<typeof extractWith>> | undefined;
+      let failure: string | undefined;
       try {
-        extraction = await extractWith(providerOptions());
+        attempt = await extractWith(providerOptions());
+        if (attempt.warning?.includes(PROVIDER_FAILURE)) {
+          failure = attempt.warning;
+        }
       } catch (error) {
+        failure = (error as Error).message;
+      }
+      if (attempt !== undefined && failure === undefined) {
+        extraction = attempt;
+      } else {
         meta.logger.warn(
           "Extraction provider failed, falling back to the default model",
-          { error: (error as Error).message },
+          { error: failure },
         );
         extraction = await extractWith(generationOptions);
       }

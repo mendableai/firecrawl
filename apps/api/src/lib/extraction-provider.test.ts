@@ -76,6 +76,7 @@ describe("extraction provider routing", () => {
         EXTRACTION_PROVIDER_BASE_URL: "http://provider.local/v1",
         EXTRACTION_PROVIDER_ROLLOUT_PERCENT: 0,
         EXTRACTION_PROVIDER_SHADOW_PERCENT: 0,
+        EXTRACTION_PROVIDER_TEAM_IDS: undefined,
       },
       () => expect(selectExtractionRoute(base)).toBe("default"),
     );
