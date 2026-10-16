@@ -328,7 +328,7 @@ describe("executeSearch version pin", () => {
       ok: true,
       status: 200,
       url: oracle21,
-      headers: new Headers(),
+      headers: new Headers({ "content-length": "4096" }),
       body: null,
     } as unknown as Response);
   }

@@ -6,7 +6,7 @@ const PIN_BUDGET_MS = 2000;
 
 const CHECK_TIMEOUT_MS = 1500;
 
-/** Most results per request that get their candidates checked. */
+/** Most results per request that get a release lookup or candidate checks. */
 const MAX_PINNED_RESULTS = 10;
 
 /**
@@ -270,6 +270,13 @@ function gitHubPaths(
   // Release pages load their assets lazily; expanded_assets lists every asset
   // with its checksum.
   const page = pin.wantsAssets ? "expanded_assets" : "tag";
+  // A release page already on the version keeps its own tag, so another tag
+  // for the same release never replaces it.
+  if (ref === "tag" && isPinnedTo(segments[4], version)) {
+    return pin.wantsAssets
+      ? [[owner, repo, "releases", page, segments[4]]]
+      : [];
+  }
   return tags.map(tag => [owner, repo, "releases", page, tag]);
 }
 
@@ -355,6 +362,25 @@ function keepsPin(candidate: string, final: string): boolean {
 const checkSignal = (budget: AbortSignal) =>
   AbortSignal.any([budget, AbortSignal.timeout(CHECK_TIMEOUT_MS)]);
 
+/** HEAD answers a GET would only repeat: a missing page or a rate limit. */
+const FINAL_STATUSES = new Set([404, 410, 429]);
+
+/** A body's size, read up to `max` bytes; the rest is not downloaded. */
+async function bodySize(response: Response, max: number): Promise<number> {
+  const reader = response.body?.getReader();
+  let size = 0;
+  try {
+    while (reader && size < max) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+    }
+  } finally {
+    await reader?.cancel().catch(() => undefined);
+  }
+  return size;
+}
+
 /**
  * The URL a candidate verifies as (where it lands, with the candidate's
  * fragment), or null when it is missing, a stub or redirects elsewhere.
@@ -365,21 +391,22 @@ async function verifiedUrl(
 ): Promise<string | null> {
   const request = (method: "HEAD" | "GET") =>
     fetch(url, { method, redirect: "follow", signal: checkSignal(budget) });
+  const lands = (response: Response) =>
+    response.ok && keepsPin(url, response.url || url);
+
   let response = await request("HEAD");
-  if (response.status === 405 || response.status === 501) {
+  let size = Number(response.headers.get("content-length")) || 0;
+  // Some hosts reject HEAD (403, 405) or leave out the length (GitHub, docs.rs
+  // and javadoc.io pages); a GET, read up to MIN_PAGE_BYTES, answers both.
+  const retry = response.ok
+    ? size === 0 && lands(response)
+    : !FINAL_STATUSES.has(response.status);
+  if (retry) {
     response = await request("GET");
-    await response.body?.cancel().catch(() => undefined);
+    size = await bodySize(response, MIN_PAGE_BYTES);
   }
-  const length = Number(response.headers.get("content-length"));
-  const final = response.url || url;
-  if (
-    !response.ok ||
-    (length > 0 && length < MIN_PAGE_BYTES) ||
-    !keepsPin(url, final)
-  ) {
-    return null;
-  }
-  const verified = new URL(final);
+  if (!lands(response) || size < MIN_PAGE_BYTES) return null;
+  const verified = new URL(response.url || url);
   verified.hash = new URL(url).hash;
   return verified.toString();
 }
@@ -401,8 +428,10 @@ async function latestReleaseTag(
 /**
  * Points web results on known documentation hosts at the page for the version
  * the query names (e.g. Java 8 API docs to Java 21 for "Java 21 ..."), when the
- * pinned page exists. Only the first `limit` results are considered, results
- * are never added, and a result that pins to a URL already listed is dropped.
+ * pinned page exists. The first `limit` results are considered, plus one past
+ * them for each that may pin, which backfills its slot if it is dropped.
+ * Results are never added, and a result that pins to a URL already listed is
+ * dropped.
  */
 export async function pinResultVersions(
   results: WebSearchResult[],
@@ -414,16 +443,28 @@ export async function pinResultVersions(
   if (!pin) return results;
 
   const budget = AbortSignal.timeout(PIN_BUDGET_MS);
-  const head = results.slice(0, limit);
 
+  // The first `limit` results, and one more for each that may pin: if it pins
+  // to a URL already listed, it is dropped and the next result fills its slot.
   // A minor-only version pins a GitHub file only to the repository's newest
-  // release, so look those up first.
+  // release, so those are looked up first, for these results only.
+  const considered: number[] = [];
   const releases = new Map<string, string | undefined>();
-  for (const result of head) {
-    versionPinCandidates(result.url, pin, repo => {
-      releases.set(repo, undefined);
+  for (
+    let index = 0, end = limit;
+    index < Math.min(end, results.length) &&
+    considered.length < MAX_PINNED_RESULTS;
+    index++
+  ) {
+    const repos: string[] = [];
+    const candidates = versionPinCandidates(results[index].url, pin, repo => {
+      repos.push(repo);
       return undefined;
     });
+    if (candidates.length === 0 && repos.length === 0) continue;
+    considered.push(index);
+    repos.forEach(repo => releases.set(repo, undefined));
+    end++;
   }
   await Promise.all(
     [...releases.keys()].map(async repo => {
@@ -434,15 +475,14 @@ export async function pinResultVersions(
     }),
   );
 
-  const planned = head
-    .map((result, index) => ({
+  const planned = considered
+    .map(index => ({
       index,
-      candidates: versionPinCandidates(result.url, pin, repo =>
+      candidates: versionPinCandidates(results[index].url, pin, repo =>
         releases.get(repo),
       ),
     }))
-    .filter(plan => plan.candidates.length > 0)
-    .slice(0, MAX_PINNED_RESULTS);
+    .filter(plan => plan.candidates.length > 0);
   if (planned.length === 0) return results;
 
   const checks = new Map<string, Promise<string | null>>();

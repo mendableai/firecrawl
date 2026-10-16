@@ -151,6 +151,11 @@ describe("versionPinCandidates", () => {
         "https://github.com/itchyny/gojq/releases/expanded_assets/gojq-0.12.19",
       ],
     ],
+    [
+      "gojq v0.12.19 checksums",
+      "https://github.com/itchyny/gojq/releases/tag/v0.12.19",
+      ["https://github.com/itchyny/gojq/releases/expanded_assets/v0.12.19"],
+    ],
   ])("%s: %s", (query, url, expected) => {
     expect(versionPinCandidates(url, pin(query))).toEqual(expected);
   });
@@ -187,6 +192,10 @@ describe("versionPinCandidates", () => {
     ["reqwest 0.13 redirect", "https://example.com/reqwest/latest/redirect"],
     // Already pinned.
     ["TRL v1.10.0", "https://huggingface.co/docs/trl/v1.10.0/en/sft_trainer"],
+    [
+      "gojq v0.12.19 changelog",
+      "https://github.com/itchyny/gojq/releases/tag/v0.12.19",
+    ],
   ])("%s: leaves %s", (query, url) => {
     expect(versionPinCandidates(url, pin(query))).toEqual([]);
   });
@@ -195,22 +204,37 @@ describe("versionPinCandidates", () => {
 describe("pinResultVersions", () => {
   const result = (url: string) => ({ url, title: "Title", description: "" });
 
-  // Answers each URL with the given status, final URL and length; 404 otherwise.
-  function mockFetch(pages: Record<string, { url?: string; length?: number }>) {
-    return vi.spyOn(globalThis, "fetch").mockImplementation(async input => {
-      const url = String(input);
-      const page = pages[url];
-      return {
-        ok: !!page,
-        status: page ? 200 : 404,
-        url: page?.url ?? url,
-        headers: new Headers(
-          page?.length ? { "content-length": String(page.length) } : {},
-        ),
-        body: null,
-      } as unknown as Response;
-    });
+  // Answers each URL with its page, or a 404. A page's body is 4 KB unless
+  // set, HEAD gives its length unless `chunked`, and `head` sets the status of
+  // HEAD requests.
+  function mockFetch(
+    pages: Record<
+      string,
+      { url?: string; body?: string; chunked?: boolean; head?: number }
+    >,
+  ) {
+    return vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+        const page = pages[url];
+        const isHead = init?.method === "HEAD";
+        const status = !page ? 404 : isHead ? (page.head ?? 200) : 200;
+        const body = page?.body ?? "x".repeat(4096);
+        return {
+          ok: status < 300,
+          status,
+          url: page?.url ?? url,
+          headers: new Headers(
+            page?.chunked ? {} : { "content-length": String(body.length) },
+          ),
+          body: isHead ? null : new Response(body).body,
+        } as unknown as Response;
+      });
   }
+  const main = "https://github.com/rhysd/actionlint/blob/main/docs/usage.md";
+  const pinnedUsage =
+    "https://github.com/rhysd/actionlint/blob/v1.7.12/docs/usage.md";
 
   afterEach(() => vi.restoreAllMocks());
 
@@ -245,6 +269,7 @@ describe("pinResultVersions", () => {
     mockFetch({
       "https://docs.rs/reqwest/~0.13/reqwest/redirect/index.html": {
         url: "https://docs.rs/reqwest/0.13.5/reqwest/redirect/",
+        chunked: true,
       },
     });
 
@@ -294,8 +319,9 @@ describe("pinResultVersions", () => {
       "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/http/HttpClient.html":
         { url: "https://docs.oracle.com/en/java/javase/26/" },
       "https://huggingface.co/docs/trl/v1.10.0/en/no_such_page": {
-        length: 203,
+        body: "x".repeat(203),
       },
+      [pinnedUsage]: { body: "Not Found", chunked: true },
     });
     const oracle =
       "https://docs.oracle.com/javase/8/docs/api/java/net/http/HttpClient.html";
@@ -312,5 +338,73 @@ describe("pinResultVersions", () => {
     expect(
       await pinResultVersions([result(hf)], "TRL v1.10.0", 10, logger),
     ).toEqual([result(hf)]);
+    expect(
+      await pinResultVersions([result(main)], "actionlint v1.7.12", 10, logger),
+    ).toEqual([result(main)]);
+  });
+
+  it("retries a rejected HEAD with a GET, but not a missing page", async () => {
+    const fetch = mockFetch({ [pinnedUsage]: { head: 403 } });
+
+    const pinned = await pinResultVersions(
+      [result(main)],
+      "actionlint v1.7.12 usage",
+      10,
+      logger,
+    );
+
+    expect(pinned[0].url).toBe(pinnedUsage);
+    const gets = fetch.mock.calls.filter(([, init]) => init?.method === "GET");
+    expect(gets.map(([url]) => url)).toEqual([pinnedUsage]);
+  });
+
+  it("pins a result that backfills a dropped duplicate", async () => {
+    const config =
+      "https://github.com/rhysd/actionlint/blob/main/docs/config.md";
+    mockFetch({
+      [pinnedUsage]: {},
+      "https://github.com/rhysd/actionlint/blob/v1.7.12/docs/config.md": {},
+    });
+
+    const pinned = await pinResultVersions(
+      [
+        result(main),
+        result("https://github.com/rhysd/actionlint/blob/master/docs/usage.md"),
+        result(config),
+      ],
+      "actionlint v1.7.12 usage",
+      2,
+      logger,
+    );
+
+    expect(pinned.map(x => x.url)).toEqual([
+      pinnedUsage,
+      "https://github.com/rhysd/actionlint/blob/v1.7.12/docs/config.md",
+    ]);
+  });
+
+  it("looks up releases only for the results it considers", async () => {
+    const fetch = mockFetch({});
+    const pages = Array.from({ length: 10 }, (_, index) =>
+      result(`https://docs.rs/reqwest/latest/reqwest/page${index}/`),
+    );
+
+    await pinResultVersions(
+      [
+        ...pages,
+        result(
+          "https://github.com/seanmonstar/reqwest/blob/master/src/redirect.rs",
+        ),
+      ],
+      "reqwest 0.13 redirect",
+      20,
+      logger,
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(10);
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://github.com/seanmonstar/reqwest/releases/latest",
+      expect.anything(),
+    );
   });
 });
