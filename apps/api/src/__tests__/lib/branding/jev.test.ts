@@ -309,7 +309,8 @@ describe("branding with Jev", () => {
       timeout: 5000,
       retry: {
         maxRetries: 1,
-        apiTimeoutError: false,
+        apiTimeoutError: true,
+        backoffInitialMs: 100,
         httpStatuses: new Set([
           408,
           ...Array.from({ length: 100 }, (_, i) => 500 + i).filter(
@@ -411,7 +412,7 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
   });
 
-  it("fails fast when TypeSafe asks to back off, and retries a 503 once without waiting it out", async () => {
+  it("fails fast when TypeSafe asks to back off, and retries a 503 or a timeout once, quickly", async () => {
     // The options Jev passes, run through the real SDK against a fake server.
     mocks.systemOne.mockResolvedValueOnce(jevResponse());
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
@@ -449,6 +450,31 @@ describe("branding with Jev", () => {
     const r = await call(503);
     expect(r.attempts).toBe(2);
     expect(r.ms).toBeLessThan(2000); // not the 10 s Retry-After
+
+    // A call that runs out of time is tried once more, right away.
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+      fetch.mock.calls.length === 1
+        ? new Promise<Response>((_, reject) =>
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            ),
+          )
+        : new Response(JSON.stringify(jevResponse()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+    );
+    const client = new TypeSafeClient({
+      apiKey: "test",
+      logLevel: "off",
+      fetch,
+    });
+    const started = Date.now();
+    await expect(
+      client.systemOne(request, { ...options, timeout: 100 }),
+    ).resolves.toBeDefined();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(Date.now() - started).toBeLessThan(400); // 100 ms timeout + ~0.1 s backoff
   });
 
   it("stops calling Jev for a minute after repeated failures, then tries again", async () => {
