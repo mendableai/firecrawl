@@ -33,14 +33,16 @@ const JEV_MODEL = "jev-latest";
 const JEV_INPUT_USD_PER_MTOK = 0.042;
 const DEFAULT_TIMEOUT_MS = 5000;
 
-// One quick retry, for a transient server error only. A call that ran out of
-// time, or a 429 or 529 asking us to back off, is answered by the LLM instead:
-// waiting can take longer than the whole LLM fallback, and adds load to a
-// struggling TypeSafe. A server-requested delay over a second is not waited
-// out either (the SDK backs off ~0.5 s instead).
+// One quick retry, for a call that ran out of time or a transient server
+// error. A timed-out call usually succeeds on the next attempt, sooner than
+// the LLM fallback would answer. A 429 or 529 asks us to back off, so it's
+// answered by the LLM at once: waiting it out can take longer than the whole
+// fallback, and adds load to a struggling TypeSafe. A server-requested delay
+// over a second is not waited out either (the SDK backs off instead).
 const JEV_RETRY: RequestOptions["retry"] = {
   maxRetries: 1,
-  apiTimeoutError: false,
+  apiTimeoutError: true,
+  backoffInitialMs: 100,
   httpStatuses: new Set([
     408,
     ...Array.from({ length: 100 }, (_, i) => 500 + i).filter(s => s !== 529),
