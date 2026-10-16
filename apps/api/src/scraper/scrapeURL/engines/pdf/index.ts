@@ -64,6 +64,7 @@ import { parseAlwaysFirePdf } from "./fire-pdf/request-metadata";
 import { scrapePDFWithParsePDF } from "./pdfParse";
 import { toPublicBlocks } from "./blocks";
 import { isPdfBuffer, PDF_SNIFF_WINDOW } from "./pdfUtils";
+import { completeTruncatedHandoff } from "./truncatedHandoff";
 import { comparePdfOutputs } from "./shadowComparison";
 import { withPdfExtractionPermit } from "./semaphore";
 
@@ -259,9 +260,20 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
   // granting (or withholding) the handoff for this request.
   const byReferenceReachable = byReferenceReachableForRequest(meta);
 
+  // Parse path streams to disk and can hand large files to FirePDF by GCS
+  // reference, so it admits more than the raw fetch path — up to the
+  // requesting team's large-PDF limit.
+  const downloadMaxBytes = byReferenceReachable
+    ? largePdfLimitBytes(meta)
+    : PDF_DOWNLOAD_MAX_FILE_SIZE;
+  const prefetch =
+    meta.pdfPrefetch != null
+      ? await completeTruncatedHandoff(meta, meta.pdfPrefetch, downloadMaxBytes)
+      : meta.pdfPrefetch;
+
   const { response, tempFilePath } =
-    meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null
-      ? { response: meta.pdfPrefetch, tempFilePath: meta.pdfPrefetch.filePath }
+    prefetch !== undefined && prefetch !== null
+      ? { response: prefetch, tempFilePath: prefetch.filePath }
       : await fetchPdfFileGuardingProxyFailure(meta, () =>
           downloadFile(
             meta.id,
@@ -271,12 +283,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
               headers: meta.options.headers,
               signal: meta.abort.asSignal(),
             },
-            // Parse path streams to disk and can hand large files to FirePDF
-            // by GCS reference, so it admits more than the raw fetch path —
-            // up to the requesting team's large-PDF limit.
-            byReferenceReachable
-              ? largePdfLimitBytes(meta)
-              : PDF_DOWNLOAD_MAX_FILE_SIZE,
+            downloadMaxBytes,
           ),
         );
 
@@ -967,7 +974,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       // Report the proxy that actually delivered the file: a browser
       // handoff may have come through the stealth proxy, while the direct
       // download always uses the basic route.
-      proxyUsed: meta.pdfPrefetch?.proxyUsed ?? "basic",
+      proxyUsed: prefetch?.proxyUsed ?? "basic",
     };
   } finally {
     // Always clean up temp file after we're done with it
