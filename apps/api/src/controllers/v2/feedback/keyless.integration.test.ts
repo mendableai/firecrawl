@@ -343,12 +343,13 @@ suite("keyless feedback HTTP and persistence", () => {
       created_at timestamptz NOT NULL DEFAULT now(),
       CHECK ((endpoint = 'parse') = (doc_class IS NOT NULL)
         AND (doc_class IS NULL OR doc_class IN ('born_digital', 'scanned', 'mixed', 'unknown'))),
-      CONSTRAINT job_feedback_once_per_job_key UNIQUE (team_id, endpoint, job_id)
+      CONSTRAINT job_feedback_once_per_job_key UNIQUE (team_id, endpoint, job_id),
+      UNIQUE (id, team_id, endpoint, job_status)
     )`);
     await fixture.pool.query(`CREATE TABLE job_feedback_observations (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      feedback_id uuid NOT NULL REFERENCES job_feedback (id) ON DELETE CASCADE,
-      team_id uuid NOT NULL, endpoint text NOT NULL, position smallint NOT NULL,
+      feedback_id uuid NOT NULL, team_id uuid NOT NULL, endpoint text NOT NULL,
+      job_status text NOT NULL, position smallint NOT NULL,
       kind text NOT NULL, reason text,
       basis text NOT NULL CHECK (basis IN ('output', 'source_comparison', 'expectation')),
       detail text NOT NULL, comparison_reference text, comparison_detail text,
@@ -359,6 +360,9 @@ suite("keyless feedback HTTP and persistence", () => {
       created_at timestamptz NOT NULL DEFAULT now(),
       CHECK ((comparison_reference IS NULL) = (comparison_detail IS NULL)
         AND (basis <> 'source_comparison' OR comparison_reference IS NOT NULL)),
+      FOREIGN KEY (feedback_id, team_id, endpoint, job_status)
+        REFERENCES job_feedback (id, team_id, endpoint, job_status) ON DELETE CASCADE,
+      CHECK ((job_status = 'failed') = (kind = 'failure')),
       UNIQUE (feedback_id, position)
     )`);
     await fixture.pool.query(`CREATE TABLE alexandria_feedback (

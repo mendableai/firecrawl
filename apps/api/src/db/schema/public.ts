@@ -598,6 +598,12 @@ export const job_feedback = pgTable(
       table.endpoint,
       table.job_id,
     ),
+    unique("job_feedback_observation_parent_key").on(
+      table.id,
+      table.team_id,
+      table.endpoint,
+      table.job_status,
+    ),
     check(
       "job_feedback_auth_type_check",
       sql`${table.auth_type} IN ('keyless', 'api_key')`,
@@ -623,11 +629,11 @@ export const job_feedback_observations = pgTable(
   "job_feedback_observations",
   {
     id: uuid("id").notNull().defaultRandom().primaryKey(),
-    feedback_id: uuid("feedback_id")
-      .notNull()
-      .references(() => job_feedback.id, { onDelete: "cascade" }),
+    feedback_id: uuid("feedback_id").notNull(),
+    // Copied from the submission and enforced by the composite foreign key.
     team_id: uuid("team_id").notNull(),
     endpoint: text("endpoint").notNull(),
+    job_status: text("job_status").notNull(),
     position: smallint("position").notNull(),
     kind: text("kind").notNull(),
     reason: text("reason"),
@@ -646,9 +652,28 @@ export const job_feedback_observations = pgTable(
     created_at: ts("created_at").notNull().defaultNow(),
   },
   table => [
+    foreignKey({
+      name: "job_feedback_observations_feedback_fkey",
+      columns: [
+        table.feedback_id,
+        table.team_id,
+        table.endpoint,
+        table.job_status,
+      ],
+      foreignColumns: [
+        job_feedback.id,
+        job_feedback.team_id,
+        job_feedback.endpoint,
+        job_feedback.job_status,
+      ],
+    }).onDelete("cascade"),
     unique("job_feedback_observations_feedback_position_key").on(
       table.feedback_id,
       table.position,
+    ),
+    check(
+      "job_feedback_observations_job_status_check",
+      sql`(${table.job_status} = 'failed') = (${table.kind} = 'failure')`,
     ),
   ],
 );

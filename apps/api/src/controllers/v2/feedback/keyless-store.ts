@@ -32,6 +32,7 @@ export async function insertKeylessFeedback(
   job: FeedbackJobRow,
 ): Promise<{ success: true; feedbackId: string; alreadySubmitted?: true }> {
   const { answers } = metadata;
+  const jobStatus = job.is_successful === false ? "failed" : "completed";
   // job_feedback holds one row per caller, endpoint, and job. A concurrent
   // retry waits on that unique key, inserts nothing, and returns the winner.
   return db.transaction(async tx => {
@@ -44,7 +45,7 @@ export async function insertKeylessFeedback(
         endpoint: answers.endpoint,
         job_id: job.id,
         request_id: job.request_id,
-        job_status: job.is_successful === false ? "failed" : "completed",
+        job_status: jobStatus,
         rating: answers.rating,
         task: answers.task,
         assessment: answers.assessment,
@@ -83,6 +84,7 @@ export async function insertKeylessFeedback(
         feedback_id: inserted.id,
         team_id: identity,
         endpoint: answers.endpoint,
+        job_status: jobStatus,
         position,
         kind: item.kind,
         reason: item.reason ?? null,
