@@ -72,6 +72,18 @@ describe("gateAgentCredits", () => {
     );
   });
 
+  it("keeps the default cap when the balance is above it", async () => {
+    checkCredits
+      .mockResolvedValueOnce({ allowed: true, remaining: 10000 })
+      .mockResolvedValueOnce({ allowed: false, remaining: 10000 });
+
+    expect(await gate()).toEqual({
+      allowed: true,
+      maxCredits: 2500,
+      stopOnInsufficientCredits: true,
+    });
+  });
+
   it("caps a requested maxCredits above the balance", async () => {
     checkCredits
       .mockResolvedValueOnce({ allowed: true, remaining: 1000 })
