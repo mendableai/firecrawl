@@ -89,6 +89,9 @@ export async function authorizeProviders(
                 missingProviders: providers.filter(
                   provider => !answered.has(provider),
                 ),
+                unexpectedProviders: [...answered].filter(
+                  provider => !providers.includes(provider),
+                ),
               }),
     });
     return refusal(
