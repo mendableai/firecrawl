@@ -48,6 +48,8 @@ export async function lookupFeedbackJob(
       jobId,
       endpoint,
     });
+    // Keyless clients treat 404 as final, so a failed read must stay retryable.
+    if (requireOptions) throw error;
     return null;
   }
   if (!job) return null;

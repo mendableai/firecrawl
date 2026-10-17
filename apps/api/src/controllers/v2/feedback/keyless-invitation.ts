@@ -1,10 +1,10 @@
-import { config } from "../../../config";
 import { keylessTeamUuid } from "../../../lib/keyless";
 import { logger } from "../../../lib/logger";
 import type { RequestWithAuth } from "../types";
 import type { KeylessFeedbackEndpoint } from "./keyless-schema";
 import { isKeylessFeedbackRestricted } from "./zdr-persistence";
 import {
+  keylessFeedbackAvailable,
   KEYLESS_FEEDBACK_MAX_AGE_SEC,
   KEYLESS_FEEDBACK_MAX_FUTURE_SKEW_SEC,
 } from "./keyless-limits";
@@ -19,8 +19,7 @@ export async function keylessFeedbackMetadata(
   if (!identity) return {};
   const reference = { jobId };
   if (
-    !config.KEYLESS_FEEDBACK_ENABLED ||
-    !config.USE_DB_AUTHENTICATION ||
+    !keylessFeedbackAvailable() ||
     isKeylessFeedbackRestricted(endpoint, req.body)
   )
     return reference;

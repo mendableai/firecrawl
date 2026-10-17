@@ -1,5 +1,4 @@
 import type { Response } from "express";
-import { config } from "../../../config";
 import { keylessTeamUuid } from "../../../lib/keyless";
 import { getJobFromGCS } from "../../../lib/gcs-jobs";
 import { LOOKUP_RACE_RETRY_MS, lookupJobWithRetry } from "./record";
@@ -7,6 +6,7 @@ import { isKeylessFeedbackRestricted } from "./zdr-persistence";
 import { feedbackMetadataSchema, type RequestWithAuth } from "../types";
 import { keylessFeedbackSchema } from "./keyless-schema";
 import {
+  keylessFeedbackAvailable,
   KEYLESS_FEEDBACK_MAX_AGE_SEC,
   KEYLESS_FEEDBACK_MAX_FUTURE_SKEW_SEC,
 } from "./keyless-limits";
@@ -36,7 +36,7 @@ export async function keylessFeedbackController(
       .status(status)
       .json({ success: false, feedbackErrorCode, error, ...extra });
   };
-  if (!config.KEYLESS_FEEDBACK_ENABLED || !config.USE_DB_AUTHENTICATION)
+  if (!keylessFeedbackAvailable())
     return fail(
       503,
       "FEEDBACK_UNAVAILABLE",
@@ -56,7 +56,13 @@ export async function keylessFeedbackController(
       requireOptions: true,
     });
     if ("status" in job)
-      return fail(job.status, job.body.feedbackErrorCode, job.body.error);
+      return job.status >= 500
+        ? fail(
+            503,
+            "FEEDBACK_UNAVAILABLE",
+            "Feedback could not be recorded. Retry later.",
+          )
+        : fail(job.status, job.body.feedbackErrorCode, job.body.error);
     if (isKeylessFeedbackRestricted(answers.endpoint, job.options))
       return fail(
         404,

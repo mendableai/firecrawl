@@ -202,7 +202,8 @@ const configSchema = z.object({
     .int()
     .nonnegative()
     .default(100),
-  // Enable after the feedback docs and API/worker job writers are deployed.
+  // Enable on the API once the feedback docs are published and the job_feedback
+  // tables exist. Job writers record keyless context regardless.
   KEYLESS_FEEDBACK_ENABLED: z.stringbool().default(false),
   FEEDBACK_MAX_AGE_SEC: z.coerce.number().int().positive().default(120),
   FEEDBACK_DAILY_CAP_CREDITS: z.coerce.number().int().nonnegative().default(50),

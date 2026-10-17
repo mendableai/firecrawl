@@ -45,6 +45,7 @@ import { ThirdPartyDataTermsRequiredError } from "../../../lib/exchange";
 
 const originalEnabled = config.KEYLESS_FEEDBACK_ENABLED;
 const originalDbAuthentication = config.USE_DB_AUTHENTICATION;
+const originalFeedbackJobsTable = config.BIGTABLE_FEEDBACK_JOBS_TABLE;
 const teamId = keylessTeamId("203.0.113.85");
 const controllers = { scrape: scrapeController, parse: parseController };
 function start(endpoint: keyof typeof controllers, team = teamId) {
@@ -79,6 +80,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   config.KEYLESS_FEEDBACK_ENABLED = false;
   config.USE_DB_AUTHENTICATION = originalDbAuthentication;
+  config.BIGTABLE_FEEDBACK_JOBS_TABLE = "feedback-jobs";
   mocks.requestLog.mockResolvedValue(undefined);
   mocks.scrapeLog.mockResolvedValue(undefined);
   mocks.lookup.mockResolvedValue({ created_at: new Date(), options: {} });
@@ -93,6 +95,7 @@ beforeEach(() => {
 afterAll(() => {
   config.KEYLESS_FEEDBACK_ENABLED = originalEnabled;
   config.USE_DB_AUTHENTICATION = originalDbAuthentication;
+  config.BIGTABLE_FEEDBACK_JOBS_TABLE = originalFeedbackJobsTable;
 });
 
 it.each(["scrape", "parse"] as const)(

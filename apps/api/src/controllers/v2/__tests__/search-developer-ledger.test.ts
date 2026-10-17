@@ -364,7 +364,11 @@ it.each([true, false])(
   "awaits Search persistence only for a keyless invitation: keyless=%s",
   async keyless => {
     const originalEnabled = config.KEYLESS_FEEDBACK_ENABLED;
+    const originalDbAuthentication = config.USE_DB_AUTHENTICATION;
+    const originalFeedbackJobsTable = config.BIGTABLE_FEEDBACK_JOBS_TABLE;
     config.KEYLESS_FEEDBACK_ENABLED = true;
+    config.USE_DB_AUTHENTICATION = true;
+    config.BIGTABLE_FEEDBACK_JOBS_TABLE = "feedback-jobs";
     let release!: () => void;
     mockLogSearch.mockReturnValueOnce(
       new Promise<void>(resolve => {
@@ -395,6 +399,8 @@ it.each([true, false])(
       release();
       await pending;
       config.KEYLESS_FEEDBACK_ENABLED = originalEnabled;
+      config.USE_DB_AUTHENTICATION = originalDbAuthentication;
+      config.BIGTABLE_FEEDBACK_JOBS_TABLE = originalFeedbackJobsTable;
     }
   },
 );

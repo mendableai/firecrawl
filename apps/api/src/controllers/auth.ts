@@ -1,4 +1,7 @@
-import { consumeKeylessFeedbackAttempt } from "./v2/feedback/keyless-limits";
+import {
+  consumeKeylessFeedbackAttempt,
+  keylessFeedbackAvailable,
+} from "./v2/feedback/keyless-limits";
 import { logKeylessFeedbackOutcome } from "./v2/feedback/keyless-outcome";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { isValidUuid } from "../lib/owner-id";
@@ -710,7 +713,7 @@ async function handleKeylessAuth(
         ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
       };
     };
-    if (!config.KEYLESS_FEEDBACK_ENABLED)
+    if (!keylessFeedbackAvailable())
       return reject(
         503,
         "disabled",

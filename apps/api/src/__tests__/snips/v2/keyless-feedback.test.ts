@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../../db/connection";
-import { search_feedback } from "../../../db/schema";
+import { job_feedback, job_feedback_observations } from "../../../db/schema";
 import { keylessTeamId, keylessTeamUuid } from "../../../lib/keyless";
 import { redisRateLimitClient } from "../../../services/rate-limiter";
 import request from "supertest";
@@ -29,9 +29,8 @@ describeIf(enabled)("keyless feedback", () => {
   const ip = `203.0.113.${1 + Math.floor(Math.random() * 254)}`;
   const identity = keylessTeamUuid(keylessTeamId(ip))!;
   const cleanup = async () => {
-    await db
-      .delete(search_feedback)
-      .where(eq(search_feedback.team_id, identity));
+    // Observations cascade with their submission.
+    await db.delete(job_feedback).where(eq(job_feedback.team_id, identity));
     await redisRateLimitClient.del(
       `keyless_requests:${ip}`,
       `keyless_credits:${ip}`,
@@ -88,6 +87,24 @@ describeIf(enabled)("keyless feedback", () => {
       expect(duplicate.body.feedbackId).toBe(accepted.body.feedbackId);
       expect(duplicate.body.alreadySubmitted).toBe(true);
       expect(accepted.body.creditsRefunded).toBe(0);
+      const [stored] = await db
+        .select()
+        .from(job_feedback)
+        .where(eq(job_feedback.id, accepted.body.feedbackId));
+      expect(stored).toMatchObject({
+        team_id: identity,
+        auth_type: "keyless",
+        endpoint: "scrape",
+        job_id: jobId,
+        rating: "good",
+        job_status: "completed",
+      });
+      expect(
+        await db
+          .select()
+          .from(job_feedback_observations)
+          .where(eq(job_feedback_observations.feedback_id, stored.id)),
+      ).toMatchObject([{ position: 0, kind: "correct", basis: "output" }]);
 
       const next = await call("/v2/scrape", {
         url: TEST_SUITE_WEBSITE,

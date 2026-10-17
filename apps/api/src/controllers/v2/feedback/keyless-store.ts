@@ -1,9 +1,26 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { db } from "../../../db/connection";
-import { search_feedback } from "../../../db/schema";
+import { job_feedback, job_feedback_observations } from "../../../db/schema";
 import type { KeylessFeedbackRequest } from "./keyless-schema";
 import type { FeedbackJobRow } from "./internal-types";
+
+// Every field an observation can carry; each endpoint uses a subset.
+type ObservationFields = {
+  kind: string;
+  reason?: string;
+  basis: string;
+  detail: string;
+  comparison?: { reference: string; detail: string };
+  source?: string;
+  position?: number;
+  vertical?: string;
+  topic?: string;
+  knownSources?: string[];
+  format?: string;
+  location?: string;
+  page?: number;
+};
 
 export async function insertKeylessFeedback(
   identity: string,
@@ -15,62 +32,74 @@ export async function insertKeylessFeedback(
   job: FeedbackJobRow,
 ): Promise<{ success: true; feedbackId: string; alreadySubmitted?: true }> {
   const { answers } = metadata;
-  // Serialize submissions for the same job in PostgreSQL so retries remain
-  // idempotent even if the deployed table has no matching unique index.
+  // job_feedback holds one row per caller, endpoint, and job. A concurrent
+  // retry waits on that unique key, inserts nothing, and returns the winner.
   return db.transaction(async tx => {
-    const lockKey = `keyless-feedback:${identity}:${answers.endpoint}:${job.id}`;
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-    );
-    const findExisting = async () => {
+    const [inserted] = await tx
+      .insert(job_feedback)
+      .values({
+        id: uuidv7(),
+        team_id: identity,
+        auth_type: "keyless",
+        endpoint: answers.endpoint,
+        job_id: job.id,
+        request_id: job.request_id,
+        job_status: job.is_successful === false ? "failed" : "completed",
+        rating: answers.rating,
+        task: answers.task,
+        assessment: answers.assessment,
+        doc_class: answers.endpoint === "parse" ? answers.docClass : null,
+        origin: answers.origin,
+        integration: answers.integration ?? null,
+        unverified: metadata.unverified === true,
+        schema_version: metadata.schemaVersion,
+      })
+      .onConflictDoNothing()
+      .returning({ id: job_feedback.id });
+
+    if (!inserted) {
       const [existing] = await tx
-        .select({ id: search_feedback.id })
-        .from(search_feedback)
+        .select({ id: job_feedback.id })
+        .from(job_feedback)
         .where(
           and(
-            eq(search_feedback.team_id, identity),
-            eq(search_feedback.endpoint, answers.endpoint),
-            eq(search_feedback.job_id, answers.jobId),
+            eq(job_feedback.team_id, identity),
+            eq(job_feedback.endpoint, answers.endpoint),
+            eq(job_feedback.job_id, job.id),
           ),
         )
         .limit(1);
-      return existing;
-    };
-    const existing = await findExisting();
-    if (existing)
+      if (!existing)
+        throw new Error("Conflicting keyless feedback was not found");
       return {
         success: true as const,
         feedbackId: existing.id,
         alreadySubmitted: true as const,
       };
+    }
 
-    const [inserted] = await tx
-      .insert(search_feedback)
-      .values({
-        id: uuidv7(),
-        endpoint: answers.endpoint,
-        job_id: job.id,
-        request_id: job.request_id,
-        search_id: answers.endpoint === "search" ? answers.jobId : null,
+    await tx.insert(job_feedback_observations).values(
+      (answers.observations as ObservationFields[]).map((item, position) => ({
+        feedback_id: inserted.id,
         team_id: identity,
-        overall_rating: answers.rating,
-        comment: answers.assessment,
-        origin: answers.origin,
-        integration: answers.integration ?? null,
-        job_status: job.is_successful === false ? "failed" : "completed",
-        metadata,
-      })
-      .onConflictDoNothing()
-      .returning({ id: search_feedback.id });
-    if (inserted) return { success: true as const, feedbackId: inserted.id };
-
-    const conflicted = await findExisting();
-    if (!conflicted)
-      throw new Error("Conflicting keyless feedback was not found");
-    return {
-      success: true as const,
-      feedbackId: conflicted.id,
-      alreadySubmitted: true as const,
-    };
+        endpoint: answers.endpoint,
+        position,
+        kind: item.kind,
+        reason: item.reason ?? null,
+        basis: item.basis,
+        detail: item.detail,
+        comparison_reference: item.comparison?.reference ?? null,
+        comparison_detail: item.comparison?.detail ?? null,
+        source: item.source ?? null,
+        result_position: item.position ?? null,
+        vertical: item.vertical ?? null,
+        topic: item.topic ?? null,
+        known_sources: item.knownSources ?? [],
+        format: item.format ?? null,
+        location: item.location ?? null,
+        page: item.page ?? null,
+      })),
+    );
+    return { success: true as const, feedbackId: inserted.id };
   });
 }

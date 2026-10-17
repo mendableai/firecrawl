@@ -16,6 +16,7 @@ vi.mock("../../../config", () => ({
   config: {
     KEYLESS_FEEDBACK_ENABLED: true,
     USE_DB_AUTHENTICATION: true,
+    BIGTABLE_FEEDBACK_JOBS_TABLE: "feedback-jobs",
   },
 }));
 import { config } from "../../../config";
@@ -26,6 +27,7 @@ describe("keyless feedback invitations", () => {
     vi.resetAllMocks();
     config.KEYLESS_FEEDBACK_ENABLED = true;
     config.USE_DB_AUTHENTICATION = true;
+    config.BIGTABLE_FEEDBACK_JOBS_TABLE = "feedback-jobs";
     mocks.lookup.mockResolvedValue({ created_at: new Date(), options: {} });
   });
   afterEach(() => vi.useRealTimers());
@@ -71,6 +73,12 @@ describe("keyless feedback invitations", () => {
       expect(await prepare()).toEqual({ jobId: "job" });
     },
   );
+
+  it("preserves the job reference when the feedback job table is not configured", async () => {
+    config.BIGTABLE_FEEDBACK_JOBS_TABLE = undefined;
+    expect(await prepare()).toEqual({ jobId: "job" });
+    expect(mocks.lookup).not.toHaveBeenCalled();
+  });
 
   it("does not add keyless metadata for authenticated jobs", async () => {
     expect(

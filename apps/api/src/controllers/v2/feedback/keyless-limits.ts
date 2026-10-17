@@ -37,5 +37,16 @@ return {1, 0}
   };
 }
 
+// Keyless feedback needs the job record to validate against and the database
+// to store it in. Without either, callers get a retryable 503 rather than a
+// 404 that clients treat as final.
+export function keylessFeedbackAvailable(): boolean {
+  return (
+    config.KEYLESS_FEEDBACK_ENABLED &&
+    config.USE_DB_AUTHENTICATION === true &&
+    !!config.BIGTABLE_FEEDBACK_JOBS_TABLE
+  );
+}
+
 export const KEYLESS_FEEDBACK_MAX_AGE_SEC = 86400;
 export const KEYLESS_FEEDBACK_MAX_FUTURE_SKEW_SEC = 300;

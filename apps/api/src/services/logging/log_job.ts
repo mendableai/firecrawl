@@ -682,7 +682,7 @@ async function logScrapeInternal(scrape: LoggedScrape, hooks?: LogScrapeHooks) {
   }
 
   const feedbackJob = {
-    ...(config.KEYLESS_FEEDBACK_ENABLED && keylessTeamUuid(scrape.team_id)
+    ...(keylessTeamUuid(scrape.team_id)
       ? { keylessOptions: scrape.options }
       : {}),
     jobId: scrape.id,
@@ -1033,7 +1033,7 @@ async function logSearchInternal(
 
   await writeFeedbackJobSafely(
     {
-      ...(config.KEYLESS_FEEDBACK_ENABLED && keylessTeamUuid(search.team_id)
+      ...(keylessTeamUuid(search.team_id)
         ? { keylessOptions: search.options }
         : {}),
       jobId: search.id,

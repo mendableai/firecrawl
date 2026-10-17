@@ -1,4 +1,5 @@
 import { keylessFeedbackMetadata } from "./feedback/keyless-invitation";
+import { keylessFeedbackAvailable } from "./feedback/keyless-limits";
 import { NextFunction, Request, Response } from "express";
 import { externalRequestId } from "../../lib/external-request-id";
 import { config } from "../../config";
@@ -505,7 +506,7 @@ async function searchControllerInner(
     const timeTakenInSeconds = (endTime - middlewareStartTime) / 1000;
 
     const keylessFeedback =
-      config.KEYLESS_FEEDBACK_ENABLED && !!keylessTeamUuid(req.auth.team_id);
+      keylessFeedbackAvailable() && !!keylessTeamUuid(req.auth.team_id);
     const searchLog = {
       id: jobId,
       request_id: agentRequestId ?? jobId,

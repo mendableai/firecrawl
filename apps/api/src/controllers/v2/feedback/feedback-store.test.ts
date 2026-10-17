@@ -71,15 +71,22 @@ it("preserves authenticated feedback for older records without keyless context",
   });
 });
 
-it("does not fall back to PostgreSQL on a Bigtable miss or outage", async () => {
-  mocks.readCompactJob
-    .mockResolvedValueOnce(null)
-    .mockRejectedValueOnce(new Error("Unavailable"));
-  for (let i = 0; i < 2; i++) {
-    expect(
-      await lookupFeedbackJob("scrape", jobId, teamId, {
-        requireOptions: true,
-      }),
-    ).toBeNull();
-  }
+it("does not fall back to PostgreSQL on a Bigtable miss", async () => {
+  mocks.readCompactJob.mockResolvedValueOnce(null);
+  expect(
+    await lookupFeedbackJob("scrape", jobId, teamId, { requireOptions: true }),
+  ).toBeNull();
+});
+
+it("keeps a keyless lookup retryable when Bigtable is unavailable", async () => {
+  const outage = new Error("Unavailable");
+  mocks.readCompactJob.mockRejectedValueOnce(outage);
+  await expect(
+    lookupFeedbackJob("scrape", jobId, teamId, { requireOptions: true }),
+  ).rejects.toBe(outage);
+});
+
+it("keeps authenticated lookups unchanged when Bigtable is unavailable", async () => {
+  mocks.readCompactJob.mockRejectedValueOnce(new Error("Unavailable"));
+  expect(await lookupFeedbackJob("scrape", jobId, teamId)).toBeNull();
 });
