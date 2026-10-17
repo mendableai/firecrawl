@@ -6,6 +6,8 @@ import { TeamFlags } from "../../../controllers/v1/types";
 import { db, dbRr } from "../../../db/connection";
 import * as schema from "../../../db/schema";
 import { exchangeClaimsUrl } from "../../../lib/exchange";
+import { keylessTeamUuid } from "../../../lib/keyless";
+import { isValidUuid } from "../../../lib/owner-id";
 
 configDotenv();
 
@@ -54,6 +56,14 @@ function scheduleHitFlush(): void {
   if (typeof hitFlushTimer.unref === "function") hitFlushTimer.unref();
 }
 
+// blocklist_hits.team_id is a uuid column, and one invalid value fails the whole
+// batched insert. Keyless callers are stored under their identity UUID; any
+// other non-UUID team id, such as preview, is stored as null.
+function hitTeamId(teamId: string | null | undefined): string | null {
+  if (!teamId) return null;
+  return keylessTeamUuid(teamId) ?? (isValidUuid(teamId) ? teamId : null);
+}
+
 function recordHit(
   url: string,
   domain: string,
@@ -65,7 +75,7 @@ function recordHit(
     id: uuidv7(),
     domain,
     url: url.length > 2048 ? url.slice(0, 2048) : url,
-    team_id: context.team_id ?? null,
+    team_id: hitTeamId(context.team_id),
     origin: context.origin ?? null,
   });
   if (hitBuffer.length >= HIT_BUFFER_MAX_SIZE) {
