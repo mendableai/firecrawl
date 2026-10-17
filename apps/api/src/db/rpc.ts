@@ -57,15 +57,6 @@ export function authCreditUsageChunkFromTeam(
   );
 }
 
-export function getAgentFreeRequestsLeft(
-  i_team_id: string,
-): Promise<{ free_requests_left: number }[]> {
-  return execRows(
-    db,
-    sql`select * from get_agent_free_requests_left(i_team_id => ${i_team_id})`,
-  );
-}
-
 export function agentConsumeFreeRequestIfLeft(
   i_team_id: string,
 ): Promise<{ consumed: boolean }[]> {
