@@ -31,6 +31,28 @@ export class XTwitterConfigurationError extends TransportableError {
   }
 }
 
+export class XTwitterProviderUnavailableError extends TransportableError {
+  constructor() {
+    super(
+      "SCRAPE_X_TWITTER_UNAVAILABLE",
+      "X/Twitter data is temporarily unavailable because the upstream provider is at capacity. Retry in about a minute.",
+    );
+  }
+
+  serialize() {
+    return super.serialize();
+  }
+
+  static deserialize(
+    _: ErrorCodes,
+    data: ReturnType<typeof this.prototype.serialize>,
+  ) {
+    const x = new XTwitterProviderUnavailableError();
+    x.stack = data.stack;
+    return x;
+  }
+}
+
 export class NoEnginesLeftError extends TransportableError {
   public fallbackList: Engine[];
 

@@ -14,6 +14,7 @@ import { MockLanguageModelV3 } from "ai/test";
 import type { Meta } from "../..";
 import { CostTracking } from "../../../../lib/cost-tracking";
 import { createTracerProvider } from "../../../../lib/otel-tracer";
+import { XTwitterProviderUnavailableError } from "../../error";
 import { scrapeURLWithXTwitter } from "./index";
 
 const { grok } = vi.hoisted(() => {
@@ -409,4 +410,30 @@ describe("x-twitter engine LLM telemetry", () => {
     ).toEqual([]);
     expect(span.attributes["ai.telemetry.functionId"]).toBe("xTwitter/profile");
   });
+});
+
+describe("x-twitter engine provider errors", () => {
+  it.each([429, 503])(
+    "reports xAI %i responses as a retryable unavailable error",
+    async statusCode => {
+      let attempts = 0;
+      grok.doGenerate = async () => {
+        attempts++;
+        throw new APICallError({
+          message: "model at capacity",
+          url: "https://api.x.ai/v1/responses",
+          requestBodyValues: {},
+          statusCode,
+          // Skips the AI SDK's backoff between its own retries.
+          responseHeaders: { "retry-after-ms": "0" },
+          isRetryable: true,
+        });
+      };
+
+      await expect(
+        scrapeURLWithXTwitter(makeMeta("https://x.com/firecrawl")),
+      ).rejects.toBeInstanceOf(XTwitterProviderUnavailableError);
+      expect(attempts).toBe(3);
+    },
+  );
 });

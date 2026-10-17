@@ -639,6 +639,18 @@ export async function scrapeController(
             });
           }
 
+          if (e.code === "SCRAPE_X_TWITTER_UNAVAILABLE") {
+            setSpanAttributes(span, {
+              "scrape.status_code": 503,
+            });
+            res.setHeader("Retry-After", "60");
+            return res.status(503).json({
+              success: false,
+              code: e.code,
+              error: e.message,
+            });
+          }
+
           const statusCode = timeoutErr ? 408 : 500;
           setSpanAttributes(span, {
             "scrape.status_code": statusCode,

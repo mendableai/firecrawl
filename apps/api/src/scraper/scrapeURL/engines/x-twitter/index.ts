@@ -1,5 +1,12 @@
 import { xai } from "@ai-sdk/xai";
-import { generateText, jsonSchema, Output, type GenerateTextResult } from "ai";
+import {
+  APICallError,
+  generateText,
+  jsonSchema,
+  Output,
+  RetryError,
+  type GenerateTextResult,
+} from "ai";
 import { config } from "../../../../config";
 import { withUsageTelemetry } from "../../../../lib/ai-usage-telemetry";
 import {
@@ -8,7 +15,11 @@ import {
 } from "../../../../lib/xai-x-search";
 import { Meta } from "../..";
 import { EngineScrapeResult } from "..";
-import { EngineError, XTwitterConfigurationError } from "../../error";
+import {
+  EngineError,
+  XTwitterConfigurationError,
+  XTwitterProviderUnavailableError,
+} from "../../error";
 import { safeMarkdownToHtml } from "../pdf/markdownToHtml";
 import { calculateCost } from "../../transformers/llmExtract";
 import {
@@ -258,10 +269,22 @@ export async function scrapeURLWithXTwitter(
     url: xUrl.normalizedUrl,
   });
 
-  const markdown =
-    xUrl.kind === "profile"
-      ? buildProfileMarkdown(await fetchProfile(xUrl, meta))
-      : buildPostMarkdown(await fetchPost(xUrl, meta));
+  let markdown: string;
+  try {
+    markdown =
+      xUrl.kind === "profile"
+        ? buildProfileMarkdown(await fetchProfile(xUrl, meta))
+        : buildPostMarkdown(await fetchPost(xUrl, meta));
+  } catch (error) {
+    const cause = RetryError.isInstance(error) ? error.lastError : error;
+    if (
+      APICallError.isInstance(cause) &&
+      (cause.statusCode === 429 || cause.statusCode === 503)
+    ) {
+      throw new XTwitterProviderUnavailableError();
+    }
+    throw error;
+  }
 
   if (markdown.trim().length === 0) {
     throw new EngineError(`No X/Twitter content returned for: ${urlToScrape}`);
