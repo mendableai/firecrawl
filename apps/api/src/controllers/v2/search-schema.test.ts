@@ -103,9 +103,9 @@ describe("searchRequestSchema geo targeting", () => {
     [{ country: "gr" }, "gr", "Greece"],
     [{ country: "MX" }, "MX", "Mexico"],
     [
-      { country: "gr", location: "Athens,Attica,Greece" },
+      { country: "gr", location: "Mexico City, Mexico" },
       "gr",
-      "Athens,Attica,Greece",
+      "Mexico City, Mexico",
     ],
     [{}, "us", undefined],
   ])("resolves %j to country %s and location %s", (geo, country, location) => {
@@ -123,6 +123,7 @@ describe("searchRequestSchema geo targeting", () => {
   it.each([
     [{ location: "San Francisco" }, undefined, "San Francisco"],
     [{ location: "New Mexico" }, undefined, "New Mexico"],
+    [{ location: "Atlanta, Georgia" }, undefined, "Atlanta, Georgia"],
     [{ country: "Greece" }, "Greece", undefined],
   ])(
     "leaves %j unresolved when it names no known country",

@@ -2675,12 +2675,16 @@ export const searchRequestSchema = z
   .refine(x => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform(x => {
     // Providers read the country (gl) and the location separately and default
-    // each to the US, so fill in whichever one the caller left out.
+    // each to the US, so fill in whichever one the caller left out. Georgia is
+    // never inferred because it is also a US state.
     const locationCountry = x.location?.split(",").at(-1)?.trim().toLowerCase();
     const country =
       x.country ??
       Object.entries(countries)
-        .find(([, c]) => c.name.toLowerCase() === locationCountry)?.[0]
+        .find(
+          ([code, c]) =>
+            code !== "GE" && c.name.toLowerCase() === locationCountry,
+        )?.[0]
         .toLowerCase() ??
       (x.location ? undefined : "us");
     const location =
