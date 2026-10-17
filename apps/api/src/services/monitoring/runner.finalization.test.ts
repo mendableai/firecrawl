@@ -70,6 +70,7 @@ import { getBillingQueue } from "../queue-service";
 import { redisEvictConnection } from "../redis";
 import { sendMonitoringEmailSummary } from "../notification/monitoring_email";
 import { recordMonitorInAppNotification } from "../notification/monitoring_in_app";
+import { logger } from "../../lib/logger";
 
 function deferred() {
   let resolve!: () => void;
@@ -256,6 +257,119 @@ describe("monitor check finalization ownership", () => {
       }),
     );
     expect(current.status).toBe("completed");
+  });
+
+  it("logs the counts it compared when a check is not ready to finalize", async () => {
+    current.target_results = [
+      {
+        targetId: "target-1",
+        type: "scrape",
+        expectedJobs: ["scrape-1", "scrape-2"],
+      },
+    ];
+    await reconcileRunningMonitorChecks();
+    expect(current.status).toBe("running");
+    expect(autumnService.finalizeCreditsLock).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      "Monitor check not ready to finalize",
+      expect.objectContaining({
+        checkId: "check-1",
+        type: "scrape",
+        targetId: "target-1",
+        recorded: 1,
+        expected: 2,
+      }),
+    );
+  });
+
+  describe("search-only checks", () => {
+    const runJob = () =>
+      processMonitorCheckJob({
+        checkId: current.id,
+        monitorId: monitor.id,
+        teamId: monitor.team_id,
+      });
+
+    beforeEach(() => {
+      current.target_results = [
+        {
+          type: "search",
+          targetId: "target-1",
+          searchCompleted: true,
+          searchCredits: 1,
+        },
+      ];
+      snapshot = structuredClone(current);
+      monitor = {
+        ...monitor,
+        targets: [{ id: "target-1", type: "search", queries: ["firecrawl"] }],
+      } as unknown as MonitorRow;
+      vi.mocked(autumnService.lockCredits).mockResolvedValue({
+        status: "locked",
+        lockId: "monitor_check-1",
+      });
+    });
+
+    it("settles in the check job without waiting for the reconciler", async () => {
+      await runJob();
+      expect(current).toMatchObject({
+        status: "completed",
+        billing_status: "confirmed",
+      });
+      await reconcileRunningMonitorChecks();
+      expect(autumnService.finalizeCreditsLock).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          lockId: "monitor_check-1",
+          action: "confirm",
+        }),
+      );
+      expect(bill).toHaveBeenCalledTimes(1);
+      expect(store.updateMonitorScheduleAfterRun).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      {
+        name: "another worker holds the finalize lease",
+        setup: () => {
+          locks.set(lockKey, "other-worker");
+        },
+      },
+      {
+        name: "taking the finalize lease throws",
+        setup: () => {
+          vi.mocked(redisEvictConnection.set).mockRejectedValueOnce(
+            new Error("Redis unavailable"),
+          );
+        },
+      },
+      {
+        name: "settlement preparation throws",
+        setup: () => {
+          vi.mocked(
+            store.calculateMonitorCheckActualCredits,
+          ).mockRejectedValueOnce(new Error("Page count failed"));
+        },
+      },
+    ])(
+      "leaves the check running for the reconciler when $name",
+      async ({ setup }) => {
+        setup();
+        await expect(runJob()).resolves.toBeUndefined();
+        expect(current).toMatchObject({
+          status: "running",
+          billing_status: "reserved",
+        });
+        expect(autumnService.finalizeCreditsLock).not.toHaveBeenCalled();
+
+        locks.delete(lockKey);
+        await reconcileRunningMonitorChecks();
+        expect(current).toMatchObject({
+          status: "completed",
+          billing_status: "confirmed",
+        });
+        expect(autumnService.finalizeCreditsLock).toHaveBeenCalledTimes(1);
+      },
+    );
   });
 
   it("uses the refreshed target state instead of completing an obsolete snapshot", async () => {
