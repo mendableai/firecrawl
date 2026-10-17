@@ -126,14 +126,14 @@ describe("agent passthroughs for zero data retention runs", () => {
     expect(res.json).toHaveBeenCalledWith(body);
   });
 
-  it("skill forwards 404 zdr_skills_unavailable", async () => {
-    const body = { code: "zdr_skills_unavailable", error: "No skill." };
-    upstream(404, body);
+  it("skill forwards 410 zdr_expired", async () => {
+    const body = { code: "zdr_expired", error: "Expired." };
+    upstream(410, body);
     const res = makeRes();
 
     await agentSkillController(makeReq(), res);
 
-    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.status).toHaveBeenCalledWith(410);
     expect(res.json).toHaveBeenCalledWith(body);
   });
 });

@@ -65,8 +65,7 @@ export type ErrorCodes =
   | "zdr_threads_unsupported"
   | "zdr_exchange_unsupported"
   | "zdr_expired"
-  | "zdr_no_snapshots"
-  | "zdr_skills_unavailable";
+  | "zdr_no_snapshots";
 
 export class TransportableError extends Error {
   public readonly code: ErrorCodes;

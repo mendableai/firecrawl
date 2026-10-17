@@ -119,7 +119,6 @@ const errorMap: Record<ErrorCodes, any> = {
   zdr_exchange_unsupported: null,
   zdr_expired: null,
   zdr_no_snapshots: null,
-  zdr_skills_unavailable: null,
 };
 
 export function serializeTransportableError(error: TransportableError) {
