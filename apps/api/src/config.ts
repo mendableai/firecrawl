@@ -90,26 +90,6 @@ const configSchema = z.object({
     v => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().trim().optional(),
   ),
-  // Optional external agent hints provider. Inert unless the URL is set.
-  AGENT_HINTS_PROVIDER_URL: emptyStringAsUndefined(
-    z
-      .string()
-      .url()
-      .refine(value => ["http:", "https:"].includes(new URL(value).protocol), {
-        message: "AGENT_HINTS_PROVIDER_URL must be an http(s) URL",
-      }),
-  ),
-  AGENT_HINTS_PROVIDER_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
-  // Never sent to the provider. Keys the keyless team pseudonym; when unset a
-  // random per-process key is used, so pseudonyms are only stable per process.
-  AGENT_HINTS_PROVIDER_PSEUDONYM_KEY: emptyStringAsUndefined(
-    z.string().trim().min(32),
-  ),
-  AGENT_HINTS_PROVIDER_TIMEOUT_MS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(50),
   RESEARCH_PROXY_URL: z.string().url().optional(),
   SEARCH_PLATFORM_URL: z.string().url().optional(),
   RESEARCH_KEYLESS_DISABLED: researchKeylessDisabled,
@@ -118,6 +98,10 @@ const configSchema = z.object({
 
   // Express
   EXPRESS_TRUST_PROXY: z.coerce.number().optional(),
+
+  GOV_INDEX_CALLS_PER_DAY: emptyStringAsDefault(
+    z.coerce.number().int().nonnegative().default(500),
+  ),
 
   // Keyless free tier (scrape/search/interact without an API key, per-IP/day).
   // Non-negative integers; 0 means "enabled but no budget", unset means "off".
@@ -454,6 +438,18 @@ const configSchema = z.object({
   // cache service when one is configured; beyond the budget the request is
   // served normally. 0 disables the option.
   FIRE_PDF_CACHE_REFRESH_PER_MINUTE: z.coerce.number().int().min(0).default(10),
+  // /v2/parse sends every PDF (auto/ocr mode) to FirePDF: no direct
+  // text-layer extraction, no FIRE_PDF_PERCENT sampling, no MinerU
+  // diversion. Explicit `mode: "fast"` keeps direct extraction. FirePDF
+  // failures still fall back to MinerU / pdf-parse. Needs FIRE_PDF_ENABLE.
+  PARSE_PDF_ALWAYS_FIRE_PDF: z.stringbool().default(true),
+  // Table rendering FirePDF applies to /v2/parse documents. `dynamic` keeps
+  // pipe tables where they are lossless and HTML where structure needs it
+  // (merged cells, large tables); `off` sends no format (pipe tables).
+  // Any explicit format puts the request outside the FirePDF content cache.
+  PARSE_FIRE_PDF_TABLE_FORMAT: z
+    .enum(["off", "markdown", "html", "dynamic"])
+    .default("dynamic"),
   // Raster image OCR of image URLs and parse uploads through FirePDF (see
   // lib/image-ocr-gate.ts). Needs FIRE_PDF_BASE_URL.
   IMAGE_OCR_ENABLED: z.stringbool().default(false),

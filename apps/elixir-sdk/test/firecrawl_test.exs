@@ -674,6 +674,110 @@ defmodule FirecrawlTest do
     assert body["urls"] == ["https://example.com"]
   end
 
+  test "parse_file sends check_prompt_injection as checkPromptInjection only when set" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    parse_options = fn params ->
+      assert {:ok, %Req.Response{status: 200}} =
+               Firecrawl.parse_file(
+                 [filename: "doc.html", data: "<p>hi</p>", content_type: "text/html"],
+                 params,
+                 api_key: "test-key",
+                 adapter: adapter
+               )
+
+      assert_receive {:request, request}
+      body = request.body |> Enum.to_list() |> IO.iodata_to_binary()
+      [_, options] = Regex.run(~r/name="options"\r\n\r\n(.*?)\r\n--/s, body)
+      Jason.decode!(options)
+    end
+
+    assert parse_options.(check_prompt_injection: true)["checkPromptInjection"] == true
+    refute Map.has_key?(parse_options.([]), "checkPromptInjection")
+  end
+
+  test "scrape maps check_prompt_injection to checkPromptInjection" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.scrape_and_extract_from_url(
+               [url: "https://example.com", check_prompt_injection: true],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["checkPromptInjection"] == true
+    refute Map.has_key?(body, "formats")
+  end
+
+  test "batch scrape maps check_prompt_injection to checkPromptInjection" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "id" => "batch-id"})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.scrape_and_extract_from_urls(
+               [urls: ["https://example.com"], check_prompt_injection: true],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["checkPromptInjection"] == true
+    assert body["urls"] == ["https://example.com"]
+  end
+
   test "request endpoints map audit_metadata to auditMetadata" do
     parent = self()
 
@@ -729,6 +833,43 @@ defmodule FirecrawlTest do
 
       assert body["auditMetadata"] == serialized_metadata
     end)
+  end
+
+  test "create_browser_session sends location only when set" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "id" => "session-1"})
+      )
+
+      {request, resp}
+    end
+
+    sent_body = fn params ->
+      assert {:ok, %Req.Response{status: 200}} =
+               Firecrawl.create_browser_session(params, api_key: "test-key", adapter: adapter)
+
+      assert_receive {:request, request}
+
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+    end
+
+    assert sent_body.(location: [country: "GB"])["location"] == %{"country" => "GB"}
+    refute Map.has_key?(sent_body.(ttl: 60), "location")
+  end
+
+  test "create_browser_session rejects a location without a country" do
+    assert {:error, %NimbleOptions.ValidationError{}} =
+             Firecrawl.create_browser_session([location: []], api_key: "test-key")
   end
 
   test "audit_metadata rejects unsupported fields" do

@@ -737,6 +737,7 @@ describe("Exchange terms acceptance", () => {
               {
                 provider: "acme",
                 required: true,
+                exchangeRequired: false,
                 terms: { ...ACME_TERMS, digest: DIGEST },
               },
             ],
@@ -773,6 +774,16 @@ describe("Exchange terms acceptance", () => {
     clearExchangeProvidersForTest();
   });
 
+  it("still gates universal scrape when Exchange acceptance is optional", async () => {
+    ledgerAnswers([]);
+    expect(
+      await getExchangeAccessForRequest({
+        ...PROFILE_REQUEST,
+        flags: { professionalProfileCompanyDataBeta: true },
+      }),
+    ).toMatchObject({ allowed: false, termsRequired: true, terms: ACME_TERMS });
+  });
+
   it("routes when the terms were accepted on the Exchange ledger", async () => {
     ledgerAnswers([{ version: ACME_TERMS.version, textHash: DIGEST }]);
 
@@ -784,8 +795,19 @@ describe("Exchange terms acceptance", () => {
     expect(access.allowed).toBe(true);
   });
 
-  it("does not accept a ledger entry for different terms text", async () => {
+  it("accepts a ledger entry for the gating version after a non-material text change", async () => {
     ledgerAnswers([{ version: ACME_TERMS.version, textHash: "b".repeat(64) }]);
+
+    await expect(
+      getExchangeAccessForRequest({
+        ...PROFILE_REQUEST,
+        flags: { professionalProfileCompanyDataBeta: true },
+      }),
+    ).resolves.toMatchObject({ allowed: true });
+  });
+
+  it("does not accept a ledger entry for another terms version", async () => {
+    ledgerAnswers([{ version: "old", textHash: DIGEST }]);
 
     await expect(
       getExchangeAccessForRequest({

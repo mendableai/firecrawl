@@ -262,6 +262,7 @@ export async function executeSearch(
       {
         toolDetail: options.toolDetail ?? "compact",
         teamId,
+        connectors: flags?.exchangeRetrieve === true,
         limit,
         query: wantsTools ? query : undefined,
         urls:

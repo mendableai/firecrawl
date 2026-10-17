@@ -365,10 +365,14 @@ const jsonFormatWithOptions = z.strictObject({
     })
     .superRefine(addStrictSchemaIssue),
   prompt: z.string().max(10000).optional(),
+  // Deprecated: lifted into the top-level checkPromptInjection at parse time.
   checkPromptInjection: z.boolean().optional(),
 });
 
-export type JsonFormatWithOptions = z.output<typeof jsonFormatWithOptions>;
+export type JsonFormatWithOptions = Omit<
+  z.output<typeof jsonFormatWithOptions>,
+  "checkPromptInjection"
+>;
 
 // "Deterministic JSON" — same shape as json mode, but extraction is performed by
 // reusable-json-mode (a cached, reusable JS extractor run in the code-sandbox)
@@ -844,6 +848,7 @@ const scrapeOptionFields = z.strictObject({
   minAge: z.int().gte(0).optional(),
   storeInCache: z.boolean().prefault(true),
   lockdown: z.boolean().prefault(false),
+  checkPromptInjection: z.boolean().prefault(false),
   safeMode: z.boolean().optional(),
   redactPII: redactPIISchema,
   // Enterprise: per-request field-level override of the org's threat
@@ -866,13 +871,23 @@ const scrapeOptionFields = z.strictObject({
   __forceFirePDF: z.boolean().prefault(false).optional(),
 });
 
-const baseScrapeOptions = scrapeOptionFields.refine(
-  options => !(options.profile && options.lockdown),
-  {
+const baseScrapeOptions = scrapeOptionFields
+  .refine(options => !(options.profile && options.lockdown), {
     message: "Profiles require live browsing and cannot be used with lockdown.",
     path: ["profile"],
-  },
-);
+  })
+  .refine(
+    options =>
+      !(
+        options.checkPromptInjection &&
+        options.formats.some(f => f.type === "rawBase64")
+      ),
+    {
+      message:
+        "checkPromptInjection scans page markdown and cannot be used with the rawBase64 format.",
+      path: ["checkPromptInjection"],
+    },
+  );
 
 type ScrapeOptionsBase = z.infer<typeof baseScrapeOptions>;
 
@@ -902,6 +917,34 @@ export const applyScrapeOptionsDefaults = <T extends ScrapeOptionsBase>(
       : true),
 });
 
+/**
+ * Folds the deprecated json-format checkPromptInjection into the top-level
+ * flag and drops it from the format. Also accepts raw stored monitor options.
+ */
+export function liftCheckPromptInjection<
+  T extends { formats?: unknown[]; checkPromptInjection?: unknown },
+>(options: T): T {
+  let requestedOnFormat = false;
+  const formats = options.formats?.map(format => {
+    if (
+      typeof format !== "object" ||
+      format === null ||
+      !("checkPromptInjection" in format)
+    ) {
+      return format;
+    }
+    const { checkPromptInjection, ...rest } = format;
+    requestedOnFormat ||= checkPromptInjection === true;
+    return rest;
+  });
+  return {
+    ...options,
+    formats,
+    checkPromptInjection:
+      options.checkPromptInjection === true || requestedOnFormat,
+  };
+}
+
 // Base transform function that handles both nullable and non-nullable cases
 // Uses generic type to preserve all fields from extended schemas
 const extractTransformImpl = <T extends ScrapeOptionsBase | undefined>(
@@ -909,7 +952,7 @@ const extractTransformImpl = <T extends ScrapeOptionsBase | undefined>(
 ): T extends undefined ? undefined : T => {
   if (!obj) return obj as T extends undefined ? undefined : T;
   // Handle timeout
-  let result = applyScrapeOptionsDefaults(obj);
+  let result = liftCheckPromptInjection(applyScrapeOptionsDefaults(obj));
   if (
     obj.formats.find(x => typeof x === "object" && x.type === "json") &&
     obj.timeout === 30000
@@ -1587,7 +1630,6 @@ export type VideoItem = {
 };
 
 export type ErrorResponse = {
-  agent_hints?: string[];
   metadata?: Record<string, unknown>;
   success: false;
   code?: ErrorCodes;
@@ -1601,7 +1643,6 @@ export type ScrapeResponse =
   | ErrorResponse
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: Document & {
         tools?: import("../../services/alexandria/contracts").DiscoveredTool[];
@@ -1967,7 +2008,6 @@ export type MapResponse =
   | ErrorResponse
   | {
       success: true;
-      agent_hints?: string[];
       id: string;
       links?: MapDocument[];
       warning?: string;
@@ -2328,6 +2368,9 @@ export function fromV1ScrapeOptions(
           }
         : {}),
       location: v1ScrapeOptions.location ?? v1ScrapeOptions.geolocation,
+      checkPromptInjection: (
+        v1ScrapeOptions.jsonOptions || v1ScrapeOptions.extract
+      )?.checkPromptInjection,
       formats: v1ScrapeOptions.formats
         .map(x => {
           // json and extract is standardized down to extract fmt in v1 -- fine to take one and dismiss the other
@@ -2337,7 +2380,6 @@ export function fromV1ScrapeOptions(
               type: "json",
               schema: opts?.schema,
               prompt: opts?.prompt,
-              checkPromptInjection: opts?.checkPromptInjection ?? false,
             };
             return fmt;
           } else if (x === "json") {
@@ -2348,7 +2390,6 @@ export function fromV1ScrapeOptions(
                 type: "json",
                 schema: opts.schema,
                 prompt: opts.prompt,
-                checkPromptInjection: opts.checkPromptInjection ?? false,
               };
               return includesFormat(v1ScrapeOptions.formats as any, "extract")
                 ? null
@@ -2516,8 +2557,6 @@ const searchDomainSchema = z
 export const searchRequestSchema = z
   .strictObject({
     query: z.string(),
-    objective: z.string().trim().min(1).max(5000).optional().catch(undefined),
-    clientModel: z.string().trim().min(1).max(128).optional().catch(undefined),
     limit: z.int().positive().finite().max(100).optional().prefault(10),
     tbs: z.string().optional(),
     filter: z.string().optional(),
@@ -2729,7 +2768,6 @@ export type SearchResponse =
   | ErrorResponse
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: Document[];
       creditsUsed: number;
@@ -2738,7 +2776,6 @@ export type SearchResponse =
     }
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: import("../../lib/entities").SearchV2Response;
       creditsUsed: number;
@@ -2747,7 +2784,6 @@ export type SearchResponse =
     }
   | {
       success: true;
-      agent_hints?: string[];
       warning?: string;
       data: import("../../lib/entities").SearchV2Response;
       scrapeIds: {
