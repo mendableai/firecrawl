@@ -22,8 +22,6 @@ export type AgentCreditGate =
  * asking for a little more than that balance:
  *
  * - below the minimum: refused, as before.
- * - on a free plan: refused at a balance of zero or below even if Autumn
- *   would allow overage, because free plans no longer carry any.
  * - can spend past the balance (overage, unlimited): runs as requested.
  * - cannot, but has an auto top-up: runs as requested, as before.
  * - otherwise: `maxCredits` is capped at the balance, and the agent service
@@ -36,13 +34,11 @@ export async function gateAgentCredits({
   teamId,
   orgId,
   apiKeyId,
-  freePlan,
   requestedMaxCredits,
 }: {
   teamId: string;
   orgId: string | null | undefined;
   apiKeyId: number | null;
-  freePlan: boolean;
   requestedMaxCredits: number | undefined;
 }): Promise<AgentCreditGate> {
   const asRequested: AgentCreditGate = {
@@ -66,14 +62,12 @@ export async function gateAgentCredits({
 
   const balance = Math.floor(minimum.remaining);
   if (!Number.isFinite(balance)) return asRequested;
-  if (!freePlan) {
-    const pastBalance = await check(
-      Math.max(balance, 0) + AGENT_MIN_CREDITS,
-      "agentCreditGate:overage",
-    );
-    if (pastBalance === null || pastBalance.allowed) return asRequested;
-    if (await autumnService.hasAutoTopUp(orgId)) return asRequested;
-  }
+  const pastBalance = await check(
+    Math.max(balance, 0) + AGENT_MIN_CREDITS,
+    "agentCreditGate:overage",
+  );
+  if (pastBalance === null || pastBalance.allowed) return asRequested;
+  if (await autumnService.hasAutoTopUp(orgId)) return asRequested;
   if (balance <= 0) return { allowed: false, balance };
 
   const requested = requestedMaxCredits ?? AGENT_DEFAULT_MAX_CREDITS;

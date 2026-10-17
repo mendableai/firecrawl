@@ -208,7 +208,6 @@ export async function agentController(
       teamId: req.auth.team_id,
       orgId: req.auth.org_id,
       apiKeyId: req.acuc?.api_key_id ?? null,
-      freePlan: req.acuc?.is_paid_plan === false,
       requestedMaxCredits: req.body.maxCredits,
     });
     if (!gate.allowed) {

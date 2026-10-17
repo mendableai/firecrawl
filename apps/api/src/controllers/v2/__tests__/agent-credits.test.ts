@@ -56,7 +56,7 @@ const consumeFreeRequest = vi.mocked(agentConsumeFreeRequestIfLeft);
 const checkCredits = vi.mocked(autumnService.checkCredits);
 const hasAutoTopUp = vi.mocked(autumnService.hasAutoTopUp);
 
-async function startAgent(body: Record<string, unknown>, isPaidPlan = true) {
+async function startAgent(body: Record<string, unknown>) {
   const req = {
     body: { prompt: "Find government contracts", ...body },
     auth: { team_id: "team-test", org_id: "org-test" },
@@ -64,7 +64,6 @@ async function startAgent(body: Record<string, unknown>, isPaidPlan = true) {
       flags: {},
       api_key: "test-key",
       api_key_id: 3,
-      is_paid_plan: isPaidPlan,
     },
   };
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
@@ -110,17 +109,6 @@ describe("agent credit gate", () => {
     expect(payload.success).toBe(false);
     expect(payload.error).toContain("balance is 0 credits");
     expect(payload.error).toContain("Add credits");
-    expect(sent).toBeUndefined();
-  });
-
-  it("refuses a free-plan team's paid run below zero even with overage left in Autumn", async () => {
-    consumeFreeRequest.mockResolvedValue([{ consumed: false }]);
-    checkCredits.mockResolvedValue({ allowed: true, remaining: -12 });
-
-    const { res, sent } = await startAgent({}, false);
-
-    expect(res.status).toHaveBeenCalledWith(402);
-    expect(res.json.mock.calls[0][0].error).toContain("balance is -12 credits");
     expect(sent).toBeUndefined();
   });
 

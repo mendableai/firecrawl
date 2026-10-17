@@ -11,16 +11,11 @@ import { autumnService } from "../../../services/autumn/autumn.service";
 const checkCredits = vi.mocked(autumnService.checkCredits);
 const hasAutoTopUp = vi.mocked(autumnService.hasAutoTopUp);
 
-const gate = (
-  requestedMaxCredits?: number,
-  orgId: string | null = "org-1",
-  freePlan = false,
-) =>
+const gate = (requestedMaxCredits?: number, orgId: string | null = "org-1") =>
   gateAgentCredits({
     teamId: "team-1",
     orgId,
     apiKeyId: 7,
-    freePlan,
     requestedMaxCredits,
   });
 
@@ -165,34 +160,6 @@ describe("gateAgentCredits", () => {
 
     expect(await gate()).toEqual(asRequested(undefined));
     expect(checkCredits).toHaveBeenCalledTimes(1);
-  });
-
-  it("blocks a free-plan team at or below zero even when Autumn allows overage", async () => {
-    checkCredits.mockResolvedValueOnce({ allowed: true, remaining: -8 });
-
-    expect(await gate(undefined, "org-1", true)).toEqual({
-      allowed: false,
-      balance: -8,
-    });
-    expect(checkCredits).toHaveBeenCalledTimes(1);
-  });
-
-  it("caps a free-plan team with a positive balance without asking about overage", async () => {
-    checkCredits.mockResolvedValueOnce({ allowed: true, remaining: 400 });
-
-    expect(await gate(undefined, "org-1", true)).toEqual({
-      allowed: true,
-      maxCredits: 400,
-      stopOnInsufficientCredits: true,
-    });
-    expect(checkCredits).toHaveBeenCalledTimes(1);
-    expect(hasAutoTopUp).not.toHaveBeenCalled();
-  });
-
-  it("fails open for a free-plan team when billing can't answer", async () => {
-    checkCredits.mockResolvedValueOnce(null);
-
-    expect(await gate(4000, "org-1", true)).toEqual(asRequested(4000));
   });
 
   it("fails open without an org", async () => {
