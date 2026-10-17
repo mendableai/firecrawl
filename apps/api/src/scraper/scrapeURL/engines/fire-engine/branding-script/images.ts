@@ -4,6 +4,7 @@ import {
   getComputedStyleCached,
   recordError,
 } from "./helpers";
+import { getLogoColors, LogoColor } from "./logo-colors";
 import { resolveSvgStyles } from "./svg-utils";
 import {
   findDeclaredJsonLdLogo,
@@ -29,7 +30,11 @@ interface LogoCandidate {
   href?: string;
   source: string;
   logoSvgScore: number;
+  /** The colors the logo is drawn in, most used first, when readable. */
+  colors?: LogoColor[];
 }
+
+const LOGO_COLOR_CANDIDATES = 10;
 
 interface ImageData {
   type: string;
@@ -44,6 +49,7 @@ export interface FindImagesResult {
 export const findImages = (): FindImagesResult => {
   const imgs: ImageData[] = [];
   const logoCandidates: LogoCandidate[] = [];
+  const candidateElements = new Map<LogoCandidate, Element>();
 
   const push = (src: string | undefined | null, type: string): void => {
     if (src) imgs.push({ type, src });
@@ -928,6 +934,7 @@ export const findImages = (): FindImagesResult => {
       };
 
       logoCandidates.push(logoCandidate);
+      candidateElements.set(logoCandidate, el);
     }
   };
 
@@ -1396,6 +1403,26 @@ export const findImages = (): FindImagesResult => {
       }
     }
   }
+
+  // Only the likeliest candidates (roughly the server's ranking in
+  // logo-selector): reading colors means painting each one.
+  const likelihood = (c: LogoCandidate): number =>
+    (c.indicators.hrefMatch ? 40 : 0) +
+    (c.indicators.inHeader ? 30 : 0) +
+    (c.location === "header" ? 20 : 0) +
+    (c.isVisible ? 15 : 0) +
+    (c.indicators.classMatch ? 10 : 0) +
+    (c.indicators.srcMatch ? 10 : 0) +
+    (c.indicators.altMatch ? 5 : 0) +
+    (c.source === "document.images" ? 15 : 0);
+  [...uniqueCandidates]
+    .sort((a, b) => likelihood(b) - likelihood(a))
+    .slice(0, LOGO_COLOR_CANDIDATES)
+    .forEach(candidate => {
+      const el = candidateElements.get(candidate);
+      const colors = el ? getLogoColors(el) : [];
+      if (colors.length > 0) candidate.colors = colors;
+    });
 
   return { images: imgs, logoCandidates: uniqueCandidates };
 };

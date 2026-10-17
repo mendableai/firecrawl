@@ -1,9 +1,8 @@
 import { vi } from "vitest";
 
 // vi.mock is hoisted above the file's static imports, so any value a factory
-// reads at build time must be created in vi.hoisted(). (Jest left jest.mock
-// un-hoisted here because `jest` was imported from @jest/globals.) The `redis`
-// stub below stays module-level: its factory only captures it lazily.
+// reads at build time must be created in vi.hoisted(). The `redis` stub below
+// stays module-level: its factory only captures it lazily.
 const {
   logger,
   getACUCTeam,
@@ -116,7 +115,10 @@ vi.mock("../../queue-service", () => ({
   getRedisConnection: () => redis,
 }));
 
-import { processBillingBatch } from "../batch_billing";
+import {
+  processBillingBatch,
+  startBillingBatchProcessing,
+} from "../batch_billing";
 import { billingUnrecordedUsageTotal } from "../metrics";
 
 function makeOp(overrides: Record<string, unknown> = {}) {
@@ -305,6 +307,36 @@ describe("processBillingBatch", () => {
     await processBillingBatch();
 
     expect(await unrecordedByReason()).toEqual({ no_org: 1 });
+    expect(queue).toHaveLength(0);
+  });
+});
+
+describe("startBillingBatchProcessing", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("logs a Redis error on a tick and keeps processing on the next one", async () => {
+    vi.useFakeTimers();
+    const loadingError = new Error(
+      "LOADING Redis is loading the dataset in memory",
+    );
+    redis.llen.mockRejectedValueOnce(loadingError);
+
+    startBillingBatchProcessing();
+
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(logger.error).toHaveBeenCalledWith(
+      "Error in periodic billing batch processing",
+      { error: loadingError },
+    );
+    expect(redis.set).not.toHaveBeenCalled();
+
+    queue = [
+      makeOp({ autumnTrackInRequest: true, exchange_access_event_id: "evt-1" }),
+    ];
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(reportExchangeBilling).toHaveBeenCalledTimes(1);
     expect(queue).toHaveLength(0);
   });
 });

@@ -97,6 +97,13 @@ doc = firecrawl.parse(
 print(doc.markdown)
 ```
 
+To see which file formats `parse` accepts, call `get_parse_formats` (also available on `AsyncFirecrawl`). Each entry has `format`, `kind` (`"document"` or `"image"`), `extensions`, `mime_types`, and `available`, which is `False` when a format is disabled on the deployment.
+
+```python
+for f in firecrawl.get_parse_formats():
+  print(f.format, f.kind, f.extensions, f.mime_types, f.available)
+```
+
 ### Crawling a Website
 
 To crawl a website, use the `crawl` method. It takes the starting URL and optional parameters as arguments. You can control depth, limits, formats, and more.
@@ -110,6 +117,19 @@ crawl_status = firecrawl.crawl(
 )
 print(crawl_status)
 ```
+
+The result is a `CrawlJob`. It includes the job `id` and any `warning` from the API, so you can use the job after the crawl ends, for example with `get_crawl_errors(crawl_status.id)`. If the crawl does not finish within `timeout`, the SDK raises `CrawlJobTimeoutError`. It is a `TimeoutError` subclass with a `job_id` attribute, so you can check or cancel the job later.
+
+```python
+from firecrawl import CrawlJobTimeoutError
+
+try:
+  crawl_status = firecrawl.crawl('https://firecrawl.dev', limit=100, timeout=120)
+except CrawlJobTimeoutError as e:
+  firecrawl.cancel_crawl(e.job_id)
+```
+
+With `AsyncFirecrawl`, you can stop waiting for `crawl()` with `Task.cancel()`, `asyncio.timeout` or `asyncio.wait_for`. If the crawl already has a job id, the SDK then sends a best-effort cancel for it. If the cancellation comes before `start_crawl` returns the id, the SDK sends no cancel, and the crawl can keep running. After the cancel, `Task.cancel()` gives you `asyncio.CancelledError`. `asyncio.timeout` and `asyncio.wait_for` give you `TimeoutError`. To keep the crawl running after you stop waiting, use `start_crawl` and `wait_crawl`.
 
 ### Asynchronous Crawling
 
@@ -163,7 +183,7 @@ if status.next:
 
 ### Cancelling a Crawl
 
-To cancel an asynchronous crawl job, use the `cancel_crawl` method. It takes the job ID of the asynchronous crawl as a parameter and returns the cancellation status.
+To cancel an asynchronous crawl job, use the `cancel_crawl` method. It takes the job ID of the asynchronous crawl as a parameter and returns the cancellation status. It returns `False` if the crawl already completed.
 
 ```python 
 cancel_crawl = firecrawl.cancel_crawl(id)
@@ -239,6 +259,23 @@ print(evidence.repos)  # indexed-status echoes for requested repos
 `developer_search` also supports `sources`, `topic`, `min_stars`, `max_stars`,
 `archived`, `fork`, and `skills="only"`. Supplying both `repos` and `sources`
 OR-combines GitHub-backed and documentation results.
+
+### Government search
+
+Use `gov_search` to search the Firecrawl Government Index: primary
+law and regulatory material from US federal, state, and local government
+sources, including statutes, regulations, codes, court opinions, and other
+government publications. Results come back in the ordinary web-result shape.
+Generic `search("food labeling requirements", categories=["gov"])` returns
+index results inside `.web`; like `developer`, it cannot be combined with other
+categories.
+
+```python
+law = firecrawl.gov_search("food labeling requirements", k=5)
+
+for result in law.data.web:
+    print(result.position, result.title, result.url)
+```
 
 ### Research / paper search
 

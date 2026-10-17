@@ -60,6 +60,7 @@ import {
   firePdfFeaturesLabel,
   recordFirePdfRoute,
 } from "./fire-pdf/routing";
+import { parseAlwaysFirePdf } from "./fire-pdf/request-metadata";
 import { scrapePDFWithParsePDF } from "./pdfParse";
 import { toPublicBlocks } from "./blocks";
 import { isPdfBuffer, PDF_SNIFF_WINDOW } from "./pdfUtils";
@@ -237,6 +238,10 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       pageMarkers) &&
     !!config.FIRE_PDF_BASE_URL;
 
+  // /v2/parse: every non-fast PDF goes to FirePDF (PARSE_PDF_ALWAYS_FIRE_PDF).
+  // Unlike forceFirePDF this keeps the MinerU / pdf-parse fallbacks.
+  const alwaysFirePdf = parseAlwaysFirePdf(meta);
+
   // The MinerU diversion is deterministic on the scrape id (see
   // mineruDiverted) so this routing verdict is BY CONSTRUCTION the same
   // one inside byReferenceReachableForRequest() — and the same one
@@ -329,7 +334,13 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       });
     }
 
-    if (!rustEnabled || mode === "ocr" || forceFirePDF || routeToMinerU) {
+    if (
+      !rustEnabled ||
+      mode === "ocr" ||
+      forceFirePDF ||
+      routeToMinerU ||
+      alwaysFirePdf
+    ) {
       // Legacy / OCR path: detect metadata only, skip Rust extraction.
       // When PDF_RUST_EXTRACT_ENABLE is off this is the only path taken,
       // matching current prod behaviour (detectPdf → MinerU → pdfParse).
@@ -360,6 +371,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
           url: meta.rewrittenUrl ?? meta.url,
           rustEnabled,
           mode,
+          alwaysFirePdf,
         });
 
         totalPageCount = detection.pageCount;
@@ -657,7 +669,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
             config.FIRE_PDF_ENABLE &&
             config.FIRE_PDF_BASE_URL &&
             fileSizeBytes < FIRE_PDF_MAX_FILE_SIZE &&
-            Math.random() * 100 < config.FIRE_PDF_PERCENT));
+            (alwaysFirePdf || Math.random() * 100 < config.FIRE_PDF_PERCENT)));
 
       if (useFirePDF) {
         // Async is a server-controlled cohort within traffic already selected

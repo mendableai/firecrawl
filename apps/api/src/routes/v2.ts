@@ -1,4 +1,3 @@
-import { agentHintsMiddleware } from "../middlewares/agent-hints";
 import express from "express";
 import multer from "multer";
 import { config } from "../config";
@@ -24,6 +23,7 @@ import {
   parseUploadRefPayloadMiddleware,
   parseUploadUrlController,
 } from "../controllers/v2/parse-upload";
+import { parseFormatsController } from "../controllers/v2/parse-formats";
 import { batchScrapeController } from "../controllers/v2/batch-scrape";
 import { crawlController } from "../controllers/v2/crawl";
 import { crawlParamsPreviewController } from "../controllers/v2/crawl-params-preview";
@@ -89,6 +89,7 @@ import {
 import { supportProxyController } from "../controllers/v2/support-proxy";
 import {
   createDeveloperRouter,
+  createGovRouter,
   createResearchRouter,
 } from "../controllers/v2/research-proxy";
 import {
@@ -188,7 +189,6 @@ registerMcpActionLogReadRoute(
 
 v2Router.post(
   "/search",
-  agentHintsMiddleware("search"),
   researchCategoryNoticeMiddleware,
   authMiddleware(RateLimiterMode.Search, {
     allowKeyless: true,
@@ -213,6 +213,12 @@ v2Router.post(
   wrap(feedbackController),
 );
 
+v2Router.get(
+  "/parse/formats",
+  authMiddleware(RateLimiterMode.Account),
+  wrap(parseFormatsController),
+);
+
 v2Router.post(
   "/parse/upload-url",
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
@@ -229,7 +235,6 @@ v2Router.put(
 
 v2Router.post(
   "/parse",
-  agentHintsMiddleware("parse"),
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
   countryCheck,
   checkCreditsMiddleware(1),
@@ -239,7 +244,6 @@ v2Router.post(
 
 v2Router.post(
   "/scrape",
-  agentHintsMiddleware("scrape"),
   authMiddleware(RateLimiterMode.Scrape, {
     allowKeyless: true,
     allowAgentManagedKey: true,
@@ -282,7 +286,6 @@ v2Router.post(
 
 v2Router.post(
   "/map",
-  agentHintsMiddleware("map"),
   authMiddleware(RateLimiterMode.Map),
   checkCreditsMiddleware(1),
   blocklistMiddleware,
@@ -724,5 +727,15 @@ if (config.RESEARCH_PROXY_URL) {
     "/developer",
     authMiddleware(RateLimiterMode.DeveloperSearch),
     createDeveloperRouter(),
+  );
+}
+
+if (config.SEARCH_PLATFORM_URL) {
+  v2Router.use(
+    "/search/gov",
+    authMiddleware(RateLimiterMode.GovSearch, {
+      allowKeyless: true,
+    }),
+    createGovRouter(),
   );
 }

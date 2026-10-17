@@ -10,6 +10,7 @@ import { getScrapeZDR } from "../../lib/zdr-helpers";
 import { checkKeyFormatRestriction } from "../../lib/key-restriction";
 import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
+import { markAlexandriaActivity } from "../../lib/alexandria-activity";
 import {
   callsSchema,
   callSchema,
@@ -147,6 +148,7 @@ export async function providerScrapeController(
     });
   }
   const timeTaken = (Date.now() - startedAt) / 1000;
+  markAlexandriaActivity(req.auth.team_id);
   if (result.executed && !body.__agentInterop) {
     const apiKeyId = req.acuc.api_key_id ?? null;
     const served = answerSchema.safeParse(result.body);
@@ -212,7 +214,18 @@ export async function providerScrapeController(
     );
   }
 
-  if (result.status !== 200) return res.status(result.status).json(result.body);
+  if (result.status !== 200) {
+    const refused = result.body as {
+      code?: unknown;
+      retryAfterSeconds?: unknown;
+    } | null;
+    if (
+      refused?.code === "index_daily_limit" &&
+      typeof refused.retryAfterSeconds === "number"
+    )
+      res.setHeader("Retry-After", String(refused.retryAfterSeconds));
+    return res.status(result.status).json(result.body);
+  }
   const answer = answerSchema.parse(result.body);
   if (legacy) {
     if (legacyBody && "requests" in legacyBody) return res.json(answer);

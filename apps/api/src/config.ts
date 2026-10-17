@@ -91,12 +91,17 @@ const configSchema = z.object({
     z.string().trim().optional(),
   ),
   RESEARCH_PROXY_URL: z.string().url().optional(),
+  SEARCH_PLATFORM_URL: z.string().url().optional(),
   RESEARCH_KEYLESS_DISABLED: researchKeylessDisabled,
   LABS_SEARCH_URL: z.string().url().optional(),
   LABS_SEARCH_SECRET: z.string().optional(),
 
   // Express
   EXPRESS_TRUST_PROXY: z.coerce.number().optional(),
+
+  GOV_INDEX_CALLS_PER_DAY: emptyStringAsDefault(
+    z.coerce.number().int().nonnegative().default(500),
+  ),
 
   // Keyless free tier (scrape/search/interact without an API key, per-IP/day).
   // Non-negative integers; 0 means "enabled but no budget", unset means "off".
@@ -200,6 +205,21 @@ const configSchema = z.object({
   FEEDBACK_MAX_AGE_SEC: z.coerce.number().int().positive().default(120),
   FEEDBACK_DAILY_CAP_CREDITS: z.coerce.number().int().nonnegative().default(50),
   FEEDBACK_REFUND_ENABLED: z.stringbool().default(true),
+  ALEXANDRIA_FEEDBACK_WINDOW_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1200),
+  ALEXANDRIA_FEEDBACK_DAILY_CAP_CREDITS: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(100),
+  ALEXANDRIA_FEEDBACK_WEBSITE_DAILY_CAP_CREDITS: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(10),
 
   // OAuth token introspection
   OAUTH_INTROSPECT_URL: z.string().optional(),
@@ -416,6 +436,18 @@ const configSchema = z.object({
   // cache service when one is configured; beyond the budget the request is
   // served normally. 0 disables the option.
   FIRE_PDF_CACHE_REFRESH_PER_MINUTE: z.coerce.number().int().min(0).default(10),
+  // /v2/parse sends every PDF (auto/ocr mode) to FirePDF: no direct
+  // text-layer extraction, no FIRE_PDF_PERCENT sampling, no MinerU
+  // diversion. Explicit `mode: "fast"` keeps direct extraction. FirePDF
+  // failures still fall back to MinerU / pdf-parse. Needs FIRE_PDF_ENABLE.
+  PARSE_PDF_ALWAYS_FIRE_PDF: z.stringbool().default(true),
+  // Table rendering FirePDF applies to /v2/parse documents. `dynamic` keeps
+  // pipe tables where they are lossless and HTML where structure needs it
+  // (merged cells, large tables); `off` sends no format (pipe tables).
+  // Any explicit format puts the request outside the FirePDF content cache.
+  PARSE_FIRE_PDF_TABLE_FORMAT: z
+    .enum(["off", "markdown", "html", "dynamic"])
+    .default("dynamic"),
   // Raster image OCR of image URLs and parse uploads through FirePDF (see
   // lib/image-ocr-gate.ts). Needs FIRE_PDF_BASE_URL.
   IMAGE_OCR_ENABLED: z.stringbool().default(false),
@@ -540,6 +572,22 @@ const configSchema = z.object({
   BRANDING_JEV_ESCALATE_BELOW: emptyStringAsUndefined(
     z.coerce.number().min(0).max(1),
   ),
+  // Share of LLM-answered branding requests (0-100) that also ask Jev in the
+  // background and record how its answer compares (lib/branding/jev-shadow.ts).
+  // Customers always get the LLM's answer.
+  BRANDING_JEV_SHADOW_PERCENT: z.coerce.number().min(0).max(100).default(0),
+  // Warn scrapes of search engine results pages (google.*/search, ...) that
+  // /search returns those results directly (lib/serp-url.ts).
+  // SERP_SCRAPE_WARNING turns it on for every team, SERP_SCRAPE_WARNING_TEAM_IDS
+  // (comma-separated) for listed teams, and SERP_SCRAPE_WARNING_ROLLOUT_PERCENT
+  // for a stable share of teams.
+  SERP_SCRAPE_WARNING: emptyStringAsUndefined(z.stringbool()),
+  SERP_SCRAPE_WARNING_TEAM_IDS: delimitedList(",").optional(),
+  SERP_SCRAPE_WARNING_ROLLOUT_PERCENT: z.coerce
+    .number()
+    .min(0)
+    .max(100)
+    .default(0),
 
   // AI/ML
   MODEL_NAME: z.string().optional(),
@@ -616,6 +664,8 @@ const configSchema = z.object({
   FIREBILL_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
 
   // Miscellaneous
+  // The commit the image was built from, set by the Dockerfile's GIT_SHA.
+  FIRECRAWL_BUILD_SHA: emptyStringAsUndefined(z.string().trim().min(1)),
   IDMUX_URL: z.string().optional(),
   GITHUB_RUN_NUMBER: z.string().optional(),
   GITHUB_REF_NAME: z.string().optional(),

@@ -18,6 +18,7 @@ import {
   keylessSignupLink,
   keylessSignupSurface,
 } from "./keyless-signup-link";
+import { trackKeylessPromptShown } from "./keyless-prompt-analytics";
 
 // Keyless free tier: scrape, search, and interact can be used without an API key
 // from the official MCP server, CLI, or SDKs. It's gated per-IP/day by TWO
@@ -150,8 +151,8 @@ type KeylessConsumeResult = {
   retryAfterSeconds?: number;
 };
 
-function positiveRedisTtl(ttl: number): number | undefined {
-  return ttl > 0 ? ttl : undefined;
+function positiveRedisTtl(pttl: number): number | undefined {
+  return pttl > 0 ? Math.ceil(pttl / 1000) : undefined;
 }
 
 /**
@@ -161,7 +162,7 @@ function positiveRedisTtl(ttl: number): number | undefined {
  */
 async function retryAfterSecondsFor(key: string): Promise<number | undefined> {
   try {
-    return positiveRedisTtl(await redisRateLimitClient.ttl(key));
+    return positiveRedisTtl(await redisRateLimitClient.pttl(key));
   } catch {
     return undefined;
   }
@@ -183,12 +184,47 @@ export function keylessSignupUrlForIp(
   );
 }
 
-/** The caller's own signup link and the limit message that carries it. */
+/**
+ * Report a keyless prompt shown to the caller, for the prompt to signup
+ * funnel. Deduplicated per identity, surface and reason per UTC day; never
+ * blocks or throws. Only a keyless identity (IPv4) is reported: no other
+ * caller can hold a token link or a keyless ledger row to join on.
+ */
+export function reportKeylessPromptShown(
+  ip: string | null | undefined,
+  surface: KeylessSignupSurface,
+  reason: KeylessPromptReason,
+  httpStatus: number,
+  signupRef?: string,
+): void {
+  try {
+    const teamUuid =
+      ip && isKeylessIpEligible(ip)
+        ? keylessTeamUuid(keylessTeamId(normalizeKeylessIpv4(ip)))
+        : null;
+    if (!teamUuid) return;
+    trackKeylessPromptShown({
+      keylessTeamId: teamUuid,
+      surface,
+      reason,
+      httpStatus,
+      tokenLink: Boolean(signupRef),
+    });
+  } catch {
+    // Analytics only: the prompt itself must still go out.
+  }
+}
+
+/**
+ * The caller's own signup link and the limit message that carries it. Every
+ * caller answers 429 with it, so the prompt is reported here.
+ */
 export function keylessLimitPrompt(
   ip: string | null | undefined,
   surface: KeylessSignupSurface,
 ): { error: string; signup_url: string; signupRef?: string } {
   const { url, signupRef } = keylessSignupUrlForIp(ip, surface, "limit");
+  reportKeylessPromptShown(ip, surface, "limit", 429, signupRef);
   return {
     error: keylessFreeTierLimitMessage(url),
     signup_url: url,
@@ -223,7 +259,7 @@ export async function keylessLimitBody(
   let retryAfterSeconds: number | undefined;
   try {
     retryAfterSeconds = ip
-      ? positiveRedisTtl(await redisRateLimitClient.ttl(creditsKey(ip)))
+      ? positiveRedisTtl(await redisRateLimitClient.pttl(creditsKey(ip)))
       : undefined;
   } catch {
     // The reservation already proved the limit; missing TTL must not turn its

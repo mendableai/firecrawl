@@ -192,6 +192,107 @@ defmodule FirecrawlTest do
              Firecrawl.start_agent(prompt: "test", effort: "ultra")
   end
 
+  # Sends the request body as decoded from the bytes put on the wire.
+  defp wire_body_adapter(parent) do
+    fn request ->
+      send(parent, {:body, request.body |> IO.iodata_to_binary() |> Jason.decode!()})
+      {request, Req.Response.new(status: 200, body: "")}
+    end
+  end
+
+  test "start_agent and start_agent! send thread_id, mode and exchange with camelCase keys at every level" do
+    opts = [api_key: "test-key", adapter: wire_body_adapter(self())]
+    thread_id = "6f1c2a4e-0d8b-4c1e-9a57-3b2f8e9d1c40"
+    origin = "elixir-sdk@" <> Mix.Project.config()[:version]
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.start_agent(
+               [
+                 prompt: "find leads",
+                 thread_id: thread_id,
+                 mode: :chat,
+                 exchange: [
+                   enabled: true,
+                   toolkits: ["apollo"],
+                   max_calls: 5,
+                   require_approval: true,
+                   approve: [approval_id: "approval-1", call_ids: ["c1"], always: true],
+                   on_terms_required: :ask
+                 ]
+               ],
+               opts
+             )
+
+    assert_receive {:body, body}
+
+    assert body == %{
+             "prompt" => "find leads",
+             "threadId" => thread_id,
+             "mode" => "chat",
+             "exchange" => %{
+               "enabled" => true,
+               "toolkits" => ["apollo"],
+               "maxCalls" => 5,
+               "requireApproval" => true,
+               "approve" => %{"approvalId" => "approval-1", "callIds" => ["c1"], "always" => true},
+               "onTermsRequired" => "ask"
+             },
+             "origin" => origin
+           }
+
+    assert %Req.Response{status: 200} =
+             Firecrawl.start_agent!(
+               [
+                 prompt: "skip that",
+                 thread_id: thread_id,
+                 exchange: [decline: [approval_id: "approval-2"]]
+               ],
+               opts
+             )
+
+    assert_receive {:body, body}
+
+    assert body == %{
+             "prompt" => "skip that",
+             "threadId" => thread_id,
+             "exchange" => %{"decline" => %{"approvalId" => "approval-2"}},
+             "origin" => origin
+           }
+  end
+
+  test "start_agent leaves omitted thread, mode and exchange fields out of the body" do
+    opts = [api_key: "test-key", adapter: wire_body_adapter(self())]
+    origin = "elixir-sdk@" <> Mix.Project.config()[:version]
+
+    assert {:ok, _} = Firecrawl.start_agent([prompt: "find pricing"], opts)
+    assert_receive {:body, body}
+    assert body == %{"prompt" => "find pricing", "origin" => origin}
+
+    assert {:ok, _} = Firecrawl.start_agent([prompt: "find pricing", exchange: [toolkits: ["apollo"]]], opts)
+    assert_receive {:body, body}
+    assert body == %{"prompt" => "find pricing", "exchange" => %{"toolkits" => ["apollo"]}, "origin" => origin}
+
+    assert {:ok, _} = Firecrawl.start_agent([prompt: "find pricing", exchange: []], opts)
+    assert_receive {:body, body}
+    assert body == %{"prompt" => "find pricing", "exchange" => %{}, "origin" => origin}
+  end
+
+  test "start_agent rejects unknown or incomplete exchange keys before sending" do
+    opts = [api_key: "test-key", adapter: wire_body_adapter(self())]
+
+    assert {:error, %NimbleOptions.ValidationError{message: msg}} =
+             Firecrawl.start_agent([prompt: "find leads", exchange: [max_call: 5]], opts)
+
+    assert msg =~ "unknown options [:max_call]"
+
+    assert {:error, %NimbleOptions.ValidationError{message: msg}} =
+             Firecrawl.start_agent([prompt: "find leads", exchange: [approve: [call_ids: ["c1"]]]], opts)
+
+    assert msg =~ "required :approval_id option not found"
+
+    refute_received {:body, _}
+  end
+
   test "get_agent_trace hits /v2/agent/:id/trace" do
     parent = self()
 
@@ -573,6 +674,110 @@ defmodule FirecrawlTest do
     assert body["urls"] == ["https://example.com"]
   end
 
+  test "parse_file sends check_prompt_injection as checkPromptInjection only when set" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    parse_options = fn params ->
+      assert {:ok, %Req.Response{status: 200}} =
+               Firecrawl.parse_file(
+                 [filename: "doc.html", data: "<p>hi</p>", content_type: "text/html"],
+                 params,
+                 api_key: "test-key",
+                 adapter: adapter
+               )
+
+      assert_receive {:request, request}
+      body = request.body |> Enum.to_list() |> IO.iodata_to_binary()
+      [_, options] = Regex.run(~r/name="options"\r\n\r\n(.*?)\r\n--/s, body)
+      Jason.decode!(options)
+    end
+
+    assert parse_options.(check_prompt_injection: true)["checkPromptInjection"] == true
+    refute Map.has_key?(parse_options.([]), "checkPromptInjection")
+  end
+
+  test "scrape maps check_prompt_injection to checkPromptInjection" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.scrape_and_extract_from_url(
+               [url: "https://example.com", check_prompt_injection: true],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["checkPromptInjection"] == true
+    refute Map.has_key?(body, "formats")
+  end
+
+  test "batch scrape maps check_prompt_injection to checkPromptInjection" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "id" => "batch-id"})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.scrape_and_extract_from_urls(
+               [urls: ["https://example.com"], check_prompt_injection: true],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["checkPromptInjection"] == true
+    assert body["urls"] == ["https://example.com"]
+  end
+
   test "request endpoints map audit_metadata to auditMetadata" do
     parent = self()
 
@@ -630,6 +835,43 @@ defmodule FirecrawlTest do
     end)
   end
 
+  test "create_browser_session sends location only when set" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "id" => "session-1"})
+      )
+
+      {request, resp}
+    end
+
+    sent_body = fn params ->
+      assert {:ok, %Req.Response{status: 200}} =
+               Firecrawl.create_browser_session(params, api_key: "test-key", adapter: adapter)
+
+      assert_receive {:request, request}
+
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+    end
+
+    assert sent_body.(location: [country: "GB"])["location"] == %{"country" => "GB"}
+    refute Map.has_key?(sent_body.(ttl: 60), "location")
+  end
+
+  test "create_browser_session rejects a location without a country" do
+    assert {:error, %NimbleOptions.ValidationError{}} =
+             Firecrawl.create_browser_session([location: []], api_key: "test-key")
+  end
+
   test "audit_metadata rejects unsupported fields" do
     assert_raise NimbleOptions.ValidationError, fn ->
       Firecrawl.scrape_and_extract_from_url!(
@@ -676,6 +918,139 @@ defmodule FirecrawlTest do
     assert body["highlights"] == false
   end
 
+  defp parse_formats_adapter(parent, status, body) do
+    fn request ->
+      send(parent, {:request, request})
+
+      resp =
+        Req.Response.new(
+          status: status,
+          headers: %{"content-type" => ["application/json"]},
+          body: Jason.encode!(body)
+        )
+
+      {request, resp}
+    end
+  end
+
+  test "get_parse_formats sends GET /v2/parse/formats and returns typed formats" do
+    body = %{
+      "success" => true,
+      "data" => %{
+        "formats" => [
+          %{
+            "format" => "pdf",
+            "kind" => "document",
+            "extensions" => [".pdf"],
+            "mimeTypes" => ["application/pdf"],
+            "available" => true
+          },
+          %{
+            "format" => "png",
+            "kind" => "image",
+            "extensions" => [".png"],
+            "mimeTypes" => ["image/png"],
+            "available" => false
+          }
+        ]
+      }
+    }
+
+    assert {:ok, [pdf, png]} =
+             Firecrawl.get_parse_formats(
+               api_key: "test-key",
+               adapter: parse_formats_adapter(self(), 200, body)
+             )
+
+    assert_receive {:request, request}
+    assert request.method == :get
+    assert URI.to_string(request.url) == "https://api.firecrawl.dev/v2/parse/formats"
+    assert request.headers["authorization"] == ["Bearer test-key"]
+
+    assert pdf == %Firecrawl.ParseFormat{
+             format: "pdf",
+             kind: :document,
+             extensions: [".pdf"],
+             mime_types: ["application/pdf"],
+             available: true
+           }
+
+    assert png == %Firecrawl.ParseFormat{
+             format: "png",
+             kind: :image,
+             extensions: [".png"],
+             mime_types: ["image/png"],
+             available: false
+           }
+  end
+
+  test "get_parse_formats keeps unknown kinds as strings and ignores unknown fields" do
+    body = %{
+      "success" => true,
+      "data" => %{
+        "formats" => [
+          %{
+            "format" => "glb",
+            "kind" => "model",
+            "extensions" => [".glb"],
+            "mimeTypes" => ["model/gltf-binary"],
+            "available" => true,
+            "maxSizeBytes" => 1024
+          }
+        ]
+      }
+    }
+
+    formats =
+      Firecrawl.get_parse_formats!(
+        api_key: "test-key",
+        adapter: parse_formats_adapter(self(), 200, body)
+      )
+
+    assert [%Firecrawl.ParseFormat{format: "glb", kind: "model", mime_types: ["model/gltf-binary"]}] =
+             formats
+  end
+
+  test "get_parse_formats returns {:error, %Firecrawl.Error{}} on API errors" do
+    adapter =
+      parse_formats_adapter(self(), 401, %{"success" => false, "error" => "Unauthorized"})
+
+    assert {:error, %Firecrawl.Error{status: 401}} =
+             Firecrawl.get_parse_formats(api_key: "bad-key", adapter: adapter, retry: false)
+
+    assert_raise Firecrawl.Error, ~r/Unauthorized/, fn ->
+      Firecrawl.get_parse_formats!(api_key: "bad-key", adapter: adapter, retry: false)
+    end
+  end
+
+  test "get_parse_formats returns a non-API error for an unexpected success body" do
+    adapter = parse_formats_adapter(self(), 200, %{"success" => true, "data" => %{}})
+
+    assert {:error, %RuntimeError{message: msg}} =
+             Firecrawl.get_parse_formats(api_key: "test-key", adapter: adapter)
+
+    assert msg =~ "unexpected GET /parse/formats response (HTTP 200)"
+  end
+
+  test "get_parse_formats fills missing format and kind with empty strings" do
+    body = %{"success" => true, "data" => %{"formats" => [%{"extensions" => [".x"]}]}}
+
+    assert {:ok, [%Firecrawl.ParseFormat{format: "", kind: "", extensions: [".x"], available: false}]} =
+             Firecrawl.get_parse_formats(
+               api_key: "test-key",
+               adapter: parse_formats_adapter(self(), 200, body)
+             )
+  end
+
+  test "get_parse_formats! raises Firecrawl.Error on server errors" do
+    adapter =
+      parse_formats_adapter(self(), 500, %{"success" => false, "error" => "Internal error"})
+
+    assert_raise Firecrawl.Error, ~r/HTTP 500/, fn ->
+      Firecrawl.get_parse_formats!(api_key: "test-key", adapter: adapter, retry: false)
+    end
+  end
+
   test "all expected API functions are defined with bang variants" do
     functions = Firecrawl.__info__(:functions)
 
@@ -709,7 +1084,11 @@ defmodule FirecrawlTest do
       {:list_agents, 2},
       {:list_agents!, 0},
       {:list_agents!, 1},
-      {:list_agents!, 2}
+      {:list_agents!, 2},
+      {:get_parse_formats, 0},
+      {:get_parse_formats, 1},
+      {:get_parse_formats!, 0},
+      {:get_parse_formats!, 1}
     ]
 
     for {name, arity} <- expected do

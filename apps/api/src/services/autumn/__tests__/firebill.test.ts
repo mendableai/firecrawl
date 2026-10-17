@@ -20,6 +20,7 @@ const { configState } = vi.hoisted(() => ({
     FIREBILL_SECRET: "secret",
     FIREBILL_ORG_IDS: ["allow-listed-org"] as string[] | undefined,
     FIREBILL_ROLLOUT_PERCENT: 0,
+    FIRECRAWL_BUILD_SHA: undefined as string | undefined,
   },
 }));
 
@@ -66,6 +67,7 @@ beforeEach(() => {
   configState.FIREBILL_SECRET = "secret";
   configState.FIREBILL_ORG_IDS = ["allow-listed-org"];
   configState.FIREBILL_ROLLOUT_PERCENT = 0;
+  configState.FIRECRAWL_BUILD_SHA = undefined;
   firebillTrackTotal.reset();
   firebillRetryTotal.reset();
   firebillCheckTotal.reset();
@@ -486,6 +488,58 @@ describe("firebillTrack", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("https://firebill.test/v1/refund");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).value).toBe(7);
   });
+
+  it("logs one accepted line carrying the key, the amount and the build", async () => {
+    configState.FIRECRAWL_BUILD_SHA = "abc123";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => ok()),
+    );
+
+    await firebillTrack({ ...params, properties: { jobId: "job-1" } });
+
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      "firebill track succeeded",
+      expect.objectContaining({
+        operation: "track",
+        outcome: "accepted",
+        idempotencyKey: params.idempotencyKey,
+        expectedValue: 3,
+        jobId: "job-1",
+        buildVersion: "abc123",
+      }),
+    );
+  });
+
+  it("logs a refund under its own operation with the amount made positive", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => ok()),
+    );
+
+    await firebillTrack({ ...params, value: -7 });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      "firebill track succeeded",
+      expect.objectContaining({
+        operation: "refund",
+        expectedValue: 7,
+        buildVersion: "unknown",
+      }),
+    );
+  });
+
+  it("logs no success line when firebill did not take the event", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => refused()),
+    );
+
+    await firebillTrack(params);
+
+    expect(logger.info).not.toHaveBeenCalled();
+  });
 });
 
 describe("firebillCheck", () => {
@@ -797,6 +851,53 @@ describe("firebillFinalize", () => {
   it("returns true when firebill accepted the settle", async () => {
     answer({ success: true });
     await expect(firebillFinalize(finalizeParams)).resolves.toBe(true);
+  });
+
+  it("logs the settle's key and the amount it bills", async () => {
+    answer({ success: true });
+    await firebillFinalize({
+      ...finalizeParams,
+      overrideValue: 2,
+      heldValue: 5,
+    });
+    expect(logger.info).toHaveBeenCalledWith(
+      "firebill finalize succeeded",
+      expect.objectContaining({
+        operation: "finalize",
+        outcome: "accepted",
+        idempotencyKey: "fc:finalize:confirm:monitor_check-1",
+        expectedValue: 2,
+      }),
+    );
+
+    vi.mocked(logger.info).mockClear();
+    answer({ success: true });
+    await firebillFinalize({ ...finalizeParams, heldValue: 5 });
+    expect(logger.info).toHaveBeenCalledWith(
+      "firebill finalize succeeded",
+      expect.objectContaining({ expectedValue: 5 }),
+    );
+
+    vi.mocked(logger.info).mockClear();
+    answer({ success: true });
+    await firebillFinalize({
+      ...finalizeParams,
+      action: "release",
+      heldValue: 5,
+    });
+    expect(logger.info).toHaveBeenCalledWith(
+      "firebill finalize succeeded",
+      expect.objectContaining({
+        idempotencyKey: "fc:finalize:release:monitor_check-1",
+        expectedValue: 0,
+      }),
+    );
+  });
+
+  it("logs nothing as succeeded when the settle was refused", async () => {
+    answer({ success: false });
+    await firebillFinalize(finalizeParams);
+    expect(logger.info).not.toHaveBeenCalled();
   });
 
   it("calls an explicit success:false refused", async () => {

@@ -31,6 +31,7 @@ export interface JsonFormat extends Format {
   type: "json";
   prompt?: string;
   schema?: Record<string, unknown> | ZodTypeAny;
+  /** @deprecated Use the top-level `checkPromptInjection` scrape option. */
   checkPromptInjection?: boolean;
 }
 
@@ -276,6 +277,13 @@ export interface ScrapeOptions {
   minAge?: number;
   storeInCache?: boolean;
   lockdown?: boolean;
+  /**
+   * Scans the page content for prompt injection with any format except
+   * rawBase64, before LLM-backed formats run. A detection fails the scrape
+   * with SCRAPE_PROMPT_INJECTION_DETECTED.
+   * Adds 4 credits when the check scans the whole page.
+   */
+  checkPromptInjection?: boolean;
   redactPII?: boolean | RedactPIIOptions;
   threatProtection?: ThreatProtectionOptions;
   auditMetadata?: AuditMetadata;
@@ -365,6 +373,18 @@ export type ParseOptions = Omit<
   formats?: ParseFormatOption[];
   proxy?: "basic" | "auto";
 };
+
+/** A file format accepted by the parse endpoint. */
+export interface ParseFormatInfo {
+  /** Format identifier, e.g. "pdf". */
+  format: string;
+  kind: "document" | "image" | (string & {});
+  /** File extensions including the leading dot, e.g. ".pdf". */
+  extensions: string[];
+  mimeTypes: string[];
+  /** False when the format is recognized but not enabled on this deployment. */
+  available: boolean;
+}
 
 export interface WebhookConfig {
   url: string;
@@ -794,6 +814,16 @@ export interface DeveloperSearchResponse {
   sources?: DeveloperSearchSourceStatus[];
 }
 
+export interface GovSearchOptions {
+  /** Total ranked results, 1–100 (default 10). */
+  k?: number;
+}
+
+export interface GovSearchResponse {
+  success: boolean;
+  data: { web: SearchResultWeb[] };
+}
+
 export interface SearchResultWeb {
   url: string;
   title?: string;
@@ -961,6 +991,8 @@ export interface AlexandriaOptions {
  * - `pdf` — restrict results to PDFs (adds `filetype:pdf`).
  * - `developer` — developer-index results (issues, pull requests, READMEs and
  *   documentation) served in `web`; cannot be combined with other categories.
+ * - `gov` — Government Index results served in `web`; cannot be combined
+ *   with other categories.
  *
  * ⚠️ `categories: ["research"]` is **not** Firecrawl's research paper index.
  * To search papers themselves — ~43M abstracts, roughly 90% biomedical
@@ -972,7 +1004,7 @@ export interface AlexandriaOptions {
  * happen to live on academic domains → `search({ categories: ["research"] })`.
  */
 export interface CategoryOption {
-  type: "github" | "research" | "pdf" | "developer";
+  type: "github" | "research" | "pdf" | "developer" | "gov";
 }
 
 export interface SearchRequest {
@@ -994,7 +1026,7 @@ export interface SearchRequest {
    * `firecrawl.research.searchPapers()` instead.
    */
   categories?: Array<
-    "github" | "research" | "pdf" | "developer" | CategoryOption
+    "github" | "research" | "pdf" | "developer" | "gov" | CategoryOption
   >;
   includeDomains?: string[];
   excludeDomains?: string[];
@@ -1627,6 +1659,11 @@ export interface AgentStatusResponse {
   status: "processing" | "completed" | "failed";
   error?: string;
   data?: unknown;
+  /** Best-effort result on a failed run; never a completed `data` value. */
+  partial?: unknown;
+  /** Schema validity of `partial`, when a schema was supplied. */
+  partialSchemaValid?: boolean;
+  stopReason?: "credit_limit_reached";
   /**
    * Server-provided model name. Widened past the request-side union on
    * purpose: new models ship without an SDK release, so pinning this to known
@@ -1672,6 +1709,9 @@ export interface AgentThreadRun {
   message: string | null;
   /** Only present when the request asked for includeData. */
   data?: unknown;
+  partial?: unknown;
+  partialSchemaValid?: boolean;
+  stopReason?: "credit_limit_reached";
   suggestions?: AgentSuggestion[] | null;
   pendingApproval?: PendingApproval | null;
   exchange?: AgentExchangeSummary | null;

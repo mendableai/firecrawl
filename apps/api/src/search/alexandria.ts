@@ -29,7 +29,10 @@ export function isToolsOnlySearch(
   if (!sources.every(source => typeOf(source) === "alexandria")) return false;
   if (
     Array.isArray(categories) &&
-    categories.some(category => typeOf(category) === "developer")
+    categories.some(category => {
+      const type = typeOf(category);
+      return type === "developer" || type === "gov";
+    })
   )
     return false;
   return true;
@@ -43,6 +46,8 @@ export async function discoverTools(
     urls?: string[];
     limit: number;
     timeoutMs: number;
+    /** The team may use its own MCP connectors: their listed tools join its discovery. */
+    connectors?: boolean;
   },
   logger: Logger,
 ): Promise<ToolDiscovery> {
@@ -60,6 +65,7 @@ export async function discoverTools(
       path: "/v1/retrieve",
       timeoutMs: remaining(),
       maximumCredits: 0,
+      connectors: input.connectors === true,
       body: {
         provider: "firecrawl",
         capability: "find-tools",
@@ -144,6 +150,7 @@ export async function discoverTools(
           path: "/v1/skills/resolve",
           body: { urls: urls.slice(i, i + 100) },
           timeoutMs: remaining(),
+          connectors: input.connectors === true,
         });
         if (result.status !== 200)
           throw new Error("Domain discovery unavailable");

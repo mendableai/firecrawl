@@ -11,6 +11,10 @@ import { logCrawl, logBatchScrape } from "../logging/log_job";
 import { createWebhookSender, WebhookEvent } from "../webhook/index";
 import type { NuQJob } from "./nuq";
 import { readRequestCreditsFromAnalytics } from "../../lib/request-credits-analytics";
+import {
+  createInAppNotification,
+  isDashboardOrigin,
+} from "../notification/in_app";
 
 /**
  * How often, and how long apart, finalization re-reads the ClickHouse credits
@@ -79,41 +83,35 @@ export async function finishCrawlSuper(job: NuQJob<any>) {
       .filter(x => x !== null);
 
     if (sc.crawlerOptions !== null) {
-      await logCrawl(
-        {
-          id: crawlId,
-          request_id: requestId,
-          url: sc.originUrl!,
-          team_id: teamId,
-          options: sc.crawlerOptions,
-          num_docs: fullDocs.length,
-          credits_cost: fullDocs.reduce(
-            (acc, doc) => acc + (doc?.metadata?.creditsUsed ?? 0),
-            0,
-          ),
-          zeroDataRetention,
-          cancelled: sc.cancelled ?? false,
-          monitor_id: monitoring?.monitorId,
-          monitor_check_id: monitoring?.checkId,
-        },
-        false,
-      );
+      await logCrawl({
+        id: crawlId,
+        request_id: requestId,
+        url: sc.originUrl!,
+        team_id: teamId,
+        options: sc.crawlerOptions,
+        num_docs: fullDocs.length,
+        credits_cost: fullDocs.reduce(
+          (acc, doc) => acc + (doc?.metadata?.creditsUsed ?? 0),
+          0,
+        ),
+        zeroDataRetention,
+        cancelled: sc.cancelled ?? false,
+        monitor_id: monitoring?.monitorId,
+        monitor_check_id: monitoring?.checkId,
+      });
     } else {
-      await logBatchScrape(
-        {
-          id: crawlId,
-          request_id: requestId,
-          team_id: teamId,
-          num_docs: fullDocs.length,
-          credits_cost: fullDocs.reduce(
-            (acc, doc) => acc + (doc?.metadata?.creditsUsed ?? 0),
-            0,
-          ),
-          zeroDataRetention,
-          cancelled: sc.cancelled ?? false,
-        },
-        false,
-      );
+      await logBatchScrape({
+        id: crawlId,
+        request_id: requestId,
+        team_id: teamId,
+        num_docs: fullDocs.length,
+        credits_cost: fullDocs.reduce(
+          (acc, doc) => acc + (doc?.metadata?.creditsUsed ?? 0),
+          0,
+        ),
+        zeroDataRetention,
+        cancelled: sc.cancelled ?? false,
+      });
     }
 
     // v0 web hooks, call when done with all the data
@@ -192,34 +190,51 @@ export async function finishCrawlSuper(job: NuQJob<any>) {
     }
 
     if (sc.crawlerOptions !== null) {
-      await logCrawl(
-        {
-          id: crawlId,
-          request_id: requestId,
-          url: sc.originUrl!,
-          team_id: teamId,
-          options: sc.crawlerOptions,
-          num_docs: num_docs,
-          credits_cost: credits_billed ?? 0,
-          zeroDataRetention,
-          cancelled: sc.cancelled ?? false,
-          monitor_id: monitoring?.monitorId,
-          monitor_check_id: monitoring?.checkId,
-        },
-        false,
-      );
+      await logCrawl({
+        id: crawlId,
+        request_id: requestId,
+        url: sc.originUrl!,
+        team_id: teamId,
+        options: sc.crawlerOptions,
+        num_docs: num_docs,
+        credits_cost: credits_billed ?? 0,
+        zeroDataRetention,
+        cancelled: sc.cancelled ?? false,
+        monitor_id: monitoring?.monitorId,
+        monitor_check_id: monitoring?.checkId,
+      });
     } else {
-      await logBatchScrape(
+      await logBatchScrape({
+        id: crawlId,
+        request_id: requestId,
+        team_id: teamId,
+        num_docs: num_docs,
+        credits_cost: credits_billed ?? 0,
+        zeroDataRetention,
+        cancelled: sc.cancelled ?? false,
+      });
+    }
+
+    // The origin is client-supplied, so this only scopes which of the caller's
+    // own jobs reach their team's feed. Runs with no successful page are not
+    // reported as completed.
+    if (
+      !sc.cancelled &&
+      num_docs > 0 &&
+      isDashboardOrigin(sc.origin ?? data?.origin)
+    ) {
+      const isCrawl = sc.crawlerOptions !== null;
+      await createInAppNotification(
+        teamId,
+        isCrawl ? "crawlCompleted" : "batchScrapeCompleted",
         {
-          id: crawlId,
-          request_id: requestId,
-          team_id: teamId,
-          num_docs: num_docs,
-          credits_cost: credits_billed ?? 0,
-          zeroDataRetention,
-          cancelled: sc.cancelled ?? false,
+          jobId: crawlId,
+          url: isCrawl && !zeroDataRetention ? (sc.originUrl ?? null) : null,
+          completed: num_docs,
+          creditsUsed: credits_billed,
+          link: `/app/logs?q=${encodeURIComponent(crawlId)}`,
         },
-        false,
+        { dedupeKey: crawlId },
       );
     }
 
