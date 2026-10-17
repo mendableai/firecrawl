@@ -1,0 +1,21 @@
+apps/api/src/__tests__/lib/branding/merge-buttons.test.ts
+  s_3002048a2ce37a::t_11a2540c03d961 1-70
+apps/api/src/lib/branding/merge.ts
+  s_3002048a2ce37a::t_0dbaf3722091f3 239-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2cf4a21c90833c2e95cf9bb6c00d00b03580436d",
+  "prompts": {},
+  "sessions": {
+    "s_3002048a2ce37a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fabc48ca-b328-4b9d-9e17-ee599b54f859",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Abimael Martell <1450169+abimaelmartell@users.noreply.github.com>"
+    }
+  }
+}
