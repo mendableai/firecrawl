@@ -90,3 +90,50 @@ describe("searchRequestSchema highlights", () => {
     },
   );
 });
+
+describe("searchRequestSchema geo targeting", () => {
+  it.each([
+    [{ location: "Greece" }, "gr", "Greece"],
+    [{ location: "Mexico City, Mexico" }, "mx", "Mexico City, Mexico"],
+    [
+      { location: "San Francisco,California,United States" },
+      "us",
+      "San Francisco,California,United States",
+    ],
+    [{ country: "gr" }, "gr", "Greece"],
+    [{ country: "MX" }, "MX", "Mexico"],
+    [
+      { country: "gr", location: "Athens,Attica,Greece" },
+      "gr",
+      "Athens,Attica,Greece",
+    ],
+    [{}, "us", undefined],
+  ])("resolves %j to country %s and location %s", (geo, country, location) => {
+    const request = searchRequestSchema.parse({ query: "gaming blog", ...geo });
+
+    expect(request.country).toBe(country);
+    expect(request.location).toBe(location);
+    expect(request.sources[0]).toMatchObject({
+      type: "web",
+      country,
+      location,
+    });
+  });
+
+  it.each([
+    [{ location: "San Francisco" }, undefined, "San Francisco"],
+    [{ location: "New Mexico" }, undefined, "New Mexico"],
+    [{ country: "Greece" }, "Greece", undefined],
+  ])(
+    "leaves %j unresolved when it names no known country",
+    (geo, country, location) => {
+      const request = searchRequestSchema.parse({
+        query: "gaming blog",
+        ...geo,
+      });
+
+      expect(request.country).toBe(country);
+      expect(request.location).toBe(location);
+    },
+  );
+});
