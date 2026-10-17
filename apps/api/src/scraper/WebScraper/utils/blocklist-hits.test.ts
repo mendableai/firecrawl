@@ -1,4 +1,4 @@
-import { keylessTeamId, keylessTeamUuid } from "../../../lib/keyless";
+import { keylessTeamId, keylessTeamUuid } from "../../../lib/keyless-team";
 import { initializeBlocklist, isUrlBlocked } from "./blocklist";
 
 const insertedHits = vi.hoisted(() =>

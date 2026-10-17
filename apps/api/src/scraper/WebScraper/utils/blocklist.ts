@@ -6,7 +6,7 @@ import { TeamFlags } from "../../../controllers/v1/types";
 import { db, dbRr } from "../../../db/connection";
 import * as schema from "../../../db/schema";
 import { exchangeClaimsUrl } from "../../../lib/exchange";
-import { keylessTeamUuid } from "../../../lib/keyless";
+import { keylessTeamUuid } from "../../../lib/keyless-team";
 import { isValidUuid } from "../../../lib/owner-id";
 
 configDotenv();
