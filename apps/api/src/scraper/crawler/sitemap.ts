@@ -156,9 +156,21 @@ export async function scrapeSitemap(
 
   for (const instruction of instructions.instructions) {
     if (instruction.action === "recurse") {
-      sitemapData.sitemaps.push(...instruction.urls.map(url => new URL(url)));
+      for (const url of instruction.urls) {
+        try {
+          sitemapData.sitemaps.push(new URL(url));
+        } catch {
+          logger.warn(`Malformed sitemap URL in sitemap index: ${url}`);
+        }
+      }
     } else if (instruction.action === "process") {
-      sitemapData.urls.push(...instruction.urls.map(url => new URL(url)));
+      for (const url of instruction.urls) {
+        try {
+          sitemapData.urls.push(new URL(url));
+        } catch {
+          logger.warn(`Malformed page URL in sitemap: ${url}`);
+        }
+      }
     }
   }
 
