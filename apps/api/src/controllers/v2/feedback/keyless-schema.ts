@@ -52,8 +52,9 @@ const vertical = z.enum([
   "finance",
   "other",
 ]);
+export const keylessSearchSource = z.enum(["web", "images", "news"]);
 const searchResult = {
-  source: z.enum(["web", "images", "news"]).optional(),
+  source: keylessSearchSource.optional(),
   position: z.number().int().positive(),
   vertical: vertical.optional(),
 };

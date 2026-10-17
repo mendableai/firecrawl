@@ -4,7 +4,7 @@ import { getJobFromGCS } from "../../../lib/gcs-jobs";
 import { LOOKUP_RACE_RETRY_MS, lookupJobWithRetry } from "./record";
 import { isKeylessFeedbackRestricted } from "./zdr-persistence";
 import { feedbackMetadataSchema, type RequestWithAuth } from "../types";
-import { keylessFeedbackSchema } from "./keyless-schema";
+import { keylessFeedbackSchema, keylessSearchSource } from "./keyless-schema";
 import {
   keylessFeedbackAvailable,
   KEYLESS_FEEDBACK_MAX_AGE_SEC,
@@ -110,7 +110,9 @@ export async function keylessFeedbackController(
             "INVALID_BODY",
             "Provide source when the job requested multiple sources.",
           );
-        item.source ??= "web";
+        // A single requested group is unambiguous, so an omitted source names
+        // it. Jobs without sources request web.
+        item.source ??= keylessSearchSource.catch("web").parse(sources[0]);
         if (!sources.includes(item.source))
           return fail(
             400,

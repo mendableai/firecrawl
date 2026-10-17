@@ -858,16 +858,17 @@ suite("keyless feedback HTTP and persistence", () => {
         detail: "The first delivered result answered the retry question.",
       };
       expect(
-        (await submit({ ...body("search", jobId), observations: [item] }))
-          .status,
-      ).toBe(400);
-      expect(
         (
           await submit({
             ...body("search", jobId),
-            observations: [{ ...item, source }],
+            observations: [{ ...item, source: "web" }],
           })
         ).status,
+      ).toBe(400);
+      // The job requested one group, so an omitted source refers to it.
+      expect(
+        (await submit({ ...body("search", jobId), observations: [item] }))
+          .status,
       ).toBe(200);
       const [row] = await keylessRows();
       expect(row.metadata).toMatchObject({

@@ -6,6 +6,7 @@ import { redisRateLimitClient } from "../../../services/rate-limiter";
 import request from "supertest";
 import { randomUUID } from "node:crypto";
 import { config } from "../../../config";
+import { keylessFeedbackAvailable } from "../../../controllers/v2/feedback/keyless-limits";
 import {
   describeIf,
   TEST_API_URL,
@@ -16,7 +17,8 @@ import { scrapeTimeout } from "./lib";
 
 const enabled =
   TEST_PRODUCTION &&
-  config.KEYLESS_FEEDBACK_ENABLED &&
+  // Invitations also need DB authentication and the feedback job table.
+  keylessFeedbackAvailable() &&
   !!config.KEYLESS_PROXY_SECRET &&
   // The retry test also creates a second scrape with the same caller identity.
   (config.KEYLESS_REQUESTS_PER_DAY ?? 0) >= 2 &&
