@@ -664,6 +664,8 @@ const configSchema = z.object({
   FIREBILL_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
 
   // Miscellaneous
+  // The commit the image was built from, set by the Dockerfile's GIT_SHA.
+  FIRECRAWL_BUILD_SHA: emptyStringAsUndefined(z.string().trim().min(1)),
   IDMUX_URL: z.string().optional(),
   GITHUB_RUN_NUMBER: z.string().optional(),
   GITHUB_REF_NAME: z.string().optional(),
