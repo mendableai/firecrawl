@@ -6,7 +6,8 @@ import { TeamFlags } from "../../../controllers/v1/types";
 import { db, dbRr } from "../../../db/connection";
 import * as schema from "../../../db/schema";
 import { exchangeClaimsUrl } from "../../../lib/exchange";
-import { keylessTeamUuid } from "../../../lib/keyless-team";
+import { persistedTeamId } from "../../../lib/keyless-team";
+import { logger } from "../../../lib/logger";
 import { isValidUuid } from "../../../lib/owner-id";
 
 configDotenv();
@@ -44,7 +45,12 @@ async function flushHits(): Promise<void> {
   if (config.USE_DB_AUTHENTICATION !== true) return;
   try {
     await db.insert(schema.blocklist_hits).values(batch);
-  } catch {}
+  } catch (error) {
+    logger.warn("Failed to record blocklist hits", {
+      error,
+      hits: batch.length,
+    });
+  }
 }
 
 function scheduleHitFlush(): void {
@@ -57,11 +63,11 @@ function scheduleHitFlush(): void {
 }
 
 // blocklist_hits.team_id is a uuid column, and one invalid value fails the whole
-// batched insert. Keyless callers are stored under their identity UUID; any
-// other non-UUID team id, such as preview, is stored as null.
+// batched insert, so a team id that is still not a UUID is stored as null.
 function hitTeamId(teamId: string | null | undefined): string | null {
   if (!teamId) return null;
-  return keylessTeamUuid(teamId) ?? (isValidUuid(teamId) ? teamId : null);
+  const stored = persistedTeamId(teamId);
+  return isValidUuid(stored) ? stored : null;
 }
 
 function recordHit(

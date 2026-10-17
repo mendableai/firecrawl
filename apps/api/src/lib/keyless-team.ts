@@ -29,3 +29,19 @@ export function keylessTeamUuid(
   if (!teamId || !teamId.startsWith(KEYLESS_TEAM_PREFIX)) return null;
   return uuidv5(teamId, KEYLESS_TEAM_UUID_NAMESPACE);
 }
+
+// Shared team UUID that other preview callers are stored under.
+const PREVIEW_TEAM_ID = "3adefd26-77ec-5968-8dcf-c94b5630d1de";
+
+/**
+ * The team id to store in a UUID column: a keyless caller's UUID, the shared
+ * preview team for other preview callers, or the team id unchanged.
+ */
+export function persistedTeamId(teamId: string): string {
+  return (
+    keylessTeamUuid(teamId) ??
+    (teamId === "preview" || teamId.startsWith("preview_")
+      ? PREVIEW_TEAM_ID
+      : teamId)
+  );
+}
