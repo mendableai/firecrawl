@@ -31,10 +31,13 @@ vi.mock("./types", () => ({}));
 vi.mock("./interest", () => ({
   trackMonitorCheckStartedInterest: async () => {},
 }));
-vi.mock("./search/run", () => ({}));
+vi.mock("./search/run", () => ({ runSearchTarget: vi.fn() }));
 vi.mock("./search/judge", () => ({}));
-vi.mock("./search/dedupe", () => ({}));
-vi.mock("./search/persist", () => ({}));
+vi.mock("./search/dedupe", () => ({ computeGoalVersion: () => "goal-1" }));
+vi.mock("./search/persist", () => ({
+  reconstructKnownState: () => ({ knownPages: new Map(), knownEvents: [] }),
+  searchStatusToPageStatus: (status: string) => status,
+}));
 vi.mock("../../scraper/WebScraper/utils/blocklist", () => ({}));
 vi.mock("../../controllers/auth", () => ({ getACUCTeam: vi.fn() }));
 vi.mock("./store", () => ({
@@ -49,6 +52,10 @@ vi.mock("./store", () => ({
   listMonitorCheckPages: vi.fn(),
   calculateMonitorCheckActualCredits: vi.fn(),
   updateMonitorScheduleAfterRun: vi.fn(),
+  listActiveMonitorPages: vi.fn(),
+  deleteMonitorCheckPages: vi.fn(),
+  insertMonitorCheckPages: vi.fn(),
+  bulkUpsertMonitorPages: vi.fn(),
 }));
 vi.mock("../autumn/autumn.service", () => ({
   autumnService: { finalizeCreditsLock: vi.fn(), lockCredits: vi.fn() },
@@ -71,6 +78,7 @@ import { redisEvictConnection } from "../redis";
 import { sendMonitoringEmailSummary } from "../notification/monitoring_email";
 import { recordMonitorInAppNotification } from "../notification/monitoring_in_app";
 import { logger } from "../../lib/logger";
+import { runSearchTarget } from "./search/run";
 
 function deferred() {
   let resolve!: () => void;
@@ -310,8 +318,52 @@ describe("monitor check finalization ownership", () => {
       });
     });
 
-    it("settles in the check job without waiting for the reconciler", async () => {
+    it("runs the search and settles its stamped credits in the same job", async () => {
+      current.status = "queued";
+      current.target_results = [];
+      vi.mocked(store.listActiveMonitorPages).mockResolvedValue([]);
+      vi.mocked(runSearchTarget).mockResolvedValue({
+        pageUpserts: [],
+        resultCount: 5,
+        matches: 0,
+        summary: "",
+        judgeDegraded: false,
+        degradedReason: null,
+        searchCredits: 3,
+        judgeCredits: 2,
+        resultsJudged: 2,
+      } as unknown as Awaited<ReturnType<typeof runSearchTarget>>);
+
       await runJob();
+
+      expect(runSearchTarget).toHaveBeenCalledTimes(1);
+      expect(store.calculateMonitorCheckActualCredits).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetResults: [
+            expect.objectContaining({
+              searchCompleted: true,
+              searchCredits: 3,
+              judgeCredits: 2,
+            }),
+          ],
+        }),
+      );
+      expect(current).toMatchObject({
+        status: "completed",
+        billing_status: "confirmed",
+      });
+      expect(autumnService.finalizeCreditsLock).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          lockId: "monitor_check-1",
+          action: "confirm",
+        }),
+      );
+      expect(store.updateMonitorScheduleAfterRun).toHaveBeenCalledTimes(1);
+    });
+
+    it("settles a redelivered search once without waiting for the reconciler", async () => {
+      await runJob();
+      expect(runSearchTarget).not.toHaveBeenCalled();
       expect(current).toMatchObject({
         status: "completed",
         billing_status: "confirmed",
