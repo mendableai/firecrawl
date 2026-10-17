@@ -66,9 +66,7 @@ export async function gateAgentCredits({
 
   const balance = Math.floor(minimum.remaining);
   if (!Number.isFinite(balance)) return asRequested;
-  if (freePlan) {
-    if (balance <= 0) return { allowed: false, balance };
-  } else {
+  if (!freePlan) {
     const pastBalance = await check(
       Math.max(balance, 0) + AGENT_MIN_CREDITS,
       "agentCreditGate:overage",
@@ -76,6 +74,7 @@ export async function gateAgentCredits({
     if (pastBalance === null || pastBalance.allowed) return asRequested;
     if (await autumnService.hasAutoTopUp(orgId)) return asRequested;
   }
+  if (balance <= 0) return { allowed: false, balance };
 
   const requested = requestedMaxCredits ?? AGENT_DEFAULT_MAX_CREDITS;
   const maxCredits = Math.min(requested, balance);

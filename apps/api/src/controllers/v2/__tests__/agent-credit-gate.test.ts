@@ -72,6 +72,14 @@ describe("gateAgentCredits", () => {
     );
   });
 
+  it("never starts a capped run with a cap of zero or below", async () => {
+    checkCredits
+      .mockResolvedValueOnce({ allowed: true, remaining: 0 })
+      .mockResolvedValueOnce({ allowed: false, remaining: 0 });
+
+    expect(await gate()).toEqual({ allowed: false, balance: 0 });
+  });
+
   it("keeps the default cap when the balance is above it", async () => {
     checkCredits
       .mockResolvedValueOnce({ allowed: true, remaining: 10000 })
