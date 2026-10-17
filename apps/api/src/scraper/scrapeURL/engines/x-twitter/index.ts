@@ -281,6 +281,10 @@ export async function scrapeURLWithXTwitter(
       APICallError.isInstance(cause) &&
       (cause.statusCode === 429 || cause.statusCode === 503)
     ) {
+      meta.logger.warn("X/Twitter provider is unavailable", {
+        statusCode: cause.statusCode,
+        error: cause.message,
+      });
       throw new XTwitterProviderUnavailableError();
     }
     throw error;
