@@ -918,7 +918,7 @@ export interface FindToolsData {
   level: "categories" | "providers" | "groups" | "tools";
   items: Array<{
     id: string;
-    name: string;
+    name?: string;
     next?: AlexandriaCall;
     execute?: Pick<AlexandriaCall, "provider" | "capability">;
     [key: string]: unknown;
