@@ -13,7 +13,7 @@ npm install firecrawl
 ## Usage
 
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
-2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
+2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as the `apiKey` option to the `Firecrawl` class.
 
 Here's an example of how to use the SDK with error handling:
 
@@ -137,7 +137,7 @@ const start = await app.startCrawl('https://mendable.ai', {
 To check the status of a crawl job with error handling, use the `getCrawlStatus` method. It takes the job ID as a parameter and returns the current status.
 
 ```js
-const status = await app.getCrawlStatus(id);
+const status = await app.getCrawlStatus(start.id);
 ```
 
 ### Extracting structured data from URLs

@@ -1,9 +1,21 @@
 import { describe, test, expect } from "vitest";
-import { ensureValidFormats, ensureValidScrapeOptions } from "../../../v2/utils/validation";
+import { ensureNoV1Options, ensureValidFormats, ensureValidScrapeOptions } from "../../../v2/utils/validation";
 import type { FormatOption } from "../../../v2/types";
 import { z } from "zod";
 
 describe("v2 utils: validation", () => {
+  test("ensureNoV1Options: names each v1 option and its v2 replacement", () => {
+    expect(() => ensureNoV1Options({ url: "https://a.dev", crawlerOptions: { limit: 2 } }, "crawl")).toThrow(
+      "crawl: crawlerOptions is a v1 option, move its fields to the top level",
+    );
+    expect(() => ensureNoV1Options({ maxDepth: 2, allowBackwardLinks: true }, "crawl")).toThrow(/maxDepth.*maxDiscoveryDepth.*allowBackwardLinks.*crawlEntireDomain/);
+  });
+
+  test("ensureNoV1Options: accepts v2 options", () => {
+    expect(() => ensureNoV1Options({ url: "https://a.dev", limit: 2, maxDiscoveryDepth: 1 }, "crawl")).not.toThrow();
+    expect(() => ensureNoV1Options(undefined, "search")).not.toThrow();
+  });
+
   test("ensureValidFormats: plain 'json' string is invalid", () => {
     const formats: FormatOption[] = ["markdown", "json"] as unknown as FormatOption[];
     expect(() => ensureValidFormats(formats)).toThrow(/json format must be an object/i);
