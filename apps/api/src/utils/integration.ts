@@ -19,6 +19,7 @@ enum IntegrationEnum {
   HERMES = "hermes",
   GSTACK = "gstack",
   PROMETHEUS = "prometheus",
+  LOVABLE = "lovable",
 }
 
 export const integrationSchema = z
