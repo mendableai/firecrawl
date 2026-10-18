@@ -42,6 +42,7 @@ describe("inferIntegration from a browser page", () => {
     "http://localhost:3000",
     "http://app.localhost",
     "http://printer.local",
+    "http://local",
     "http://127.0.0.1:8080",
     "http://[::1]:8080",
     "https://firecrawl.dev",
@@ -90,6 +91,7 @@ describe("inferIntegration from the User-Agent", () => {
     "node-fetch/1.0 (+https://github.com/bitinn/node-fetch)",
     "Mozilla/5.0 (X11; Linux x86_64)",
     "okhttp/4.12.0",
+    "Java/17.0.2",
     "axios/1.6.0",
     "undici",
   ])("skips the generic runtime %s", userAgent => {
@@ -112,6 +114,9 @@ describe("inferIntegration from the User-Agent", () => {
     ).toBeUndefined();
     expect(
       inferIntegration({ userAgent: "SomeTool/1.0", bodyOrigin: "api" }),
+    ).toBe("_ua.sometool");
+    expect(
+      inferIntegration({ userAgent: "SomeTool/1.0", bodyOrigin: " API " }),
     ).toBe("_ua.sometool");
   });
 

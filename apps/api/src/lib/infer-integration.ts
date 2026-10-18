@@ -13,6 +13,7 @@ const RUNTIME_PRODUCTS = new Set([
   "go-http-client",
   "got",
   "guzzlehttp",
+  "java",
   "java-http-client",
   "ktor-client",
   "libcurl-agent",
@@ -54,6 +55,7 @@ function hostSlug(pageUrl: string): string | undefined {
     !host ||
     isIP(host.replace(/^\[|\]$/g, "")) ||
     host === "localhost" ||
+    host === "local" ||
     host.endsWith(".localhost") ||
     host.endsWith(".local") ||
     host === "firecrawl.dev" ||
@@ -76,13 +78,11 @@ export function inferIntegration(request: {
     return slug ? `_ref.${slug}` : undefined;
   }
 
-  if (
-    typeof request.bodyOrigin === "string" &&
-    request.bodyOrigin !== "" &&
-    request.bodyOrigin !== "api"
-  ) {
-    return undefined;
-  }
+  const bodyOrigin =
+    typeof request.bodyOrigin === "string"
+      ? request.bodyOrigin.trim().toLowerCase()
+      : "";
+  if (bodyOrigin !== "" && bodyOrigin !== "api") return undefined;
 
   const product = request.userAgent?.trim().split(/\s+/)[0]?.split("/")[0];
   if (!product || !/^[a-z0-9]/i.test(product)) return undefined;
