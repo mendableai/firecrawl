@@ -25,7 +25,7 @@ setup(
     description="Python SDK for the Firecrawl API: web scraping, crawling, web search, and scientific literature search over a research paper index of PubMed, bioRxiv, medRxiv and arXiv abstracts",
     long_description=long_description_content,
     long_description_content_type="text/markdown",
-    packages=find_packages(),
+    packages=find_packages(include=["firecrawl*"], exclude=["tests*", "*.__tests__", "*.__tests__.*"]),
     install_requires=[
         'requests',
         'pytest',
