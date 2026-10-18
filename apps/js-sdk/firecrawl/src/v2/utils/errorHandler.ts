@@ -17,9 +17,10 @@ function describeValidationIssues(details: unknown): string | undefined {
   return parts.length > 0 ? parts.join("; ") : undefined;
 }
 
-function withIssues(message: string, details: unknown): string {
+function withIssues(message: unknown, details: unknown): string {
+  const text = typeof message === "string" ? message : JSON.stringify(message);
   const issues = describeValidationIssues(details);
-  return issues && !message.includes(issues) ? `${message} (${issues})` : message;
+  return issues && !text.includes(issues) ? `${text} (${issues})` : text;
 }
 
 export function throwForBadResponse(resp: AxiosResponse, action: string): never {
