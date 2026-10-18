@@ -330,6 +330,7 @@ pub struct JsonOptions {
     /// JSON schema the output should adhere to.
     pub schema: Option<Value>,
     /// System prompt for the LLM agent.
+    #[deprecated(note = "the v2 json format has no system prompt; this field is not sent")]
     pub system_prompt: Option<String>,
     /// Extraction prompt for the LLM agent.
     pub prompt: Option<String>,
@@ -338,6 +339,58 @@ pub struct JsonOptions {
         note = "use ScrapeOptions::check_prompt_injection or ParseOptions::check_prompt_injection"
     )]
     pub check_prompt_injection: Option<bool>,
+}
+
+/// Moves a serialized `jsonOptions` into the `json` entry of `formats`, since /v2
+/// rejects a top-level `jsonOptions` key. Adds the `json` format when it is not listed.
+pub(crate) fn fold_json_options(value: &mut Value) {
+    let Some(map) = value.as_object_mut() else {
+        return;
+    };
+    let Some(Value::Object(options)) = map.remove("jsonOptions") else {
+        return;
+    };
+
+    let mut json_format = serde_json::Map::new();
+    json_format.insert("type".to_string(), Value::from("json"));
+    json_format.extend(options.into_iter().filter(|(key, _)| key != "systemPrompt"));
+    let json_format = Value::Object(json_format);
+
+    let formats = map
+        .entry("formats")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    let Some(formats) = formats.as_array_mut() else {
+        return;
+    };
+    match formats
+        .iter_mut()
+        .find(|format| format.as_str() == Some("json"))
+    {
+        Some(slot) => *slot = json_format,
+        None => formats.push(json_format),
+    }
+}
+
+/// Reverses `fold_json_options`: a `json` format object in `formats` becomes the
+/// `"json"` format plus `jsonOptions`, so serialized options deserialize again.
+pub(crate) fn unfold_json_options(value: &mut Value) {
+    let Some(map) = value.as_object_mut() else {
+        return;
+    };
+    let Some(formats) = map.get_mut("formats").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let Some(slot) = formats
+        .iter_mut()
+        .find(|format| format.get("type").and_then(Value::as_str) == Some("json"))
+    else {
+        return;
+    };
+    let Value::Object(mut options) = std::mem::replace(slot, Value::from("json")) else {
+        return;
+    };
+    options.remove("type");
+    map.insert("jsonOptions".to_string(), Value::Object(options));
 }
 
 /// Location configuration for proxy routing.
