@@ -8,6 +8,10 @@ import {
   fetchResearchUpstream,
 } from "../../lib/research-upstream";
 import { chargeKeylessCredits } from "../../lib/keyless";
+import {
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
+} from "../../lib/index-daily-limit";
 import { billTeam } from "../../services/billing/credit_billing";
 import { getEffectiveSearchForcedKind } from "../../lib/safe-mode";
 import {
@@ -353,6 +357,21 @@ function createResearchController(
       api_key_id: authedReq.acuc?.api_key_id ?? null,
     });
 
+    let releaseGovCall: (() => Promise<void>) | undefined;
+    if (endpoint.kind === "gov_search") {
+      const indexBudget = await reserveGovIndexCalls(authedReq.auth.team_id, 1);
+      if (!indexBudget.ok) {
+        chargeKeylessCredits(authedReq.auth.team_id, 0).catch(() => {});
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return res.status(429).json({
+          success: false,
+          code: "INDEX_DAILY_LIMIT",
+          error: govIndexDailyLimitMessage(indexBudget),
+        });
+      }
+      releaseGovCall = indexBudget.release;
+    }
+
     let statusCode = 500;
     let responseBody: any = null;
     let error: string | undefined;
@@ -366,6 +385,7 @@ function createResearchController(
         queryKeys,
       );
       if (!upstream) {
+        if (releaseGovCall) await releaseGovCall();
         statusCode = 404;
         error = "Research service is not configured";
         return res.status(404).end();

@@ -290,6 +290,23 @@ describe("monitoring store credit helpers", () => {
     expect(estimateMonitorCreditsPerRun(targets, false)).toBe(9);
   });
 
+  it("estimates the top-level prompt injection guard on a markdown monitor", () => {
+    const targets: MonitorTarget[] = [
+      {
+        id: "target-1",
+        type: "scrape",
+        urls: ["https://example.com/a"],
+        scrapeOptions: {
+          formats: ["markdown"],
+          checkPromptInjection: true,
+        },
+      },
+    ];
+
+    // 1 base + 4 prompt injection guard.
+    expect(estimateMonitorCreditsPerRun(targets, false)).toBe(5);
+  });
+
   it("uses target options when page rows do not have recorded scrape credits", () => {
     const targets: MonitorTarget[] = [
       {
@@ -588,7 +605,7 @@ describe("FLAT deterministic search-monitor billing", () => {
 
     it("a still-running search (no credits stamped yet) sums to 0 — the reconciler must NOT finalize here", () => {
       // Pre-stamp shape the dispatcher writes before the inline search finishes.
-      // The never-zero guarantee relies on isMonitorCheckComplete refusing to
+      // The never-zero guarantee relies on findUnfinishedMonitorTarget refusing to
       // finalize a run whose searchCompleted flag is not yet true (see runner.ts).
       const pending = { targetId: "search-1", type: "search" as const };
       expect((pending as any).searchCompleted).toBeUndefined();

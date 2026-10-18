@@ -412,9 +412,15 @@ export function startBillingBatchProcessing() {
 
   logger.info("🔄 Starting periodic billing batch processing");
   batchInterval = setInterval(async () => {
-    const queueLength = await getRedisConnection().llen(BATCH_KEY);
-    logger.info(`Checking billing batch queue (${queueLength} items pending)`);
-    await processBillingBatch();
+    try {
+      const queueLength = await getRedisConnection().llen(BATCH_KEY);
+      logger.info(
+        `Checking billing batch queue (${queueLength} items pending)`,
+      );
+      await processBillingBatch();
+    } catch (error) {
+      logger.error("Error in periodic billing batch processing", { error });
+    }
   }, BATCH_TIMEOUT);
 
   // Unref to not keep process alive

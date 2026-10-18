@@ -10,6 +10,7 @@ const { redis } = vi.hoisted(() => {
       expire: vi.fn().mockResolvedValue(1),
       get: vi.fn().mockResolvedValue("0"),
       ttl: vi.fn().mockResolvedValue(-1),
+      pttl: vi.fn().mockResolvedValue(-1),
       eval: vi.fn().mockResolvedValue([1, 1]),
     },
   };
@@ -70,7 +71,7 @@ describe("keyless limits for a World ID identity", () => {
   it("answers credit exhaustion without IP-keyed links or telemetry", async () => {
     config.KEYLESS_CONVERSION_HMAC_SECRET = "k".repeat(32);
     config.KEYLESS_SIGNUP_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
-    redis.ttl.mockResolvedValue(3600);
+    redis.pttl.mockResolvedValue(3_600_000);
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => logger);
 
     const body = await keylessLimitBody(keylessTeamId(WORLD_ID), "v2_scrape");
@@ -81,7 +82,7 @@ describe("keyless limits for a World ID identity", () => {
       signup_url: keylessFallbackSignupUrl("api"),
       retry_after_seconds: 3600,
     });
-    expect(redis.ttl).toHaveBeenLastCalledWith(`keyless_credits:${WORLD_ID}`);
+    expect(redis.pttl).toHaveBeenLastCalledWith(`keyless_credits:${WORLD_ID}`);
     expect(warn).toHaveBeenCalledWith(
       "Keyless request blocked",
       expect.not.objectContaining({ conversionCohort: expect.anything() }),

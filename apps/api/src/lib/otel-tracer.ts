@@ -282,6 +282,9 @@ function cleanAttributes(
   return cleaned;
 }
 
+// Spans marked failed by `recordSpanException`; `withSpan` keeps their error status.
+const erroredSpans = new WeakSet<Span>();
+
 interface SpanOptions {
   attributes?: SpanAttributeInput;
   kind?: SpanKind;
@@ -306,7 +309,9 @@ export async function withSpan<T>(
       async span => {
         try {
           const result = await fn(span);
-          span.setStatus({ code: SpanStatusCode.OK });
+          if (!erroredSpans.has(span)) {
+            span.setStatus({ code: SpanStatusCode.OK });
+          }
           return result;
         } catch (error) {
           recordSpanException(span, error);
@@ -324,6 +329,7 @@ export async function withSpan<T>(
  * failures that are handled (returned) rather than thrown out of `withSpan`.
  */
 export function recordSpanException(span: Span, error: unknown): void {
+  erroredSpans.add(span);
   span.recordException(error instanceof Error ? error : String(error));
   span.setStatus({
     code: SpanStatusCode.ERROR,
