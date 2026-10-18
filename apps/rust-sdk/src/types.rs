@@ -371,6 +371,28 @@ pub(crate) fn fold_json_options(value: &mut Value) {
     }
 }
 
+/// Reverses `fold_json_options`: a `json` format object in `formats` becomes the
+/// `"json"` format plus `jsonOptions`, so serialized options deserialize again.
+pub(crate) fn unfold_json_options(value: &mut Value) {
+    let Some(map) = value.as_object_mut() else {
+        return;
+    };
+    let Some(formats) = map.get_mut("formats").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let Some(slot) = formats
+        .iter_mut()
+        .find(|format| format.get("type").and_then(Value::as_str) == Some("json"))
+    else {
+        return;
+    };
+    let Value::Object(mut options) = std::mem::replace(slot, Value::from("json")) else {
+        return;
+    };
+    options.remove("type");
+    map.insert("jsonOptions".to_string(), Value::Object(options));
+}
+
 /// Location configuration for proxy routing.
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]

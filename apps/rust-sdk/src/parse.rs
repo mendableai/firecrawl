@@ -3,12 +3,15 @@
 use std::path::Path;
 
 use reqwest::multipart::{Form, Part};
-use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 use std::collections::HashMap;
 
 use super::client::Client;
 use super::scrape::ParserConfig;
-use super::types::{fold_json_options, AttributeSelector, Document, JsonOptions};
+use super::types::{
+    fold_json_options, unfold_json_options, AttributeSelector, Document, JsonOptions,
+};
 use crate::{AuditMetadata, FirecrawlError};
 
 /// Uploaded file payload for the `/v2/parse` endpoint.
@@ -198,7 +201,9 @@ impl Serialize for ParseOptions {
 
 impl<'de> Deserialize<'de> for ParseOptions {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ParseOptions::deserialize(deserializer)
+        let mut value = Value::deserialize(deserializer)?;
+        unfold_json_options(&mut value);
+        ParseOptions::deserialize(value).map_err(de::Error::custom)
     }
 }
 
@@ -520,6 +525,16 @@ mod tests {
             json!([{ "type": "json", "prompt": "Extract the title" }])
         );
         assert!(payload.get("jsonOptions").is_none());
+
+        let restored: ParseOptions = serde_json::from_value(payload).unwrap();
+        assert!(matches!(
+            restored.formats.as_deref(),
+            Some([ParseFormat::Json])
+        ));
+        assert_eq!(
+            restored.json_options.and_then(|options| options.prompt),
+            Some("Extract the title".to_string())
+        );
     }
 
     #[test]

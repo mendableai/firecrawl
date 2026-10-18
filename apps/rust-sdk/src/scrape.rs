@@ -1,13 +1,13 @@
 //! Scrape endpoint for Firecrawl API v2.
 
-use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::client::Client;
 use crate::types::{
-    fold_json_options, Action, AttributeSelector, ChangeTrackingOptions, Document, Format,
-    JsonOptions, LocationConfig, ProfileConfig, ProxyType, ScreenshotOptions,
+    fold_json_options, unfold_json_options, Action, AttributeSelector, ChangeTrackingOptions,
+    Document, Format, JsonOptions, LocationConfig, ProfileConfig, ProxyType, ScreenshotOptions,
 };
 use crate::{AuditMetadata, FirecrawlError};
 
@@ -127,7 +127,9 @@ impl Serialize for ScrapeOptions {
 
 impl<'de> Deserialize<'de> for ScrapeOptions {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ScrapeOptions::deserialize(deserializer)
+        let mut value = Value::deserialize(deserializer)?;
+        unfold_json_options(&mut value);
+        ScrapeOptions::deserialize(value).map_err(de::Error::custom)
     }
 }
 
@@ -793,17 +795,29 @@ mod tests {
 
     #[test]
     fn test_scrape_options_round_trip() {
-        let options: ScrapeOptions = serde_json::from_value(json!({
-            "formats": ["markdown"],
-            "onlyMainContent": true
-        }))
-        .unwrap();
+        let options = ScrapeOptions {
+            formats: Some(vec![Format::Markdown, Format::Json]),
+            only_main_content: Some(true),
+            json_options: Some(JsonOptions {
+                prompt: Some("Extract the title".to_string()),
+                schema: Some(json!({ "type": "object" })),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        let restored: ScrapeOptions = serde_json::from_value(payload.clone()).unwrap();
 
         assert!(matches!(
-            options.formats.as_deref(),
-            Some([Format::Markdown])
+            restored.formats.as_deref(),
+            Some([Format::Markdown, Format::Json])
         ));
-        assert_eq!(options.only_main_content, Some(true));
+        assert_eq!(restored.only_main_content, Some(true));
+        let json_options = restored.json_options.clone().unwrap();
+        assert_eq!(json_options.prompt, Some("Extract the title".to_string()));
+        assert_eq!(json_options.schema, Some(json!({ "type": "object" })));
+        assert_eq!(serde_json::to_value(restored).unwrap(), payload);
     }
 
     #[test]
