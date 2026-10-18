@@ -649,10 +649,17 @@ class ClientTest < Minitest::Test
   end
 
   def test_search_omits_restrictions_when_unset
-    options = Firecrawl::Models::SearchOptions.new(limit: 5)
+    stub_request(:post, "#{BASE_URL}/v2/search")
+      .with { |req| body = JSON.parse(req.body); !body.key?("cr") && !body.key?("lr") }
+      .to_return(
+        status: 200,
+        body: JSON.generate(data: { web: [], news: [], images: [] }),
+        headers: { "Content-Type" => "application/json" }
+      )
 
-    refute options.to_h.key?("cr")
-    refute options.to_h.key?("lr")
+    options = Firecrawl::Models::SearchOptions.new(limit: 5)
+    result = @client.search("test query", options)
+    assert_equal 0, result.web.size
   end
 
   # ================================================================
