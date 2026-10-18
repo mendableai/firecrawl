@@ -1,4 +1,6 @@
 import type { Meta } from "../../..";
+import { config } from "../../../../../config";
+import { getPDFMode } from "../../../../../controllers/v2/types";
 import { hasCustomRequestContext } from "../../../lib/request-context";
 
 /** What we hand fire-pdf: a PDF, or a raster image wrapped as a one-page document. */
@@ -10,6 +12,29 @@ export function firePdfRequestKind(meta: Meta): "scrape" | "parse" {
     meta.internalOptions.uploadedFile !== undefined
     ? "parse"
     : "scrape";
+}
+
+/** Whether this PDF must go to FirePDF instead of direct extraction, the
+ * FIRE_PDF_PERCENT sample, or the MinerU diversion (see
+ * PARSE_PDF_ALWAYS_FIRE_PDF). Fast mode keeps its text-layer-only contract. */
+export function parseAlwaysFirePdf(meta: Meta): boolean {
+  return (
+    firePdfRequestKind(meta) === "parse" &&
+    config.PARSE_PDF_ALWAYS_FIRE_PDF &&
+    getPDFMode(meta.options.parsers) !== "fast" &&
+    !!config.FIRE_PDF_ENABLE &&
+    !!config.FIRE_PDF_BASE_URL
+  );
+}
+
+/** The `tableFormat` sent to FirePDF, or undefined for its default (pipe
+ * tables). Only parse requests set one (PARSE_FIRE_PDF_TABLE_FORMAT). */
+export function firePdfTableFormat(
+  meta: Meta,
+): "markdown" | "html" | "dynamic" | undefined {
+  if (firePdfRequestKind(meta) !== "parse") return undefined;
+  const format = config.PARSE_FIRE_PDF_TABLE_FORMAT;
+  return format === "off" ? undefined : format;
 }
 
 export function buildFirePdfRequestMetadata(

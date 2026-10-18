@@ -251,3 +251,136 @@ describe("processRawBranding primary", () => {
     expect(profile.colors?.primary).toBe("#635BFF");
   });
 });
+
+describe("monochrome brands", () => {
+  const button = (background: string, textColor: string, index: number) => ({
+    index,
+    text: `Button ${index}`,
+    html: "",
+    classes: "",
+    background,
+    textColor,
+  });
+  const llmPicking = (primaryColor: string) => ({
+    ...emptyLlm,
+    buttonClassification: {
+      primaryButtonIndex: 0,
+      primaryButtonReasoning: "n/a",
+      secondaryButtonIndex: -1,
+      secondaryButtonReasoning: "n/a",
+      confidence: 0.9,
+    },
+    colorRoles: {
+      primaryColor,
+      accentColor: "",
+      backgroundColor: "#FFFFFF",
+      textPrimary: "#171717",
+      confidence: 0.8,
+    },
+  });
+
+  it("uses the black call to action when the chosen color is only a link color", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      llmPicking("#0072F5"),
+      [button("#171717", "#FFFFFF", 0), button("#FFFFFF", "#171717", 1)],
+    );
+    expect(merged.colors?.primary).toBe("#171717");
+    expect(merged.colors?.accent).toBe("#0072F5");
+  });
+
+  it("keeps a color that also fills a button", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      llmPicking("#0071E3"),
+      [button("#000000", "#FFFFFF", 0), button("#0071E3", "#FFFFFF", 1)],
+    );
+    expect(merged.colors?.primary).toBe("#0071E3");
+  });
+
+  it("keeps a navy call to action from replacing the brand color", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      llmPicking("#635BFF"),
+      [button("#0A2540", "#FFFFFF", 0)],
+    );
+    expect(merged.colors?.primary).toBe("#635BFF");
+  });
+
+  it("leaves dark pages alone", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "dark", colors: {} },
+      llmPicking("#1ED760"),
+      [button("#111111", "#FFFFFF", 0)],
+    );
+    expect(merged.colors?.primary).toBe("#1ED760");
+  });
+});
+
+describe("browser link colors from the model", () => {
+  it("keeps the heuristic colors when the model answers with the default link blue", () => {
+    const merged = mergeBrandingResults(
+      {
+        colorScheme: "light",
+        colors: {
+          primary: "#C82540",
+          accent: "#F9B200",
+          secondary: "#2E7D32",
+        },
+      },
+      {
+        ...emptyLlm,
+        colorRoles: {
+          primaryColor: "#0000ee",
+          secondaryColor: "#0000EE",
+          accentColor: "#551A8B",
+          backgroundColor: "#FFFFFF",
+          textPrimary: "#212121",
+          confidence: 0.9,
+        },
+      },
+      [],
+    );
+    expect(merged.colors?.primary).toBe("#C82540");
+    expect(merged.colors?.accent).toBe("#F9B200");
+    expect(merged.colors?.secondary).toBe("#2E7D32");
+  });
+});
+
+describe("near-white primaries", () => {
+  it("keeps the brand color when the model answers with a pale section background", () => {
+    const merged = mergeBrandingResults(
+      { colorScheme: "light", colors: { primary: "#533AFD" } },
+      {
+        ...emptyLlm,
+        colorRoles: {
+          primaryColor: "#E5EDF5",
+          accentColor: "#533AFD",
+          backgroundColor: "#FFFFFF",
+          textPrimary: "#0A2540",
+          confidence: 0.9,
+        },
+      },
+      [],
+    );
+    expect(merged.colors?.primary).toBe("#533AFD");
+  });
+
+  it("skips a pale tint when picking the primary on a light page", () => {
+    expect(
+      pickBrandPrimary(["#F0F6FF", "#0056D2", "#FFFFFF"], {
+        background: "#FFFFFF",
+        colorScheme: "light",
+      }),
+    ).toBe("#0056D2");
+  });
+
+  it("keeps a light brand color on a dark page", () => {
+    expect(
+      pickBrandPrimary(["#E7DBFF", "#0A0A0A"], {
+        background: "#0A0A0A",
+        colorScheme: "dark",
+      }),
+    ).toBe("#E7DBFF");
+  });
+});

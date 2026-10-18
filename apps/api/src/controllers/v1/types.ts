@@ -396,6 +396,8 @@ export type InternalAction = Action & {
   metadata?: {
     [key: string]: unknown;
   };
+  /** fire-engine, executeJavascript only. */
+  realViewport?: boolean;
 };
 
 const actionsSchema = z

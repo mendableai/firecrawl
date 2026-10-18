@@ -756,6 +756,7 @@ export async function scrapeController(
           ? await discoverTools(
               {
                 teamId: req.auth.team_id,
+                connectors: req.acuc?.flags?.exchangeRetrieve === true,
                 toolDetail: req.body.toolDetail,
                 urls: [
                   ...new Set(

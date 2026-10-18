@@ -118,7 +118,10 @@ vi.mock("../../queue-service", () => ({
   getRedisConnection: () => redis,
 }));
 
-import { processBillingBatch } from "../batch_billing";
+import {
+  processBillingBatch,
+  startBillingBatchProcessing,
+} from "../batch_billing";
 
 function makeOp(overrides: Record<string, unknown> = {}) {
   // `org_id: undefined` in an override drops the key entirely, which is the
@@ -444,5 +447,33 @@ describe("processBillingBatch", () => {
       },
       featureId: "SEARCH_CREDITS",
     });
+  });
+});
+
+describe("startBillingBatchProcessing", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("logs a Redis error on a tick and keeps processing on the next one", async () => {
+    vi.useFakeTimers();
+    const loadingError = new Error(
+      "LOADING Redis is loading the dataset in memory",
+    );
+    redis.llen.mockRejectedValueOnce(loadingError);
+
+    startBillingBatchProcessing();
+
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(logger.error).toHaveBeenCalledWith(
+      "Error in periodic billing batch processing",
+      { error: loadingError },
+    );
+    expect(redis.set).not.toHaveBeenCalled();
+
+    queue = [makeOp()];
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(billTeam7).toHaveBeenCalledTimes(1);
+    expect(queue).toHaveLength(0);
   });
 });
