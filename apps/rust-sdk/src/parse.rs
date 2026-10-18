@@ -3,12 +3,12 @@
 use std::path::Path;
 
 use reqwest::multipart::{Form, Part};
-use serde::{Deserialize, Serialize};
+use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 
 use super::client::Client;
 use super::scrape::ParserConfig;
-use super::types::{AttributeSelector, Document, JsonOptions};
+use super::types::{fold_json_options, AttributeSelector, Document, JsonOptions};
 use crate::{AuditMetadata, FirecrawlError};
 
 /// Uploaded file payload for the `/v2/parse` endpoint.
@@ -137,7 +137,7 @@ struct ParseFormatsResponse {
 /// (e.g. actions, waitFor, location, and screenshot/branding/changeTracking options).
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(remote = "Self", rename_all = "camelCase")]
 pub struct ParseOptions {
     /// Output formats to include in the response.
     pub formats: Option<Vec<ParseFormat>>,
@@ -185,6 +185,21 @@ pub struct ParseOptions {
     pub json_options: Option<JsonOptions>,
     /// Attribute selectors for extraction.
     pub attribute_selectors: Option<Vec<AttributeSelector>>,
+}
+
+impl Serialize for ParseOptions {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut value = ParseOptions::serialize(self, serde_json::value::Serializer)
+            .map_err(ser::Error::custom)?;
+        fold_json_options(&mut value);
+        value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ParseOptions {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        ParseOptions::deserialize(deserializer)
+    }
 }
 
 impl Client {
@@ -486,6 +501,25 @@ mod tests {
         );
         mock.assert();
         Ok(())
+    }
+
+    #[test]
+    fn test_parse_options_send_json_options_as_json_format() {
+        let options = ParseOptions {
+            formats: Some(vec![ParseFormat::Json]),
+            json_options: Some(JsonOptions {
+                prompt: Some("Extract the title".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!([{ "type": "json", "prompt": "Extract the title" }])
+        );
+        assert!(payload.get("jsonOptions").is_none());
     }
 
     #[test]
