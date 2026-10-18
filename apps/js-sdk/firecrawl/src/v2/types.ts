@@ -915,7 +915,7 @@ export interface FindToolsOptions {
 }
 
 export interface FindToolsData {
-  level: "providers" | "groups" | "tools";
+  level: "categories" | "providers" | "groups" | "tools";
   items: Array<{
     id: string;
     name: string;
