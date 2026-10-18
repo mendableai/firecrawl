@@ -419,10 +419,8 @@ async function searchControllerInner(
       const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
       if (!indexBudget.ok) {
         if (reservedKeylessCredits > 0) {
+          await adjustKeylessCredits(req.auth.team_id, -reservedKeylessCredits);
           reconciledKeylessCredits = true;
-          adjustKeylessCredits(req.auth.team_id, -reservedKeylessCredits).catch(
-            () => {},
-          );
         }
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
