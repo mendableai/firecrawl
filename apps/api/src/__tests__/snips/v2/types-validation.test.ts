@@ -477,6 +477,16 @@ describe("V2 Types Validation", () => {
       expect(result.integration).toBe("dify");
     });
 
+    it("should accept the lovable integration value", () => {
+      const input: ScrapeRequestInput = {
+        url: "https://example.com",
+        integration: "lovable",
+      };
+
+      const result = scrapeRequestSchema.parse(input);
+      expect(result.integration).toBe("lovable");
+    });
+
     it("should accept integration value starting with underscore", () => {
       const input: ScrapeRequestInput = {
         url: "https://example.com",

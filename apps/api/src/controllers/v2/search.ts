@@ -373,16 +373,18 @@ async function searchControllerInner(
     }
 
     const toolsOnly = isToolsOnlySearch(req.body.sources, req.body.categories);
+    const govSearch = wantsGovCategory(categories);
     const projectedKeylessCredits =
       !isSearchPreview &&
       shouldBill &&
       !toolsOnly &&
-      !wantsGovCategory(categories)
+      (!govSearch || requestedFormats.length > 0)
         ? projectSearchTotalCredits(
             {
               limit: req.body.limit,
               enterprise: req.body.enterprise,
               scrapeOptions: req.body.scrapeOptions,
+              freeSearch: govSearch,
             },
             req.acuc?.flags ?? null,
             zeroDataRetention,
@@ -416,6 +418,10 @@ async function searchControllerInner(
     if (wantsGovCategory(categories)) {
       const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
       if (!indexBudget.ok) {
+        if (reservedKeylessCredits > 0) {
+          await adjustKeylessCredits(req.auth.team_id, -reservedKeylessCredits);
+          reconciledKeylessCredits = true;
+        }
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
           success: false,
