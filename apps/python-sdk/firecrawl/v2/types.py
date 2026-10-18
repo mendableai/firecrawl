@@ -2451,6 +2451,9 @@ class SearchRequest(BaseModel):
     tbs: Optional[str] = None
     location: Optional[str] = None
     country: Optional[str] = None
+    # Country (e.g. "countryGR") and language (e.g. "lang_el") restrictions.
+    cr: Optional[str] = None
+    lr: Optional[str] = None
     ignore_invalid_urls: Optional[bool] = None
     timeout: Optional[int] = 300000
     highlights: Optional[bool] = None

@@ -1035,6 +1035,10 @@ export interface SearchRequest {
   location?: string;
   /** ISO 3166-1 alpha-2 country code used to geo-target the search results. */
   country?: string;
+  /** Country restriction, e.g. `countryGR` or `countryGR|countryCY`. Drops results from other countries. */
+  cr?: string;
+  /** Language restriction, e.g. `lang_el` or `lang_el|lang_en`. Drops results in other languages. */
+  lr?: string;
   ignoreInvalidURLs?: boolean;
   timeout?: number; // ms
   /** Generate query-relevant highlights for search results. Defaults to true. */

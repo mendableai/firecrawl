@@ -144,6 +144,36 @@ class TestSearchRequestPreparation:
         assert path == "/v2/search"
         assert body["country"] == "de"
 
+    def test_restrictions_are_included_when_set(self):
+        """Test that cr and lr reach the prepared body unchanged."""
+        request = SearchRequest(query="test", cr="countryGR|countryCY", lr="lang_el")
+        data = _prepare_search_request(request)
+
+        assert data["cr"] == "countryGR|countryCY"
+        assert data["lr"] == "lang_el"
+
+    def test_restrictions_are_omitted_when_unset(self):
+        """Test that the body omits cr and lr when they are not set."""
+        data = _prepare_search_request(SearchRequest(query="test"))
+
+        assert "cr" not in data
+        assert "lr" not in data
+
+    def test_client_search_forwards_restrictions(self):
+        """Test that the sync client puts cr and lr in the posted body."""
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = {"success": True, "data": {}}
+
+        client = FirecrawlClient(api_key="fc-test")
+        client.http_client.post = Mock(return_value=response)
+
+        client.search("test", cr="countryGR", lr="lang_el")
+
+        _, body = client.http_client.post.call_args[0]
+        assert body["cr"] == "countryGR"
+        assert body["lr"] == "lang_el"
+
     def test_domain_filters_are_mutually_exclusive(self):
         """Test that include_domains and exclude_domains cannot both be set."""
         with pytest.raises(

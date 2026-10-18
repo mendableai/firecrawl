@@ -109,6 +109,20 @@ public class ModelsTests
     }
 
     [Fact]
+    public void SearchOptions_SerializesRestrictions()
+    {
+        var options = new SearchOptions { Cr = "countryGR|countryCY", Lr = "lang_el" };
+
+        var json = JsonSerializer.Serialize(options, JsonOptions);
+        Assert.Contains("\"cr\":\"countryGR|countryCY\"", json);
+        Assert.Contains("\"lr\":\"lang_el\"", json);
+
+        var unset = JsonSerializer.Serialize(new SearchOptions(), JsonOptions);
+        Assert.DoesNotContain("\"cr\"", unset);
+        Assert.DoesNotContain("\"lr\"", unset);
+    }
+
+    [Fact]
     public void BatchScrapeOptions_IdempotencyKey_NotSerialized()
     {
         var options = new BatchScrapeOptions

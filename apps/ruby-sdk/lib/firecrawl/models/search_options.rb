@@ -5,7 +5,7 @@ module Firecrawl
     # Options for a web search request.
     class SearchOptions
       FIELDS = %i[
-        sources categories include_domains exclude_domains limit tbs location country
+        sources categories include_domains exclude_domains limit tbs location country cr lr
         ignore_invalid_urls timeout highlights scrape_options integration enterprise
       ].freeze
 
@@ -25,6 +25,9 @@ module Firecrawl
           "tbs" => tbs,
           "location" => location,
           "country" => country,
+          # Country ("countryGR") and language ("lang_el") restrictions.
+          "cr" => cr,
+          "lr" => lr,
           "ignoreInvalidURLs" => ignore_invalid_urls,
           "timeout" => timeout,
           "highlights" => highlights,

@@ -2601,6 +2601,9 @@ export const searchRequestSchema = z
     enterprise: z.array(z.enum(["default", "anon", "zdr"])).optional(),
     country: z.string().optional(),
     location: z.string().optional(),
+    // Country (`countryGR`) and language (`lang_el`) restrictions, passed to the provider unchanged.
+    cr: z.string().optional(),
+    lr: z.string().optional(),
     origin: z.string().optional().prefault("api"),
     integration: integrationSchema.optional().transform(val => val || null),
     timeout: z.int().positive().finite().prefault(60000),

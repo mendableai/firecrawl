@@ -26,6 +26,8 @@ final class SearchOptions
         private readonly ?array $excludeDomains = null,
         private readonly ?bool $highlights = null,
         private readonly ?string $country = null,
+        private readonly ?string $cr = null,
+        private readonly ?string $lr = null,
     ) {}
 
     /**
@@ -33,6 +35,8 @@ final class SearchOptions
      * @param list<mixed>|null $categories
      * @param list<string>|null $includeDomains
      * @param list<string>|null $excludeDomains
+     * @param string|null $cr Country restriction, e.g. "countryGR" or "countryGR|countryCY"
+     * @param string|null $lr Language restriction, e.g. "lang_el"
      */
     public static function with(
         ?array $sources = null,
@@ -48,11 +52,13 @@ final class SearchOptions
         ?array $excludeDomains = null,
         ?bool $highlights = null,
         ?string $country = null,
+        ?string $cr = null,
+        ?string $lr = null,
     ): self {
         return new self(
             $sources, $categories, $limit, $tbs, $location, $ignoreInvalidURLs,
             $timeout, $scrapeOptions, $integration, $includeDomains, $excludeDomains,
-            $highlights, $country,
+            $highlights, $country, $cr, $lr,
         );
     }
 
@@ -68,6 +74,8 @@ final class SearchOptions
             'tbs' => $this->tbs,
             'location' => $this->location,
             'country' => $this->country,
+            'cr' => $this->cr,
+            'lr' => $this->lr,
             'ignoreInvalidURLs' => $this->ignoreInvalidURLs,
             'timeout' => $this->timeout,
             'highlights' => $this->highlights,

@@ -2086,6 +2086,7 @@ defmodule Firecrawl do
   @search_and_scrape_schema NimbleOptions.new!([
     categories: [type: {:list, :any}, doc: "Categories to filter results by. Defaults to [], which means results will not be filtered by any categories."],
     country: [type: :string, doc: "ISO country code for geo-targeting search results (e.g. `US`). For best results, set both this and the `location` parameter."],
+    cr: [type: :string, doc: "Restricts results to sites from one or more countries. Use `country` followed by an uppercase ISO 3166-1 alpha-2 code (e.g. `countryGR`), and join several with `|` (e.g. `countryGR|countryCY`). Unlike `country`, which only geo-targets the search, this drops results from other countries. Not applied to Zero Data Retention searches."],
     domain_tools: [type: :boolean, doc: "Include tool contracts whose provider matches the domains of the returned web results. Defaults to on when `alexandria` is among the sources; set `false` to disable, or `true` alone to add domain-matched tools beside ordinary web results. Free."],
     enterprise: [type: {:list, :string}, doc: "Enterprise search options for Zero Data Retention (ZDR). Use `[\"zdr\"]` for end-to-end ZDR (10 credits / 10 results) or `[\"anon\"]` for anonymized ZDR (2 credits / 10 results). Must be enabled for your team."],
     exclude_domains: [type: {:list, :string}, doc: "Excludes search results from the specified domains. Domains should be hostnames only, without protocol or path. Cannot be used with includeDomains."],
@@ -2094,6 +2095,7 @@ defmodule Firecrawl do
     include_domains: [type: {:list, :string}, doc: "Restricts search results to the specified domains. Domains should be hostnames only, without protocol or path. Cannot be used with excludeDomains."],
     limit: [type: :integer, doc: "Maximum number of results to return (per source type when using multiple sources)"],
     location: [type: :string, doc: "Location parameter for search results (e.g. `San Francisco,California,United States`). For best results, set both this and the `country` parameter."],
+    lr: [type: :string, doc: "Restricts results to pages written in one or more languages. Use `lang_` followed by a language code (e.g. `lang_el`, `lang_zh-TW`), and join several with `|` (e.g. `lang_el|lang_en`). Not applied to Zero Data Retention searches."],
     query: [type: :string, required: true, doc: "The search query"],
     safe: [type: :boolean, doc: "When `true`, filters explicit content from search results (SafeSearch). Omit to keep the default behavior, which does not apply the filter."],
     scrape_options: [type: :keyword_list, doc: "Options for scraping search results"],
@@ -2104,7 +2106,7 @@ defmodule Firecrawl do
     tool_detail: [type: {:or, [{:in, [:compact, :summary, :full]}, :string]}, doc: "How much of each tool contract to return in `data.tools`. `compact` returns only `provider`, `capability`, and `description`. `summary` returns the full tool entry without `options` and `response`. `full` also returns `options`, `response`, and `examples`."]
   ])
 
-  @search_and_scrape_key_mapping %{categories: "categories", country: "country", domain_tools: "domainTools", enterprise: "enterprise", exclude_domains: "excludeDomains", highlights: "highlights", ignore_invalid_urls: "ignoreInvalidURLs", include_domains: "includeDomains", limit: "limit", location: "location", query: "query", safe: "safe", scrape_options: "scrapeOptions", sources: "sources", tbs: "tbs", threat_protection: "threatProtection", timeout: "timeout", tool_detail: "toolDetail"}
+  @search_and_scrape_key_mapping %{categories: "categories", country: "country", cr: "cr", domain_tools: "domainTools", enterprise: "enterprise", exclude_domains: "excludeDomains", highlights: "highlights", ignore_invalid_urls: "ignoreInvalidURLs", include_domains: "includeDomains", limit: "limit", location: "location", lr: "lr", query: "query", safe: "safe", scrape_options: "scrapeOptions", sources: "sources", tbs: "tbs", threat_protection: "threatProtection", timeout: "timeout", tool_detail: "toolDetail"}
 
   @doc """
   Search and optionally scrape search results

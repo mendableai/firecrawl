@@ -918,6 +918,41 @@ defmodule FirecrawlTest do
     assert body["highlights"] == false
   end
 
+  test "search sends cr and lr" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.search_and_scrape(
+               [query: "firecrawl", cr: "countryGR", lr: "lang_el"],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["cr"] == "countryGR"
+    assert body["lr"] == "lang_el"
+  end
+
   defp parse_formats_adapter(parent, status, body) do
     fn request ->
       send(parent, {:request, request})
