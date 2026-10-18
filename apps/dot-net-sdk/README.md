@@ -223,9 +223,9 @@ var data = await client.MapAsync("https://example.com",
         Limit = 100
     });
 
-foreach (var url in data.Links!)
+foreach (var link in data.Links!)
 {
-    Console.WriteLine(url);
+    Console.WriteLine($"{link.Url} {link.Title}");
 }
 ```
 
