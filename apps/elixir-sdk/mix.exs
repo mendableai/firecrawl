@@ -13,7 +13,7 @@ defmodule Firecrawl.MixProject do
       deps: deps(),
       package: package(),
       name: "Firecrawl",
-      description: "Auto-generated Elixir client for the Firecrawl API v2",
+      description: "Elixir client for the Firecrawl v2 API: search, scrape, parse, crawl, and map the web for AI agents. Auto-generated from the OpenAPI spec.",
       source_url: @source_url,
       docs: [
         main: "Firecrawl",

@@ -1,6 +1,6 @@
 # Firecrawl Node SDK
 
-The Firecrawl Node SDK is a library that lets you easily search, scrape, and interact with the web for AI agents — returning clean Markdown or structured data your agents can ship with. It provides a simple and intuitive interface for the Firecrawl API.
+The Firecrawl Node SDK is the JavaScript client for the Firecrawl API, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and get back clean Markdown or structured data your agents can ship with.
 
 ## Installation
 
