@@ -50,6 +50,7 @@ import {
   wrap,
   isValidJobId,
   validateJobIdParam,
+  inferIntegrationMiddleware,
 } from "./shared";
 import { queueStatusController } from "../controllers/v2/queue-status";
 import { creditUsageHistoricalController } from "../controllers/v2/credit-usage-historical";
@@ -194,6 +195,7 @@ v2Router.post(
     allowKeyless: true,
     allowAgentManagedKey: true,
   }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(undefined, SEARCH_CREDITS_FEATURE_ID),
   blocklistMiddleware,
@@ -239,6 +241,7 @@ v2Router.post(
   countryCheck,
   checkCreditsMiddleware(1),
   parsePayloadMiddleware,
+  inferIntegrationMiddleware,
   wrap(parseController),
 );
 
@@ -248,6 +251,7 @@ v2Router.post(
     allowKeyless: true,
     allowAgentManagedKey: true,
   }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(1),
   scrapeBlocklistMiddleware,
@@ -278,6 +282,7 @@ v2Router.delete(
 v2Router.post(
   "/batch/scrape",
   authMiddleware(RateLimiterMode.Scrape, { allowAgentManagedKey: true }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(),
   blocklistMiddleware,
@@ -287,6 +292,7 @@ v2Router.post(
 v2Router.post(
   "/map",
   authMiddleware(RateLimiterMode.Map),
+  inferIntegrationMiddleware,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(mapController),
@@ -295,6 +301,7 @@ v2Router.post(
 v2Router.post(
   "/crawl",
   authMiddleware(RateLimiterMode.Crawl),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(),
   scrapeBlocklistMiddleware,
@@ -381,6 +388,7 @@ v2Router.get(
 v2Router.post(
   "/extract",
   authMiddleware(RateLimiterMode.Extract),
+  inferIntegrationMiddleware,
   deprecationMiddleware("v2_extract"),
   countryCheck,
   checkCreditsMiddleware(20),
@@ -412,6 +420,7 @@ v2Router.get(
 v2Router.post(
   "/agent",
   authMiddleware(RateLimiterMode.Extract),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(20),
   blocklistMiddleware,
@@ -638,6 +647,7 @@ v2Router.post("/slack/events", wrap(slackEventsController));
 v2Router.post(
   ["/browser", "/interact"],
   authMiddleware(RateLimiterMode.Browser, { allowAgentManagedKey: true }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(2),
   wrap(browserCreateController),
