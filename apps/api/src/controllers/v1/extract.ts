@@ -291,8 +291,7 @@ export async function extractController(
     (await getTeamIdSyncB(req.auth.team_id)) &&
     req.body.origin !== "api-sdk" &&
     req.body.origin !== "website" &&
-    !req.body.origin.startsWith("python-sdk@") &&
-    !req.body.origin.startsWith("js-sdk@")
+    !/^(python|js)-sdk[@.]/.test(req.body.origin)
   ) {
     return await oldExtract(req, res, extractId);
   }

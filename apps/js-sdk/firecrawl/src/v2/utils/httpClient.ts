@@ -12,6 +12,7 @@ export interface HttpClientOptions {
   timeoutMs?: number;
   maxRetries?: number;
   backoffFactor?: number; // seconds factor for 0.5, 1, 2...
+  origin?: string;
 }
 
 export interface RequestOptions {
@@ -25,12 +26,14 @@ export class HttpClient {
   private readonly apiUrl: string;
   private readonly maxRetries: number;
   private readonly backoffFactor: number;
+  private readonly origin: string;
 
   constructor(options: HttpClientOptions) {
     this.apiKey = options.apiKey;
     this.apiUrl = options.apiUrl.replace(/\/$/, "");
     this.maxRetries = options.maxRetries ?? 3;
     this.backoffFactor = options.backoffFactor ?? 0.5;
+    this.origin = options.origin || `js-sdk@${getVersion()}`;
     this.instance = axios.create({
       baseURL: this.apiUrl,
       timeout: options.timeoutMs ?? 300000,
@@ -52,6 +55,11 @@ export class HttpClient {
     return this.apiKey;
   }
 
+  /** The attribution origin stamped into requests that do not set their own. */
+  getOrigin(): string {
+    return this.origin;
+  }
+
   /** The client-wide default request timeout, for callers that need to
    * extend a specific request beyond it (e.g. scrape auto-resume). */
   getTimeoutMs(): number {
@@ -61,7 +69,6 @@ export class HttpClient {
   private async request<T = any>(
     config: AxiosRequestConfig,
   ): Promise<AxiosResponse<T>> {
-    const version = getVersion();
     config.headers = {
       ...(config.headers || {}),
     };
@@ -89,9 +96,9 @@ export class HttpClient {
           cfg.data = {
             ...data,
             origin:
-              typeof data.origin === "string" && data.origin.includes("mcp")
+              typeof data.origin === "string" && data.origin
                 ? data.origin
-                : `js-sdk@${version}`,
+                : this.origin,
           };
         }
 
