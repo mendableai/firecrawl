@@ -268,8 +268,8 @@ type JsonOptions struct {
 }
 
 // requestFormats builds the request's formats array. JsonOptions travels as the
-// json format object, since /v2 rejects a top-level jsonOptions key; the json
-// format is added when the caller set JsonOptions without listing it.
+// json format object, since /v2 rejects a top-level jsonOptions key. It replaces
+// a listed json format, or is appended when none is listed.
 func requestFormats(formats []string, formatOptions []interface{}, jsonOptions *JsonOptions) interface{} {
 	if jsonOptions == nil {
 		if len(formatOptions) > 0 {
@@ -295,7 +295,11 @@ func requestFormats(formats []string, formatOptions []interface{}, jsonOptions *
 		*JsonOptions
 	}{Type: "json", JsonOptions: jsonOptions}
 	for i, item := range items {
-		if item == "json" {
+		isJSON := item == "json"
+		if format, ok := item.(map[string]interface{}); ok {
+			isJSON = format["type"] == "json"
+		}
+		if isJSON {
 			items[i] = jsonFormat
 			return items
 		}

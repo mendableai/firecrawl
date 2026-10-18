@@ -212,6 +212,21 @@ func TestScrapeOptionsAddsJsonFormatForJsonOptions(t *testing.T) {
 	}
 }
 
+func TestScrapeOptionsReplacesJsonFormatObjectWithJsonOptions(t *testing.T) {
+	payload, err := json.Marshal(ScrapeOptions{
+		FormatOptions: []interface{}{"markdown", map[string]interface{}{"type": "json"}},
+		JsonOptions:   &JsonOptions{Prompt: "Extract the title"},
+	})
+	if err != nil {
+		t.Fatalf("Marshal ScrapeOptions: %v", err)
+	}
+
+	want := `"formats":["markdown",{"type":"json","prompt":"Extract the title"}]`
+	if !strings.Contains(string(payload), want) {
+		t.Fatalf("serialized formats = %s, want to contain %s", payload, want)
+	}
+}
+
 func TestCrawlScrapeOptionsSendJsonOptionsAsJsonFormat(t *testing.T) {
 	payload, err := json.Marshal(CrawlOptions{
 		ScrapeOptions: &ScrapeOptions{
