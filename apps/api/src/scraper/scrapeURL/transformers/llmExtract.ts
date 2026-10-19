@@ -1627,6 +1627,7 @@ object
 array
 
 Use "enum" as a keyword next to "type": "string" to restrict values; it is not a type. Use "anyOf" for alternatives.
+A field that may be null needs "null" in its type, e.g. "type": ["string", "null"]; that includes an "enum" that lists null.
 Every array must define "items" as a single schema object. Every property must be a schema object with a "type".
 allOf, oneOf, not, and if/then/else are not supported.
 

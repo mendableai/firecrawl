@@ -82,6 +82,35 @@ describe("normalizeSchemaKeywords", () => {
     expect(result.additionalProperties).toBe(false);
   });
 
+  it("adds null to the type of an enum that allows null, at any depth", () => {
+    const result = normalizeSchemaKeywords({
+      type: "object",
+      properties: {
+        seniority: { type: "string", enum: ["junior", "senior", null] },
+        level: { type: ["integer"], enum: [1, 2, null] },
+        already: { type: ["string", "null"], enum: ["a", null] },
+        plain: { type: "string", enum: ["a", "b"] },
+        roles: {
+          type: "array",
+          items: { type: "String", enum: ["lead", null] },
+        },
+        either: { anyOf: [{ type: "string", enum: ["x", null] }] },
+      },
+      $defs: { tier: { type: "string", enum: ["gold", null] } },
+    });
+
+    expect(result.properties.seniority).toEqual({
+      type: ["string", "null"],
+      enum: ["junior", "senior", null],
+    });
+    expect(result.properties.level.type).toEqual(["integer", "null"]);
+    expect(result.properties.already.type).toEqual(["string", "null"]);
+    expect(result.properties.plain.type).toBe("string");
+    expect(result.properties.roles.items.type).toEqual(["string", "null"]);
+    expect(result.properties.either.anyOf[0].type).toEqual(["string", "null"]);
+    expect(result.$defs.tier.type).toEqual(["string", "null"]);
+  });
+
   it("does not modify its input", () => {
     const schema = { type: "String" };
     normalizeSchemaKeywords(schema);
@@ -182,6 +211,17 @@ describe("findStrictSchemaViolation", () => {
           name: { type: "String" },
           slot: { oneOf: [{ type: "string" }, { type: "integer" }] },
           identity: { properties: { value: { type: "string" } } },
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("accepts a string enum that allows null", () => {
+    expect(
+      findStrictSchemaViolation({
+        type: "object",
+        properties: {
+          seniority: { type: "string", enum: ["junior", "senior", null] },
         },
       }),
     ).toBeNull();

@@ -45,6 +45,12 @@ function lowercaseType(type: unknown): unknown {
   return type;
 }
 
+function withNull(type: unknown): unknown {
+  if (typeof type === "string" && type !== "null") return [type, "null"];
+  if (Array.isArray(type) && !type.includes("null")) return [...type, "null"];
+  return type;
+}
+
 export function typeIncludes(type: unknown, name: string): boolean {
   return type === name || (Array.isArray(type) && type.includes(name));
 }
@@ -91,9 +97,10 @@ function isBareRootMap(node: unknown): node is Schema {
 }
 
 /**
- * Lowercases type names ("String" -> "string"), turns oneOf into anyOf, and
- * fills in a missing type when properties/items make it unambiguous. Returns
- * a new schema; the input is not modified.
+ * Lowercases type names ("String" -> "string"), turns oneOf into anyOf, adds
+ * "null" to the type of an enum that allows null, and fills in a missing type
+ * when properties/items make it unambiguous. Returns a new schema; the input
+ * is not modified.
  */
 export function normalizeSchemaKeywords(schema: any): any {
   return normalizeNode(schema, true);
@@ -105,6 +112,13 @@ function normalizeNode(node: any, isRoot: boolean): any {
 
   if (out.type !== undefined) {
     out.type = lowercaseType(out.type);
+  }
+
+  // Strict mode checks every enum value against "type", so an enum that
+  // allows null ({ type: "string", enum: ["a", null] }) is rejected unless
+  // the type allows null too.
+  if (Array.isArray(out.enum) && out.enum.includes(null)) {
+    out.type = withNull(out.type);
   }
 
   if (Array.isArray(out.oneOf) && out.anyOf === undefined) {
