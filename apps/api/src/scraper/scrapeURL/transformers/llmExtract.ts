@@ -1625,6 +1625,7 @@ boolean
 integer
 object
 array
+null
 
 Use "enum" as a keyword next to "type": "string" to restrict values; it is not a type. Use "anyOf" for alternatives.
 A field that may be null needs "null" in its type, e.g. "type": ["string", "null"]; that includes an "enum" that lists null.

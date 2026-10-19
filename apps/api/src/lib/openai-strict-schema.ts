@@ -114,13 +114,6 @@ function normalizeNode(node: any, isRoot: boolean): any {
     out.type = lowercaseType(out.type);
   }
 
-  // Strict mode checks every enum value against "type", so an enum that
-  // allows null ({ type: "string", enum: ["a", null] }) is rejected unless
-  // the type allows null too.
-  if (Array.isArray(out.enum) && out.enum.includes(null)) {
-    out.type = withNull(out.type);
-  }
-
   if (Array.isArray(out.oneOf) && out.anyOf === undefined) {
     out.anyOf = out.oneOf;
     delete out.oneOf;
@@ -132,6 +125,13 @@ function normalizeNode(node: any, isRoot: boolean): any {
     } else if (!isRoot && isPlainObject(out.items)) {
       out.type = "array";
     }
+  }
+
+  // Strict mode checks every enum value against "type", so an enum that
+  // allows null ({ type: "string", enum: ["a", null] }) is rejected unless
+  // the type allows null too.
+  if (Array.isArray(out.enum) && out.enum.includes(null)) {
+    out.type = withNull(out.type);
   }
 
   if (isPlainObject(out.properties)) {

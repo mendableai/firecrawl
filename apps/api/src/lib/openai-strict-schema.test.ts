@@ -98,6 +98,12 @@ describe("normalizeSchemaKeywords", () => {
       },
       $defs: { tier: { type: "string", enum: ["gold", null] } },
     });
+    const inferred = normalizeSchemaKeywords({
+      type: "object",
+      properties: {
+        list: { items: { type: "string" }, enum: [null, ["a"]] },
+      },
+    });
 
     expect(result.properties.seniority).toEqual({
       type: ["string", "null"],
@@ -109,6 +115,7 @@ describe("normalizeSchemaKeywords", () => {
     expect(result.properties.roles.items.type).toEqual(["string", "null"]);
     expect(result.properties.either.anyOf[0].type).toEqual(["string", "null"]);
     expect(result.$defs.tier.type).toEqual(["string", "null"]);
+    expect(inferred.properties.list.type).toEqual(["array", "null"]);
   });
 
   it("does not modify its input", () => {
