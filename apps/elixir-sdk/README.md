@@ -1,8 +1,8 @@
 # Firecrawl
 
-Elixir client for the [Firecrawl API v2](https://docs.firecrawl.dev/api-reference), the context API for AI agents. Search, scrape, parse, crawl, and map the web from Elixir.
+Elixir client for the [Firecrawl API v2](https://docs.firecrawl.dev/api-reference), the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and run Agent and Monitor jobs from Elixir.
 
-Built with [`Req`](https://hexdocs.pm/req) — minimal, idiomatic, auto-generated from the OpenAPI spec with [`NimbleOptions`](https://hexdocs.pm/nimble_options) validation.
+Built with [`Req`](https://hexdocs.pm/req): minimal, idiomatic, and auto-generated from the OpenAPI spec with [`NimbleOptions`](https://hexdocs.pm/nimble_options) validation.
 
 ## Installation
 

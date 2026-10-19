@@ -56,7 +56,7 @@ _Pst. Hey, you, join our stargazers :)_
 - **LLM-ready output**: Clean markdown, structured JSON, screenshots, and more — spend fewer tokens, build better AI apps
 - **We handle the hard stuff**: Rotating proxies, orchestration, rate limits, JS-blocked content, and more — zero configuration
 - **Agent ready**: Connect Firecrawl to any AI agent or MCP client with a single command
-- **Media parsing**: Parse and extract content from web-hosted PDFs, DOCX, and more
+- **Document parsing**: Turn PDFs, DOCX, and other documents into clean Markdown or structured JSON
 - **Actions**: Click, scroll, write, wait, and press before extracting content
 - **Open source**: Developed transparently and collaboratively — [join our community](https://discord.gg/firecrawl)
 
@@ -76,6 +76,7 @@ _Pst. Hey, you, join our stargazers :)_
 
 | Feature | Description |
 |---------|-------------|
+| [**Parse**](https://docs.firecrawl.dev/features/parse) | Turn PDFs, DOCX, and other documents into clean Markdown or structured JSON |
 | [**Agent**](#agent) | Automated data gathering, just describe what you need |
 | [**Crawl**](#crawl) | Scrape all URLs of a website with a single request |
 | [**Map**](#map) | Discover all URLs on a website instantly |

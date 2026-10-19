@@ -1,4 +1,5 @@
-// Package firecrawl provides a Go client for the Firecrawl v2 web scraping API.
+// Package firecrawl provides a Go client for Firecrawl, the context API for AI agents:
+// search, scrape, parse, crawl, map, interact, agent, and monitor on the v2 API.
 //
 // Create a client using [NewClient] with functional options:
 //
