@@ -35,7 +35,7 @@ public class InteractTests
     public async Task InteractAsync_PostsCodeAndReadsOutput()
     {
         var handler = new StubHandler(
-            "{\"success\":true,\"stdout\":\"Example Domain\\n\",\"result\":\"\",\"stderr\":\"\",\"exitCode\":0,\"killed\":false}");
+            "{\"success\":true,\"stdout\":\"Example Domain\\n\",\"result\":\"\",\"stderr\":\"\",\"exitCode\":0,\"killed\":false,\"truncated\":false,\"cdpUrl\":\"wss://browser.example/cdp\"}");
         var client = ClientFor(handler);
 
         var response = await client.InteractAsync("job-123", "console.log(await page.title())", timeout: 60);
@@ -44,6 +44,8 @@ public class InteractTests
         Assert.Equal("Example Domain\n", response.Stdout);
         Assert.Equal(0, response.ExitCode);
         Assert.False(response.Killed);
+        Assert.False(response.Truncated);
+        Assert.Equal("wss://browser.example/cdp", response.CdpUrl);
 
         Assert.Equal(HttpMethod.Post, handler.Request!.Method);
         Assert.Equal("http://localhost/v2/scrape/job-123/interact", handler.Request.RequestUri!.ToString());

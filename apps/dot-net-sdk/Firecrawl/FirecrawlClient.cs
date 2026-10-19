@@ -30,6 +30,8 @@ public class FirecrawlClient
     private const double DefaultBackoffFactor = 0.5;
     private const int DefaultPollIntervalSec = 2;
     private const int DefaultJobTimeoutSec = 300;
+    private const int DefaultInteractTimeoutSec = 30;
+    private const int InteractTimeoutHeadroomSec = 60;
 
     private readonly FirecrawlHttpClient _http;
 
@@ -125,8 +127,12 @@ public class FirecrawlClient
         if (timeout.HasValue)
             body["timeout"] = timeout.Value;
 
+        // Browser setup and cleanup run outside the execution timeout, so allow headroom past it.
         return await _http.PostAsync<BrowserExecuteResponse>(
-            $"/v2/scrape/{Uri.EscapeDataString(jobId)}/interact", body, cancellationToken: cancellationToken);
+            $"/v2/scrape/{Uri.EscapeDataString(jobId)}/interact",
+            body,
+            cancellationToken: cancellationToken,
+            minimumTimeout: TimeSpan.FromSeconds((timeout ?? DefaultInteractTimeoutSec) + InteractTimeoutHeadroomSec));
     }
 
     /// <summary>

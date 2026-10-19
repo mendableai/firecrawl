@@ -10,6 +10,12 @@ public class BrowserExecuteResponse
     [JsonPropertyName("success")]
     public bool Success { get; set; }
 
+    /// <summary>
+    /// Chrome DevTools Protocol URL for connecting to the browser session.
+    /// </summary>
+    [JsonPropertyName("cdpUrl")]
+    public string? CdpUrl { get; set; }
+
     [JsonPropertyName("liveViewUrl")]
     public string? LiveViewUrl { get; set; }
 
@@ -39,6 +45,12 @@ public class BrowserExecuteResponse
     /// </summary>
     [JsonPropertyName("killed")]
     public bool? Killed { get; set; }
+
+    /// <summary>
+    /// Whether the captured output was truncated.
+    /// </summary>
+    [JsonPropertyName("truncated")]
+    public bool? Truncated { get; set; }
 
     [JsonPropertyName("error")]
     public string? Error { get; set; }

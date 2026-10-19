@@ -136,8 +136,8 @@ var stop = await client.StopInteractiveBrowserAsync(scrapeId);
 Console.WriteLine(stop.CreditsBilled);
 ```
 
-`InteractAsync` returns `Stdout`, `Stderr`, `Result`, `ExitCode`, `Killed`, and `Output` (for prompts),
-plus `LiveViewUrl` and `InteractiveLiveViewUrl` for the session. `timeout` is in seconds (1-300, default 30).
+`InteractAsync` returns `Stdout`, `Stderr`, `Result`, `ExitCode`, `Killed`, `Truncated`, and `Output` (for prompts),
+plus `CdpUrl`, `LiveViewUrl` and `InteractiveLiveViewUrl` for the session. `timeout` is in seconds (1-300, default 30).
 
 ### Crawl
 
