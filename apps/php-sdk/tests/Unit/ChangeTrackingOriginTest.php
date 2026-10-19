@@ -18,12 +18,12 @@ it('sends changeTracking as a format alongside markdown', function (): void {
 
 it('keeps existing markdown and changeTracking formats', function (): void {
     $options = ScrapeOptions::with(
-        formats: ['markdown', ['type' => 'changeTracking', 'modes' => ['git-diff']]],
+        formats: ['changeTracking', JsonFormat::with(prompt: 'title'), 'markdown'],
         changeTracking: true,
     );
 
-    expect($options->toArray())
-        ->toBe(['formats' => ['markdown', ['type' => 'changeTracking', 'modes' => ['git-diff']]]]);
+    expect($options->toArray()['formats'])
+        ->toBe(['changeTracking', ['type' => 'json', 'prompt' => 'title'], 'markdown']);
 });
 
 it('never sends a top-level changeTracking key', function (): void {
