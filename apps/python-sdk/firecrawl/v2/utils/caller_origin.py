@@ -10,9 +10,23 @@ _INSTALL_DIRS = ("site-packages", "dist-packages")
 
 @functools.lru_cache(maxsize=None)
 def _distributions() -> dict:
-    from importlib.metadata import packages_distributions
+    from importlib import metadata
 
-    return dict(packages_distributions())
+    if hasattr(metadata, "packages_distributions"):
+        return dict(metadata.packages_distributions())
+    mapping: dict = {}
+    for dist in metadata.distributions():
+        names = (dist.read_text("top_level.txt") or "").split()
+        if not names:
+            first = {f.parts[0] for f in dist.files or [] if f.parts}
+            names = [
+                part.split(".")[0]
+                for part in first
+                if part not in ("..", "__pycache__") and not part.endswith((".dist-info", ".egg-info"))
+            ]
+        for name in names:
+            mapping.setdefault(name, []).append(dist.metadata["Name"])
+    return mapping
 
 
 def _is_sdk_file(filename: str) -> bool:

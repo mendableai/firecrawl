@@ -12,9 +12,13 @@ function packageOf(file: string): string | null {
   return name && !name.startsWith(".") ? name : null;
 }
 
+/** File of a V8 stack line, or null for frames without one (native, anonymous, runtime internals). */
 function frameFile(line: string): string | null {
-  const match = /^\s*at .*?\(?((?:file:\/\/)?(?:[A-Za-z]:)?[\\/][^()]*?):\d+:\d+\)?\s*$/.exec(line);
-  return match ? match[1]! : null;
+  const text = line.trim().replace(/^at /, "");
+  const open = text.indexOf(" (");
+  const location = open >= 0 && text.endsWith(")") ? text.slice(open + 2, -1) : text;
+  const match = /^(.*):\d+:\d+$/.exec(location);
+  return match && !match[1]!.startsWith("node:") ? match[1]! : null;
 }
 
 function slugify(name: string): string {
@@ -27,25 +31,27 @@ function slugify(name: string): string {
 }
 
 /**
- * Slug of the installed package that constructed the client, or null when the
+ * Slug of the installed package that created the client, or null when the
  * caller is application code or detection is disabled. Never throws.
  */
-export function detectCallerPackage(): string | null {
+export function detectCallerPackage(stack?: string): string | null {
   try {
     if (process.env.FIRECRAWL_DISABLE_CALLER_ORIGIN === "1") return null;
-    const limit = Error.stackTraceLimit;
-    Error.stackTraceLimit = 50;
-    let stack: string;
-    try {
-      stack = new Error().stack ?? "";
-    } finally {
-      Error.stackTraceLimit = limit;
+    if (stack === undefined) {
+      const limit = Error.stackTraceLimit;
+      Error.stackTraceLimit = 50;
+      try {
+        stack = new Error().stack ?? "";
+      } finally {
+        Error.stackTraceLimit = limit;
+      }
     }
     let ownFile: string | null = null;
     let ownPackage: string | null = null;
-    for (const line of stack.split("\n").slice(1)) {
+    for (const line of stack.split("\n")) {
+      if (!/^\s*at /.test(line)) continue;
       const file = frameFile(line);
-      if (!file) return null;
+      if (!file) continue;
       if (ownFile === null) {
         ownFile = file;
         ownPackage = packageOf(file);

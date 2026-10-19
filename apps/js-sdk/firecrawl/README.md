@@ -39,13 +39,13 @@ console.log(crawlResponse);
 
 ### Request origin
 
-Requests carry an `origin` tag that identifies the client. Pass the `origin` option to set it, or set `origin` on a single call to override it for that call.
+Requests carry an `origin` tag that identifies the client. Pass the `origin` option to set it. Set `origin` on a single call to override it for that call, except for `app.research` methods, which always use the client origin.
 
 ```js
 const app = new Firecrawl({ apiKey: 'fc-YOUR_API_KEY', origin: 'js-sdk.my-wrapper@1.0.0' });
 ```
 
-By default the tag is `js-sdk@<version>`. When the client is created by code inside an installed package (a wrapper library), the default is `js-sdk.<package>@<version>` instead, for example `js-sdk.scope-name@<version>`. Application code, REPLs and bundled files without `node_modules` in their path keep the plain default. Detection runs once when the client is created and sends only the package name. Set `FIRECRAWL_DISABLE_CALLER_ORIGIN=1` to always use the plain default.
+By default the tag is `js-sdk@<version>`. When the client is created by code inside an installed package (a wrapper library), the default is `js-sdk.<package>@<version>` instead, for example `js-sdk.scope-name@<version>`. Application code, REPLs and bundled files without `node_modules` in their path keep the plain default. Detection runs once when the client is created and sends only the package name, lowercased and sanitized into a slug. Set `FIRECRAWL_DISABLE_CALLER_ORIGIN=1` to always use the plain default.
 
 ### Scraping a URL
 

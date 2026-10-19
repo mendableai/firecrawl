@@ -4797,14 +4797,14 @@ class AsyncV1FirecrawlApp(V1FirecrawlApp):
         if schema:
             schema = self._ensure_schema_dict(schema)
 
-        request_data = V1ExtractResponse(
-            urls=urls or [],
-            allowExternalLinks=allow_external_links,
-            enableWebSearch=enable_web_search,
-            showSources=show_sources,
-            schema=schema,
-            origin=self.origin
-        )
+        request_data = {
+            'urls': urls or [],
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
+            'schema': schema,
+            'origin': self.origin,
+        }
 
         if prompt:
             request_data['prompt'] = prompt
