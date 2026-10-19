@@ -29,8 +29,7 @@ const REQUEST_TIMEOUT_MS = 10_000;
 
 export function isWorldIdConfigured(): boolean {
   return Boolean(
-    config.WORLD_ID_ISSUER &&
-      config.WORLD_ID_CLIENT_ID &&
+    config.WORLD_ID_CLIENT_ID &&
       config.WORLD_ID_CLIENT_SECRET &&
       config.WORLD_ID_CREDENTIAL_SECRET &&
       config.WORLD_ID_SUBJECT_SECRET,
@@ -38,7 +37,7 @@ export function isWorldIdConfigured(): boolean {
 }
 
 function issuer(): string {
-  return config.WORLD_ID_ISSUER!.replace(/\/+$/, "");
+  return config.WORLD_ID_ISSUER.replace(/\/+$/, "");
 }
 
 // One key per purpose (credential signing, device handles), derived from

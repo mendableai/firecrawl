@@ -148,12 +148,10 @@ const configSchema = z.object({
   // Keep separate from KEYLESS_PROXY_SECRET because delegated credentials can
   // authorize billed requests for a managed OAuth connection.
   MCP_DELEGATED_CREDENTIAL_SECRET: emptyStringAsUndefined(z.string().min(32)),
-  // World ID verified-human keyless bucket. Off unless all five are set: the
-  // OIDC issuer (e.g. https://auth.world.org), the confidential client ID and
-  // secret registered with it, WORLD_ID_CREDENTIAL_SECRET (signs the keyless
-  // credentials minted after verification) and WORLD_ID_SUBJECT_SECRET (keys
-  // the World ID subject hashes).
-  WORLD_ID_ISSUER: emptyStringAsUndefined(
+  // World ID verified-human keyless bucket. The issuer defaults to World's; the
+  // feature is off unless the client ID, client secret, credential secret and
+  // subject secret are set.
+  WORLD_ID_ISSUER: emptyStringAsDefault(
     z
       .string()
       .trim()
@@ -161,7 +159,8 @@ const configSchema = z.object({
       .refine(
         value => value.startsWith("https://"),
         "WORLD_ID_ISSUER must be an https URL",
-      ),
+      )
+      .default("https://auth.world.org"),
   ),
   WORLD_ID_CLIENT_ID: emptyStringAsUndefined(z.string().trim().min(1)),
   WORLD_ID_CLIENT_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
