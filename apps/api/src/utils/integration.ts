@@ -37,9 +37,11 @@ export const integrationSchema = z
 
 /** The X-Integration header as an integration value, or undefined when it is missing or invalid. */
 export function integrationFromHeader(req: {
-  get(name: string): string | undefined;
+  headers?: Record<string, string | string[] | undefined>;
 }): string | undefined {
-  const value = req.get("x-integration")?.trim().toLowerCase();
+  const header = req.headers?.["x-integration"];
+  const value =
+    typeof header === "string" ? header.trim().toLowerCase() : undefined;
   return value && integrationSchema.safeParse(value).success
     ? value
     : undefined;
