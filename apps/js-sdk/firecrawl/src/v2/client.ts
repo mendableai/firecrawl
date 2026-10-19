@@ -104,6 +104,7 @@ import type {
 import { defaultOrigin } from "../utils/callerOrigin";
 import { getVersion } from "./utils/getVersion";
 import { Watcher } from "./watcher";
+import { callV1, toV2CrawlOptions, type V1CrawlOptions, type V1Result } from "./utils/v1Compat";
 import type { WatcherOptions } from "./watcher";
 import * as zt from "zod";
 
@@ -730,54 +731,54 @@ export class FirecrawlClient {
     return new Watcher(this.http, jobId, opts);
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer scrape(). */
-  async scrapeUrl(url: string, options?: ScrapeOptions): Promise<Document> {
-    return this.scrape(url, options);
+  /** @deprecated v1 alias for scrape(); its result also carries v1's `success: true`. */
+  async scrapeUrl(url: string, options?: ScrapeOptions): Promise<V1Result<Document>> {
+    return callV1(() => this.scrape(url, options));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer crawl(). */
-  async crawlUrl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<CrawlJob> {
-    return this.crawl(url, req);
+  /** @deprecated v1 alias for crawl(); its result also carries v1's `success: true`. */
+  async crawlUrl(url: string, req: CrawlOptions & V1CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<V1Result<CrawlJob>> {
+    return callV1(() => this.crawl(url, toV2CrawlOptions(req)));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer startCrawl(). */
-  async asyncCrawlUrl(url: string, req: CrawlOptions = {}): Promise<CrawlResponse> {
-    return this.startCrawl(url, req);
+  /** @deprecated v1 alias for startCrawl(); its result also carries v1's `success: true`. */
+  async asyncCrawlUrl(url: string, req: CrawlOptions & V1CrawlOptions = {}): Promise<V1Result<CrawlResponse>> {
+    return callV1(() => this.startCrawl(url, toV2CrawlOptions(req)));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getCrawlStatus(). */
-  async checkCrawlStatus(jobId: string, pagination?: PaginationConfig): Promise<CrawlJob> {
-    return this.getCrawlStatus(jobId, pagination);
+  /** @deprecated v1 alias for getCrawlStatus(); its result also carries v1's `success: true`. */
+  async checkCrawlStatus(jobId: string, pagination?: PaginationConfig): Promise<V1Result<CrawlJob>> {
+    return callV1(() => this.getCrawlStatus(jobId, pagination));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getCrawlErrors(). */
-  async checkCrawlErrors(crawlId: string): Promise<CrawlErrorsResponse> {
-    return this.getCrawlErrors(crawlId);
+  /** @deprecated v1 alias for getCrawlErrors(); its result also carries v1's `success: true`. */
+  async checkCrawlErrors(crawlId: string): Promise<V1Result<CrawlErrorsResponse>> {
+    return callV1(() => this.getCrawlErrors(crawlId));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer map(). */
-  async mapUrl(url: string, options?: MapOptions): Promise<MapData> {
-    return this.map(url, options);
+  /** @deprecated v1 alias for map(); its result also carries v1's `success: true`. */
+  async mapUrl(url: string, options?: MapOptions): Promise<V1Result<MapData>> {
+    return callV1(() => this.map(url, options));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer batchScrape(). */
-  async batchScrapeUrls(urls: string[], opts?: BatchScrapeOptions & { pollInterval?: number; timeout?: number }): Promise<BatchScrapeJob> {
-    return this.batchScrape(urls, opts);
+  /** @deprecated v1 alias for batchScrape(); its result also carries v1's `success: true`. */
+  async batchScrapeUrls(urls: string[], opts?: BatchScrapeOptions & { pollInterval?: number; timeout?: number }): Promise<V1Result<BatchScrapeJob>> {
+    return callV1(() => this.batchScrape(urls, opts));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer startBatchScrape(). */
-  async asyncBatchScrapeUrls(urls: string[], opts?: BatchScrapeOptions): Promise<BatchScrapeResponse> {
-    return this.startBatchScrape(urls, opts);
+  /** @deprecated v1 alias for startBatchScrape(); its result also carries v1's `success: true`. */
+  async asyncBatchScrapeUrls(urls: string[], opts?: BatchScrapeOptions): Promise<V1Result<BatchScrapeResponse>> {
+    return callV1(() => this.startBatchScrape(urls, opts));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getBatchScrapeStatus(). */
-  async checkBatchScrapeStatus(jobId: string, pagination?: PaginationConfig): Promise<BatchScrapeJob> {
-    return this.getBatchScrapeStatus(jobId, pagination);
+  /** @deprecated v1 alias for getBatchScrapeStatus(); its result also carries v1's `success: true`. */
+  async checkBatchScrapeStatus(jobId: string, pagination?: PaginationConfig): Promise<V1Result<BatchScrapeJob>> {
+    return callV1(() => this.getBatchScrapeStatus(jobId, pagination));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getBatchScrapeErrors(). */
-  async checkBatchScrapeErrors(jobId: string): Promise<CrawlErrorsResponse> {
-    return this.getBatchScrapeErrors(jobId);
+  /** @deprecated v1 alias for getBatchScrapeErrors(); its result also carries v1's `success: true`. */
+  async checkBatchScrapeErrors(jobId: string): Promise<V1Result<CrawlErrorsResponse>> {
+    return callV1(() => this.getBatchScrapeErrors(jobId));
   }
 }
 

@@ -7,6 +7,7 @@ import logging
 import os
 
 from .client import Firecrawl, AsyncFirecrawl, FirecrawlApp, AsyncFirecrawlApp
+from .v2.utils.v1_compat import ScrapeOptions
 from .v2.watcher import Watcher
 from .v2.watcher_async import AsyncWatcher
 from .v2.types import (
@@ -41,7 +42,7 @@ from .v1 import (
     V1ChangeTrackingOptions,
 )
 
-__version__ = "4.52.1"
+__version__ = "4.53.0"
 
 # Define the logger for the Firecrawl project
 logger: logging.Logger = logging.getLogger("firecrawl")
@@ -101,6 +102,7 @@ __all__ = [
     'AsyncFirecrawl',
     'FirecrawlApp',
     'AsyncFirecrawlApp',
+    'ScrapeOptions',
     'Watcher',
     'AsyncWatcher',
     'AuditMetadata',
