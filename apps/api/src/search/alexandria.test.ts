@@ -166,6 +166,10 @@ it("retries a failed discovery leg once", async () => {
       body: { success: true, creditsCost: 0, data: { items: [tool] } },
     });
   const result = await discoverTools(input, logger);
+  expect(logger.warn).toHaveBeenCalledWith(
+    "Semantic tool discovery unavailable",
+    expect.objectContaining({ attempt: 1 }),
+  );
   expect(request).toHaveBeenCalledTimes(2);
   expect(result.items).toHaveLength(1);
   expect(result.warning).toBeUndefined();

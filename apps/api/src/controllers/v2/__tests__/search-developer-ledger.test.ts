@@ -51,6 +51,10 @@ vi.mock("../../../lib/key-restriction", () => ({
   checkKeyEndpointRestriction: vi.fn().mockResolvedValue({ allowed: true }),
 }));
 
+vi.mock("../../../lib/alexandria-activity", () => ({
+  markAlexandriaActivity: vi.fn(),
+}));
+
 vi.mock("../../../lib/logger", () => ({
   logger: {
     info: vi.fn(),
@@ -384,6 +388,9 @@ describe("tool discovery availability", () => {
         success: false,
         code: "TOOL_DISCOVERY_UNAVAILABLE",
       }),
+    );
+    expect(mockLogSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ is_successful: false, credits_cost: 0 }),
     );
   });
 

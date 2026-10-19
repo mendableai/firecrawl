@@ -474,10 +474,29 @@ async function searchControllerInner(
     );
 
     if (toolsOnly && result.toolsUnavailable) {
+      const error =
+        "Tool discovery is temporarily unavailable. Retry the request.";
+      setSpanAttributes(span, { "search.status_code": 503 });
+      logSearch({
+        id: jobId,
+        request_id: agentRequestId ?? jobId,
+        query: req.body.query,
+        is_successful: false,
+        error,
+        results: result.response as any,
+        num_results: 0,
+        time_taken: (Date.now() - middlewareStartTime) / 1000,
+        team_id: req.auth.team_id,
+        options: req.body,
+        credits_cost: 0,
+        zeroDataRetention,
+      }).catch(error => {
+        logger.error("Failed to log search", { error, jobId });
+      });
       return res.status(503).json({
         success: false,
         code: "TOOL_DISCOVERY_UNAVAILABLE",
-        error: "Tool discovery is temporarily unavailable. Retry the request.",
+        error,
       });
     }
 
