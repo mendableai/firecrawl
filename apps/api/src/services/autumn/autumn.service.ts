@@ -566,6 +566,33 @@ export class AutumnService {
   }
 
   /**
+   * Whether the org has an auto top-up that can actually fire for CREDITS: it
+   * is enabled, and the org holds a prepaid CREDITS item for it to buy. Autumn
+   * enables the control on some free orgs, but a free plan has no prepaid item,
+   * so nothing would ever be bought. Answers true when Autumn can't answer, so
+   * callers fail open.
+   */
+  async hasAutoTopUp(orgId: string): Promise<boolean> {
+    if (!autumnClient) return true;
+    try {
+      const customer = await autumnClient.customers.get({ customerId: orgId });
+      const autoTopUp = customer.billingControls?.autoTopups?.some(
+        topUp => topUp.featureId === CREDITS_FEATURE_ID && topUp.enabled,
+      );
+      const prepaid = customer.balances?.[CREDITS_FEATURE_ID]?.breakdown?.some(
+        item => item.price?.billingMethod === "prepaid",
+      );
+      return !!autoTopUp && !!prepaid;
+    } catch (error) {
+      logger.warn("Autumn auto top-up lookup failed, failing open", {
+        orgId,
+        error,
+      });
+      return true;
+    }
+  }
+
+  /**
    * Attempts to reserve a team's credits in Autumn. See {@link LockCreditsResult}.
    */
   async lockCredits({

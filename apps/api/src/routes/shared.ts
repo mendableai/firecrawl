@@ -24,7 +24,7 @@ import { isSelfHosted } from "../lib/deployment";
 import { validate as isUuid } from "uuid";
 
 import { config } from "../config";
-import { getAgentFreeRequestsLeft } from "../db/rpc";
+import { CREDIT_CHECK_EXEMPT_TEAM_ID } from "../controllers/v2/agent-credit-gate";
 import {
   autumnService,
   CREDITS_FEATURE_ID,
@@ -150,20 +150,10 @@ export function checkCreditsMiddleware(
         }
       }
 
+      // The agent controller gates credits itself, after it has consumed a
+      // free request: only a consumed one may skip the check.
       if (req.path.startsWith("/agent")) {
-        if (config.USE_DB_AUTHENTICATION) {
-          try {
-            const data = await getAgentFreeRequestsLeft(req.auth.team_id);
-            if (data?.[0]?.free_requests_left !== 0) {
-              return next();
-            }
-          } catch (freeRequestError) {
-            logger.warn("Failed to get agent free requests left", {
-              error: freeRequestError,
-              teamId: req.auth.team_id,
-            });
-          }
-        }
+        return next();
       }
 
       const requestedCredits = minimum ?? 1;
@@ -256,7 +246,7 @@ export function checkCreditsMiddleware(
         );
         if (
           !res.headersSent &&
-          req.auth.team_id !== "8c528896-7882-4587-a4b6-768b721b0b53"
+          req.auth.team_id !== CREDIT_CHECK_EXEMPT_TEAM_ID
         ) {
           return res.status(402).json({
             success: false,

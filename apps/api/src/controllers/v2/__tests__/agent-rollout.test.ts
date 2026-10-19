@@ -23,6 +23,9 @@ vi.mock("../../../config", () => ({
   },
 }));
 vi.mock("../../../db/rpc", () => ({ agentConsumeFreeRequestIfLeft: vi.fn() }));
+vi.mock("../../../services/autumn/autumn.service", () => ({
+  autumnService: { checkCredits: vi.fn(), hasAutoTopUp: vi.fn() },
+}));
 vi.mock("../../../lib/threat-protection/request", () => ({
   resolveThreatProtection: vi.fn().mockResolvedValue({}),
   checkUrlsAgainstThreatPolicy: vi.fn(),
