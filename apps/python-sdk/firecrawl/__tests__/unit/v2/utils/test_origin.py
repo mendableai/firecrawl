@@ -205,3 +205,11 @@ def test_detection_failure_keeps_plain_origin(tmp_path, monkeypatch):
 
     monkeypatch.setattr(caller_origin, "_distributions", boom)
     assert wrapper.make().origin == f"python-sdk@{get_version()}"
+
+
+def test_playground_named_package_keeps_plain_origin(tmp_path, monkeypatch):
+    from firecrawl.v2.utils import caller_origin
+
+    wrapper = _install_fake_package(tmp_path, monkeypatch)
+    monkeypatch.setattr(caller_origin, "_distributions", lambda: {"wrapper_pkg": ["my-playground-kit"]})
+    assert wrapper.make().origin == f"python-sdk@{get_version()}"

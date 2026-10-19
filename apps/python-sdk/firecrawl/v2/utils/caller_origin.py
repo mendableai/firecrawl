@@ -59,6 +59,8 @@ def default_origin(version: str) -> str:
             return plain
         name = _caller_distribution()
         slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:48].strip("-") if name else ""
-        return f"python-sdk.{slug}@{version}" if slug else plain
+        if not slug or "playground" in slug:
+            return plain
+        return f"python-sdk.{slug}@{version}"
     except Exception:
         return plain

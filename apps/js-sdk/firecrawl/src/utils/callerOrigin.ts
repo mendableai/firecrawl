@@ -21,6 +21,7 @@ function frameFile(line: string): string | null {
   return match && !match[1]!.startsWith("node:") ? match[1]! : null;
 }
 
+// Downstream surface classification matches "playground" anywhere in an origin.
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -59,7 +60,8 @@ export function detectCallerPackage(stack?: string): string | null {
       if (file === ownFile) continue;
       const name = packageOf(file);
       if (name && name === ownPackage) continue;
-      return name ? slugify(name) || null : null;
+      const slug = name ? slugify(name) : "";
+      return slug && !slug.includes("playground") ? slug : null;
     }
   } catch {}
   return null;

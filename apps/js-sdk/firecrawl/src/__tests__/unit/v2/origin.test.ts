@@ -114,6 +114,11 @@ describe("detectCallerPackage", () => {
     expect(detectCallerPackage(stack)).toBeNull();
   });
 
+  test("returns null for a package whose slug would read as another traffic class", () => {
+    const stack = stackFrom("make (/srv/app/node_modules/my-playground-kit/index.js:3:12)");
+    expect(detectCallerPackage(stack)).toBeNull();
+  });
+
   test("returns null for a bundle without node_modules in its path", () => {
     expect(detectCallerPackage(stackFrom("make (/srv/app/dist/bundle.js:1:1)"))).toBeNull();
   });
