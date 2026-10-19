@@ -5,7 +5,7 @@ vi.mock("../../config", () => ({
 vi.mock("./client", () => ({ exchangeRequest: mocks.request }));
 vi.mock("../../controllers/auth", () => ({ getACUCTeam: mocks.team }));
 
-let authorizeProviders: typeof import("./access").authorizeProviders;
+let authorizeProviders: typeof import("./access.js").authorizeProviders;
 
 const calls = [
   { provider: "fred", capability: "series/observations", options: {} },
@@ -26,7 +26,7 @@ const requirement = (required: boolean) => ({
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
-  ({ authorizeProviders } = await import("./access"));
+  ({ authorizeProviders } = await import("./access.js"));
 });
 
 afterEach(() => vi.useRealTimers());
