@@ -116,6 +116,21 @@ it("tool-only search never runs or bills SERP", async () => {
   expect(result.response.tools).toEqual([{ id: "fred/series/observations" }]);
 });
 
+it("passes through unavailable tool discovery", async () => {
+  mocks.discoverTools.mockResolvedValue({
+    items: [],
+    warning: "Some tool discovery results are unavailable.",
+    unavailable: true,
+  });
+  const result = await executeSearch(
+    { ...options([]), sources: [{ type: "alexandria" }] },
+    { ...context, flags: { exchangeRetrieve: true } },
+    logger,
+  );
+  expect(result.toolsUnavailable).toBe(true);
+  expect(result.response.tools).toEqual([]);
+});
+
 it("mixed search bills only normal web results", async () => {
   mocks.search.mockResolvedValue({ web: [developerResult] });
   const result = await executeSearch(
