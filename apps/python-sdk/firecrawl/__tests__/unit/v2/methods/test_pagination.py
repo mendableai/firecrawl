@@ -941,7 +941,7 @@ class TestRunningJobPagination:
         "kind,get_status",
         [("batch/scrape", get_batch_scrape_status), ("crawl", get_crawl_status)],
     )
-    def test_running_job_stops_at_first_empty_page(self, kind, get_status):
+    def test_running_job_stops_when_cursor_repeats(self, kind, get_status):
         client = Mock()
         client.get.side_effect = self._running_responses(kind, first_page_docs=1)
 
@@ -971,7 +971,7 @@ class TestRunningJobPagination:
         "kind,get_status",
         [("batch/scrape", get_batch_scrape_status_async), ("crawl", get_crawl_status_async)],
     )
-    async def test_running_job_stops_at_first_empty_page_async(self, kind, get_status):
+    async def test_running_job_stops_when_cursor_repeats_async(self, kind, get_status):
         client = AsyncMock()
         client.get.side_effect = self._running_responses(kind, async_client=True, first_page_docs=1)
 
@@ -979,6 +979,24 @@ class TestRunningJobPagination:
 
         assert client.get.call_count == 2
         assert result.status == "scraping"
+        assert len(result.data) == 1
+
+    @pytest.mark.parametrize(
+        "kind,get_status",
+        [("batch/scrape", get_batch_scrape_status), ("crawl", get_crawl_status)],
+    )
+    def test_completed_job_follows_empty_page_while_cursor_advances(self, kind, get_status):
+        url = f"https://api.firecrawl.dev/v2/{kind}/{self.job_id}"
+        client = Mock()
+        client.get.side_effect = [
+            self._page("completed", [], f"{url}?skip=1"),
+            self._page("completed", [], f"{url}?skip=2"),
+            self._page("completed", [self.sample_doc], None),
+        ]
+
+        result = get_status(client, self.job_id)
+
+        assert client.get.call_count == 3
         assert len(result.data) == 1
 
 

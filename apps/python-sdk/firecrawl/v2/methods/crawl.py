@@ -220,7 +220,7 @@ def get_crawl_status(
 
     # Handle pagination if requested
     auto_paginate = pagination_config.auto_paginate if pagination_config else True
-    if auto_paginate and payload["next"] and documents and not (
+    if auto_paginate and payload["next"] and (documents or payload["status"] == "completed") and not (
         pagination_config
         and pagination_config.max_results is not None
         and len(documents) >= pagination_config.max_results
@@ -345,10 +345,6 @@ def _fetch_all_pages(
         except Exception:
             break
 
-        # A running job keeps returning `next`; an empty page means nothing new has landed yet.
-        if not page_payload["data"]:
-            break
-
         # Add documents from this page
         for document in page_payload["data"]:
             # Check max_results limit BEFORE adding each document
@@ -360,7 +356,9 @@ def _fetch_all_pages(
         if max_results is not None and len(documents) >= max_results:
             break
 
-        # Get next URL
+        # A running job repeats its cursor on an empty page until new documents finish.
+        if not page_payload["data"] and page_payload["next"] == current_url:
+            break
         current_url = page_payload["next"]
         page_count += 1
 
