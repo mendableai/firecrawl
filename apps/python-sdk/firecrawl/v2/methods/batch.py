@@ -14,7 +14,7 @@ from ..types import (
     PaginationConfig,
     AuditMetadata,
 )
-from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
+from ..utils import FirecrawlError, HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 from ..utils.normalize import normalize_document_input
 from ..types import CrawlErrorsResponse
 
@@ -30,7 +30,7 @@ def _parse_batch_scrape_documents(data_list: Optional[List[Any]]) -> List[Docume
 
 def _parse_batch_scrape_status_response(body: Dict[str, Any]) -> Dict[str, Any]:
     if not body.get("success"):
-        raise Exception(body.get("error", "Unknown error occurred"))
+        raise FirecrawlError(body.get("error", "Unknown error occurred"))
 
     return {
         "status": body.get("status"),
@@ -95,7 +95,7 @@ def start_batch_scrape(
     # Parse response
     body = response.json()
     if not body.get("success"):
-        raise Exception(body.get("error", "Unknown error occurred"))
+        raise FirecrawlError(body.get("error", "Unknown error occurred"))
     return BatchScrapeResponse(
         id=body.get("id"),
         url=body.get("url"),
@@ -136,7 +136,7 @@ def get_batch_scrape_status(
 
     # Handle pagination if requested
     auto_paginate = pagination_config.auto_paginate if pagination_config else True
-    if auto_paginate and payload["next"]:
+    if auto_paginate and payload["next"] and (documents or payload["status"] == "completed"):
         documents = _fetch_all_batch_pages(
             client, 
             payload["next"], 
@@ -258,7 +258,9 @@ def _fetch_all_batch_pages(
         if max_results is not None and len(documents) >= max_results:
             break
         
-        # Get next URL
+        # A running job repeats its cursor on an empty page until new documents finish.
+        if not page_payload["data"] and page_payload["next"] == current_url:
+            break
         current_url = page_payload["next"]
         page_count += 1
     

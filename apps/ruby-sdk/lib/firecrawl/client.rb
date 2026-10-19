@@ -81,6 +81,10 @@ module Firecrawl
       body.merge!(options.to_h) if options
       body["origin"] ||= "ruby-sdk@#{Firecrawl::VERSION}"
       raw = @http.post("/v2/scrape", body)
+      # Some scrape failures (e.g. SCRAPE_DNS_RESOLUTION_ERROR) arrive as HTTP 200 with success: false.
+      if raw["success"] == false
+        raise FirecrawlError.new(raw["error"] || "Scrape failed", status_code: 200, error_code: raw["code"], details: raw["details"])
+      end
       data = raw["data"] || raw
       Models::Document.new(data)
     end
@@ -218,6 +222,7 @@ module Firecrawl
 
       body = { "url" => url }
       body.merge!(options.to_h) if options
+      body["origin"] ||= "ruby-sdk@#{Firecrawl::VERSION}"
       raw = @http.post("/v2/crawl", body)
       Models::CrawlResponse.new(raw)
     end
@@ -292,6 +297,7 @@ module Firecrawl
         body.merge!(opts_hash)
         body.merge!(nested) if nested
       end
+      body["origin"] ||= "ruby-sdk@#{Firecrawl::VERSION}"
       raw = @http.post("/v2/batch/scrape", body, extra_headers: extra_headers)
       Models::BatchScrapeResponse.new(raw)
     end
@@ -343,6 +349,7 @@ module Firecrawl
 
       body = { "url" => url }
       body.merge!(options.to_h) if options
+      body["origin"] ||= "ruby-sdk@#{Firecrawl::VERSION}"
       raw = @http.post("/v2/map", body)
       data = raw["data"] || raw
       Models::MapData.new(data)

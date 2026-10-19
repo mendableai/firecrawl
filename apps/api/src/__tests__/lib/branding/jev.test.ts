@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { generateObject } from "ai";
+import { APITimeoutError, RateLimitError } from "@typesafe-ai/sdk";
 
 const mocks = vi.hoisted(() => ({ systemOne: vi.fn() }));
 
@@ -23,8 +24,15 @@ import {
   buildJevRequest,
   cleanFontFamily,
   describeColor,
+  resetJevBreaker,
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
+import {
+  brandingRoutedTotal,
+  brandingJevBreakerOpensTotal,
+  brandingJevCallsTotal,
+  brandingJevRolloutPercent,
+} from "../../../lib/branding/metrics";
 import { mergeBrandingResults } from "../../../lib/branding/merge";
 import { BrandingLLMInput } from "../../../lib/branding/types";
 import { CostTracking } from "../../../lib/cost-tracking";
@@ -212,6 +220,7 @@ const saved = {
 };
 
 beforeEach(() => {
+  resetJevBreaker();
   config.TYPESAFE_API_KEY = "ts-test";
   config.BRANDING_JEV = undefined;
   config.BRANDING_JEV_TEAM_IDS = ["team-jev"];
@@ -241,6 +250,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   config.TYPESAFE_API_KEY = saved.key;
   config.BRANDING_JEV = saved.global;
   config.BRANDING_JEV_TEAM_IDS = saved.teamIds;
@@ -295,7 +305,21 @@ describe("branding with Jev", () => {
 
     const [request, options] = mocks.systemOne.mock.calls[0];
     expect(request.model).toBe("jev-latest");
-    expect(options).toEqual({ timeout: 5000, retry: { maxRetries: 1 } });
+    expect(options).toEqual({
+      timeout: 5000,
+      retry: {
+        maxRetries: 1,
+        apiTimeoutError: true,
+        backoffInitialMs: 100,
+        httpStatuses: new Set([
+          408,
+          ...Array.from({ length: 100 }, (_, i) => 500 + i).filter(
+            s => s !== 529,
+          ),
+        ]),
+        maxRetryAfterMs: 1000,
+      },
+    });
     expect(Object.keys(request.questions.logo.criteria)).toEqual([
       "logo_0",
       "logo_1",
@@ -356,6 +380,17 @@ describe("branding with Jev", () => {
     expect(merged.colors?.primary).toBe("#6D28D9");
   });
 
+  it("tells cookie settings apart from buttons that merely contain the words", () => {
+    const input = baseInput(new CostTracking());
+    input.buttons = [
+      { ...input.buttons[0], index: 0, text: "View preferences" },
+      { ...input.buttons[1], index: 1, text: "Preview settings" },
+    ];
+    expect(Object.keys(buildJevRequest(input).state.buttons as object)).toEqual(
+      ["button_1"],
+    );
+  });
+
   it("never asks Jev to pick a cookie-consent button", async () => {
     const input = baseInput(new CostTracking());
     input.buttons = [
@@ -377,6 +412,146 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
   });
 
+  it("fails fast when TypeSafe asks to back off, and retries a 503 or a timeout once, quickly", async () => {
+    // The options Jev passes, run through the real SDK against a fake server.
+    mocks.systemOne.mockResolvedValueOnce(jevResponse());
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    const [request, options] = mocks.systemOne.mock.calls[0];
+    const { TypeSafeClient } =
+      await vi.importActual<typeof import("@typesafe-ai/sdk")>(
+        "@typesafe-ai/sdk",
+      );
+    const call = async (status: number) => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { message: "busy" } }), {
+            status,
+            headers: {
+              "content-type": "application/json",
+              "retry-after": "10",
+            },
+          }),
+      );
+      const client = new TypeSafeClient({
+        apiKey: "test",
+        logLevel: "off",
+        fetch,
+      });
+      const started = Date.now();
+      await expect(client.systemOne(request, options)).rejects.toThrow();
+      return { attempts: fetch.mock.calls.length, ms: Date.now() - started };
+    };
+
+    for (const status of [529, 429]) {
+      const r = await call(status);
+      expect(r.attempts).toBe(1);
+      expect(r.ms).toBeLessThan(500);
+    }
+    const r = await call(503);
+    expect(r.attempts).toBe(2);
+    expect(r.ms).toBeLessThan(2000); // not the 10 s Retry-After
+
+    // A call that runs out of time is tried once more, right away.
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+      fetch.mock.calls.length === 1
+        ? new Promise<Response>((_, reject) =>
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            ),
+          )
+        : new Response(JSON.stringify(jevResponse()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+    );
+    const client = new TypeSafeClient({
+      apiKey: "test",
+      logLevel: "off",
+      fetch,
+    });
+    const started = Date.now();
+    await expect(
+      client.systemOne(request, { ...options, timeout: 100 }),
+    ).resolves.toBeDefined();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(Date.now() - started).toBeLessThan(400); // 100 ms timeout + ~0.1 s backoff
+  });
+
+  it("stops calling Jev for a minute after repeated failures, then tries again", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.parse("2026-10-08T12:00:00Z"));
+    mocks.systemOne.mockRejectedValue(new Error("529 high traffic"));
+
+    for (let i = 0; i < 5; i++) {
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    }
+    expect(mocks.systemOne).toHaveBeenCalledTimes(5);
+
+    // Open: answered by the LLM without waiting on Jev.
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    expect(mocks.systemOne).toHaveBeenCalledTimes(5);
+    expect(generateObject).toHaveBeenCalledTimes(6);
+
+    // After the cooldown Jev is tried again, and a success keeps it in use.
+    vi.setSystemTime(Date.now() + 61_000);
+    mocks.systemOne.mockReset().mockResolvedValue(jevResponse());
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    expect(mocks.systemOne).toHaveBeenCalledTimes(2);
+    expect(generateObject).toHaveBeenCalledTimes(6);
+  });
+
+  it("reopens on the first failure after the cooldown", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.parse("2026-10-08T12:00:00Z"));
+    mocks.systemOne.mockRejectedValue(new Error("503 no healthy upstream"));
+    for (let i = 0; i < 5; i++) {
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    }
+
+    vi.setSystemTime(Date.now() + 61_000);
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(mocks.systemOne).toHaveBeenCalledTimes(6);
+  });
+
+  it("reopens at once after the cooldown even if a call that started earlier succeeded late", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.parse("2026-10-08T12:00:00Z"));
+    let finishSlowCall!: (value: unknown) => void;
+    mocks.systemOne.mockImplementationOnce(
+      () => new Promise(resolve => (finishSlowCall = resolve)),
+    );
+    const slow = enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    mocks.systemOne.mockRejectedValue(new Error("529 high traffic"));
+    for (let i = 0; i < 5; i++) {
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    }
+    finishSlowCall(jevResponse());
+    await slow;
+
+    vi.setSystemTime(Date.now() + 61_000);
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    // the slow call, five failures, one failure after the cooldown; then open again
+    expect(mocks.systemOne).toHaveBeenCalledTimes(7);
+  });
+
+  it("does not count unusable answers as failures", async () => {
+    mocks.systemOne.mockResolvedValue({
+      model: "jev-1.13.0",
+      usage: { input_tokens: 10, output_tokens: 0 },
+    });
+
+    for (let i = 0; i < 6; i++) {
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    }
+
+    expect(mocks.systemOne).toHaveBeenCalledTimes(6);
+  });
+
   it("falls back to the LLM when Jev's answers have an unexpected shape", async () => {
     respondWith({
       model: "jev-1.13.0",
@@ -391,6 +566,87 @@ describe("branding with Jev", () => {
     expect(costTracking.calls.map(c => c.metadata.method)).toEqual([
       "enhanceBrandingWithJev",
       "enhanceBrandingWithLLM",
+    ]);
+  });
+
+  it("drops fallback fonts and unplaced extras once headings and body are covered", async () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.typography = {
+      fontFamilies: { primary: "Inter", heading: "Inter" },
+    };
+    input.jsAnalysis.fonts = [
+      { family: "Inter", count: 40 },
+      { family: "Segoe UI", count: 20 },
+      { family: "Roboto", count: 10 },
+      { family: "Canela", count: 5 },
+    ];
+    respondWith(
+      jevResponse({
+        font_0_is_brand: { type: "noul", noul: 0.95 },
+        font_1_is_brand: { type: "noul", noul: 0.9 },
+        font_2_is_brand: { type: "noul", noul: 0.9 },
+        font_3_is_brand: { type: "noul", noul: 0.9 },
+        font_3_role: {
+          type: "choice",
+          choice: "unknown",
+          probabilities: { unknown: 1 },
+          confidence: 0.9,
+        },
+      }),
+    );
+
+    const result = await enhanceBrandingWithLLM(input);
+
+    expect(result.cleanedFonts).toEqual([{ family: "Inter", role: "body" }]);
+  });
+
+  it("keeps the typography role of a family merged under its spaced name", async () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.typography = {
+      fontFamilies: { primary: "Inter", heading: "CormorantGaramond" },
+    };
+    input.jsAnalysis.fonts = [
+      { family: "Inter", count: 40 },
+      { family: "CormorantGaramond", count: 10 },
+      { family: "Cormorant Garamond", count: 5 },
+      { family: "Open-Sans", count: 3 },
+      { family: "Open Sans", count: 2 },
+    ];
+
+    const request = buildJevRequest(input);
+
+    expect(request.fonts.map(f => [f.family, f.role])).toEqual([
+      ["Inter", "body"],
+      ["Cormorant Garamond", "heading"],
+      ["Open-Sans", undefined],
+      ["Open Sans", undefined],
+    ]);
+  });
+
+  it("keeps a fallback font the page uses for text, or when it is all there is", async () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.typography = { fontFamilies: { primary: "Arial" } };
+    input.jsAnalysis.fonts = [{ family: "Arial", count: 40 }];
+    respondWith(jevResponse({ font_0_is_brand: { type: "noul", noul: 0.9 } }));
+    expect((await enhanceBrandingWithLLM(input)).cleanedFonts).toEqual([
+      { family: "Arial", role: "body" },
+    ]);
+
+    const only = baseInput(new CostTracking());
+    only.jsAnalysis.fonts = [{ family: "Helvetica", count: 40 }];
+    respondWith(
+      jevResponse({
+        font_0_is_brand: { type: "noul", noul: 0.9 },
+        font_0_role: {
+          type: "choice",
+          choice: "unknown",
+          probabilities: { unknown: 1 },
+          confidence: 0.9,
+        },
+      }),
+    );
+    expect((await enhanceBrandingWithLLM(only)).cleanedFonts).toEqual([
+      { family: "Helvetica", role: "unknown" },
     ]);
   });
 
@@ -466,6 +722,40 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.confidence).toBeCloseTo(0.48);
   });
 
+  it("skips a secondary button that looks like the primary, since merge would drop it", async () => {
+    const input = baseInput(new CostTracking());
+    input.buttons.push({
+      ...input.buttons[0],
+      index: 2,
+      text: "Start free trial",
+    });
+    respondWith(
+      jevResponse({
+        secondary_button: {
+          type: "choice",
+          choice: "button_2",
+          probabilities: {
+            button_0: 0.1,
+            button_1: 0.3,
+            button_2: 0.55,
+            none: 0.05,
+          },
+          confidence: 0.5,
+        },
+      }),
+    );
+
+    const result = await enhanceBrandingWithLLM(input);
+
+    expect(result.buttonClassification.secondaryButtonIndex).toBe(1);
+    const merged = mergeBrandingResults(
+      input.jsAnalysis,
+      result,
+      input.buttons,
+    );
+    expect(merged.components?.buttonSecondary?.background).toBe("transparent");
+  });
+
   it("falls back to the LLM when the TypeSafe API errors", async () => {
     mocks.systemOne.mockRejectedValueOnce(new Error("invalid api key"));
     const costTracking = new CostTracking();
@@ -529,6 +819,20 @@ describe("branding with Jev", () => {
       expect.any(Function),
       expect.objectContaining({ zeroDataRetention: true }),
     );
+    withSpan.mockRestore();
+  });
+
+  it("tags the Jev span with the team so spend can be attributed", async () => {
+    respondWith(jevResponse());
+    const withSpan = vi.spyOn(tracer, "withSpan");
+
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    const call = withSpan.mock.calls.find(c => c[0] === "typesafe.systemone");
+    expect(call?.[2]?.attributes).toMatchObject({
+      feature: "branding",
+      teamId: "team-jev",
+    });
     withSpan.mockRestore();
   });
 
@@ -605,6 +909,64 @@ describe("Jev request building", () => {
     ]);
   });
 
+  it("offers the likeliest logo's colors, labelled as the logo's", () => {
+    const input = baseInput(new CostTracking());
+    input.logoCandidates = [
+      { ...MENU_ICON, colors: [{ color: "#FF0000", share: 1 }] },
+      {
+        ...LOGO,
+        colors: [
+          { color: "#0E7E4E", share: 0.7 },
+          { color: "#6D28D9", share: 0.3 },
+        ],
+      },
+    ];
+    input.heuristicLogoPick = {
+      selectedIndexInFilteredList: 1,
+      confidence: 0.9,
+      reasoning: "header home link",
+    };
+
+    const request = buildJevRequest(input);
+    const usage = (hex: string) =>
+      request.colors.find(c => c.hex === hex)?.usage ?? [];
+
+    expect(usage("#0E7E4E")).toEqual(["color of the logo (70% of it)"]);
+    // A color in both the logo and a button carries both.
+    expect(usage("#6D28D9")).toEqual(
+      expect.arrayContaining([
+        "color of the logo (30% of it)",
+        'background of button "Get started"',
+      ]),
+    );
+    expect(request.colors.map(c => c.hex)).not.toContain("#FF0000");
+  });
+
+  it("sends only well-formed Unicode text", () => {
+    // "𝐁" (U+1D401) is a surrogate pair. The branding script truncates button
+    // text by code unit, which can leave its first half alone at the end.
+    const bold = "\u{1D401}";
+    const input = baseInput(new CostTracking());
+    input.pageTitle = "a".repeat(199) + bold;
+    input.buttons![0].text = "Beyond the Storefront " + bold + "\uD835";
+    input.buttons![1].text = "x".repeat(39) + bold;
+
+    const request = buildJevRequest(input);
+    const page = request.state.page as Record<string, string>;
+    const buttons = request.state.buttons as Record<
+      string,
+      Record<string, string>
+    >;
+
+    // clip() drops a pair it would cut in half rather than keep one half.
+    expect(page.title).toBe("a".repeat(199));
+    expect(buttons.button_0.text).toBe(
+      "Beyond the Storefront " + bold + "\uFFFD",
+    );
+    // JSON.stringify escapes lone surrogates as \udxxx; none may remain.
+    expect(JSON.stringify(request.state)).not.toMatch(/\\ud[89a-f]/i);
+  });
+
   it("names common colors", () => {
     expect(describeColor("#E2511A")).toBe("vivid orange");
     expect(describeColor("#0A2540")).toBe("very dark blue");
@@ -619,5 +981,110 @@ describe("Jev request building", () => {
     expect(cleanFontFamily("var(--font-sans)")).toBeUndefined();
     expect(cleanFontFamily("'Söhne'")).toBe("Söhne");
     expect(cleanFontFamily("ui-sans-serif")).toBeUndefined();
+    expect(cleanFontFamily("system-ui, sans-serif")).toBeUndefined();
+    expect(cleanFontFamily("Inter, sans-serif")).toBe("Inter");
+    expect(cleanFontFamily("Newsreader Variable")).toBe("Newsreader");
+  });
+
+  it("merges a family listed with and without spaces", () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.fonts = [
+      { family: "CormorantGaramond", count: 10 },
+      { family: "Cormorant Garamond", count: 5 },
+    ];
+    expect(buildJevRequest(input).fonts).toEqual([
+      { family: "Cormorant Garamond", count: 15, role: undefined },
+    ]);
+  });
+});
+
+describe("branding metrics", () => {
+  const value = async (
+    metric: {
+      get: () => Promise<{ values: { labels: object; value: number }[] }>;
+    },
+    labels: Record<string, string> = {},
+  ) =>
+    (await metric.get()).values.find(v =>
+      Object.entries(labels).every(
+        ([k, want]) => (v.labels as Record<string, string>)[k] === want,
+      ),
+    )?.value ?? 0;
+
+  it("counts which model answered and how each Jev call ended", async () => {
+    const jevOk = { outcome: "ok", shadow: "false" };
+    const rateLimited = { outcome: "rate_limited", shadow: "false" };
+    const timedOut = { outcome: "timeout", shadow: "false" };
+    const byJev = { model: "jev", reason: "rollout" };
+    const fellBack = { model: "llm", reason: "jev_unavailable" };
+    const before = {
+      jevOk: await value(brandingJevCallsTotal, jevOk),
+      rateLimited: await value(brandingJevCallsTotal, rateLimited),
+      timedOut: await value(brandingJevCallsTotal, timedOut),
+      byJev: await value(brandingRoutedTotal, byJev),
+      fellBack: await value(brandingRoutedTotal, fellBack),
+    };
+
+    respondWith(jevResponse());
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    mocks.systemOne.mockRejectedValueOnce(
+      new RateLimitError(429, {}, new Headers()),
+    );
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    mocks.systemOne.mockRejectedValueOnce(new APITimeoutError(1500));
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(await value(brandingJevCallsTotal, jevOk)).toBe(before.jevOk + 1);
+    expect(await value(brandingJevCallsTotal, rateLimited)).toBe(
+      before.rateLimited + 1,
+    );
+    expect(await value(brandingJevCallsTotal, timedOut)).toBe(
+      before.timedOut + 1,
+    );
+    expect(await value(brandingRoutedTotal, byJev)).toBe(before.byJev + 1);
+    expect(await value(brandingRoutedTotal, fellBack)).toBe(
+      before.fellBack + 2,
+    );
+  });
+
+  it("counts the breaker opening and the calls it skips", async () => {
+    const skipped = { outcome: "breaker_open", shadow: "false" };
+    const opensBefore = await value(brandingJevBreakerOpensTotal);
+    const skippedBefore = await value(brandingJevCallsTotal, skipped);
+    mocks.systemOne.mockRejectedValue(new Error("529 high traffic"));
+
+    for (let i = 0; i < 6; i++) {
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    }
+
+    expect(await value(brandingJevBreakerOpensTotal)).toBe(opensBefore + 1);
+    expect(await value(brandingJevCallsTotal, skipped)).toBe(skippedBefore + 1);
+  });
+
+  it("counts teams outside the rollout as answered by the LLM", async () => {
+    const outside = { model: "llm", reason: "not_in_rollout" };
+    const before = await value(brandingRoutedTotal, outside);
+    config.BRANDING_JEV_TEAM_IDS = [];
+
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(await value(brandingRoutedTotal, outside)).toBe(before + 1);
+    expect(mocks.systemOne).not.toHaveBeenCalled();
+  });
+});
+
+describe("rollout gauge", () => {
+  it("reports the share of teams this process sends to Jev", async () => {
+    const read = async () =>
+      (await brandingJevRolloutPercent.get()).values[0]?.value;
+
+    config.BRANDING_JEV_ROLLOUT_PERCENT = 75;
+    expect(await read()).toBe(75);
+
+    config.BRANDING_JEV = true;
+    expect(await read()).toBe(100);
+
+    config.TYPESAFE_API_KEY = undefined;
+    expect(await read()).toBe(0);
   });
 });

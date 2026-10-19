@@ -1,6 +1,6 @@
 # Firecrawl Node SDK
 
-The Firecrawl Node SDK is a library that lets you easily search, scrape, and interact with the web for AI agents — returning clean Markdown or structured data your agents can ship with. It provides a simple and intuitive interface for the Firecrawl API.
+The Firecrawl Node SDK is the JavaScript client for the Firecrawl API, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, run Agent and Monitor jobs, and get back clean Markdown or structured data your agents can ship with.
 
 ## Installation
 
@@ -13,9 +13,9 @@ npm install firecrawl
 ## Usage
 
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
-2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
+2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as the `apiKey` option to the `Firecrawl` class.
 
-Here's an example of how to use the SDK with error handling:
+Here's an example of how to use the SDK with error handling. It uses ES modules and top-level `await`, so save it as an `.mjs` file or set `"type": "module"` in your `package.json`:
 
 ```js
 import { Firecrawl } from 'firecrawl';
@@ -36,6 +36,16 @@ const crawlResponse = await app.crawl('https://firecrawl.dev', {
 });
 console.log(crawlResponse);
 ```
+
+### Request origin
+
+Requests carry an `origin` tag that identifies the client. Pass the `origin` option to set it. Set `origin` on a single call to override it for that call, except for `app.research` methods, which always use the client origin.
+
+```js
+const app = new Firecrawl({ apiKey: 'fc-YOUR_API_KEY', origin: 'js-sdk.my-wrapper@1.0.0' });
+```
+
+By default the tag is `js-sdk@<version>`. When the client is created by code inside an installed package (a wrapper library), the default is `js-sdk.<package>@<version>` instead, for example `js-sdk.scope-name@<version>`. Application code, REPLs and bundled files without `node_modules` in their path keep the plain default. Detection runs once when the client is created and sends only the package name, lowercased and sanitized into a slug. Set `FIRECRAWL_DISABLE_CALLER_ORIGIN=1` to always use the plain default.
 
 ### Scraping a URL
 
@@ -126,7 +136,7 @@ const crawlResponse = await app.crawl('https://firecrawl.dev', {
 To start an asynchronous crawl, use `startCrawl`. It returns a job ID you can poll with `getCrawlStatus`.
 
 ```js
-const start = await app.startCrawl('https://mendable.ai', {
+const start = await app.startCrawl('https://firecrawl.dev', {
   excludePaths: ['blog/*'],
   limit: 5,
 });
@@ -137,7 +147,7 @@ const start = await app.startCrawl('https://mendable.ai', {
 To check the status of a crawl job with error handling, use the `getCrawlStatus` method. It takes the job ID as a parameter and returns the current status.
 
 ```js
-const status = await app.getCrawlStatus(id);
+const status = await app.getCrawlStatus(start.id);
 ```
 
 ### Extracting structured data from URLs
@@ -191,7 +201,7 @@ const scraped = await app.search('firecrawl changelog', {
 ```
 
 Results are grouped by source: `.web`, `.news` and `.images`. Developer
-category results are served inside `.web`.
+and gov category results are served inside `.web`.
 
 Use `categories` to narrow web search to a kind of site:
 
@@ -235,6 +245,26 @@ console.log(evidence.repos); // indexed-status echoes for requested repos
 `developerSearch` also supports `sources`, `topic`, `minStars`, `maxStars`,
 `archived`, `fork`, and `skills: 'only'`. Supplying both `repos` and `sources`
 OR-combines GitHub-backed and documentation results.
+
+### Government search
+
+Use `govSearch` to search the Firecrawl Government Index: primary
+law and regulatory material from US federal, state, and local government
+sources, including statutes, regulations, codes, court opinions, and other
+government publications. Results come back in the ordinary web-result shape.
+Generic `search('food labeling requirements', { categories: ['gov'] })`
+returns index results inside `.web`; like `developer`, it cannot be combined
+with other categories.
+
+```js
+const law = await app.govSearch('food labeling requirements', {
+  k: 5,
+});
+
+for (const result of law.data.web) {
+  console.log(result.position, result.title, result.url);
+}
+```
 
 ### Research / paper search
 
@@ -303,7 +333,7 @@ await app.stopInteraction(scrapeJobId);
 To receive real‑time updates, start a crawl and attach a watcher.
 
 ```js
-const start = await app.startCrawl('https://mendable.ai', { excludePaths: ['blog/*'], limit: 5 });
+const start = await app.startCrawl('https://firecrawl.dev', { excludePaths: ['blog/*'], limit: 5 });
 const watch = app.watcher(start.id, { kind: 'crawl', pollInterval: 2 });
 
 watch.on('document', (doc) => {
@@ -326,7 +356,7 @@ await watch.start();
 To batch scrape multiple URLs with error handling, use the `batchScrape` method.
 
 ```js
-const batchScrapeResponse = await app.batchScrape(['https://firecrawl.dev', 'https://mendable.ai'], {
+const batchScrapeResponse = await app.batchScrape(['https://firecrawl.dev', 'https://docs.firecrawl.dev'], {
   formats: ['markdown', 'html'],
 });
 ```
@@ -337,7 +367,7 @@ const batchScrapeResponse = await app.batchScrape(['https://firecrawl.dev', 'htt
 To start an asynchronous batch scrape, use `startBatchScrape` and poll with `getBatchScrapeStatus`.
 
 ```js
-const asyncBatchScrapeResult = await app.startBatchScrape(['https://firecrawl.dev', 'https://mendable.ai'], {
+const asyncBatchScrapeResult = await app.startBatchScrape(['https://firecrawl.dev', 'https://docs.firecrawl.dev'], {
   formats: ['markdown', 'html'],
 });
 ```
@@ -347,7 +377,7 @@ const asyncBatchScrapeResult = await app.startBatchScrape(['https://firecrawl.de
 To use batch scrape with real‑time updates, start the job and watch it using the watcher.
 
 ```js
-const start = await app.startBatchScrape(['https://firecrawl.dev', 'https://mendable.ai'], { formats: ['markdown', 'html'] });
+const start = await app.startBatchScrape(['https://firecrawl.dev', 'https://docs.firecrawl.dev'], { formats: ['markdown', 'html'] });
 const watch = app.watcher(start.id, { kind: 'batch', pollInterval: 2 });
 
 watch.on('document', (doc) => {

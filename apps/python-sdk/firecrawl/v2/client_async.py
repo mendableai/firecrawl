@@ -20,6 +20,7 @@ from .types import (
     SearchData,
     DeveloperSearchResponse,
     DeveloperSearchType,
+    GovSearchResponse,
     SourceOption,
     FindToolsData,
     AlexandriaCall,
@@ -58,6 +59,7 @@ from .types import (
 from .utils.http_client import HttpClient
 from .utils.http_client_async import AsyncHttpClient
 from .utils.error_handler import CrawlJobTimeoutError
+from .utils.v1_compat import acall_v1
 
 from .methods.aio import scrape as async_scrape  # type: ignore[attr-defined]
 from .methods.aio import parse as async_parse  # type: ignore[attr-defined]
@@ -65,6 +67,7 @@ from .methods.aio import batch as async_batch  # type: ignore[attr-defined]
 from .methods.aio import crawl as async_crawl  # type: ignore[attr-defined]
 from .methods.aio import search as async_search  # type: ignore[attr-defined]
 from .methods.aio import developer as async_developer  # type: ignore[attr-defined]
+from .methods.aio import gov as async_gov  # type: ignore[attr-defined]
 from .methods.aio import map as async_map # type: ignore[attr-defined]
 from .methods.aio import usage as async_usage # type: ignore[attr-defined]
 from .methods.aio import extract as async_extract  # type: ignore[attr-defined]
@@ -84,11 +87,18 @@ from .methods.research_docs import (
 from .client import _SCRAPE_OPTION_KEYS
 from .watcher_async import AsyncWatcher
 
-class AsyncFirecrawlClient:
-    @staticmethod
-    def _is_cloud_service(url: str) -> bool:
-        return "api.firecrawl.dev" in url.lower()
+# Maximum seconds to wait for the cancel request that async crawl() sends when
+# its caller is cancelled.
+_ABANDONED_CRAWL_CANCEL_TIMEOUT = 10.0
 
+
+def _consume_task_outcome(task: "asyncio.Future[Any]") -> None:
+    """Mark a finished task's exception as read, so asyncio does not log it."""
+    if not task.cancelled():
+        task.exception()
+
+
+class AsyncFirecrawlClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -100,8 +110,6 @@ class AsyncFirecrawlClient:
     ):
         if api_key is None:
             api_key = os.getenv("FIRECRAWL_API_KEY")
-        if self._is_cloud_service(api_url) and not api_key:
-            raise ValueError("API key is required for the cloud API. Set FIRECRAWL_API_KEY or pass api_key.")
         self.http_client = HttpClient(
             api_key,
             api_url,
@@ -249,45 +257,45 @@ class AsyncFirecrawlClient:
         """Deprecated alias for stop_interaction()."""
         return await self.stop_interaction(job_id)
 
-    async def scrape_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer scrape()."""
-        return await self.scrape(url, **kwargs)
+    async def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for scrape(); also takes v1 params and returns v1-readable results."""
+        return await acall_v1(self.scrape, url, params=params, **kwargs)
 
-    async def crawl_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer crawl()."""
-        return await self.crawl(url=url, **kwargs)
+    async def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
+        return await acall_v1(self.crawl, url=url, params=params, **kwargs)
 
-    async def map_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer map()."""
-        return await self.map(url, **kwargs)
+    async def map_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for map(); also takes v1 params and returns v1-readable results."""
+        return await acall_v1(self.map, url, params=params, **kwargs)
 
-    async def async_crawl_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer start_crawl()."""
-        return await self.start_crawl(url, **kwargs)
+    async def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for start_crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
+        return await acall_v1(self.start_crawl, url, params=params, **kwargs)
 
     async def check_crawl_status(self, id: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer get_crawl_status()."""
-        return await self.get_crawl_status(id, **kwargs)
+        """Deprecated v1 alias for get_crawl_status(); returns v1-readable results."""
+        return await acall_v1(self.get_crawl_status, id, **kwargs)
 
     async def check_crawl_errors(self, id: str):
-        """V1 compatibility alias for agent recovery. Prefer get_crawl_errors()."""
-        return await self.get_crawl_errors(id)
+        """Deprecated v1 alias for get_crawl_errors(); returns v1-readable results."""
+        return await acall_v1(self.get_crawl_errors, id)
 
-    async def batch_scrape_urls(self, urls, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer batch_scrape()."""
-        return await self.batch_scrape(urls, **kwargs)
+    async def batch_scrape_urls(self, urls, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for batch_scrape(); also takes v1 params and returns v1-readable results."""
+        return await acall_v1(self.batch_scrape, urls, params=params, **kwargs)
 
-    async def async_batch_scrape_urls(self, urls, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer start_batch_scrape()."""
-        return await self.start_batch_scrape(urls, **kwargs)
+    async def async_batch_scrape_urls(self, urls, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for start_batch_scrape(); also takes v1 params and returns v1-readable results."""
+        return await acall_v1(self.start_batch_scrape, urls, params=params, **kwargs)
 
     async def check_batch_scrape_status(self, id: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer get_batch_scrape_status()."""
-        return await self.get_batch_scrape_status(id, **kwargs)
+        """Deprecated v1 alias for get_batch_scrape_status(); returns v1-readable results."""
+        return await acall_v1(self.get_batch_scrape_status, id, **kwargs)
 
     async def check_batch_scrape_errors(self, id: str):
-        """V1 compatibility alias for agent recovery. Prefer get_batch_scrape_errors()."""
-        return await self.get_batch_scrape_errors(id)
+        """Deprecated v1 alias for get_batch_scrape_errors(); returns v1-readable results."""
+        return await acall_v1(self.get_batch_scrape_errors, id)
 
     async def parse(
         self,
@@ -356,6 +364,16 @@ class AsyncFirecrawlClient:
             skills=skills,
         )
 
+    async def gov_search(
+        self,
+        query: str,
+        k: Optional[int] = None,
+    ) -> GovSearchResponse:
+        """Search the Government Index of US primary law and regulatory material."""
+        return await async_gov.gov_search(
+            self.async_http_client, query, k=k
+        )
+
     async def start_crawl(self, url: str, **kwargs) -> CrawlResponse:
         if kwargs.get("scrape_options") is None:
             scrape_kwargs = {k: kwargs.pop(k) for k in list(kwargs) if k in _SCRAPE_OPTION_KEYS and kwargs[k] is not None}
@@ -419,7 +437,27 @@ class AsyncFirecrawlClient:
             await asyncio.sleep(poll_interval)
 
     async def crawl(self, **kwargs) -> CrawlJob:
-        # wrapper combining start and wait
+        """
+        Start a crawl job and wait for it to complete.
+
+        Takes the same arguments as ``start_crawl``, plus ``poll_interval``,
+        ``timeout`` and ``request_timeout`` (see ``wait_crawl``).
+
+        Returns:
+            CrawlJob: The final status of the crawl job.
+
+        Raises:
+            CrawlJobTimeoutError: If the crawl does not reach a terminal state within
+                ``timeout``. The crawl keeps running, and the error carries ``job_id``.
+            asyncio.CancelledError: If the task that awaits this call is cancelled
+                (``Task.cancel()``; ``asyncio.timeout`` and ``asyncio.wait_for``
+                turn this into ``TimeoutError`` for their caller). If
+                ``start_crawl`` already returned the job id, the SDK first sends a
+                best-effort ``cancel_crawl`` for the job, so the crawl does not keep
+                running and use credits. A cancellation before the id arrives sends
+                no cancel. To keep control of the job, use ``start_crawl`` and
+                ``wait_crawl`` instead.
+        """
         resp = await self.start_crawl(
             **{k: v for k, v in kwargs.items() if k not in ("poll_interval", "timeout", "request_timeout")}
         )
@@ -427,12 +465,38 @@ class AsyncFirecrawlClient:
         timeout = kwargs.get("timeout")
         request_timeout = kwargs.get("request_timeout")
         effective_request_timeout = request_timeout if request_timeout is not None else timeout
-        return await self.wait_crawl(
-            resp.id,
-            poll_interval=poll_interval,
-            timeout=timeout,
-            request_timeout=effective_request_timeout,
+        try:
+            return await self.wait_crawl(
+                resp.id,
+                poll_interval=poll_interval,
+                timeout=timeout,
+                request_timeout=effective_request_timeout,
+            )
+        except asyncio.CancelledError:
+            # The caller can never receive this job's result, so stop the crawl.
+            await self._cancel_abandoned_crawl(resp.id)
+            raise
+
+    async def _cancel_abandoned_crawl(self, job_id: str) -> None:
+        """Send a best-effort cancel for a crawl whose waiter was cancelled.
+
+        The cancel runs in a shielded task, so a second cancellation of the
+        caller does not stop the request. Errors are ignored, so they never
+        replace the caller's ``CancelledError``.
+        """
+        cancel_task = asyncio.ensure_future(
+            asyncio.wait_for(
+                async_crawl.cancel_crawl(self.async_http_client, job_id),
+                timeout=_ABANDONED_CRAWL_CANCEL_TIMEOUT,
+            )
         )
+        # If the caller is cancelled again, nothing awaits cancel_task. Read its
+        # outcome when it finishes, so asyncio does not log an unretrieved error.
+        cancel_task.add_done_callback(_consume_task_outcome)
+        try:
+            await asyncio.shield(cancel_task)
+        except (Exception, asyncio.CancelledError):
+            pass
 
     async def get_crawl_status(
         self,
@@ -487,6 +551,16 @@ class AsyncFirecrawlClient:
         )
 
     async def cancel_crawl(self, job_id: str) -> bool:
+        """
+        Cancel a crawl job.
+
+        Args:
+            job_id: The ID of the crawl job to cancel
+
+        Returns:
+            bool: True if the crawl was cancelled. False if the crawl was not
+            cancelled, for example because it already completed.
+        """
         return await async_crawl.cancel_crawl(self.async_http_client, job_id)
 
     async def crawl_params_preview(self, url: str, prompt: str) -> CrawlParamsData:
@@ -937,7 +1011,9 @@ class AsyncFirecrawlClient:
         ttl: Optional[int] = None,
         activity_ttl: Optional[int] = None,
         stream_web_view: Optional[bool] = None,
+        block_ads: Optional[bool] = None,
         profile: Optional[Dict[str, Any]] = None,
+        location: Optional[Dict[str, str]] = None,
     ):
         """Create a new browser session.
 
@@ -945,8 +1021,11 @@ class AsyncFirecrawlClient:
             ttl: Total time-to-live in seconds (30-3600, default 300)
             activity_ttl: Inactivity TTL in seconds (10-3600)
             stream_web_view: Whether to enable webview streaming
+            block_ads: Block ads, trackers and cookie notices (default ``True``)
             profile: Profile config with ``name`` (str) and
                 optional ``save_changes`` (bool, default ``True``)
+            location: ``{"country": "GB"}`` to browse from that country
+                (ISO 3166-1 alpha-2, default US)
 
         Returns:
             BrowserCreateResponse with session id and CDP URL
@@ -956,7 +1035,9 @@ class AsyncFirecrawlClient:
             ttl=ttl,
             activity_ttl=activity_ttl,
             stream_web_view=stream_web_view,
+            block_ads=block_ads,
             profile=profile,
+            location=location,
         )
 
     async def browser_execute(

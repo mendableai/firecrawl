@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { recordRequestCredits } from "./request-credits-store";
+import type { BrowserOptions } from "./browser-options";
 import { upsertBrowserProfile } from "./browser-sessions";
 import { v7 as uuidv7 } from "uuid";
 import { config } from "../config";
@@ -23,18 +24,17 @@ import {
 } from "./browser-sessions";
 import {
   calculateBrowserSessionCredits,
-  BROWSER_CREDITS_PER_HOUR,
-  INTERACT_CREDITS_PER_HOUR,
+  browserCreditsPerHour,
 } from "./browser-billing";
-import {
-  getEffectiveConcurrencyLimit,
-  HOBBY_CONCURRENCY_LIMIT,
-} from "./concurrency-limit";
+import { HOBBY_CONCURRENCY_LIMIT } from "./concurrency-limit";
 import {
   reserveExternalSlot,
   mirrorExternalSlotRelease,
 } from "../services/worker/nuq-router";
-import { autumnService } from "../services/autumn/autumn.service";
+import {
+  autumnService,
+  DEFAULT_TEAM_LIMITS,
+} from "../services/autumn/autumn.service";
 import { billTeam } from "../services/billing/credit_billing";
 import { orgIdForTeam } from "./team-org";
 import { logRequest } from "../services/logging/log_job";
@@ -118,13 +118,12 @@ export function invalidAgentInteropError(
 
 export async function createBrowserSession(
   req: RequestWithAuth<any, any, any>,
-  options: {
+  options: BrowserOptions & {
     ttl: number;
     activityTtl: number;
     streamWebView: boolean;
     recordSession: boolean;
     zeroDataRetention?: boolean;
-    profile?: { name: string; saveChanges: boolean };
     scrapeId?: string;
     shouldBill?: boolean;
     requestId?: string;
@@ -159,12 +158,13 @@ async function createBrowserSessionInternal(
   if (invalidInterop) throw invalidInterop;
   const shouldBill = options.shouldBill ?? true;
   const estimatedCredits = shouldBill
-    ? calculateBrowserSessionCredits(options.ttl * 1000)
+    ? calculateBrowserSessionCredits(
+        options.ttl * 1000,
+        browserCreditsPerHour(false, zeroDataRetention),
+      )
     : 0;
-  const teamLimit = await getEffectiveConcurrencyLimit(
-    req.auth.team_id,
-    req.acuc?.org_id ?? null,
-  );
+  const teamLimit =
+    req.acuc?.concurrency_limit ?? DEFAULT_TEAM_LIMITS.concurrency_limit;
   // An agent run opens browsers against the team's own slots, so a free team
   // (2) is throttled by its own agent. Floor trusted agent traffic at hobby,
   // as the rate limiter does; plans at or above hobby are unchanged.
@@ -325,7 +325,7 @@ async function settleBrowserSessionInternal(
       return current.should_bill
         ? calculateBrowserSessionCredits(
             sessionDurationMs,
-            usedPrompt ? INTERACT_CREDITS_PER_HOUR : BROWSER_CREDITS_PER_HOUR,
+            browserCreditsPerHour(usedPrompt, current.zero_data_retention),
           )
         : 0;
     },
@@ -405,7 +405,7 @@ export async function reserveBrowserPromptCredits(
   if (await didBrowserSessionUsePrompt(session.id)) return;
   const credits = calculateBrowserSessionCredits(
     session.ttl_total * 1000,
-    INTERACT_CREDITS_PER_HOUR,
+    browserCreditsPerHour(true, session.zero_data_retention),
   );
   if (session.should_bill && req.acuc?.org_id) {
     const credit = await autumnService.checkCredits({

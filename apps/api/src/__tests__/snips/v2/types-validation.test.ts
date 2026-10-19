@@ -477,6 +477,16 @@ describe("V2 Types Validation", () => {
       expect(result.integration).toBe("dify");
     });
 
+    it("should accept the lovable integration value", () => {
+      const input: ScrapeRequestInput = {
+        url: "https://example.com",
+        integration: "lovable",
+      };
+
+      const result = scrapeRequestSchema.parse(input);
+      expect(result.integration).toBe("lovable");
+    });
+
     it("should accept integration value starting with underscore", () => {
       const input: ScrapeRequestInput = {
         url: "https://example.com",
@@ -1499,6 +1509,34 @@ describe("V2 Types Validation", () => {
         searchRequestSchema.parse({
           query: "test",
           categories: [{ type: "developer", repos: ["firecrawl/firecrawl"] }],
+        }),
+      ).toThrow();
+    });
+
+    it("should accept the gov category on its own and reject params or mixing", () => {
+      expect(
+        searchRequestSchema.parse({ query: "test", categories: ["gov"] })
+          .categories,
+      ).toEqual([{ type: "gov" }]);
+
+      expect(
+        searchRequestSchema.parse({
+          query: "test",
+          categories: [{ type: "gov" }],
+        }).categories,
+      ).toEqual([{ type: "gov" }]);
+
+      expect(() =>
+        searchRequestSchema.parse({
+          query: "test",
+          categories: [{ type: "gov", sites: ["ecfr.gov"] }],
+        }),
+      ).toThrow();
+
+      expect(() =>
+        searchRequestSchema.parse({
+          query: "test",
+          categories: ["gov", "pdf"],
         }),
       ).toThrow();
     });

@@ -1,6 +1,6 @@
 # Firecrawl PHP SDK
 
-PHP SDK for the [Firecrawl](https://firecrawl.dev) v2 API with first-class Laravel support.
+PHP SDK for the [Firecrawl](https://firecrawl.dev) v2 API, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, run Agent and Monitor jobs, and manage browser sessions from PHP, with first-class Laravel support.
 
 ## Requirements
 
@@ -253,6 +253,21 @@ $result = $client->agent(AgentOptions::with(
 ));
 
 echo $result->getData();
+```
+
+To let the agent use Exchange data providers connected to your team, pass
+`exchange`. Omit `toolkits` to allow every provider the team can use.
+
+```php
+use Firecrawl\Models\AgentExchangeOptions;
+
+$result = $client->agent(AgentOptions::with(
+    prompt: 'Find the company behind example.com and its funding history',
+    exchange: AgentExchangeOptions::with(
+        enabled: true,
+        toolkits: ['provider-slug'],
+    ),
+));
 ```
 
 ### Browser Sessions

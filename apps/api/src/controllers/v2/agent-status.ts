@@ -22,7 +22,7 @@ import { getExtractV3AgentStatus } from "../../lib/extract-v3-status";
 // version regex is end-anchored so a prerelease of the fix (e.g.
 // "4.37.1rc0", which may predate the Literal widening) also fails to
 // parse and gets lied to rather than crashed.
-const PYTHON_SDK_ORIGIN = /^python-sdk@(.+)$/;
+const PYTHON_SDK_ORIGIN = /^python-sdk(?:\.[^@]*)?@(.+)$/;
 const PYTHON_SDK_SPARK_2_FIX = [4, 37, 1];
 
 function isIncompatiblePythonSdkOrigin(origin: unknown): boolean {

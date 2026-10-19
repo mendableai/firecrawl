@@ -1,6 +1,7 @@
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   searchDeveloperCategory: vi.fn(),
+  searchGovCategory: vi.fn(),
   checkUrlsAgainstThreatPolicy: vi.fn(),
   discoverTools: vi.fn(),
   removeExplicitResults: vi.fn(),
@@ -21,6 +22,15 @@ vi.mock("./developer", () => ({
         : category.type === "developer",
     ),
   searchDeveloperCategory: mocks.searchDeveloperCategory,
+}));
+vi.mock("./gov", () => ({
+  wantsGovCategory: (categories?: Array<string | { type: string }>) =>
+    (categories ?? []).some(category =>
+      typeof category === "string"
+        ? category === "gov"
+        : category.type === "gov",
+    ),
+  searchGovCategory: mocks.searchGovCategory,
 }));
 vi.mock("./scrape", () => ({
   getItemsToScrape: vi.fn(() => []),
@@ -106,6 +116,21 @@ it("tool-only search never runs or bills SERP", async () => {
   expect(result.response.tools).toEqual([{ id: "fred/series/observations" }]);
 });
 
+it("passes through unavailable tool discovery", async () => {
+  mocks.discoverTools.mockResolvedValue({
+    items: [],
+    warning: "Some tool discovery results are unavailable.",
+    unavailable: true,
+  });
+  const result = await executeSearch(
+    { ...options([]), sources: [{ type: "alexandria" }] },
+    { ...context, flags: { exchangeRetrieve: true } },
+    logger,
+  );
+  expect(result.toolsUnavailable).toBe(true);
+  expect(result.response.tools).toEqual([]);
+});
+
 it("mixed search bills only normal web results", async () => {
   mocks.search.mockResolvedValue({ web: [developerResult] });
   const result = await executeSearch(
@@ -150,6 +175,7 @@ describe("executeSearch safe search", () => {
       expect.anything(),
       20,
       logger,
+      "team-1",
     );
     expect(result.response.web?.map(x => x.url)).toEqual(safe.map(x => x.url));
     expect(result.totalResultsCount).toBe(10);
@@ -192,7 +218,10 @@ describe("executeSearch developer category", () => {
     expect(mocks.search).not.toHaveBeenCalled();
     expect(result.response).toEqual({ web: [developerResult] });
     expect(result.response).not.toHaveProperty("developer");
-    expect(result.developerResultsCount).toBe(1);
+    expect(result.indexResultsCount).toBe(1);
+    // The vertical that served the result survives the response as a label
+    // keyed by the position the client sees.
+    expect(result.resultCategories).toEqual({ web: { "1": "developer" } });
   });
 
   it("filters blocked developer results via threat protection and renumbers", async () => {
@@ -237,6 +266,47 @@ describe("executeSearch developer category", () => {
       ["https://ok.example/a", 1],
       ["https://ok.example/c", 2],
     ]);
+    // Keyed by the renumbered positions, not the upstream ones — position 2 is
+    // the surviving third result.
+    expect(result.resultCategories).toEqual({
+      web: { "1": "developer", "2": "developer" },
+    });
+  });
+
+  it("returns an empty group and no categories when every result is blocked", async () => {
+    mocks.searchDeveloperCategory.mockResolvedValue([
+      {
+        url: "https://blocked.example/a",
+        title: "A",
+        description: "",
+        position: 1,
+        category: "developer",
+      },
+      {
+        url: "https://blocked.example/b",
+        title: "B",
+        description: "",
+        position: 2,
+        category: "developer",
+      },
+    ]);
+    mocks.checkUrlsAgainstThreatPolicy.mockResolvedValue({
+      decisionsByUrl: new Map([
+        ["https://blocked.example/a", { allowed: false }],
+        ["https://blocked.example/b", { allowed: false }],
+      ]),
+    });
+
+    const result = await executeSearch(
+      options([{ type: "developer" }]),
+      { ...context, threatProtectionPolicy: { mode: "block" } } as any,
+      logger,
+    );
+
+    expect(result.response.web ?? []).toEqual([]);
+    // An empty map, not absent: the search ran and tagged nothing, which
+    // feedback must tell apart from a row that predates the column.
+    expect(result.resultCategories).toEqual({});
   });
 
   it("rejects developer combined with other categories at the schema", () => {
@@ -256,5 +326,35 @@ describe("executeSearch developer category", () => {
       categories: ["developer"],
     });
     expect(sole.success).toBe(true);
+  });
+});
+
+describe("executeSearch gov category", () => {
+  const govResult = {
+    url: "https://www.ecfr.gov/current/title-21/part-101",
+    title: "21 CFR Part 101",
+    description: "Food labeling",
+    position: 1,
+    category: "gov",
+  };
+
+  it("returns sole gov-category results in web without running SERP", async () => {
+    mocks.searchGovCategory.mockResolvedValue([govResult]);
+
+    const result = await executeSearch(
+      options([{ type: "gov" }]),
+      context,
+      logger,
+    );
+
+    expect(mocks.search).not.toHaveBeenCalled();
+    expect(mocks.searchDeveloperCategory).not.toHaveBeenCalled();
+    expect(mocks.searchGovCategory).toHaveBeenCalledWith(
+      { query: "retries", limit: 10, teamId: "team-1", timeout: 1_000 },
+      logger,
+    );
+    expect(result.response).toEqual({ web: [govResult] });
+    expect(result.indexResultsCount).toBe(1);
+    expect(result.searchCredits).toBe(0);
   });
 });

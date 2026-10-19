@@ -1,6 +1,6 @@
 # Firecrawl Ruby SDK
 
-Ruby SDK for the [Firecrawl](https://firecrawl.dev) v2 web scraping API.
+Ruby SDK for [Firecrawl](https://firecrawl.dev), the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and run Agent and Monitor jobs on the v2 API.
 
 ## Prerequisites
 
@@ -203,6 +203,17 @@ status = client.agent(
     urls: ["https://example.com"]
   ))
 puts status.data
+
+# Use Alexandria data providers connected in the dashboard
+status = client.agent(
+  Firecrawl::Models::AgentOptions.new(
+    prompt: "Find the work email of the CEO of example.com",
+    exchange: Firecrawl::Models::AgentExchangeOptions.new(
+      enabled: true,
+      toolkits: ["apollo"]
+    )
+  ))
+puts status.exchange&.paid_calls
 ```
 
 ### Usage & Metrics

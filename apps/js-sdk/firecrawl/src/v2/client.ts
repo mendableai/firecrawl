@@ -8,6 +8,7 @@ import { parse as parseMethod, getParseFormats } from "./methods/parse";
 import { search } from "./methods/search";
 import { scrapeAlexandria, findTools } from "./methods/tools";
 import { developerSearch as developerSearchMethod } from "./methods/developer";
+import { govSearch as govSearchMethod } from "./methods/gov";
 import { map as mapMethod } from "./methods/map";
 import { feedback as feedbackMethod, searchFeedback as searchFeedbackMethod } from "./methods/feedback";
 import {
@@ -60,6 +61,8 @@ import type {
   SearchRequest,
   DeveloperSearchOptions,
   DeveloperSearchResponse,
+  GovSearchOptions,
+  GovSearchResponse,
   EndpointFeedbackRequest,
   FeedbackResponse,
   SearchFeedbackRequest,
@@ -98,7 +101,10 @@ import type {
   GetMonitorCheckOptions,
   UpdateMonitorRequest,
 } from "./types";
+import { defaultOrigin } from "../utils/callerOrigin";
+import { getVersion } from "./utils/getVersion";
 import { Watcher } from "./watcher";
+import { callV1, toV2CrawlOptions, type V1CrawlOptions, type V1Result } from "./utils/v1Compat";
 import type { WatcherOptions } from "./watcher";
 import * as zt from "zod";
 
@@ -127,6 +133,12 @@ export interface FirecrawlClientOptions {
   maxRetries?: number;
   /** Exponential backoff factor for retries (optional). */
   backoffFactor?: number;
+  /**
+   * Attribution tag stamped into request bodies. Defaults to `js-sdk@<version>`,
+   * or `js-sdk.<package>@<version>` when an installed package creates the client
+   * (set FIRECRAWL_DISABLE_CALLER_ORIGIN=1 to keep the plain default).
+   */
+  origin?: string;
 }
 
 /** Accepts a plain API key string or a full options object. */
@@ -137,7 +149,7 @@ export type FirecrawlClientInput = FirecrawlClientOptions | string;
  */
 
 export class FirecrawlClient {
-  private readonly http: HttpClient;
+  protected readonly http: HttpClient;
   private _research?: ResearchClient;
 
   private isCloudService(url: string): boolean {
@@ -152,8 +164,9 @@ export class FirecrawlClient {
     const opts: FirecrawlClientOptions =
       typeof options === "string" ? { apiKey: options } : options;
 
-    const apiKey = (opts.apiKey ?? process.env.FIRECRAWL_API_KEY ?? "").trim();
-    const apiUrl = (opts.apiUrl ?? process.env.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev").replace(/\/$/, "");
+    const hasEnv = typeof process !== "undefined" && !!process.env;
+    const apiKey = (opts.apiKey ?? (hasEnv ? process.env.FIRECRAWL_API_KEY : undefined) ?? "").trim();
+    const apiUrl = (opts.apiUrl ?? (hasEnv ? process.env.FIRECRAWL_API_URL : undefined) ?? "https://api.firecrawl.dev").replace(/\/$/, "");
 
     // No API key is allowed: scrape, search, and interact fall back to the
     // keyless free tier (rate-limited per IP). Other methods will return 401
@@ -165,6 +178,7 @@ export class FirecrawlClient {
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,
       backoffFactor: opts.backoffFactor,
+      origin: opts.origin || defaultOrigin(getVersion()),
     });
   }
 
@@ -307,6 +321,17 @@ export class FirecrawlClient {
   }
 
   /**
+   * Search the Government Index: primary law and regulatory material
+   * from US federal, state, and local government sources.
+   */
+  async govSearch(
+    query: string,
+    options: GovSearchOptions = {},
+  ): Promise<GovSearchResponse> {
+    return govSearchMethod(this.http, query, options);
+  }
+
+  /**
    * Submit feedback for a v2 job.
    * @param request Feedback payload with endpoint, job id, rating, and supporting signals.
    * @returns Feedback record and refund details.
@@ -380,7 +405,7 @@ export class FirecrawlClient {
   /**
    * Cancel a crawl job.
    * @param jobId Crawl job id.
-   * @returns True if cancelled.
+   * @returns True if cancelled. False if the crawl was already completed (the API answers 409).
    */
   async cancelCrawl(jobId: string): Promise<boolean> {
     return cancelCrawl(this.http, jobId);
@@ -388,11 +413,14 @@ export class FirecrawlClient {
   /**
    * Convenience waiter: start a crawl and poll until it finishes.
    * @param url Root URL to crawl.
-   * @param req Crawl configuration plus waiter controls (pollInterval, timeout seconds).
+   * @param req Crawl configuration plus waiter controls (pollInterval, timeout seconds, signal).
+   * When `signal` aborts, polling stops, the job gets a best-effort cancel request,
+   * and the promise rejects with `signal.reason`.
    * @returns Final job snapshot.
    */
-  async crawl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number } = {}): Promise<CrawlJob> {
-    return crawlWaiter(this.http, { url, ...req }, req.pollInterval, req.timeout);
+  async crawl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<CrawlJob> {
+    const { pollInterval, timeout, signal, ...options } = req;
+    return crawlWaiter(this.http, { url, ...options }, pollInterval, timeout, signal);
   }
   /**
    * Retrieve crawl errors and robots.txt blocks.
@@ -627,7 +655,7 @@ export class FirecrawlClient {
   // Browser
   /**
    * Create a new browser session.
-   * @param args Session options (ttl, activityTtl, streamWebView, profile).
+   * @param args Session options (ttl, activityTtl, streamWebView, blockAds, profile, location).
    * @returns Session id, CDP URL, live view URL, and expiration time.
    */
   async browser(
@@ -704,54 +732,54 @@ export class FirecrawlClient {
     return new Watcher(this.http, jobId, opts);
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer scrape(). */
-  async scrapeUrl(url: string, options?: ScrapeOptions): Promise<Document> {
-    return this.scrape(url, options);
+  /** @deprecated v1 alias for scrape(); its result also carries v1's `success: true`. */
+  async scrapeUrl(url: string, options?: ScrapeOptions): Promise<V1Result<Document>> {
+    return callV1(() => this.scrape(url, options));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer crawl(). */
-  async crawlUrl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number } = {}): Promise<CrawlJob> {
-    return this.crawl(url, req);
+  /** @deprecated v1 alias for crawl(); its result also carries v1's `success: true`. */
+  async crawlUrl(url: string, req: CrawlOptions & V1CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<V1Result<CrawlJob>> {
+    return callV1(() => this.crawl(url, toV2CrawlOptions(req)));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer startCrawl(). */
-  async asyncCrawlUrl(url: string, req: CrawlOptions = {}): Promise<CrawlResponse> {
-    return this.startCrawl(url, req);
+  /** @deprecated v1 alias for startCrawl(); its result also carries v1's `success: true`. */
+  async asyncCrawlUrl(url: string, req: CrawlOptions & V1CrawlOptions = {}): Promise<V1Result<CrawlResponse>> {
+    return callV1(() => this.startCrawl(url, toV2CrawlOptions(req)));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getCrawlStatus(). */
-  async checkCrawlStatus(jobId: string, pagination?: PaginationConfig): Promise<CrawlJob> {
-    return this.getCrawlStatus(jobId, pagination);
+  /** @deprecated v1 alias for getCrawlStatus(); its result also carries v1's `success: true`. */
+  async checkCrawlStatus(jobId: string, pagination?: PaginationConfig): Promise<V1Result<CrawlJob>> {
+    return callV1(() => this.getCrawlStatus(jobId, pagination));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getCrawlErrors(). */
-  async checkCrawlErrors(crawlId: string): Promise<CrawlErrorsResponse> {
-    return this.getCrawlErrors(crawlId);
+  /** @deprecated v1 alias for getCrawlErrors(); its result also carries v1's `success: true`. */
+  async checkCrawlErrors(crawlId: string): Promise<V1Result<CrawlErrorsResponse>> {
+    return callV1(() => this.getCrawlErrors(crawlId));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer map(). */
-  async mapUrl(url: string, options?: MapOptions): Promise<MapData> {
-    return this.map(url, options);
+  /** @deprecated v1 alias for map(); its result also carries v1's `success: true`. */
+  async mapUrl(url: string, options?: MapOptions): Promise<V1Result<MapData>> {
+    return callV1(() => this.map(url, options));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer batchScrape(). */
-  async batchScrapeUrls(urls: string[], opts?: BatchScrapeOptions & { pollInterval?: number; timeout?: number }): Promise<BatchScrapeJob> {
-    return this.batchScrape(urls, opts);
+  /** @deprecated v1 alias for batchScrape(); its result also carries v1's `success: true`. */
+  async batchScrapeUrls(urls: string[], opts?: BatchScrapeOptions & { pollInterval?: number; timeout?: number }): Promise<V1Result<BatchScrapeJob>> {
+    return callV1(() => this.batchScrape(urls, opts));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer startBatchScrape(). */
-  async asyncBatchScrapeUrls(urls: string[], opts?: BatchScrapeOptions): Promise<BatchScrapeResponse> {
-    return this.startBatchScrape(urls, opts);
+  /** @deprecated v1 alias for startBatchScrape(); its result also carries v1's `success: true`. */
+  async asyncBatchScrapeUrls(urls: string[], opts?: BatchScrapeOptions): Promise<V1Result<BatchScrapeResponse>> {
+    return callV1(() => this.startBatchScrape(urls, opts));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getBatchScrapeStatus(). */
-  async checkBatchScrapeStatus(jobId: string, pagination?: PaginationConfig): Promise<BatchScrapeJob> {
-    return this.getBatchScrapeStatus(jobId, pagination);
+  /** @deprecated v1 alias for getBatchScrapeStatus(); its result also carries v1's `success: true`. */
+  async checkBatchScrapeStatus(jobId: string, pagination?: PaginationConfig): Promise<V1Result<BatchScrapeJob>> {
+    return callV1(() => this.getBatchScrapeStatus(jobId, pagination));
   }
 
-  /** @deprecated V1 compatibility alias for agent recovery. Prefer getBatchScrapeErrors(). */
-  async checkBatchScrapeErrors(jobId: string): Promise<CrawlErrorsResponse> {
-    return this.getBatchScrapeErrors(jobId);
+  /** @deprecated v1 alias for getBatchScrapeErrors(); its result also carries v1's `success: true`. */
+  async checkBatchScrapeErrors(jobId: string): Promise<V1Result<CrawlErrorsResponse>> {
+    return callV1(() => this.getBatchScrapeErrors(jobId));
   }
 }
 

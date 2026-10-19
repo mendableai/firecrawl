@@ -7,8 +7,6 @@ const mocks = vi.hoisted(() => ({
   launchAgentJob: vi.fn(),
   getExtractV3AgentStatus: vi.fn(),
   getACUCTeam: vi.fn(),
-  getAgentFreeRequestsLeft: vi.fn(),
-  checkCredits: vi.fn(),
   consume: vi.fn(),
   redisSet: vi.fn(),
   apiKeyRows: [] as unknown[],
@@ -29,15 +27,6 @@ vi.mock("../../../lib/extract-v3-status", () => ({
 }));
 vi.mock("../../../controllers/auth", () => ({
   getACUCTeam: mocks.getACUCTeam,
-}));
-vi.mock("../../../db/rpc", () => ({
-  getAgentFreeRequestsLeft: mocks.getAgentFreeRequestsLeft,
-}));
-vi.mock("../../autumn/autumn.service", () => ({
-  autumnService: {
-    checkCredits: mocks.checkCredits,
-    getRateLimitMultiplier: async () => 1,
-  },
 }));
 vi.mock("../../rate-limiter", () => ({
   getAutumnRateLimiter: () => ({ consume: mocks.consume }),
@@ -287,12 +276,12 @@ describe("handleSlackAgentEvent", () => {
     mocks.redisSet.mockResolvedValue("OK");
     mocks.postSlackMessage.mockResolvedValue({ ok: true, ts: "200.1" });
     mocks.updateSlackMessage.mockResolvedValue({ ok: true });
-    mocks.getACUCTeam.mockResolvedValue({ org_id: "org-1", flags: null });
+    mocks.getACUCTeam.mockResolvedValue({
+      org_id: "org-1",
+      flags: null,
+      rate_limit_multiplier: 1,
+    });
     mocks.consume.mockResolvedValue({});
-    mocks.getAgentFreeRequestsLeft.mockResolvedValue([
-      { free_requests_left: 0 },
-    ]);
-    mocks.checkCredits.mockResolvedValue({ allowed: true, remaining: 1000 });
     mocks.launchAgentJob.mockResolvedValue({ ok: true });
   });
 
@@ -328,15 +317,13 @@ describe("handleSlackAgentEvent", () => {
       teamId: "team-1",
       apiKey: "11111111-1111-1111-1111-111111111111",
       apiKeyId: 7,
+      orgId: "org-1",
       request: {
         prompt: "what changed on example.com?",
         origin: "slack",
         mode: "chat",
       },
     });
-    expect(mocks.checkCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ teamId: "team-1", orgId: "org-1", value: 20 }),
-    );
     expect(mocks.updateSlackMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         channel: "C1",
@@ -353,10 +340,14 @@ describe("handleSlackAgentEvent", () => {
     expect(mocks.launchAgentJob).not.toHaveBeenCalled();
   });
 
-  it("replaces the placeholder with a credits error and starts no run", async () => {
-    mocks.checkCredits.mockResolvedValue({ allowed: false, remaining: 3 });
+  it("replaces the placeholder with a credits error when the credit gate refuses the run", async () => {
+    mocks.launchAgentJob.mockResolvedValue({
+      ok: false,
+      reason: "insufficient_credits",
+      balance: 3,
+    });
     await run();
-    expect(mocks.launchAgentJob).not.toHaveBeenCalled();
+    expect(mocks.getExtractV3AgentStatus).not.toHaveBeenCalled();
     expect(mocks.updateSlackMessage.mock.calls[0][0].text).toContain(
       "enough credits",
     );

@@ -1,20 +1,20 @@
 //! Scrape endpoint for Firecrawl API v2.
 
-use serde::{Deserialize, Serialize};
+use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::client::Client;
 use crate::types::{
-    Action, AttributeSelector, ChangeTrackingOptions, Document, Format, JsonOptions,
-    LocationConfig, ProfileConfig, ProxyType, ScreenshotOptions,
+    fold_format_options, unfold_format_options, Action, AttributeSelector, ChangeTrackingOptions,
+    Document, Format, JsonOptions, LocationConfig, ProfileConfig, ProxyType, ScreenshotOptions,
 };
 use crate::{AuditMetadata, FirecrawlError};
 
 /// Options for scraping a URL.
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(remote = "Self", rename_all = "camelCase")]
 pub struct ScrapeOptions {
     /// Origin label for request attribution (e.g., "rust-sdk@2.8.0").
     pub origin: Option<String>,
@@ -79,6 +79,11 @@ pub struct ScrapeOptions {
     /// Lockdown mode: serve only previously cached results, never make outbound requests.
     pub lockdown: Option<bool>,
 
+    /// Scan the page content for prompt injection with any format except rawBase64,
+    /// before LLM-backed formats run. A detection fails the scrape with
+    /// SCRAPE_PROMPT_INJECTION_DETECTED. Adds 4 credits when the check scans the whole page.
+    pub check_prompt_injection: Option<bool>,
+
     /// Redact personally identifiable information from returned content.
     #[serde(rename = "redactPII")]
     pub redact_pii: Option<bool>,
@@ -109,6 +114,23 @@ pub struct ScrapeOptions {
 
     /// Discovery response detail; defaults to summary.
     pub tool_detail: Option<crate::types::ToolDetail>,
+}
+
+impl Serialize for ScrapeOptions {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut value = ScrapeOptions::serialize(self, serde_json::value::Serializer)
+            .map_err(ser::Error::custom)?;
+        fold_format_options(&mut value);
+        value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ScrapeOptions {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut value = Value::deserialize(deserializer)?;
+        unfold_format_options(&mut value);
+        ScrapeOptions::deserialize(value).map_err(de::Error::custom)
+    }
 }
 
 /// Parser configuration for document parsing.
@@ -172,6 +194,19 @@ pub struct AlexandriaOptions {
     pub timeout: Option<u32>,
     pub integration: Option<String>,
     pub origin: Option<String>,
+}
+
+/// Matches the API's default and maximum execution timeout for Alexandria calls.
+const ALEXANDRIA_MAX_TIMEOUT_MS: u32 = 120_000;
+/// Extra time for the API to deliver a response after its execution deadline.
+const ALEXANDRIA_RESPONSE_MARGIN_MS: u64 = 30_000;
+
+/// Returns how long the client waits for an Alexandria response.
+fn alexandria_transport_timeout(timeout: Option<u32>) -> std::time::Duration {
+    let execution_ms = timeout
+        .unwrap_or(ALEXANDRIA_MAX_TIMEOUT_MS)
+        .min(ALEXANDRIA_MAX_TIMEOUT_MS);
+    std::time::Duration::from_millis(u64::from(execution_ms) + ALEXANDRIA_RESPONSE_MARGIN_MS)
 }
 
 #[derive(Serialize, Debug)]
@@ -409,9 +444,8 @@ impl Client {
         if options.origin.is_none() {
             options.origin = Some(format!("rust-sdk@{}", env!("CARGO_PKG_VERSION")));
         }
-        let request_timeout = options
-            .timeout
-            .map(|ms| std::time::Duration::from_millis(u64::from(ms) + 5000));
+        // Allow response delivery after the API's capped execution deadline.
+        let request_timeout = alexandria_transport_timeout(options.timeout);
         let request_id = options
             .request_id
             .clone()
@@ -431,16 +465,13 @@ impl Client {
 
         let headers = self.prepare_headers(None);
 
-        let mut request = self
+        let response = self
             .client
             .post(self.url("/scrape"))
             .headers(headers)
             .header("x-request-id", &request_id)
-            .json(&body);
-        if let Some(timeout) = request_timeout {
-            request = request.timeout(timeout);
-        }
-        let response = request
+            .json(&body)
+            .timeout(request_timeout)
             .send()
             .await
             .map_err(|e| FirecrawlError::AlexandriaExecution {
@@ -646,6 +677,23 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn test_alexandria_transport_timeout() {
+        for (timeout, expected_secs) in [
+            (None, 150),
+            (Some(1_000), 31),
+            (Some(100_000), 130),
+            (Some(120_000), 150),
+            (Some(300_000), 150),
+        ] {
+            assert_eq!(
+                alexandria_transport_timeout(timeout),
+                std::time::Duration::from_secs(expected_secs),
+                "timeout {timeout:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_query_format_serializes_mode() {
         let options = ScrapeOptions {
             formats: Some(vec![Format::Query(QueryFormat {
@@ -698,6 +746,169 @@ mod tests {
     }
 
     #[test]
+    fn test_json_options_serialize_as_json_format() {
+        let options = ScrapeOptions {
+            formats: Some(vec![Format::Markdown, Format::Json]),
+            json_options: Some(JsonOptions {
+                prompt: Some("Extract the product name".to_string()),
+                schema: Some(json!({ "type": "object" })),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!([
+                "markdown",
+                {
+                    "type": "json",
+                    "prompt": "Extract the product name",
+                    "schema": { "type": "object" }
+                }
+            ])
+        );
+        assert!(payload.get("jsonOptions").is_none());
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_json_options_add_json_format_and_drop_system_prompt() {
+        let options = ScrapeOptions {
+            formats: Some(vec![Format::Markdown]),
+            json_options: Some(JsonOptions {
+                prompt: Some("Extract the title".to_string()),
+                system_prompt: Some("You are an extractor".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!(["markdown", { "type": "json", "prompt": "Extract the title" }])
+        );
+        assert!(payload.get("jsonOptions").is_none());
+    }
+
+    #[test]
+    fn test_format_options_serialize_inside_format_objects() {
+        let options = ScrapeOptions {
+            formats: Some(vec![
+                Format::Markdown,
+                Format::Screenshot,
+                Format::ChangeTracking,
+                Format::Attributes,
+            ]),
+            screenshot_options: Some(ScreenshotOptions {
+                full_page: Some(true),
+                quality: Some(80),
+                viewport: Some(crate::types::Viewport {
+                    width: 1280,
+                    height: 720,
+                }),
+            }),
+            change_tracking_options: Some(ChangeTrackingOptions {
+                modes: Some(vec![crate::types::ChangeTrackingMode::GitDiff]),
+                tag: Some("daily".to_string()),
+                ..Default::default()
+            }),
+            attribute_selectors: Some(vec![AttributeSelector {
+                selector: "a".to_string(),
+                attribute: "href".to_string(),
+            }]),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!([
+                "markdown",
+                {
+                    "type": "screenshot",
+                    "fullPage": true,
+                    "quality": 80,
+                    "viewport": { "width": 1280, "height": 720 }
+                },
+                { "type": "changeTracking", "modes": ["git-diff"], "tag": "daily" },
+                { "type": "attributes", "selectors": [{ "selector": "a", "attribute": "href" }] }
+            ])
+        );
+        for key in [
+            "screenshotOptions",
+            "changeTrackingOptions",
+            "attributeSelectors",
+        ] {
+            assert!(payload.get(key).is_none(), "{key} must not be top-level");
+        }
+
+        let restored: ScrapeOptions = serde_json::from_value(payload.clone()).unwrap();
+        assert!(matches!(
+            restored.formats.as_deref(),
+            Some([
+                Format::Markdown,
+                Format::Screenshot,
+                Format::ChangeTracking,
+                Format::Attributes
+            ])
+        ));
+        assert_eq!(restored.screenshot_options.unwrap().quality, Some(80));
+        assert_eq!(
+            restored.change_tracking_options.unwrap().tag,
+            Some("daily".to_string())
+        );
+        assert_eq!(restored.attribute_selectors.unwrap()[0].attribute, "href");
+    }
+
+    #[test]
+    fn test_format_options_add_missing_format() {
+        let options = ScrapeOptions {
+            formats: Some(vec![Format::Markdown]),
+            screenshot_options: Some(ScreenshotOptions {
+                full_page: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!(["markdown", { "type": "screenshot", "fullPage": true }])
+        );
+    }
+
+    #[test]
+    fn test_scrape_options_round_trip() {
+        let options = ScrapeOptions {
+            formats: Some(vec![Format::Markdown, Format::Json]),
+            only_main_content: Some(true),
+            json_options: Some(JsonOptions {
+                prompt: Some("Extract the title".to_string()),
+                schema: Some(json!({ "type": "object" })),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        let restored: ScrapeOptions = serde_json::from_value(payload.clone()).unwrap();
+
+        assert!(matches!(
+            restored.formats.as_deref(),
+            Some([Format::Markdown, Format::Json])
+        ));
+        assert_eq!(restored.only_main_content, Some(true));
+        let json_options = restored.json_options.clone().unwrap();
+        assert_eq!(json_options.prompt, Some("Extract the title".to_string()));
+        assert_eq!(json_options.schema, Some(json!({ "type": "object" })));
+        assert_eq!(serde_json::to_value(restored).unwrap(), payload);
+    }
+
+    #[test]
     fn test_scrape_options_serializes_domain_tools() {
         let options = ScrapeOptions {
             domain_tools: Some(true),
@@ -718,6 +929,20 @@ mod tests {
         let payload = serde_json::to_value(options).unwrap();
         assert_eq!(payload["redactPII"], json!(true));
         assert!(payload.get("formats").is_none());
+    }
+
+    #[test]
+    fn test_scrape_options_serializes_check_prompt_injection() {
+        let options = ScrapeOptions {
+            check_prompt_injection: Some(true),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(payload["checkPromptInjection"], json!(true));
+
+        let unset = serde_json::to_value(ScrapeOptions::default()).unwrap();
+        assert!(unset.get("checkPromptInjection").is_none());
     }
 
     #[test]
@@ -826,6 +1051,20 @@ mod tests {
 
         let mock = server
             .mock("POST", "/v2/scrape")
+            .match_body(mockito::Matcher::PartialJson(json!({
+                "url": "https://example.com/product",
+                "formats": [{
+                    "type": "json",
+                    "prompt": "Extract product info",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "title": { "type": "string" },
+                            "price": { "type": "number" }
+                        }
+                    }
+                }]
+            })))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(

@@ -1,6 +1,6 @@
 # Firecrawl Java SDK
 
-Java SDK for [Firecrawl](https://firecrawl.dev) — search, scrape, and interact with the web.
+Java SDK for [Firecrawl](https://firecrawl.dev), the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and run Agent and Monitor jobs.
 
 ## Prerequisites
 
@@ -361,6 +361,23 @@ AgentStatusResponse result = client.agent(
         .build());
 
 System.out.println(result.getData());
+```
+
+To let the agent use the Exchange (Alexandria) data providers connected to your team, pass `exchange`. `toolkits` pins up to 5 providers by slug; omit it to allow all of them.
+
+```java
+AgentStatusResponse result = client.agent(
+    AgentOptions.builder()
+        .prompt("Find the head of engineering at example.com")
+        .exchange(AgentExchangeOptions.builder()
+            .enabled(true)
+            .toolkits(List.of("provider-slug"))
+            .build())
+        .build());
+
+if (result.getExchange() != null) {
+    System.out.println("Paid provider calls: " + result.getExchange().getPaidCalls());
+}
 ```
 
 ### Usage & Metrics

@@ -51,6 +51,10 @@ vi.mock("../../../lib/key-restriction", () => ({
   checkKeyEndpointRestriction: vi.fn().mockResolvedValue({ allowed: true }),
 }));
 
+vi.mock("../../../lib/alexandria-activity", () => ({
+  markAlexandriaActivity: vi.fn(),
+}));
+
 vi.mock("../../../lib/logger", () => ({
   logger: {
     info: vi.fn(),
@@ -86,7 +90,7 @@ function executeResult(overrides: Record<string, any> = {}) {
   return {
     response: { web: developerResults },
     totalResultsCount: 2,
-    developerResultsCount: 2,
+    indexResultsCount: 2,
     searchCredits: 2,
     scrapeCredits: 0,
     totalCredits: 2,
@@ -273,7 +277,7 @@ describe("developer category code_searches ledger", () => {
       executeResult({
         response: { web: [] },
         totalResultsCount: 0,
-        developerResultsCount: 0,
+        indexResultsCount: 0,
       }),
     );
     const req = makeReq({ query: "http client", categories: ["developer"] });
@@ -324,5 +328,94 @@ describe("developer category code_searches ledger", () => {
       { type: "developer" },
     ]);
     expect(res.status).not.toHaveBeenCalledWith(403);
+  });
+});
+
+describe("gov category gov_searches ledger", () => {
+  it("writes exactly one gov_searches row for a gov category search", async () => {
+    const req = makeReq({ query: "zoning variance", categories: ["gov"] });
+    const res = makeRes();
+
+    await searchController(req, res);
+    await flushAsync();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockLogResearchEndpoint).toHaveBeenCalledTimes(1);
+    const row = mockLogResearchEndpoint.mock.calls[0][0];
+    expect(row.table).toBe("gov_searches");
+    expect(row.target).toBe("zoning variance");
+    expect(row.num_results).toBe(2);
+    expect(row.options.categories).toEqual([{ type: "gov" }]);
+    expect(row.options.via).toBe("search_category");
+  });
+
+  it("reserves no keyless credits for a gov category search", async () => {
+    mockProjectSearchTotalCredits.mockReturnValue(2);
+    mockReserveKeylessCredits.mockResolvedValue({ ok: false });
+    const req = makeReq({ query: "zoning variance", categories: ["gov"] });
+    const res = makeRes();
+
+    await searchController(req, res);
+
+    expect(mockReserveKeylessCredits).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+});
+
+describe("tool discovery availability", () => {
+  const unavailable = executeResult({
+    response: { tools: [] },
+    totalResultsCount: 0,
+    indexResultsCount: 0,
+    searchCredits: 0,
+    totalCredits: 0,
+    toolsWarning: "Some tool discovery results are unavailable.",
+    toolsUnavailable: true,
+  });
+
+  it("answers a retryable 503 when a tools-only search finds nothing because discovery failed", async () => {
+    mockExecuteSearch.mockResolvedValue(unavailable);
+    const res = makeRes();
+
+    await searchController(
+      makeReq({ query: "weather", sources: [{ type: "alexandria" }] }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        code: "TOOL_DISCOVERY_UNAVAILABLE",
+      }),
+    );
+    expect(mockLogSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ is_successful: false, credits_cost: 0 }),
+    );
+  });
+
+  it("keeps the partial success when web results answered", async () => {
+    mockExecuteSearch.mockResolvedValue({
+      ...unavailable,
+      response: { web: developerResults, tools: [] },
+      totalResultsCount: 2,
+    });
+    const res = makeRes();
+
+    await searchController(
+      makeReq({
+        query: "weather",
+        sources: [{ type: "web" }, { type: "alexandria" }],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        warning: "Some tool discovery results are unavailable.",
+      }),
+    );
   });
 });

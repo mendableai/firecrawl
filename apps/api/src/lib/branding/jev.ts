@@ -3,6 +3,7 @@ import type {
   JsonValue,
   NoulResponse,
   Question,
+  RequestOptions,
   SystemOneResult,
 } from "@typesafe-ai/sdk";
 import { formatHex, hsl, parse } from "culori";
@@ -11,6 +12,13 @@ import { config } from "../../config";
 import { setSpanAttributes, SpanKind, withSpan } from "../otel-tracer";
 import { sampled } from "../rollout";
 import { getTypeSafeClient } from "../typesafe";
+import { APITimeoutError, RateLimitError } from "@typesafe-ai/sdk";
+import {
+  brandingJevBreakerOpensTotal,
+  brandingJevCallsTotal,
+  brandingJevDurationSeconds,
+  JevCallOutcome,
+} from "./metrics";
 import { BrandingEnhancement } from "./schema";
 import { BrandingLLMInput } from "./types";
 
@@ -24,6 +32,53 @@ const JEV_MODEL = "jev-latest";
 // tokens, output tokens are not billed.
 const JEV_INPUT_USD_PER_MTOK = 0.042;
 const DEFAULT_TIMEOUT_MS = 5000;
+
+// One quick retry, for a call that ran out of time or a transient server
+// error. A timed-out call usually succeeds on the next attempt, sooner than
+// the LLM fallback would answer. A 429 or 529 asks us to back off, so it's
+// answered by the LLM at once: waiting it out can take longer than the whole
+// fallback, and adds load to a struggling TypeSafe. A server-requested delay
+// over a second is not waited out either (the SDK backs off instead).
+const JEV_RETRY: RequestOptions["retry"] = {
+  maxRetries: 1,
+  apiTimeoutError: true,
+  backoffInitialMs: 100,
+  httpStatuses: new Set([
+    408,
+    ...Array.from({ length: 100 }, (_, i) => 500 + i).filter(s => s !== 529),
+  ]),
+  maxRetryAfterMs: 1000,
+};
+
+// Circuit breaker: after this many calls in a row fail (timeouts, 5xx), skip
+// Jev for the cooldown and answer with the LLM, so an outage doesn't add the
+// timeout to every branding request. After the cooldown calls go through
+// again; one more failure reopens it.
+const BREAKER_FAILURES = 5;
+const BREAKER_COOLDOWN_MS = 60_000;
+let consecutiveFailures = 0;
+let breakerOpenUntil = 0;
+
+export function isJevBreakerOpen(now = Date.now()): boolean {
+  return now < breakerOpenUntil;
+}
+
+function recordJevFailure(input: BrandingLLMInput): void {
+  consecutiveFailures++;
+  if (consecutiveFailures >= BREAKER_FAILURES && !isJevBreakerOpen()) {
+    breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
+    brandingJevBreakerOpensTotal.inc();
+    input.logger.warn("Jev branding calls failing, using the LLM for a while", {
+      consecutiveFailures,
+      cooldownMs: BREAKER_COOLDOWN_MS,
+    });
+  }
+}
+
+export function resetJevBreaker(): void {
+  consecutiveFailures = 0;
+  breakerOpenUntil = 0;
+}
 
 const MAX_LOGOS = 20;
 const MAX_BUTTONS = 12;
@@ -145,12 +200,20 @@ function collectColors(input: BrandingLLMInput): ColorCandidate[] {
   for (const [role, value] of Object.entries(input.jsAnalysis.colors ?? {})) {
     add(value, `heuristic guess for ${role}`);
   }
+  // The likeliest logo's own colors: the brand color is usually among them.
+  const logos = input.logoCandidates ?? [];
+  const logo =
+    logos[input.heuristicLogoPick?.selectedIndexInFilteredList ?? -1] ??
+    logos[0];
+  for (const { color, share } of logo?.colors ?? []) {
+    add(color, `color of the logo (${Math.round(share * 100)}% of it)`);
+  }
   for (const candidate of input.backgroundCandidates ?? []) {
     add(candidate.color, `page background candidate (${candidate.source})`);
   }
   const buttons = (input.buttons ?? []).slice(0, MAX_BUTTONS);
   for (const button of buttons) {
-    const label = button.text?.trim().slice(0, 40) || "unlabeled";
+    const label = clip(button.text, 40) || "unlabeled";
     add(button.background, `background of button "${label}"`);
     add(button.textColor, `text on button "${label}"`);
     add(button.borderColor, `border of button "${label}"`);
@@ -181,13 +244,48 @@ const GENERIC_FONTS = new Set([
   "math",
 ]);
 
+// Fonts pages list as fallbacks in their stacks. They are only reported when
+// the page's typography uses them, or when nothing else is left.
+const FALLBACK_FONTS = new Set([
+  "arial",
+  "helvetica",
+  "helvetica neue",
+  "segoe ui",
+  "roboto",
+  "oxygen",
+  "ubuntu",
+  "cantarell",
+  "noto sans",
+  "droid sans",
+  "lucida",
+  "lucida grande",
+  "lucida sans unicode",
+  "tahoma",
+  "verdana",
+  "times",
+  "times new roman",
+  "georgia",
+  "courier",
+  "courier new",
+  "apple color emoji",
+  "segoe ui emoji",
+  "segoe ui symbol",
+  "noto color emoji",
+]);
+
 export function cleanFontFamily(raw: string): string | undefined {
-  let name = raw.trim().replace(/^["']|["']$/g, "");
+  // A whole stack ("system-ui, sans-serif") reports its first family.
+  let name = raw
+    .split(",")[0]
+    .trim()
+    .replace(/^["']|["']$/g, "");
   if (!name || /^var\(/i.test(name)) return undefined;
   if (/fallback/i.test(name)) return undefined;
   // next/font obfuscation: "__Roboto_Mono_c8ca7d" → "Roboto Mono"
   name = name.replace(/^_+/, "").replace(/_[0-9a-f]{6}$/i, "");
   name = name.replace(/_/g, " ").replace(/\s+/g, " ").trim();
+  // Variable-font builds name the same family: "Newsreader Variable".
+  name = name.replace(/\s+(variable|vf)$/i, "");
   if (!name || GENERIC_FONTS.has(name.toLowerCase())) return undefined;
   if (name === name.toLowerCase()) {
     name = name.replace(/\b\w/g, ch => ch.toUpperCase());
@@ -198,6 +296,9 @@ export function cleanFontFamily(raw: string): string | undefined {
 type FontRole = BrandingEnhancement["cleanedFonts"][number]["role"];
 type FontCandidate = { family: string; count: number; role?: FontRole };
 
+/** Matching key for a family: case and spacing don't make a different font. */
+const familyKey = (family: string) => family.toLowerCase().replace(/\s/g, "");
+
 /** Role from the page's own typography: the heading and body stacks it measured. */
 function typographyRole(
   family: string,
@@ -206,9 +307,10 @@ function typographyRole(
   const t = input.jsAnalysis.typography;
   const first = (value?: string | string[]) => {
     const raw = Array.isArray(value) ? value[0] : value;
-    return raw ? cleanFontFamily(raw)?.toLowerCase() : undefined;
+    const cleaned = raw ? cleanFontFamily(raw) : undefined;
+    return cleaned ? familyKey(cleaned) : undefined;
   };
-  const name = family.toLowerCase();
+  const name = familyKey(family);
   if (/\b(mono|code)\b|consolas|menlo/i.test(family)) return "monospace";
   const body = [
     first(t?.fontFamilies?.primary),
@@ -235,9 +337,16 @@ function collectFonts(input: BrandingLLMInput): FontCandidate[] {
       typeof font === "object" && typeof font.count === "number"
         ? font.count
         : 1;
-    const existing = byFamily.get(family.toLowerCase());
-    if (existing) existing.count += count;
-    else byFamily.set(family.toLowerCase(), { family, count });
+    // "CormorantGaramond" and "Cormorant Garamond" are one family; keep the
+    // spaced name.
+    const key = familyKey(family);
+    const existing = byFamily.get(key);
+    if (existing) {
+      existing.count += count;
+      if (!existing.family.includes(" ") && family.includes(" ")) {
+        existing.family = family;
+      }
+    } else byFamily.set(key, { family, count });
   }
   return [...byFamily.values()]
     .sort((a, b) => b.count - a.count)
@@ -274,12 +383,12 @@ function sizeLabel(width: number, height: number): string {
 function fileName(src: string): string {
   if (src.startsWith("data:")) return "inline SVG";
   const path = src.split(/[?#]/)[0];
-  return (path.split("/").pop() || "").slice(0, 80);
+  return clip(path.split("/").pop(), 80);
 }
 
 // Cookie-consent controls are page chrome, never the site's call to action.
 const CONSENT =
-  /cookie|consent|gdpr|accept all|reject all|allow all|decline|manage (?:preferences|settings)|akzeptieren|ablehnen|accepter|refuser|aceptar|rechazar/i;
+  /cookie|consent|gdpr|accept all|reject all|allow all|decline|\b(?:manage|view) (?:preferences|settings)|akzeptieren|ablehnen|accepter|refuser|aceptar|rechazar/i;
 const isConsentButton = (button: { text?: string; classes?: string }) =>
   CONSENT.test(`${button.text ?? ""} ${button.classes ?? ""}`);
 
@@ -299,8 +408,32 @@ const buttonStyle = (b: {
     b.shadow ?? "",
   ].join("/");
 
-const clip = (value: string | undefined, max: number) =>
-  (value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
+
+// slice() counts UTF-16 code units, so never end on the first half of a pair.
+const clip = (value: string | undefined, max: number) => {
+  const text = (value ?? "").replace(/\s+/g, " ").trim();
+  return text.slice(
+    0,
+    isHighSurrogate(text.charCodeAt(max - 1)) ? max - 1 : max,
+  );
+};
+
+// TypeSafe rejects text with lone surrogates as invalid Unicode. Page text can
+// carry them (the branding script truncates by code unit), so replace them
+// with U+FFFD, as String.prototype.toWellFormed does.
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const wellFormed = (value: JsonValue): JsonValue =>
+  typeof value === "string"
+    ? value.replace(LONE_SURROGATE, "\uFFFD")
+    : Array.isArray(value)
+      ? value.map(wellFormed)
+      : value && typeof value === "object"
+        ? Object.fromEntries(
+            Object.entries(value).map(([k, v]) => [k, wellFormed(v)]),
+          )
+        : value;
 
 type JevRequest = {
   state: Record<string, JsonValue>;
@@ -311,6 +444,8 @@ type JevRequest = {
   buttonCount: number;
   /** Background + text color per button, to group look-alike buttons. */
   buttonStyles: string[];
+  /** Raw background per button: merge drops a secondary that matches the primary's. */
+  buttonBackgrounds: string[];
 };
 
 export function buildJevRequest(input: BrandingLLMInput): JevRequest {
@@ -556,13 +691,14 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
   };
 
   return {
-    state,
+    state: wellFormed(state) as Record<string, JsonValue>,
     questions,
     colors,
     fonts,
     logoCount: logos.length,
     buttonCount: buttons.length,
     buttonStyles: buttons.map(buttonStyle),
+    buttonBackgrounds: buttons.map(b => b.background),
   };
 }
 
@@ -623,15 +759,24 @@ function mapJevAnswers(
   const { answers } = response;
   const tag = `jev ${response.model}`;
 
-  // Buttons: secondary must differ from primary.
+  // Buttons: the secondary must not share the primary's background, or merge
+  // drops it. Skip every look-alike, not just the primary itself.
   const primaryButton = choiceOf(answers, "primary_button");
   const secondaryButton = choiceOf(answers, "secondary_button");
   const primaryButtonIndex = indexOf(primaryButton?.choice, "button");
+  const primaryBackground = request.buttonBackgrounds[primaryButtonIndex];
+  const looksLikePrimary = (option: string) =>
+    option === primaryButton?.choice ||
+    (primaryBackground !== undefined &&
+      request.buttonBackgrounds[indexOf(option, "button")] ===
+        primaryBackground);
   let secondaryOption = secondaryButton?.choice;
-  if (secondaryButton && secondaryOption === primaryButton?.choice) {
+  if (secondaryButton && secondaryOption && looksLikePrimary(secondaryOption)) {
     secondaryOption = bestExcluding(
       secondaryButton,
-      new Set([primaryButton!.choice]),
+      new Set(
+        Object.keys(secondaryButton.probabilities).filter(looksLikePrimary),
+      ),
     );
   }
 
@@ -666,17 +811,31 @@ function mapJevAnswers(
     .map(a => a.confidence);
 
   // Fonts: keep the ones Jev calls real typefaces, most used first.
-  const cleanedFonts = request.fonts
+  const realFonts = request.fonts
     .map((font, i) => {
       const isBrand = answers[`font_${i}_is_brand`];
       const role = choiceOf(answers, `font_${i}_role`);
       return {
         family: font.family,
         role: font.role ?? ((role?.choice ?? "unknown") as FontRole),
+        // the page's own typography uses it for headings or body
+        measured: font.role !== undefined,
         keep: isBrand?.type === "noul" ? isBrand.noul >= 0.5 : true,
       };
     })
-    .filter(f => f.keep)
+    .filter(f => f.keep);
+  // Drop fallback faces the page doesn't use for text, and once headings or
+  // body are covered, fonts nobody could place.
+  const isFallback = (f: (typeof realFonts)[number]) =>
+    FALLBACK_FONTS.has(f.family.toLowerCase()) && !f.measured;
+  const withoutFallbacks = realFonts.some(f => !isFallback(f))
+    ? realFonts.filter(f => !isFallback(f))
+    : realFonts;
+  const placed = withoutFallbacks.some(
+    f => f.role === "heading" || f.role === "body",
+  );
+  const cleanedFonts = withoutFallbacks
+    .filter(f => !placed || f.role !== "unknown")
     .slice(0, 5)
     .map(({ family, role }) => ({ family, role }));
 
@@ -766,17 +925,27 @@ function mapJevAnswers(
  */
 export async function enhanceBrandingWithJev(
   input: BrandingLLMInput,
+  options: { shadow?: boolean } = {},
 ): Promise<JevBrandingResult | null> {
   const typesafe = getTypeSafeClient();
   if (!typesafe) return null;
+  const shadow = options.shadow ? "true" : "false";
+  const count = (outcome: JevCallOutcome) =>
+    brandingJevCallsTotal.inc({ outcome, shadow });
+  if (isJevBreakerOpen()) {
+    count("breaker_open");
+    return null;
+  }
   const started = Date.now();
   let request: JevRequest;
   let response: JevResponse;
+  let called = false;
   try {
     request = buildJevRequest(input);
     response = await withSpan(
       "typesafe.systemone",
       async span => {
+        called = true;
         const result = await typesafe.systemOne(
           {
             model: JEV_MODEL,
@@ -785,12 +954,13 @@ export async function enhanceBrandingWithJev(
           },
           {
             timeout: config.BRANDING_JEV_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS,
-            retry: { maxRetries: 1 },
+            retry: JEV_RETRY,
           },
         );
         setSpanAttributes(span, {
           "typesafe.model": result.model,
           "typesafe.usage.input_tokens": result.usage?.input_tokens,
+          "typesafe.usage.output_tokens": result.usage?.output_tokens,
         });
         return result as JevResponse;
       },
@@ -802,17 +972,43 @@ export async function enhanceBrandingWithJev(
         attributes: {
           feature: "branding",
           "branding.jev.questions": Object.keys(request.questions).length,
+          ...(options.shadow ? { "branding.jev.shadow": true } : {}),
           ...(input.scrapeId ? { scrapeId: input.scrapeId } : {}),
+          ...(input.teamId ? { teamId: input.teamId } : {}),
         },
       },
     );
   } catch (error) {
-    input.logger.warn("Jev branding call failed, falling back to LLM", {
-      error,
-      elapsedMs: Date.now() - started,
-    });
+    // Only TypeSafe's own failures say anything about its health.
+    if (called) {
+      recordJevFailure(input);
+      brandingJevDurationSeconds.observe(
+        { shadow },
+        (Date.now() - started) / 1000,
+      );
+      count(
+        error instanceof RateLimitError
+          ? "rate_limited"
+          : error instanceof APITimeoutError
+            ? "timeout"
+            : "error",
+      );
+    }
+    input.logger.warn(
+      options.shadow
+        ? "Jev branding shadow call failed"
+        : "Jev branding call failed, falling back to LLM",
+      {
+        error,
+        elapsedMs: Date.now() - started,
+      },
+    );
     return null;
   }
+  // A call that started before the breaker opened and succeeds late doesn't
+  // close it: the next failure after the cooldown should reopen it at once.
+  if (!isJevBreakerOpen()) consecutiveFailures = 0;
+  brandingJevDurationSeconds.observe({ shadow }, (Date.now() - started) / 1000);
 
   const inputTokens = response.usage?.input_tokens ?? 0;
   const outputTokens = response.usage?.output_tokens ?? 0;
@@ -829,14 +1025,22 @@ export async function enhanceBrandingWithJev(
     result = mapJevAnswers(request, response);
   } catch (error) {
     // A successful call whose answers don't have the expected shape.
-    input.logger.warn("Jev branding answers unusable, falling back to LLM", {
-      error,
-      model: response.model,
-    });
+    count("unusable");
+    input.logger.warn(
+      options.shadow
+        ? "Jev branding shadow answers unusable"
+        : "Jev branding answers unusable, falling back to LLM",
+      {
+        error,
+        model: response.model,
+      },
+    );
     return null;
   }
+  count("ok");
   input.logger.info("Jev branding call", {
     model: response.model,
+    shadow: options.shadow === true,
     elapsedMs: Date.now() - started,
     inputTokens,
     questions: Object.keys(request.questions).length,

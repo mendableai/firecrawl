@@ -93,8 +93,13 @@ type ScrapeOptions struct {
 	RedactPII           *bool                    `json:"redactPII,omitempty"`
 	AuditMetadata       *AuditMetadata           `json:"auditMetadata,omitempty"`
 	Integration         *string                  `json:"integration,omitempty"`
-	JsonOptions         *JsonOptions             `json:"jsonOptions,omitempty"`
+	JsonOptions         *JsonOptions             `json:"-"`
 	DomainTools         *bool                    `json:"domainTools,omitempty"`
+	// CheckPromptInjection scans the page content for prompt injection with any
+	// format except rawBase64, before LLM-backed formats run. A detection fails
+	// the scrape with SCRAPE_PROMPT_INJECTION_DETECTED. Adds 4 credits when the
+	// check scans the whole page.
+	CheckPromptInjection *bool `json:"checkPromptInjection,omitempty"`
 }
 
 // MarshalJSON preserves string formats while allowing object formats such as QuestionFormat.
@@ -107,11 +112,7 @@ func (o ScrapeOptions) MarshalJSON() ([]byte, error) {
 		scrapeOptions: scrapeOptions(o),
 	}
 
-	if len(o.FormatOptions) > 0 {
-		payload.Formats = o.FormatOptions
-	} else if len(o.Formats) > 0 {
-		payload.Formats = o.Formats
-	}
+	payload.Formats = requestFormats(o.Formats, o.FormatOptions, o.JsonOptions)
 
 	return json.Marshal(payload)
 }
@@ -195,6 +196,48 @@ type AgentOptions struct {
 	Effort        *string        `json:"effort,omitempty"`
 	Webhook       *WebhookConfig `json:"webhook,omitempty"`
 	AuditMetadata *AuditMetadata `json:"auditMetadata,omitempty"`
+	// ThreadID continues an existing thread as its next turn. Nil starts a new
+	// thread.
+	ThreadID *string `json:"threadId,omitempty"`
+	// Mode is "extract" or "chat".
+	Mode *string `json:"mode,omitempty"`
+	// Exchange lets the agent call Exchange data providers. Nil on a follow-up
+	// turn inherits the previous turn's settings.
+	Exchange *AgentExchangeOptions `json:"exchange,omitempty"`
+}
+
+// AgentExchangeOptions configures Exchange for an agent run. Every field is
+// optional and the server owns the defaults.
+type AgentExchangeOptions struct {
+	Enabled *bool `json:"enabled,omitempty"`
+	// Toolkits pins up to 5 provider slugs. An empty list means every provider
+	// the team can use; nil inherits the previous turn's pin.
+	Toolkits *[]string `json:"toolkits,omitempty"`
+	MaxCalls *int      `json:"maxCalls,omitempty"`
+	// RequireApproval ends the turn with a PendingApproval before a paid
+	// provider call. It needs Mode "chat" on the same request.
+	RequireApproval *bool `json:"requireApproval,omitempty"`
+	// Approve and Decline answer the previous turn's PendingApproval, so they
+	// need ThreadID.
+	Approve *AgentExchangeApprove `json:"approve,omitempty"`
+	Decline *AgentExchangeDecline `json:"decline,omitempty"`
+	// OnTermsRequired is "skip" or "ask".
+	OnTermsRequired *string `json:"onTermsRequired,omitempty"`
+}
+
+// AgentExchangeApprove approves a pending approval. CallIDs and Always are
+// ignored on a terms approval.
+type AgentExchangeApprove struct {
+	ApprovalID string `json:"approvalId"`
+	// CallIDs approves a subset of the pending calls. Nil approves all of
+	// them; an empty list approves none.
+	CallIDs *[]string `json:"callIds,omitempty"`
+	Always  *bool     `json:"always,omitempty"`
+}
+
+// AgentExchangeDecline declines a pending approval.
+type AgentExchangeDecline struct {
+	ApprovalID string `json:"approvalId"`
 }
 
 // AuditMetadata identifies the user associated with a SIEM logging event.
@@ -218,9 +261,50 @@ type WebhookConfig struct {
 
 // JsonOptions configures JSON extraction within formats.
 type JsonOptions struct {
-	Prompt               string                 `json:"prompt,omitempty"`
-	Schema               map[string]interface{} `json:"schema,omitempty"`
-	CheckPromptInjection *bool                  `json:"checkPromptInjection,omitempty"`
+	Prompt string                 `json:"prompt,omitempty"`
+	Schema map[string]interface{} `json:"schema,omitempty"`
+	// Deprecated: Use ScrapeOptions.CheckPromptInjection or ParseOptions.CheckPromptInjection.
+	CheckPromptInjection *bool `json:"checkPromptInjection,omitempty"`
+}
+
+// requestFormats builds the request's formats array. JsonOptions travels as the
+// json format object, since /v2 rejects a top-level jsonOptions key. It replaces
+// a listed json format, or is appended when none is listed.
+func requestFormats(formats []string, formatOptions []interface{}, jsonOptions *JsonOptions) interface{} {
+	if jsonOptions == nil {
+		if len(formatOptions) > 0 {
+			return formatOptions
+		}
+		if len(formats) > 0 {
+			return formats
+		}
+		return nil
+	}
+
+	items := make([]interface{}, 0, len(formats)+len(formatOptions)+1)
+	if len(formatOptions) > 0 {
+		items = append(items, formatOptions...)
+	} else {
+		for _, format := range formats {
+			items = append(items, format)
+		}
+	}
+
+	jsonFormat := struct {
+		Type string `json:"type"`
+		*JsonOptions
+	}{Type: "json", JsonOptions: jsonOptions}
+	for i, item := range items {
+		isJSON := item == "json"
+		if format, ok := item.(map[string]interface{}); ok {
+			isJSON = format["type"] == "json"
+		}
+		if isJSON {
+			items[i] = jsonFormat
+			return items
+		}
+	}
+	return append(items, jsonFormat)
 }
 
 // Pointer helpers for optional fields.

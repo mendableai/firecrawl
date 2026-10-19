@@ -182,9 +182,20 @@ export async function agentController(
     teamId: req.auth.team_id,
     apiKey: req.acuc!.api_key,
     apiKeyId: req.acuc?.api_key_id ?? null,
+    orgId: req.auth.org_id,
     externalRequestId: externalRequestId(req),
     request: req.body,
   });
+
+  if (!launched.ok && launched.reason === "insufficient_credits") {
+    logger.warn("Insufficient credits to start agent run", {
+      balance: launched.balance,
+    });
+    return res.status(402).json({
+      success: false,
+      error: `Insufficient credits to start an agent run. Your team's credit balance is ${launched.balance} credits. Add credits at https://firecrawl.dev/pricing to continue.`,
+    });
+  }
 
   if (!launched.ok) {
     logger.error("Failed to passthrough agent request.", {

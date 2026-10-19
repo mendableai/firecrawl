@@ -1,5 +1,46 @@
 ## CHANGELOG
 
+## [2.21.6] - 2026-10-18
+
+### Added
+
+- `ScrapeOptions::check_prompt_injection` and
+  `ParseOptions::check_prompt_injection` scan the content for prompt injection
+  before LLM-backed formats run. A detection fails the request with
+  `SCRAPE_PROMPT_INJECTION_DETECTED`. `JsonOptions::check_prompt_injection` is
+  deprecated in favor of these.
+
+## [2.21.5] - 2026-10-07
+
+### Added
+
+- `DocumentMetadata::provider` (`ScrapeProvider`) reports the third-party
+  provider that served an Exchange scrape: its `id`, the access price in
+  `credits_cost`, and every provider tried in `steps` (`ScrapeProviderStep`).
+  It is `None` for any other scrape.
+
+## [2.21.4] - 2026-10-07
+
+### Fixed
+
+- `scrape_alexandria` now waits for the API's full execution deadline. The
+  execution timeout defaults to and is capped at 120 s, the same as the API,
+  plus a 30 s margin for response delivery (150 s when no `timeout` is given).
+  Before, it used no timeout by default, or the caller's `timeout` plus 5 s.
+
+## [2.21.3] - 2026-10-06
+
+### Added
+
+- Added `AgentOptions::exchange` (`AgentExchangeOptions`) so agent runs can use
+  the team's Exchange (Alexandria) data providers, including `approve` and
+  `decline` answers to a pending approval. Added `AgentOptions::thread_id` and
+  `AgentOptions::mode` (`AgentMode`) to continue a thread and run in chat mode.
+- `AgentResponse` now carries `thread_id` and `thread_turn`.
+  `AgentStatusResponse` now carries `thread_id`, `thread_turn`, `mode`,
+  `message`, `pending_approval` (`AgentPendingApproval`), and `exchange`
+  (`AgentExchangeSummary`).
+
 ## [2.21.2] - 2026-10-02
 
 ### Added

@@ -3,6 +3,10 @@ import { z } from "zod";
 import { config } from "../../config";
 import type { TeamFlags } from "../../controllers/v2/types";
 import { reportExchangeUsageBilling } from "../../lib/exchange";
+import {
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
+} from "../../lib/index-daily-limit";
 import { logger } from "../../lib/logger";
 import {
   autumnService,
@@ -223,7 +227,9 @@ export async function retrieveProviders(input: {
     apiKeyId: input.apiKeyId,
   };
   const remaining = () => Math.max(1, record.deadline - Date.now());
+  let releaseGovCalls: (() => Promise<void>) | undefined;
   const refuse = async (response: ExchangeResponse, executed = false) => {
+    if (!executed && releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key);
     return { ...response, executed, scrapeId: input.scrapeId };
   };
@@ -240,11 +246,27 @@ export async function retrieveProviders(input: {
     );
     if (denied) return refuse(denied);
 
+    const govCalls = input.calls.filter(
+      call => call.provider === "firecrawl-gov-index",
+    ).length;
+    if (govCalls > 0) {
+      const indexBudget = await reserveGovIndexCalls(input.teamId, govCalls);
+      if (!indexBudget.ok)
+        return refuse(
+          refusal(429, govIndexDailyLimitMessage(indexBudget), {
+            code: "index_daily_limit",
+            retryAfterSeconds: indexBudget.retryAfterSeconds,
+          }),
+        );
+      releaseGovCalls = indexBudget.release;
+    }
+
     const quote = await exchangeRequest({
       teamId: input.teamId,
       path: "/v1/retrieve/quote",
       body: { requests: input.calls },
       timeoutMs: Math.min(10000, remaining()),
+      connectors: input.flags?.exchangeRetrieve === true,
     }).catch(error => {
       logger.warn("Provider quote unavailable", { error, chargeId: id });
       return undefined;
@@ -316,6 +338,7 @@ export async function retrieveProviders(input: {
       lockId = hold.lockId;
     }
   } catch (error) {
+    if (releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key).catch(() => {});
     throw error;
   }
@@ -369,8 +392,11 @@ export async function retrieveProviders(input: {
       body: { requests: input.calls },
       timeoutMs: remaining(),
       requestId: id,
-      ...((loadsSavedResult || usesSql || usesEnrichment) &&
-      input.resultAuthorization
+      // The team's own MCP connectors (mcp-...) resolve only when Exchange is told it may use them.
+      connectors: input.flags?.exchangeRetrieve === true,
+      // Sent with every execution so Exchange tools that call Firecrawl as the caller
+      // (the caller pays) can authenticate upstream. Exchange decides which tools read it.
+      ...(input.resultAuthorization
         ? { resultAuthorization: input.resultAuthorization }
         : {}),
       ...(termsIdentity ? { termsIdentity } : {}),

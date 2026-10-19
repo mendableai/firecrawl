@@ -2,20 +2,26 @@ import { config } from "../config";
 import { agentConsumeFreeRequestIfLeft } from "../db/rpc";
 import { logRequest } from "../services/logging/log_job";
 import type { AgentRequest } from "../controllers/v2/types";
+import {
+  AGENT_DEFAULT_MAX_CREDITS,
+  gateAgentCredits,
+} from "../controllers/v2/agent-credit-gate";
 import { AGENT_REQUEST_CREDITS_SHARDS } from "./request-credits-store";
 
 type LaunchAgentJobResult =
   | { ok: true; threadId?: string; threadTurn?: number }
-  | { ok: false; status: number; text: string };
+  | { ok: false; reason: "insufficient_credits"; balance: number }
+  | { ok: false; reason: "passthrough_failed"; status: number; text: string };
 
-// Consumes a free request if one is left, logs the request and hands the job
-// to the agent service. Shared by POST /v2/agent and the Slack integration so
+// Consumes a free request if one is left, gates paid runs on the team's
+// credits, logs the request and hands the job to the agent service. Shared by POST /v2/agent and the Slack integration so
 // both bill and record agent runs the same way.
 export async function launchAgentJob(params: {
   agentId: string;
   teamId: string;
   apiKey: string;
   apiKeyId: number | null;
+  orgId: string | null | undefined;
   externalRequestId?: string | null;
   request: AgentRequest;
 }): Promise<LaunchAgentJobResult> {
@@ -25,9 +31,11 @@ export async function launchAgentJob(params: {
     throw new Error("Agent beta is not enabled.");
   }
 
-  // If maxCredits > 2500, skip free request consumption — this is always a paid request
+  // A request above the free cap is always paid. Otherwise a free request is
+  // consumed atomically here, and only a consumed one skips the credit gate.
   const highCreditRequest =
-    request.maxCredits !== undefined && request.maxCredits > 2500;
+    request.maxCredits !== undefined &&
+    request.maxCredits > AGENT_DEFAULT_MAX_CREDITS;
 
   let freeRequest: any;
 
@@ -40,6 +48,26 @@ export async function launchAgentJob(params: {
     : config.USE_DB_AUTHENTICATION
       ? !!freeRequest?.[0]?.consumed
       : true;
+
+  let maxCredits = request.maxCredits;
+  let stopOnInsufficientCredits = false;
+  if (!isFreeRequest) {
+    const gate = await gateAgentCredits({
+      teamId,
+      orgId: params.orgId,
+      apiKeyId: params.apiKeyId,
+      requestedMaxCredits: request.maxCredits,
+    });
+    if (!gate.allowed) {
+      return {
+        ok: false,
+        reason: "insufficient_credits",
+        balance: gate.balance,
+      };
+    }
+    maxCredits = gate.maxCredits;
+    stopOnInsufficientCredits = gate.stopOnInsufficientCredits;
+  }
 
   await logRequest({
     id: agentId,
@@ -72,7 +100,8 @@ export async function launchAgentJob(params: {
         apiKeyId: params.apiKeyId ?? undefined,
         teamId,
         isFreeRequest,
-        maxCredits: request.maxCredits ?? undefined,
+        maxCredits: maxCredits ?? undefined,
+        stopOnInsufficientCredits: stopOnInsufficientCredits || undefined,
         strictConstrainToURLs: request.strictConstrainToURLs ?? undefined,
         webhook: request.webhook ?? undefined,
         model: request.model,
@@ -88,6 +117,7 @@ export async function launchAgentJob(params: {
   if (passthrough.status !== 200) {
     return {
       ok: false,
+      reason: "passthrough_failed",
       status: passthrough.status,
       text: await passthrough.text(),
     };

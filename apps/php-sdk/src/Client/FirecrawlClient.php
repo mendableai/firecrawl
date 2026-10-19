@@ -299,6 +299,8 @@ final class FirecrawlClient
             $body = array_merge($body, $options->toArray());
         }
 
+        $body['origin'] ??= 'php-sdk@' . Version::SDK_VERSION;
+
         return CrawlResponse::fromArray(
             $this->http->post('/v2/crawl', $body, $extraHeaders, $requestTimeoutSeconds),
         );
@@ -369,6 +371,8 @@ final class FirecrawlClient
             $body = array_merge($body, $options->toArray());
         }
 
+        $body['origin'] ??= 'php-sdk@' . Version::SDK_VERSION;
+
         return BatchScrapeResponse::fromArray(
             $this->http->post('/v2/batch/scrape', $body, $extraHeaders),
         );
@@ -421,6 +425,8 @@ final class FirecrawlClient
         if ($options !== null) {
             $body = array_merge($body, $options->toArray());
         }
+
+        $body['origin'] ??= 'php-sdk@' . Version::SDK_VERSION;
 
         $response = $this->assertSuccess($this->http->post('/v2/map', $body));
 
@@ -706,12 +712,14 @@ final class FirecrawlClient
      * Create a new browser session.
      *
      * @param array<string, string>|null $profile
+     * @param array{country: string}|null $location Country the session browses from, e.g. ['country' => 'GB'] (default US)
      */
     public function browser(
         ?int $ttl = null,
         ?int $activityTtl = null,
         ?bool $streamWebView = null,
         ?array $profile = null,
+        ?array $location = null,
     ): BrowserCreateResponse {
         $body = [];
         if ($ttl !== null) {
@@ -725,6 +733,9 @@ final class FirecrawlClient
         }
         if ($profile !== null) {
             $body['profile'] = $profile;
+        }
+        if ($location !== null) {
+            $body['location'] = $location;
         }
 
         return BrowserCreateResponse::fromArray($this->http->post('/v2/browser', $body));
@@ -824,9 +835,14 @@ final class FirecrawlClient
         if (($response['success'] ?? null) === false) {
             $error = $response['error'] ?? null;
 
-            throw new FirecrawlException(is_string($error) && $error !== ''
-                ? $error
-                : 'The API reported the request as unsuccessful.');
+            $code = $response['code'] ?? null;
+
+            throw new FirecrawlException(
+                is_string($error) && $error !== '' ? $error : 'The API reported the request as unsuccessful.',
+                200,
+                is_string($code) ? $code : null,
+                $response['details'] ?? null,
+            );
         }
 
         return $response;

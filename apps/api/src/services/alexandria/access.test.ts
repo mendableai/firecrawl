@@ -1,11 +1,9 @@
-const mocks = vi.hoisted(() => ({ request: vi.fn(), multiplier: vi.fn() }));
+const mocks = vi.hoisted(() => ({ request: vi.fn(), team: vi.fn() }));
 vi.mock("../../config", () => ({
   config: { USE_DB_AUTHENTICATION: true, FIRECRAWL_DASHBOARD_URL: "https://d" },
 }));
 vi.mock("./client", () => ({ exchangeRequest: mocks.request }));
-vi.mock("../autumn/autumn.service", () => ({
-  autumnService: { getKnownRateLimitMultiplier: mocks.multiplier },
-}));
+vi.mock("../../controllers/auth", () => ({ getACUCTeam: mocks.team }));
 import { authorizeProviders } from "./access";
 
 const calls = [
@@ -61,43 +59,49 @@ it("refuses a disabled provider and fails closed when agreements are unavailable
   expect((await authorizeProviders("team", calls, {}))?.status).toBe(503);
 });
 
-it("allows a current agreement accepted after owner revocation, then blocks a later revocation", async () => {
-  const terms = { ...requirement(true) };
-  Object.assign(terms.body.providers[0].terms, { digest: "a".repeat(64) });
-  const access = {
-    status: "disabled",
-    disabledReason: "revoked_by_organization_admin",
-    disabledAt: "2026-09-20T12:00:00Z",
-    termsKey: "fred",
-    termsVersion: "2026-01",
-  };
-  const flags = { organizationDataSourceAccess: { fred: access } };
-  let acceptance = {
-    provider: "fred",
-    revoked: false,
-    version: "2026-01",
-    textHash: "a".repeat(64),
-    acceptedAt: "2026-09-20T11:00:00Z",
-  };
-  mocks.request.mockImplementation(async ({ path }) =>
-    path.includes("requirements")
-      ? terms
-      : { status: 200, body: { providers: [acceptance] } },
-  );
-  expect(
-    (await authorizeProviders("team", calls, flags, "org"))?.body,
-  ).toMatchObject({ code: "THIRD_PARTY_DATA_TERMS_REQUIRED" });
-  acceptance = {
-    ...acceptance,
-    revoked: false,
-    acceptedAt: "2026-09-20T12:01:00Z",
-  };
-  expect(await authorizeProviders("team", calls, flags, "org")).toBeUndefined();
-  access.disabledAt = "2026-09-20T12:02:00Z";
-  expect((await authorizeProviders("team", calls, flags, "org"))?.status).toBe(
-    403,
-  );
-});
+it.each([undefined, false])(
+  "allows post-revocation acceptance with Exchange override %s, then blocks a later revocation",
+  async exchangeRequired => {
+    const terms = { ...requirement(true) };
+    Object.assign(terms.body.providers[0], { exchangeRequired });
+    Object.assign(terms.body.providers[0].terms, { digest: "a".repeat(64) });
+    const access = {
+      status: "disabled",
+      disabledReason: "revoked_by_organization_admin",
+      disabledAt: "2026-09-20T12:00:00Z",
+      termsKey: "fred",
+      termsVersion: "2026-01",
+    };
+    const flags = { organizationDataSourceAccess: { fred: access } };
+    let acceptance = {
+      provider: "fred",
+      revoked: false,
+      version: "2026-01",
+      textHash: "a".repeat(64),
+      acceptedAt: "2026-09-20T11:00:00Z",
+    };
+    mocks.request.mockImplementation(async ({ path }) =>
+      path.includes("requirements")
+        ? terms
+        : { status: 200, body: { providers: [acceptance] } },
+    );
+    expect(
+      (await authorizeProviders("team", calls, flags, "org"))?.body,
+    ).toMatchObject({ code: "THIRD_PARTY_DATA_TERMS_REQUIRED" });
+    acceptance = {
+      ...acceptance,
+      revoked: false,
+      acceptedAt: "2026-09-20T12:01:00Z",
+    };
+    expect(
+      await authorizeProviders("team", calls, flags, "org"),
+    ).toBeUndefined();
+    access.disabledAt = "2026-09-20T12:02:00Z";
+    expect(
+      (await authorizeProviders("team", calls, flags, "org"))?.status,
+    ).toBe(403);
+  },
+);
 
 it.each([
   [
@@ -161,15 +165,6 @@ it.each([
     "2026-09-20T12:01:00Z",
     "old",
     "a".repeat(64),
-    false,
-  ],
-  [
-    "disabled",
-    "revoked_by_organization_admin",
-    "2026-09-20T12:00:00Z",
-    "2026-09-20T12:01:00Z",
-    "2026-01",
-    "b".repeat(64),
     false,
   ],
   [
@@ -292,6 +287,46 @@ it.each([
   },
 );
 
+it("keeps an acceptance of the gating version across a non-material digest change", async () => {
+  const terms = requirement(true);
+  Object.assign(terms.body.providers[0].terms, { digest: "a".repeat(64) });
+  mocks.request.mockImplementation(async ({ path }) =>
+    path.includes("requirements")
+      ? terms
+      : {
+          status: 200,
+          body: {
+            providers: [
+              {
+                provider: "fred",
+                revoked: false,
+                version: "2026-01",
+                textHash: "b".repeat(64),
+                acceptedAt: "2026-09-20T12:01:00Z",
+              },
+            ],
+          },
+        },
+  );
+  expect(await authorizeProviders("team", calls, {}, "org")).toBeUndefined();
+  expect(
+    await authorizeProviders(
+      "team",
+      calls,
+      {
+        organizationDataSourceAccess: {
+          fred: {
+            status: "disabled",
+            disabledReason: "revoked_by_organization_admin",
+            disabledAt: "2026-09-20T12:00:00Z",
+          },
+        },
+      },
+      "org",
+    ),
+  ).toBeUndefined();
+});
+
 it("does not discard other acceptances when a timestamp has an unexpected shape", async () => {
   const terms = requirement(true);
   Object.assign(terms.body.providers[0].terms, { digest: "a".repeat(64) });
@@ -357,7 +392,7 @@ describe("paid-plan-only capabilities", () => {
     mocks.request.mockResolvedValue(
       requirements(["news/wiims", "news/search"]),
     );
-    mocks.multiplier.mockResolvedValue(1);
+    mocks.team.mockResolvedValue({ is_paid_plan: false });
     const denied = await authorizeProviders("team", wiim, enabled, "org");
     expect(denied?.status).toBe(403);
     expect(denied?.body).toEqual(
@@ -366,28 +401,37 @@ describe("paid-plan-only capabilities", () => {
     expect(String((denied?.body as { error: string }).error)).toContain(
       "benzinga/news/wiims",
     );
-    expect(mocks.multiplier).toHaveBeenCalledWith("team", "org");
+    expect(mocks.team).toHaveBeenCalledWith("team");
     // One requirements read, and nothing else: no quote, no execution.
     expect(mocks.request).toHaveBeenCalledTimes(1);
   });
 
   it("admits a paid-plan team, and does not consult the plan for an ungated capability", async () => {
     mocks.request.mockResolvedValue(requirements(["news/wiims"]));
-    mocks.multiplier.mockResolvedValue(10);
+    mocks.team.mockResolvedValue({ is_paid_plan: true });
     expect(
       await authorizeProviders("team", wiim, enabled, "org"),
     ).toBeUndefined();
-    mocks.multiplier.mockClear();
-    mocks.multiplier.mockResolvedValue(1);
+    mocks.team.mockClear();
+    mocks.team.mockResolvedValue({ is_paid_plan: false });
     expect(
       await authorizeProviders("team", pressReleases, enabled, "org"),
     ).toBeUndefined();
-    expect(mocks.multiplier).not.toHaveBeenCalled();
+    expect(mocks.team).not.toHaveBeenCalled();
+  });
+
+  it("refuses a team with no ACUC", async () => {
+    mocks.request.mockResolvedValue(requirements(["news/wiims"]));
+    mocks.team.mockResolvedValue(null);
+    const denied = await authorizeProviders("team", wiim, enabled, "org");
+    expect(denied?.body).toEqual(
+      expect.objectContaining({ code: "paid_plan_required" }),
+    );
   });
 
   it("lets a team that bypasses credit checks through, and treats a missing field as ungated", async () => {
     mocks.request.mockResolvedValue(requirements(["news/wiims"]));
-    mocks.multiplier.mockResolvedValue(1);
+    mocks.team.mockResolvedValue({ is_paid_plan: false });
     expect(
       await authorizeProviders(
         "team",
@@ -405,7 +449,7 @@ describe("paid-plan-only capabilities", () => {
 
   it("still requires the agreement first: an unaccepted paid team is refused on terms, not plan", async () => {
     mocks.request.mockResolvedValue(requirements(["news/wiims"]));
-    mocks.multiplier.mockResolvedValue(10);
+    mocks.team.mockResolvedValue({ is_paid_plan: true });
     const denied = await authorizeProviders("team", wiim, {}, null);
     expect(denied?.status).toBe(403);
     expect(denied?.body).not.toEqual(
@@ -414,40 +458,46 @@ describe("paid-plan-only capabilities", () => {
   });
 });
 
-it("fails closed when the plan cannot be known: no org, a preview team or an Autumn error", async () => {
-  mocks.request.mockResolvedValue({
-    status: 200,
-    body: {
-      providers: [
-        {
-          provider: "benzinga",
-          required: true,
-          terms: { key: "benzinga", version: "C-1" },
-          paidPlanOnlyCapabilities: ["news/wiims"],
-        },
-      ],
-    },
-  });
-  const enabled = {
-    organizationDataSourceAccess: {
-      benzinga: {
-        status: "enabled",
-        termsKey: "benzinga",
-        termsVersion: "C-1",
-      },
-    },
-  };
-  const wiim = [
-    { provider: "benzinga", capability: "news/wiims", options: {} },
-  ];
-  // The service answers null for every "cannot know" case; the gate never
-  // treats that as paid.
-  mocks.multiplier.mockResolvedValue(null);
-  const denied = await authorizeProviders("team", wiim, enabled, null);
-  expect(denied?.status).toBe(503);
-  expect(denied?.body).toEqual(
-    expect.objectContaining({ code: "plan_verification_unavailable" }),
-  );
-  expect(mocks.multiplier).toHaveBeenCalledWith("team", null);
+it("allows optional Exchange terms without looking up acceptance", async () => {
+  const response = requirement(true);
+  Object.assign(response.body.providers[0], { exchangeRequired: false });
+  mocks.request.mockResolvedValue(response);
+  expect(await authorizeProviders("team", calls, {}, "org")).toBeUndefined();
   expect(mocks.request).toHaveBeenCalledTimes(1);
+});
+
+it.each(["disabled", "suspended"])(
+  "still refuses %s access when Exchange terms are optional",
+  async status => {
+    const response = requirement(true);
+    Object.assign(response.body.providers[0], { exchangeRequired: false });
+    mocks.request.mockResolvedValue(response);
+    expect(
+      (
+        await authorizeProviders(
+          "team",
+          calls,
+          {
+            organizationDataSourceAccess: {
+              fred: {
+                status,
+                disabledReason: "disabled_by_organization_admin",
+              },
+            },
+          },
+          "org",
+        )
+      )?.status,
+    ).toBe(403);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("honors a required Exchange override", async () => {
+  const response = requirement(false);
+  Object.assign(response.body.providers[0], { exchangeRequired: true });
+  mocks.request.mockResolvedValue(response);
+  expect((await authorizeProviders("team", calls, {}))?.body).toMatchObject({
+    code: "THIRD_PARTY_DATA_TERMS_REQUIRED",
+  });
 });

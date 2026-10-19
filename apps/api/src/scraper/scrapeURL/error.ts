@@ -94,13 +94,18 @@ export class RemoveFeatureError extends Error {
 }
 
 export class SSLError extends TransportableError {
-  constructor(public skipTlsVerification: boolean) {
+  constructor(
+    public skipTlsVerification: boolean,
+    public zeroDataRetention = false,
+  ) {
     super(
       "SCRAPE_SSL_ERROR",
       "An SSL/TLS certificate error occurred while trying to establish a secure connection to this website. " +
-        (skipTlsVerification
-          ? "You already have `skipTlsVerification: true` enabled, which means the website's TLS configuration is severely broken (not just an expired or self-signed certificate). Possible solutions: (1) Try the plain HTTP version of the URL (http:// instead of https://), (2) The website may be completely down, or (3) Contact the website administrator about their broken SSL configuration."
-          : "This usually happens when a website has an expired, self-signed, or misconfigured SSL certificate. If you trust this website and are not submitting sensitive data, you can bypass this error by setting `skipTlsVerification: true` in your scrape request. Note: Only do this for trusted sites as it disables certificate validation."),
+        (zeroDataRetention
+          ? "This usually happens when a website has an expired, self-signed, or misconfigured SSL certificate. TLS verification can't be bypassed for zero data retention requests, so `skipTlsVerification` has no effect."
+          : skipTlsVerification
+            ? "You already have `skipTlsVerification: true` enabled, which means the website's TLS configuration is severely broken (not just an expired or self-signed certificate). Possible solutions: (1) Try the plain HTTP version of the URL (http:// instead of https://), (2) The website may be completely down, or (3) Contact the website administrator about their broken SSL configuration."
+            : "This usually happens when a website has an expired, self-signed, or misconfigured SSL certificate. If you trust this website and are not submitting sensitive data, you can bypass this error by setting `skipTlsVerification: true` in your scrape request. Note: Only do this for trusted sites as it disables certificate validation."),
     );
   }
 
@@ -108,6 +113,7 @@ export class SSLError extends TransportableError {
     return {
       ...super.serialize(),
       skipTlsVerification: this.skipTlsVerification,
+      zeroDataRetention: this.zeroDataRetention,
     };
   }
 
@@ -115,7 +121,7 @@ export class SSLError extends TransportableError {
     _: ErrorCodes,
     data: ReturnType<typeof this.prototype.serialize>,
   ) {
-    const x = new SSLError(data.skipTlsVerification);
+    const x = new SSLError(data.skipTlsVerification, data.zeroDataRetention);
     x.stack = data.stack;
     return x;
   }
@@ -123,12 +129,14 @@ export class SSLError extends TransportableError {
 
 type ExchangeRefusalCode =
   | "THIRD_PARTY_DATA_NOT_FOUND"
+  | "THIRD_PARTY_DATA_UNSUPPORTED_URL"
   | "THIRD_PARTY_DATA_NOT_ENABLED"
   | "THIRD_PARTY_DATA_ENRICHMENT_NOT_ENABLED";
 
 // A definitive answer from the Exchange about this URL: the provider holds no
-// record for it, or the team is not entitled to the provider. Another attempt
-// cannot change it, so it surfaces as-is instead of as an engine failure.
+// record for it, does not serve it, or the team is not entitled to the
+// provider. Another attempt cannot change it, so it surfaces as-is instead of
+// as an engine failure.
 export class ExchangeRefusedError extends TransportableError {
   constructor(code: ExchangeRefusalCode, message: string) {
     super(code, message);
@@ -662,7 +670,7 @@ export class PromptInjectionDetectedError extends TransportableError {
     super(
       "SCRAPE_PROMPT_INJECTION_DETECTED",
       message ??
-        "The scraped page content appears to contain a prompt injection attempt, so JSON extraction was aborted for safety.",
+        "The scraped page content appears to contain a prompt injection attempt, so the scrape was aborted for safety.",
     );
   }
 

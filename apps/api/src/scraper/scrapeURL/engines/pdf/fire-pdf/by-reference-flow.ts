@@ -10,6 +10,7 @@ import {
 import { cacheKeyShape, tryGetCached } from "./cache";
 import { lookupAdoptableFirePdfJob } from "./lookup";
 import { buildFirePdfJobOptions, FirePdfAsyncFailure } from "./utils";
+import { firePdfTableFormat } from "./request-metadata";
 
 type FirePdfByReferenceAttemptArgs = {
   meta: Meta;
@@ -145,6 +146,7 @@ export async function runFirePdfByReferenceAttempt(
         includePageMarkdown,
         includeBlocks,
         pageMarkers,
+        tableFormat: firePdfTableFormat(meta),
       }),
     );
     meta.abort.throwIfAborted();

@@ -636,6 +636,11 @@ export type InternalOptions = {
   v1JSONSystemPrompt?: string;
   v1OriginalFormat?: "extract" | "json"; // Track original v1 format for backward compatibility
 
+  /** Attributes the JSON extraction's LLM calls to the feature that asked for
+   * the scrape (e.g. a search monitor's judge): replaces the functionId root
+   * and adds span metadata. */
+  llmTelemetry?: { functionId: string; metadata: Record<string, string> };
+
   isPreCrawl?: boolean; // Whether this scrape is part of a precrawl job
   agentIndexOnly?: boolean; // Pre-confirmation agent key: serve from index only, never touch web/Fire Engine
   isParse?: boolean; // Whether this scrape originated from /v2/parse
@@ -1195,6 +1200,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
               }
           : {}),
         postprocessorsUsed: engineResult.postprocessorsUsed,
+        provider: engineResult.exchange?.provider,
       },
     };
 
@@ -1299,6 +1305,12 @@ export async function scrapeURL(
           }
           internalOptions.threatProtection = tp.policy ?? undefined;
         }
+      }
+
+      // ZDR always verifies TLS, for every engine. Explicit false also wins over
+      // the skip-by-default in applyScrapeOptionsDefaults.
+      if (internalOptions.zeroDataRetention) {
+        options.skipTlsVerification = false;
       }
 
       const meta = await buildMetaObject(
@@ -1427,7 +1439,9 @@ export async function scrapeURL(
                   setSpanAttributes(span, {
                     "scrape.blocked_by_robots": true,
                   });
-                  throw new CrawlDenialError("URL blocked by robots.txt");
+                  throw new CrawlDenialError("URL blocked by robots.txt", {
+                    robotsBlockedUrl: urlToCheck,
+                  });
                 }
               } catch (error) {
                 if (error instanceof CrawlDenialError) {
@@ -1844,6 +1858,13 @@ export async function scrapeURL(
           });
         } else if (error instanceof SSLError) {
           errorType = "SSLError";
+          // Engines don't know about ZDR; swap in the message that doesn't
+          // suggest skipTlsVerification, which ZDR overrides above.
+          if (meta.internalOptions.zeroDataRetention) {
+            const zdrError = new SSLError(false, true);
+            zdrError.stack = error.stack;
+            error = zdrError;
+          }
           meta.logger.warn("scrapeURL: SSL error", { error });
         } else if (error instanceof ActionError) {
           errorType = "ActionError";

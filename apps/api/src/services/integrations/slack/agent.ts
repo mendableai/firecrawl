@@ -4,12 +4,10 @@ import { config } from "../../../config";
 import { logger as _logger } from "../../../lib/logger";
 import { dbRr } from "../../../db/connection";
 import * as schema from "../../../db/schema";
-import { getAgentFreeRequestsLeft } from "../../../db/rpc";
 import { getACUCTeam } from "../../../controllers/auth";
 import { agentRequestSchema } from "../../../controllers/v2/types";
 import { RateLimiterMode } from "../../../types";
 import { getAutumnRateLimiter } from "../../rate-limiter";
-import { autumnService } from "../../autumn/autumn.service";
 import { orgIdFromAcuc } from "../../../lib/team-org";
 import { getScrapeZDR } from "../../../lib/zdr-helpers";
 import { launchAgentJob } from "../../../lib/agent-launch";
@@ -22,8 +20,6 @@ import type { SlackInstallationRow } from "./types";
 
 const logger = _logger.child({ module: "slack-agent" });
 
-// Same minimum the POST /v2/agent route checks before it starts a run.
-const AGENT_MIN_CREDITS = 20;
 const POLL_INTERVAL_MS = 5_000;
 const AGENT_TIMEOUT_MS = 10 * 60 * 1000;
 // Slack truncates long message text; stay well under its 4,000-char guidance.
@@ -245,13 +241,9 @@ async function startAgentForTeam(
 
   const orgId = orgIdFromAcuc(acuc);
   try {
-    const multiplier = await autumnService.getRateLimitMultiplier(
-      teamId,
-      orgId,
-    );
     await getAutumnRateLimiter(
       RateLimiterMode.Extract,
-      multiplier,
+      acuc.rate_limit_multiplier,
       acuc.flags,
     ).consume(teamId);
   } catch (error) {
@@ -259,40 +251,24 @@ async function startAgentForTeam(
     return { ok: false, reason: "rate_limited" };
   }
 
-  let hasFreeRequest = false;
-  if (config.USE_DB_AUTHENTICATION) {
-    try {
-      const data = await getAgentFreeRequestsLeft(teamId);
-      hasFreeRequest = data?.[0]?.free_requests_left !== 0;
-    } catch (error) {
-      logger.warn("Failed to get agent free requests left", { error, teamId });
-    }
-  }
-  if (!hasFreeRequest && orgId) {
-    const credit = await autumnService.checkCredits({
-      teamId,
-      orgId,
-      value: AGENT_MIN_CREDITS,
-      properties: { source: "slackAgent", apiKeyId: apiKey.id },
-    });
-    // Fail open on an Autumn outage (null), like checkCreditsMiddleware.
-    if (credit !== null && !credit.allowed) {
-      return { ok: false, reason: "no_credits" };
-    }
-  }
-
+  // launchAgentJob applies the same free-request and credit gate as
+  // POST /v2/agent.
   const agentId = uuidv7();
   const launched = await launchAgentJob({
     agentId,
     teamId,
     apiKey: apiKey.key,
     apiKeyId: apiKey.id,
+    orgId,
     request: agentRequestSchema.parse({
       prompt,
       origin: "slack",
       mode: "chat",
     }),
   });
+  if (!launched.ok && launched.reason === "insufficient_credits") {
+    return { ok: false, reason: "no_credits" };
+  }
   if (!launched.ok) {
     logger.error("Failed to start Slack agent run", {
       agentId,

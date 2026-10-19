@@ -11,7 +11,7 @@ from ..types import (
     CrawlResponse, Document, CrawlParamsRequest, CrawlParamsResponse, CrawlParamsData,
     WebhookConfig, CrawlErrorsResponse, ActiveCrawlsResponse, ActiveCrawl, PaginationConfig
 )
-from ..utils import HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
+from ..utils import FirecrawlError, HttpClient, handle_response_error, validate_scrape_options, prepare_scrape_options
 from ..utils.error_handler import CrawlJobTimeoutError
 from ..utils.normalize import normalize_document_input
 
@@ -122,7 +122,7 @@ def _parse_crawl_documents(data_list: Optional[List[Any]]) -> List[Document]:
 
 def _parse_crawl_status_response(response_data: Dict[str, Any]) -> Dict[str, Any]:
     if not response_data.get("success"):
-        raise Exception(response_data.get("error", "Unknown error occurred"))
+        raise FirecrawlError(response_data.get("error", "Unknown error occurred"))
 
     return {
         "status": response_data.get("status"),
@@ -177,7 +177,7 @@ def start_crawl(client: HttpClient, request: CrawlRequest) -> CrawlResponse:
 
         return CrawlResponse(**job_data)
     else:
-        raise Exception(response_data.get("error", "Unknown error occurred"))
+        raise FirecrawlError(response_data.get("error", "Unknown error occurred"))
 
 
 def get_crawl_status(
@@ -220,7 +220,7 @@ def get_crawl_status(
 
     # Handle pagination if requested
     auto_paginate = pagination_config.auto_paginate if pagination_config else True
-    if auto_paginate and payload["next"] and not (
+    if auto_paginate and payload["next"] and (documents or payload["status"] == "completed") and not (
         pagination_config
         and pagination_config.max_results is not None
         and len(documents) >= pagination_config.max_results
@@ -356,7 +356,9 @@ def _fetch_all_pages(
         if max_results is not None and len(documents) >= max_results:
             break
 
-        # Get next URL
+        # A running job repeats its cursor on an empty page until new documents finish.
+        if not page_payload["data"] and page_payload["next"] == current_url:
+            break
         current_url = page_payload["next"]
         page_count += 1
 
@@ -372,13 +374,19 @@ def cancel_crawl(client: HttpClient, job_id: str) -> bool:
         job_id: ID of the crawl job to cancel
         
     Returns:
-        bool: True if the crawl was cancelled, False otherwise
+        bool: True if the crawl was cancelled. False if the crawl was not
+        cancelled, for example because it already completed (HTTP 409).
         
     Raises:
-        Exception: If the cancellation fails
+        FirecrawlError: If the API returns any other error status
+        requests.RequestException: If the request fails before a response arrives
     """
     response = client.delete(f"/v2/crawl/{job_id}")
     
+    if response.status_code == 409:
+        # The crawl already completed, so there is nothing to cancel.
+        return False
+
     if not response.ok:
         handle_response_error(response, "cancel crawl")
     
@@ -595,7 +603,7 @@ def crawl_params_preview(client: HttpClient, request: CrawlParamsRequest) -> Cra
         
         return CrawlParamsData(**converted_params)
     else:
-        raise Exception(response_data.get("error", "Unknown error occurred"))
+        raise FirecrawlError(response_data.get("error", "Unknown error occurred"))
 
 
 def get_crawl_errors(http_client: HttpClient, crawl_id: str) -> CrawlErrorsResponse:
@@ -627,7 +635,7 @@ def get_crawl_errors(http_client: HttpClient, crawl_id: str) -> CrawlErrorsRespo
         }
         return CrawlErrorsResponse(**normalized)
     except Exception as e:
-        raise Exception(f"Failed to parse crawl errors response: {e}")
+        raise FirecrawlError(f"Failed to parse crawl errors response: {e}")
 
 
 def get_active_crawls(client: HttpClient) -> ActiveCrawlsResponse:
@@ -650,7 +658,7 @@ def get_active_crawls(client: HttpClient) -> ActiveCrawlsResponse:
 
     body = response.json()
     if not body.get("success"):
-        raise Exception(body.get("error", "Unknown error occurred"))
+        raise FirecrawlError(body.get("error", "Unknown error occurred"))
 
     crawls_in = body.get("crawls", [])
     normalized_crawls = []
