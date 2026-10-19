@@ -1,5 +1,5 @@
 # Firecrawl Rust SDK
-The Firecrawl Rust SDK is the Rust client for Firecrawl, the context API for AI agents. Search, scrape, and interact with the web, and get back clean Markdown or structured data your agents can ship with, through a simple interface to the Firecrawl v2 API.
+The Firecrawl Rust SDK is the Rust client for Firecrawl, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, run Agent and Monitor jobs, and get back clean Markdown or structured data your agents can ship with, through a simple interface to the Firecrawl v2 API.
 
 ## Installation
 
