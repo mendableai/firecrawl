@@ -101,6 +101,8 @@ import type {
   GetMonitorCheckOptions,
   UpdateMonitorRequest,
 } from "./types";
+import { defaultOrigin } from "../utils/callerOrigin";
+import { getVersion } from "./utils/getVersion";
 import { Watcher } from "./watcher";
 import type { WatcherOptions } from "./watcher";
 import * as zt from "zod";
@@ -130,6 +132,12 @@ export interface FirecrawlClientOptions {
   maxRetries?: number;
   /** Exponential backoff factor for retries (optional). */
   backoffFactor?: number;
+  /**
+   * Attribution tag stamped into request bodies. Defaults to `js-sdk@<version>`,
+   * or `js-sdk.<package>@<version>` when an installed package creates the client
+   * (set FIRECRAWL_DISABLE_CALLER_ORIGIN=1 to keep the plain default).
+   */
+  origin?: string;
 }
 
 /** Accepts a plain API key string or a full options object. */
@@ -140,7 +148,7 @@ export type FirecrawlClientInput = FirecrawlClientOptions | string;
  */
 
 export class FirecrawlClient {
-  private readonly http: HttpClient;
+  protected readonly http: HttpClient;
   private _research?: ResearchClient;
 
   private isCloudService(url: string): boolean {
@@ -168,6 +176,7 @@ export class FirecrawlClient {
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,
       backoffFactor: opts.backoffFactor,
+      origin: opts.origin || defaultOrigin(getVersion()),
     });
   }
 

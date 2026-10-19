@@ -39,6 +39,16 @@ crawl_status = firecrawl.crawl(
 print(crawl_status)
 ```
 
+### Request origin
+
+Requests carry an `origin` tag that identifies the client. Pass the `origin` argument to set the client default. Per-call overrides are available on methods that explicitly accept an `origin` argument, such as `interact`.
+
+```python
+firecrawl = Firecrawl(api_key="fc-YOUR_API_KEY", origin="python-sdk.my-wrapper@1.0.0")
+```
+
+By default the tag is `python-sdk@<version>`. When the client is created by code inside an installed package (a wrapper library), the default is `python-sdk.<package>@<version>` instead, for example `python-sdk.some-agent@<version>`. Application code, REPLs and notebooks keep the plain default. Detection runs once when the client is created and sends only the installed distribution name, lowercased and sanitized into a slug. Set `FIRECRAWL_DISABLE_CALLER_ORIGIN=1` to always use the plain default.
+
 ### Scraping a URL
 
 To scrape a single URL, use the `scrape` method. It takes the URL as a parameter and returns a document with the requested formats.
