@@ -508,6 +508,26 @@ class ClientTest < Minitest::Test
     assert_equal "batch-123", response.id
   end
 
+  def test_start_calls_send_sdk_origin
+    origin = "ruby-sdk@#{Firecrawl::VERSION}"
+    stub_request(:post, "#{BASE_URL}/v2/crawl")
+      .with(body: hash_including("origin" => origin))
+      .to_return(status: 200, body: JSON.generate(id: "crawl-origin"), headers: { "Content-Type" => "application/json" })
+    stub_request(:post, "#{BASE_URL}/v2/batch/scrape")
+      .with(body: hash_including("origin" => origin, "formats" => ["markdown"]))
+      .to_return(status: 200, body: JSON.generate(id: "batch-origin"), headers: { "Content-Type" => "application/json" })
+    stub_request(:post, "#{BASE_URL}/v2/map")
+      .with(body: hash_including("origin" => origin))
+      .to_return(status: 200, body: JSON.generate(data: { links: [] }), headers: { "Content-Type" => "application/json" })
+
+    batch_options = Firecrawl::Models::BatchScrapeOptions.new(
+      options: Firecrawl::Models::ScrapeOptions.new(formats: ["markdown"])
+    )
+    assert_equal "crawl-origin", @client.start_crawl("https://example.com").id
+    assert_equal "batch-origin", @client.start_batch_scrape(["https://a.com"], batch_options).id
+    assert_empty @client.map("https://example.com").links
+  end
+
   def test_batch_scrape_with_idempotency_key
     stub_request(:post, "#{BASE_URL}/v2/batch/scrape")
       .with(headers: { "x-idempotency-key" => "my-key" })
