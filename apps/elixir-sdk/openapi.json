@@ -517,6 +517,15 @@
                         "type": "boolean",
                         "default": false,
                         "description": "When true on an ordinary URL scrape, `data.tools` lists tool contracts matched to the scraped page's domain (same `DiscoveredTool` shape as search). Requires the team's Alexandria access to be enabled and no zero data retention (403 otherwise). Free."
+                      },
+                      "toolDetail": {
+                        "type": "string",
+                        "enum": [
+                          "compact",
+                          "summary",
+                          "full"
+                        ],
+                        "description": "How much of each tool contract to return in `data.tools` when `domainTools` is true. `compact` returns only `provider`, `capability`, and `description`. `summary` returns the full tool entry without `options` and `response`. `full` also returns `options`, `response`, and `examples`. If you omit it, tools are returned as with `summary`."
                       }
                     }
                   }
@@ -8880,6 +8889,45 @@
             },
             {
               "type": "object",
+              "title": "Attributes",
+              "description": "Extract attribute values from the elements that match CSS selectors. Returns the values in the response `attributes` field.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "attributes"
+                  ]
+                },
+                "selectors": {
+                  "type": "array",
+                  "description": "The elements and attributes to extract.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "selector": {
+                        "type": "string",
+                        "description": "CSS selector to find elements."
+                      },
+                      "attribute": {
+                        "type": "string",
+                        "description": "Attribute name to extract (for example `data-vehicle-name` or `id`)."
+                      }
+                    },
+                    "required": [
+                      "selector",
+                      "attribute"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "type",
+                "selectors"
+              ]
+            },
+            {
+              "type": "object",
               "title": "Screenshot",
               "properties": {
                 "type": {
@@ -9439,7 +9487,8 @@
           "waitFor": {
             "type": "integer",
             "description": "Specify a delay in milliseconds before fetching the content, allowing the page sufficient time to load. This waiting time is in addition to Firecrawl's smart wait feature.",
-            "default": 0
+            "default": 0,
+            "maximum": 60000
           },
           "mobile": {
             "type": "boolean",
@@ -9460,10 +9509,20 @@
           },
           "parsers": {
             "type": "array",
-            "description": "Controls how files are processed during scraping. When \"pdf\" is included (default), the PDF content is extracted and converted to markdown format, with billing based on the number of pages (1 credit per page). When an empty array is passed, the PDF file is returned in base64 encoding with a flat rate of 1 credit for the entire PDF.",
+            "description": "Controls how files are processed during scraping. Each item is a parser name (`\"pdf\"` or `\"image\"`) or a parser object. Both parsers are on by default.\n\n - **pdf**: PDF content is extracted and converted to markdown format, with billing based on the number of pages (1 credit per page).\n - **image**: Raster images (PNG, JPEG, JPEG 2000, TIFF, GIF, BMP, WebP, AVIF) are OCR'd as one-page documents and converted to markdown. SVG and HEIC are not supported.\n\nIf you pass a list, parsers that are not in the list are off. For example, `[\"pdf\"]` turns off image OCR, so image URLs fail as unsupported files. When an empty array is passed, the PDF file is returned in base64 encoding with a flat rate of 1 credit for the entire PDF.",
             "items": {
               "oneOf": [
                 {
+                  "title": "Parser name",
+                  "type": "string",
+                  "enum": [
+                    "pdf",
+                    "image"
+                  ],
+                  "description": "Shorthand for a parser object with default options. `\"pdf\"` is the same as `{ \"type\": \"pdf\" }`."
+                },
+                {
+                  "title": "PDF",
                   "type": "object",
                   "properties": {
                     "type": {
@@ -9508,11 +9567,29 @@
                     "type"
                   ],
                   "additionalProperties": false
+                },
+                {
+                  "title": "Image",
+                  "type": "object",
+                  "description": "Image OCR parser. It has no options. The PDF options (`mode`, `maxPages`, `pages`, `blocks`, `pageMarkers`) do not apply to images.",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "image"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
                 }
               ]
             },
             "default": [
-              "pdf"
+              "pdf",
+              "image"
             ]
           },
           "actions": {
@@ -10071,6 +10148,27 @@
                   "type": "string"
                 },
                 "description": "List of links on the page if `links` is in `formats`"
+              },
+              "attributes": {
+                "type": "array",
+                "description": "Attribute values extracted by the `attributes` format. Only present if an `attributes` format object was included in `formats`.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "selector": {
+                      "type": "string"
+                    },
+                    "attribute": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
               },
               "actions": {
                 "type": "object",
