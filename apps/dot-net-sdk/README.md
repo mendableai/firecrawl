@@ -1,6 +1,6 @@
 # Firecrawl .NET SDK
 
-.NET SDK for the [Firecrawl API](https://firecrawl.dev) — search, scrape, and crawl the web for AI agents.
+.NET SDK for [Firecrawl](https://firecrawl.dev), the context API for AI agents. Search, scrape, parse, crawl, and map the web, and run Monitor jobs.
 
 ## Installation
 

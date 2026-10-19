@@ -1,6 +1,6 @@
 # Firecrawl Python SDK
 
-The Firecrawl Python SDK is the Python client for Firecrawl, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and get back clean Markdown or structured data your agents can ship with.
+The Firecrawl Python SDK is the Python client for Firecrawl, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, run Agent and Monitor jobs, and get back clean Markdown or structured data your agents can ship with.
 
 ## Installation
 
