@@ -2,7 +2,8 @@ import { config } from "../../../config";
 import type { BrowserCookie, Meta } from "..";
 import type { Postprocessor } from ".";
 import type { EngineScrapeResult } from "../engines";
-import { throwIfMediaAccessDenied } from "../error";
+import { throwIfMediaAccessDenied, YouTubeUnavailableError } from "../error";
+import { TransportableError } from "../../../lib/error";
 
 // Transcript enrichment is best-effort: the postprocessor loop swallows its
 // errors and returns the page without a transcript. But an unbounded fetch to
@@ -66,6 +67,16 @@ function isYouTubeVideoPath(url: URL): boolean {
 
   const pathParts = url.pathname.split("/").filter(Boolean);
   return pathParts.length === 2 && pathParts[0] === "live";
+}
+
+// Google's error page ("Error 401 (Bad Request)!!1") or YouTube's consent
+// interstitial in place of a watch page carries no video content.
+export function isYouTubeErrorPage(markdown: string | undefined): boolean {
+  const head = (markdown ?? "").trimStart().slice(0, 1000);
+  return (
+    /^Error \d{3} \([^)]*\)!!1/.test(head) ||
+    head.includes("Before you continue to YouTube")
+  );
 }
 
 function buildMarkdown(
@@ -175,7 +186,18 @@ export const youtubePostprocessor: Postprocessor = {
       return engineResult;
     }
 
-    const metadata = await getYouTubeMetadata(meta, engineResult);
+    let metadata: YouTubeMetadataResponse;
+    try {
+      metadata = await getYouTubeMetadata(meta, engineResult);
+    } catch (error) {
+      if (
+        !(error instanceof TransportableError) &&
+        isYouTubeErrorPage(engineResult.markdown)
+      ) {
+        throw new YouTubeUnavailableError();
+      }
+      throw error;
+    }
     const markdown = buildMarkdown(metadata, engineResult.url);
 
     return {
