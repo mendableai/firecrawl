@@ -6,6 +6,18 @@ import axios, {
 import { getVersion } from "./getVersion";
 import { pinToApiOrigin } from "../../utils/apiOrigin";
 
+// Runtimes such as Cloudflare Workers reject the Request `cache: "default"` that
+// axios's fetch adapter always sets; there axios calls fetch(url, init) without it.
+const rejectsDefaultCacheMode = (): boolean => {
+  if (typeof Request !== "function") return false;
+  try {
+    new Request("https://api.firecrawl.dev", { cache: "default" });
+    return false;
+  } catch {
+    return true;
+  }
+};
+
 export interface HttpClientOptions {
   apiKey: string;
   apiUrl: string;
@@ -44,6 +56,7 @@ export class HttpClient {
         ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
       },
       transitional: { clarifyTimeoutError: true },
+      ...(rejectsDefaultCacheMode() ? { adapter: "fetch", env: { Request: null as any } } : {}),
     });
   }
 
