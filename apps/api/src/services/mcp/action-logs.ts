@@ -19,7 +19,7 @@ const SECRET_PATTERN =
   /(?:\bBearer\s+\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b|\b(?:sk-|fc-|fco_|fcr_|fcmcp_)[A-Za-z0-9_-]+)/i;
 const SECRET_PATTERN_ALL = new RegExp(SECRET_PATTERN.source, "gi");
 const OBJECTIVE_MAX_LENGTH = 1000;
-const ERROR_CODE_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
+const ERROR_CODE_PATTERN = /^(?=.{2,64}$)[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const RETENTION_DAYS = 30;
 const ALLOWED_FIELDS = new Set([
   "team_id",
@@ -88,7 +88,11 @@ function text(value: unknown, field: string, max = 128, required = false) {
 
 function errorCode(value: unknown) {
   if (value == null || value === "") return null;
-  if (typeof value !== "string" || !ERROR_CODE_PATTERN.test(value)) {
+  if (
+    typeof value !== "string" ||
+    !ERROR_CODE_PATTERN.test(value) ||
+    SECRET_PATTERN.test(value)
+  ) {
     invalid("error_code must be a lowercase snake_case code");
   }
   return value;

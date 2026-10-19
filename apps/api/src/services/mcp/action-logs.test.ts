@@ -219,6 +219,9 @@ describe("MCP action log contract", () => {
       "Rate limit exceeded",
       "https://example.com",
       "RATE_LIMITED",
+      "rate_",
+      "rate__limited",
+      "fcmcp_abc123",
       "x".repeat(65),
       429,
     ]) {
