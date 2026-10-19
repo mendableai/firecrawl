@@ -12,6 +12,7 @@ function makeClient(
 ) {
   const calls: string[] = [];
   const http = {
+    getOrigin: () => "js-sdk@test",
     get: async (url: string) => {
       calls.push(url);
       return responder(url);

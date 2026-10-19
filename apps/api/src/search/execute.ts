@@ -74,6 +74,7 @@ interface SearchContext {
 
 interface SearchExecuteResult {
   toolsWarning?: string;
+  toolsUnavailable?: boolean;
   response: SearchV2Response;
   totalResultsCount: number;
   indexResultsCount: number;
@@ -207,7 +208,16 @@ export async function executeSearch(
     !zeroDataRetention &&
     !options.enterprise?.some(mode => mode === "zdr" || mode === "anon")
   ) {
-    await removeExplicitResults(searchResponse, limit, logger, teamId);
+    // Index results skip the SERP and its provider-side safe search, so they
+    // are filtered from a response of their own before they are counted,
+    // scraped or returned.
+    const safeTarget: SearchV2Response = indexCategorySearch
+      ? { web: indexResults }
+      : searchResponse;
+    await removeExplicitResults(safeTarget, limit, logger, teamId);
+    if (safeTarget !== searchResponse) {
+      indexResults = safeTarget.web ?? [];
+    }
   }
 
   if (searchResponse.web && searchResponse.web.length > 0) {
@@ -252,6 +262,7 @@ export async function executeSearch(
   const indexResultsCount = indexResults.length;
   totalResultsCount += indexResultsCount;
   let toolsWarning: string | undefined;
+  let toolsUnavailable = false;
 
   if (
     !zeroDataRetention &&
@@ -279,6 +290,7 @@ export async function executeSearch(
     );
     searchResponse.tools = discovery.items;
     toolsWarning = discovery.warning;
+    toolsUnavailable = discovery.unavailable === true;
   }
 
   const isZDR = options.enterprise?.includes("zdr");
@@ -301,7 +313,12 @@ export async function executeSearch(
     scrapeOptions?.formats && scrapeOptions.formats.length > 0;
 
   if (shouldScrape && scrapeOptions) {
-    const itemsToScrape = getItemsToScrape(searchResponse, flags, {
+    // Index results only become the web group at the end, so they are
+    // scraped from a response of their own.
+    const scrapeTarget: SearchV2Response = indexCategorySearch
+      ? { web: indexResults }
+      : searchResponse;
+    const itemsToScrape = getItemsToScrape(scrapeTarget, flags, {
       team_id: teamId,
       org_id: orgId ?? null,
       origin,
@@ -332,11 +349,10 @@ export async function executeSearch(
         flags,
       );
 
-      mergeScrapedContent(
-        searchResponse,
-        itemsToScrape,
-        allDocsWithCostTracking,
-      );
+      mergeScrapedContent(scrapeTarget, itemsToScrape, allDocsWithCostTracking);
+      if (scrapeTarget !== searchResponse) {
+        indexResults = scrapeTarget.web ?? [];
+      }
       scrapeCredits = calculateScrapeCredits(allDocsWithCostTracking);
     }
   }
@@ -435,6 +451,7 @@ export async function executeSearch(
   return {
     response: searchResponse,
     toolsWarning,
+    toolsUnavailable,
     totalResultsCount,
     indexResultsCount,
     searchCredits,

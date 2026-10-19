@@ -23,8 +23,8 @@ importers:
         specifier: 1.20.0
         version: 1.20.0
       firecrawl:
-        specifier: 4.30.1
-        version: 4.30.1
+        specifier: 4.49.1
+        version: 4.49.1
       typescript-event-target:
         specifier: ^1.1.1
         version: 1.1.1
@@ -712,8 +712,8 @@ packages:
       picomatch:
         optional: true
 
-  firecrawl@4.30.1:
-    resolution: {integrity: sha512-gW9nId70DeSNFIwW8YX8XINvr2xslCxjYLcaWe6As0NFPnTeaP0yQmKWNOA77vk/PcZaeGFrwFdR6s3eqBZiwA==}
+  firecrawl@4.49.1:
+    resolution: {integrity: sha512-ssm5wDo3xwiPyb7uPMu9sfSx57VOztW2SgP6cmOgswxARrWuHUSHL5InF/rWhddRtgdhEXVhJlA+bk9mNOUMOQ==}
     engines: {node: '>=22.0.0'}
 
   fix-dts-default-cjs-exports@1.0.1:
@@ -1711,7 +1711,7 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.4
 
-  firecrawl@4.30.1:
+  firecrawl@4.49.1:
     dependencies:
       axios: 1.20.0
       typescript-event-target: 1.1.1

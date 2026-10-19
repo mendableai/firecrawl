@@ -52,9 +52,11 @@ export async function exchangeRequest(input: {
             "x-exchange-max-credits": String(input.maximumCredits),
             // Leave the Exchange a margin to answer before our own timeout.
             "x-exchange-deadline": String(
-              Date.now() +
-                input.timeoutMs -
-                Math.min(2000, input.timeoutMs / 10),
+              Math.floor(
+                Date.now() +
+                  input.timeoutMs -
+                  Math.min(2000, input.timeoutMs / 10),
+              ),
             ),
           }),
     },

@@ -42,6 +42,8 @@ import {
   agentInteropStatus,
   isAgentInteropSecretValid,
 } from "../lib/agent-interop";
+import { inferIntegration } from "../lib/infer-integration";
+import { integrationFromHeader } from "../utils/integration";
 
 export function checkCreditsMiddleware(
   _minimum?: number,
@@ -336,6 +338,40 @@ export function authMiddleware(
       next();
     })().catch(err => next(err));
   };
+}
+
+/**
+ * Fills a missing body `integration` from a valid X-Integration header, then
+ * from inference. The body value always wins; an invalid header is ignored.
+ */
+export function inferIntegrationMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const body = req.body;
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    body.integration !== undefined
+  ) {
+    return next();
+  }
+
+  const header = integrationFromHeader(req);
+  if (header) {
+    body.integration = header;
+  } else if (config.INFER_INTEGRATION_ENABLED) {
+    const inferred = inferIntegration({
+      origin: req.get("origin"),
+      referer: req.get("referer"),
+      userAgent: req.get("user-agent"),
+      bodyOrigin: body.origin,
+    });
+    if (inferred) body.integration = inferred;
+  }
+  next();
 }
 
 export function idempotencyMiddleware(

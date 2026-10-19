@@ -34,6 +34,7 @@ import {
   requestTimingMiddleware,
   validateJobIdParam,
   wrap,
+  inferIntegrationMiddleware,
 } from "./shared";
 import { queueStatusController } from "../controllers/v1/queue-status";
 import { creditUsageHistoricalController } from "../controllers/v1/credit-usage-historical";
@@ -50,6 +51,7 @@ v1Router.use(requestTimingMiddleware("v1"));
 v1Router.post(
   "/scrape",
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(1),
   scrapeBlocklistMiddleware,
@@ -59,6 +61,7 @@ v1Router.post(
 v1Router.post(
   "/crawl",
   authMiddleware(RateLimiterMode.Crawl),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(),
   scrapeBlocklistMiddleware,
@@ -69,6 +72,7 @@ v1Router.post(
 v1Router.post(
   "/batch/scrape",
   authMiddleware(RateLimiterMode.Scrape),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(),
   blocklistMiddleware,
@@ -79,6 +83,7 @@ v1Router.post(
 v1Router.post(
   "/search",
   authMiddleware(RateLimiterMode.Search, { allowKeyless: true }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(undefined, SEARCH_CREDITS_FEATURE_ID),
   wrap(searchController),
@@ -87,6 +92,7 @@ v1Router.post(
 v1Router.post(
   "/map",
   authMiddleware(RateLimiterMode.Map),
+  inferIntegrationMiddleware,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(mapController),
@@ -149,6 +155,7 @@ v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 v1Router.post(
   "/extract",
   authMiddleware(RateLimiterMode.Extract),
+  inferIntegrationMiddleware,
   deprecationMiddleware("v1_extract"),
   countryCheck,
   checkCreditsMiddleware(20),
