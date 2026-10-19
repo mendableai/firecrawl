@@ -297,6 +297,7 @@ public class FirecrawlClient {
         if (options != null) {
             mergeOptions(body, options);
         }
+        body.putIfAbsent("origin", SDK_ORIGIN);
         return http.post("/v2/crawl", body, CrawlResponse.class);
     }
 
@@ -396,6 +397,7 @@ public class FirecrawlClient {
                 body.putAll(batchFields);
             }
         }
+        body.putIfAbsent("origin", SDK_ORIGIN);
         return http.post("/v2/batch/scrape", body, BatchScrapeResponse.class, extraHeaders);
     }
 
@@ -476,6 +478,7 @@ public class FirecrawlClient {
         if (options != null) {
             mergeOptions(body, options);
         }
+        body.putIfAbsent("origin", SDK_ORIGIN);
         return extractData(http.post("/v2/map", body, Map.class), MapData.class);
     }
 
