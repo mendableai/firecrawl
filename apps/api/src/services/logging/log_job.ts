@@ -1039,7 +1039,12 @@ async function logSearchInternal(search: LoggedSearch) {
       // is the record feedback reads, and the one the feedback window is
       // enforced from, so the counts travel with it. `writeFeedbackJob`
       // redacts both under zero data retention.
-      numResultsBySource: search.num_results_by_source,
+      //
+      // Only v2 search reports counts. A v0/v1 search returns a flat list
+      // whose positions do not map to `{source, position}`, so it records `{}`
+      // and every position is rejected. Leaving it absent would read as a job
+      // that predates the field and accept any position unbounded.
+      numResultsBySource: search.num_results_by_source ?? {},
       resultCategories: search.result_categories,
     },
     logger,
