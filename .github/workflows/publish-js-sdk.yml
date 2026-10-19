@@ -35,10 +35,12 @@ jobs:
         run: |
           pnpm install
           pnpm run build
+          VERSION=$(node -p "require('./package.json').version")
+          npm pkg set name=firecrawl
+          npm pkg delete dependencies.firecrawl
           pnpm publish --access public --no-git-checks
-          sed -i 's/"name": "@mendable\/firecrawl-js"/"name": "@mendable\/firecrawl"/g' package.json
+          npm pkg set name=@mendable/firecrawl-js dependencies.firecrawl=$VERSION
           pnpm publish --access public --no-git-checks
-          sed -i 's/"name": "@mendable\/firecrawl"/"name": "firecrawl"/g' package.json
-          sed -i '/"firecrawl":/d' package.json
+          npm pkg set name=@mendable/firecrawl
           pnpm publish --access public --no-git-checks
         working-directory: ./apps/js-sdk/firecrawl
