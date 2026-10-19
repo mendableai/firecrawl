@@ -98,7 +98,7 @@ async def get_batch_scrape_status(
     
     # Handle pagination if requested
     auto_paginate = pagination_config.auto_paginate if pagination_config else True
-    if auto_paginate and payload["next"]:
+    if auto_paginate and payload["next"] and docs:
         docs = await _fetch_all_batch_pages_async(
             client, 
             payload["next"], 
@@ -206,6 +206,10 @@ async def _fetch_all_batch_pages_async(
         except Exception:
             break
         
+        # A running job keeps returning `next`; an empty page means nothing new has landed yet.
+        if not page_payload["data"]:
+            break
+
         # Add documents from this page
         for document in page_payload["data"]:
             # Check max_results limit
