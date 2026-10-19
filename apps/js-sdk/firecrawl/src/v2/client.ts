@@ -164,8 +164,9 @@ export class FirecrawlClient {
     const opts: FirecrawlClientOptions =
       typeof options === "string" ? { apiKey: options } : options;
 
-    const apiKey = (opts.apiKey ?? process.env.FIRECRAWL_API_KEY ?? "").trim();
-    const apiUrl = (opts.apiUrl ?? process.env.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev").replace(/\/$/, "");
+    const env = typeof process !== "undefined" ? process.env : undefined;
+    const apiKey = (opts.apiKey ?? env?.FIRECRAWL_API_KEY ?? "").trim();
+    const apiUrl = (opts.apiUrl ?? env?.FIRECRAWL_API_URL ?? "https://api.firecrawl.dev").replace(/\/$/, "");
 
     // No API key is allowed: scrape, search, and interact fall back to the
     // keyless free tier (rate-limited per IP). Other methods will return 401
