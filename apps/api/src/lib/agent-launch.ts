@@ -110,6 +110,7 @@ export async function launchAgentJob(params: {
         threadId: request.threadId,
         mode: request.mode,
         exchange: request.exchange,
+        location: request.location,
       }),
     },
   );
