@@ -23,7 +23,8 @@ import type {
   ResearchTableName,
 } from "../../services/logging/log_job";
 import type { RequestWithAuth } from "../v1/types";
-import { wrap } from "../../routes/shared";
+import { checkCreditsMiddleware, wrap } from "../../routes/shared";
+import { SEARCH_CREDITS_FEATURE_ID } from "../../services/autumn/autumn.service";
 import { deprecationMiddleware } from "../../lib/deprecations";
 import {
   integrationFromHeader,
@@ -32,6 +33,13 @@ import {
 import { requestOrigin } from "../../lib/request-origin";
 
 const SEARCH_CREDITS_PER_TEN_RESULTS = 2;
+// Billed developer and GitHub searches are refused up front when the team
+// can't cover the smallest search charge, the same gate /v2/search applies.
+const searchCreditGate = () =>
+  checkCreditsMiddleware(
+    SEARCH_CREDITS_PER_TEN_RESULTS,
+    SEARCH_CREDITS_FEATURE_ID,
+  );
 const ZDR_SEARCH_CREDITS_PER_TEN_RESULTS = 10;
 
 const DEVELOPER_SEARCH_TIMEOUT_MS = 15_000;
@@ -574,6 +582,7 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
   router.get(
     "/github",
     deprecationMiddleware("v2_research_github_search"),
+    searchCreditGate(),
     wrap(
       createResearchController(
         githubSearchSchema,
@@ -614,12 +623,13 @@ export function createDeveloperRouter(options: { root?: boolean } = {}) {
     ),
   );
 
+  const gate = searchCreditGate();
   if (options.root) {
-    router.get("/", controller);
-    router.post("/", controller);
+    router.get("/", gate, controller);
+    router.post("/", gate, controller);
   } else {
-    router.get("/search", controller);
-    router.post("/search", controller);
+    router.get("/search", gate, controller);
+    router.post("/search", gate, controller);
   }
 
   return router;
