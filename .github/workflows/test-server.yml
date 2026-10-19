@@ -73,7 +73,7 @@ jobs:
       PARSE_UPLOAD_REF_TEST_REQUIRED: true
       IDMUX_URL: ${{ secrets.IDMUX_URL }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
@@ -85,7 +85,7 @@ jobs:
             "https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}/foundationdb-clients_${FDB_VERSION}-1_amd64.deb"
           sudo dpkg -i /tmp/fdb-clients.deb
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -128,7 +128,7 @@ jobs:
             apps/api/native/index.d.ts
           key: ${{ steps.napi_restore.outputs.cache-primary-key }}
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: 1.26
           cache-dependency-path: apps/api/sharedLibs/go-html-to-md/go.sum
@@ -553,7 +553,7 @@ jobs:
   #     NUQ_RABBITMQ_URL: amqp://localhost:5672
   #     HOST: 0.0.0.0
   #   steps:
-  #     - uses: actions/checkout@v5
+  #     - uses: actions/checkout@v7
 
   #     - name: Tailscale
   #       uses: tailscale/github-action@v4
@@ -570,7 +570,7 @@ jobs:
   #     - run: pnpm config set store-dir ~/.pnpm-store
   #     - run: mkdir -p ~/.pnpm-store
 
-  #     - uses: actions/setup-node@v6
+  #     - uses: actions/setup-node@v7
   #       with:
   #         node-version: 22
   #         cache: pnpm
@@ -606,7 +606,7 @@ jobs:
   #           apps/api/native/index.d.ts
   #         key: ${{ steps.napi_restore.outputs.cache-primary-key }}
 
-  #     - uses: actions/setup-go@v6
+  #     - uses: actions/setup-go@v7
   #       with:
   #         go-version: 1.24
   #         cache-dependency-path: apps/api/sharedLibs/go-html-to-md/go.sum
@@ -677,13 +677,13 @@ jobs:
     env:
       FDB_VERSION: 7.3.63
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm

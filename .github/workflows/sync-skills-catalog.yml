@@ -23,12 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout monorepo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: source
 
       - name: Checkout catalog
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: firecrawl/skills
           ssh-key: ${{ secrets.CATALOG_DEPLOY_KEY }}
