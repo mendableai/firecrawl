@@ -205,6 +205,29 @@ describe("MCP action log contract", () => {
     );
   });
 
+  it("stores an optional coarse error code and rejects anything but snake_case", () => {
+    expect(input().error_code).toBeNull();
+    expect(
+      input({ status: "error", error_code: "rate_limited" }).error_code,
+    ).toBe("rate_limited");
+    expect(
+      input({ status: "error", error_code: "scrape_all_engines_failed" })
+        .error_code,
+    ).toBe("scrape_all_engines_failed");
+    expect(input({ error_code: "" }).error_code).toBeNull();
+    for (const value of [
+      "Rate limit exceeded",
+      "https://example.com",
+      "RATE_LIMITED",
+      "x".repeat(65),
+      429,
+    ]) {
+      expect(() => input({ error_code: value })).toThrow(
+        "error_code must be a lowercase snake_case code",
+      );
+    }
+  });
+
   it("validates API-key and OAuth actors against the claimed team", async () => {
     const apiKeyDb = {
       select: vi.fn(() => ({
@@ -279,6 +302,7 @@ describe("MCP action log contract", () => {
         input({
           objective: "Find the refund policy",
           api_job_id: REQUEST_ID,
+          error_code: "rate_limited",
           user_agent: "Claude/1.0",
         }),
       ),
@@ -291,6 +315,7 @@ describe("MCP action log contract", () => {
       api_key_id: "123",
       objective: "Find the refund policy",
       api_job_id: REQUEST_ID,
+      error_code: "rate_limited",
     });
     expect(row).not.toHaveProperty("user_agent");
 

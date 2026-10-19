@@ -19,6 +19,7 @@ const SECRET_PATTERN =
   /(?:\bBearer\s+\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b|\b(?:sk-|fc-|fco_|fcr_|fcmcp_)[A-Za-z0-9_-]+)/i;
 const SECRET_PATTERN_ALL = new RegExp(SECRET_PATTERN.source, "gi");
 const OBJECTIVE_MAX_LENGTH = 1000;
+const ERROR_CODE_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
 const RETENTION_DAYS = 30;
 const ALLOWED_FIELDS = new Set([
   "team_id",
@@ -33,6 +34,7 @@ const ALLOWED_FIELDS = new Set([
   "client_name",
   "client_version",
   "error_class",
+  "error_code",
   "resource",
   "objective",
   "api_job_id",
@@ -84,6 +86,14 @@ function text(value: unknown, field: string, max = 128, required = false) {
   return normalized || null;
 }
 
+function errorCode(value: unknown) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string" || !ERROR_CODE_PATTERN.test(value)) {
+    invalid("error_code must be a lowercase snake_case code");
+  }
+  return value;
+}
+
 function objective(value: unknown) {
   if (value == null) return null;
   if (typeof value !== "string") invalid("objective must be a string");
@@ -111,6 +121,7 @@ type McpActionLogInput = {
   client_name: string | null;
   client_version: string | null;
   error_class: string | null;
+  error_code: string | null;
   resource: string;
   objective: string | null;
   api_job_id: string | null;
@@ -177,6 +188,7 @@ export function normalizeMcpActionLogInput(
     client_name: text(payload.client_name, "client_name"),
     client_version: text(payload.client_version, "client_version"),
     error_class: text(payload.error_class, "error_class"),
+    error_code: errorCode(payload.error_code),
     resource,
     objective: objective(payload.objective),
     api_job_id: text(payload.api_job_id, "api_job_id"),
