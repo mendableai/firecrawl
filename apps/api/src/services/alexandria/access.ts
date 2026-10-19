@@ -35,6 +35,30 @@ const requirementsSchema = z.object({
   ),
 });
 
+type ProviderRequirement = z.infer<
+  typeof requirementsSchema
+>["providers"][number];
+
+// Last good requirement per provider, served only when Exchange cannot answer. The answer is
+// catalogue data, the same for every team, so a recent copy is safe to reuse briefly.
+const REQUIREMENTS_FALLBACK_MS = 60 * 60 * 1000;
+const lastRequirements = new Map<
+  string,
+  { at: number; item: ProviderRequirement }
+>();
+
+function fallbackRequirements(
+  providers: string[],
+): ProviderRequirement[] | undefined {
+  const now = Date.now();
+  const items = providers.map(provider => lastRequirements.get(provider));
+  return items.every(
+    entry => entry && now - entry.at <= REQUIREMENTS_FALLBACK_MS,
+  )
+    ? items.map(entry => entry!.item)
+    : undefined;
+}
+
 export async function authorizeProviders(
   teamId: string,
   calls: ProviderCall[],
@@ -63,13 +87,16 @@ export async function authorizeProviders(
   const answered = new Set(
     parsed?.success ? parsed.data.providers.map(item => item.provider) : [],
   );
+  let requirements: ProviderRequirement[];
   if (
     !parsed?.success ||
     answered.size !== providers.length ||
     providers.some(provider => !answered.has(provider))
   ) {
+    const fallback = fallbackRequirements(providers);
     logger.warn("Exchange provider requirements unavailable", {
       providers,
+      servedFromFallback: fallback !== undefined,
       ...(response === undefined
         ? {
             error:
@@ -94,15 +121,22 @@ export async function authorizeProviders(
                 ),
               }),
     });
-    return refusal(
-      503,
-      "Provider agreements are unavailable. No provider was executed.",
-    );
+    if (!fallback)
+      return refusal(
+        503,
+        "Provider agreements are unavailable. No provider was executed.",
+      );
+    requirements = fallback;
+  } else {
+    requirements = parsed.data.providers;
+    const at = Date.now();
+    for (const item of requirements)
+      lastRequirements.set(item.provider, { at, item });
   }
   if (config.USE_DB_AUTHENTICATION !== true) return undefined;
 
   let ledger: Map<string, LedgerAcceptance> | undefined;
-  for (const item of parsed.data.providers) {
+  for (const item of requirements) {
     const required = item.exchangeRequired ?? item.required;
     const access = flags?.organizationDataSourceAccess?.[item.provider];
     if (access && access.status !== "enabled") {
@@ -150,7 +184,7 @@ export async function authorizeProviders(
   }
 
   const paidPlanOnly = new Set(
-    parsed.data.providers.flatMap(item =>
+    requirements.flatMap(item =>
       (item.paidPlanOnlyCapabilities ?? []).map(
         capability => `${item.provider}/${capability}`,
       ),
