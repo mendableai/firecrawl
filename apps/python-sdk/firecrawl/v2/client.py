@@ -64,6 +64,7 @@ from .types import (
 )
 from .utils.http_client import HttpClient
 from .utils.error_handler import FirecrawlError
+from .utils.v1_compat import call_v1
 from .methods import scrape as scrape_module
 from .methods import parse as parse_module
 from .methods import crawl as crawl_module  
@@ -409,45 +410,45 @@ class FirecrawlClient:
         """Deprecated alias for stop_interaction()."""
         return self.stop_interaction(job_id)
 
-    def scrape_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer scrape()."""
-        return self.scrape(url, **kwargs)
+    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for scrape(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.scrape, url, params=params, **kwargs)
 
-    def crawl_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer crawl()."""
-        return self.crawl(url, **kwargs)
+    def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
+        return call_v1(self.crawl, url, params=params, **kwargs)
 
-    def map_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer map()."""
-        return self.map(url, **kwargs)
+    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for map(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.map, url, params=params, **kwargs)
 
-    def async_crawl_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer start_crawl()."""
-        return self.start_crawl(url, **kwargs)
+    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for start_crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
+        return call_v1(self.start_crawl, url, params=params, **kwargs)
 
     def check_crawl_status(self, id: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer get_crawl_status()."""
-        return self.get_crawl_status(id, **kwargs)
+        """Deprecated v1 alias for get_crawl_status(); returns v1-readable results."""
+        return call_v1(self.get_crawl_status, id, **kwargs)
 
     def check_crawl_errors(self, id: str):
-        """V1 compatibility alias for agent recovery. Prefer get_crawl_errors()."""
-        return self.get_crawl_errors(id)
+        """Deprecated v1 alias for get_crawl_errors(); returns v1-readable results."""
+        return call_v1(self.get_crawl_errors, id)
 
-    def batch_scrape_urls(self, urls, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer batch_scrape()."""
-        return self.batch_scrape(urls, **kwargs)
+    def batch_scrape_urls(self, urls, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for batch_scrape(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.batch_scrape, urls, params=params, **kwargs)
 
-    def async_batch_scrape_urls(self, urls, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer start_batch_scrape()."""
-        return self.start_batch_scrape(urls, **kwargs)
+    def async_batch_scrape_urls(self, urls, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for start_batch_scrape(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.start_batch_scrape, urls, params=params, **kwargs)
 
     def check_batch_scrape_status(self, id: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer get_batch_scrape_status()."""
-        return self.get_batch_scrape_status(id, **kwargs)
+        """Deprecated v1 alias for get_batch_scrape_status(); returns v1-readable results."""
+        return call_v1(self.get_batch_scrape_status, id, **kwargs)
 
     def check_batch_scrape_errors(self, id: str):
-        """V1 compatibility alias for agent recovery. Prefer get_batch_scrape_errors()."""
-        return self.get_batch_scrape_errors(id)
+        """Deprecated v1 alias for get_batch_scrape_errors(); returns v1-readable results."""
+        return call_v1(self.get_batch_scrape_errors, id)
 
     def parse(
         self,

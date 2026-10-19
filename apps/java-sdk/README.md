@@ -1,6 +1,6 @@
 # Firecrawl Java SDK
 
-Java SDK for [Firecrawl](https://firecrawl.dev) — search, scrape, and interact with the web.
+Java SDK for [Firecrawl](https://firecrawl.dev), the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and run Agent and Monitor jobs.
 
 ## Prerequisites
 

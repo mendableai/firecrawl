@@ -247,7 +247,7 @@ class Firecrawl:
     def __init__(
         self,
         api_key: str = None,
-        api_url: str = "https://api.firecrawl.dev",
+        api_url: Optional[str] = "https://api.firecrawl.dev",
         timeout: float = None,
         max_retries: int = 3,
         backoff_factor: float = 0.5,
@@ -257,7 +257,7 @@ class Firecrawl:
 
         Args:
             api_key: Firecrawl API key (or set ``FIRECRAWL_API_KEY``)
-            api_url: Base API URL (defaults to production)
+            api_url: Base API URL (defaults to production, also when None)
             timeout: Default request timeout in seconds for all HTTP requests
             max_retries: Maximum number of retries for failed requests (default: 3)
             backoff_factor: Exponential backoff factor for retries (default: 0.5)
@@ -267,6 +267,8 @@ class Firecrawl:
                 creates the client; set FIRECRAWL_DISABLE_CALLER_ORIGIN=1 to
                 keep the plain default)
         """
+        if api_url is None:
+            api_url = "https://api.firecrawl.dev"
         self.api_key = api_key
         self.api_url = api_url
 
@@ -406,12 +408,14 @@ class AsyncFirecrawl:
     def __init__(
         self,
         api_key: str = None,
-        api_url: str = "https://api.firecrawl.dev",
+        api_url: Optional[str] = "https://api.firecrawl.dev",
         timeout: float = None,
         max_retries: int = 3,
         backoff_factor: float = 0.5,
         origin: str = None,
     ):
+        if api_url is None:
+            api_url = "https://api.firecrawl.dev"
         self.api_key = api_key
         self.api_url = api_url
 
