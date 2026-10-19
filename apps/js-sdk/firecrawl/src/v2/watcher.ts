@@ -13,13 +13,44 @@ const getWebSocketCtor = (): WebSocketConstructor | undefined => {
 
 type Listener = ((...args: any[]) => void) & { listener?: Listener };
 
-/** The subset of Node's EventEmitter the watcher exposes, with no import of "events", so browser bundles load it. */
+/** Node's EventEmitter API for the watcher, with no import of "events", so browser bundles load it. */
 class Emitter {
   private readonly listenersByEvent = new Map<string | symbol, Listener[]>();
+  private maxListeners = 10;
 
   on(event: string | symbol, listener: Listener): this {
     this.listenersByEvent.set(event, [...(this.listenersByEvent.get(event) ?? []), listener]);
     return this;
+  }
+
+  prependListener(event: string | symbol, listener: Listener): this {
+    this.listenersByEvent.set(event, [listener, ...(this.listenersByEvent.get(event) ?? [])]);
+    return this;
+  }
+
+  prependOnceListener(event: string | symbol, listener: Listener): this {
+    return this.prependListener(event, this.onceWrapper(event, listener));
+  }
+
+  listeners(event: string | symbol): Listener[] {
+    return (this.listenersByEvent.get(event) ?? []).map((entry) => entry.listener ?? entry);
+  }
+
+  rawListeners(event: string | symbol): Listener[] {
+    return [...(this.listenersByEvent.get(event) ?? [])];
+  }
+
+  eventNames(): (string | symbol)[] {
+    return [...this.listenersByEvent.keys()].filter((event) => this.listenerCount(event) > 0);
+  }
+
+  setMaxListeners(n: number): this {
+    this.maxListeners = n;
+    return this;
+  }
+
+  getMaxListeners(): number {
+    return this.maxListeners;
   }
 
   addListener(event: string | symbol, listener: Listener): this {
@@ -27,12 +58,16 @@ class Emitter {
   }
 
   once(event: string | symbol, listener: Listener): this {
+    return this.on(event, this.onceWrapper(event, listener));
+  }
+
+  private onceWrapper(event: string | symbol, listener: Listener): Listener {
     const wrapped: Listener = (...args) => {
       this.off(event, wrapped);
       listener.apply(this, args);
     };
     wrapped.listener = listener;
-    return this.on(event, wrapped);
+    return wrapped;
   }
 
   off(event: string | symbol, listener: Listener): this {
