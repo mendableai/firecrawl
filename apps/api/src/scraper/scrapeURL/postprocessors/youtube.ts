@@ -69,13 +69,19 @@ function isYouTubeVideoPath(url: URL): boolean {
   return pathParts.length === 2 && pathParts[0] === "live";
 }
 
-// Google's error page ("Error 401 (Bad Request)!!1") or YouTube's consent
-// interstitial in place of a watch page carries no video content.
-export function isYouTubeErrorPage(markdown: string | undefined): boolean {
-  const head = (markdown ?? "").trimStart().slice(0, 1000);
+// Google's error document ("Error 401 (Bad Request)!!1") rendered into the
+// page, or YouTube's consent interstitial, carries no video content.
+export function isYouTubeErrorPage(
+  page: Pick<EngineScrapeResult, "html" | "markdown">,
+): boolean {
+  const html = page.html ?? "";
+  const markdownHead = (page.markdown ?? "").trimStart().slice(0, 1000);
   return (
-    /^Error \d{3} \([^)]*\)!!1/.test(head) ||
-    head.includes("Before you continue to YouTube")
+    html.includes('id="af-error-container"') ||
+    /<title>Error \d{3} \([^)]*\)!!1<\/title>/.test(html) ||
+    /^Error \d{3} \([^)]*\)!!1/.test(markdownHead) ||
+    html.includes("Before you continue to YouTube") ||
+    markdownHead.includes("Before you continue to YouTube")
   );
 }
 
@@ -192,7 +198,7 @@ export const youtubePostprocessor: Postprocessor = {
     } catch (error) {
       if (
         !(error instanceof TransportableError) &&
-        isYouTubeErrorPage(engineResult.markdown)
+        isYouTubeErrorPage(engineResult)
       ) {
         throw new YouTubeUnavailableError();
       }
