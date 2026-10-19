@@ -341,56 +341,80 @@ pub struct JsonOptions {
     pub check_prompt_injection: Option<bool>,
 }
 
-/// Moves a serialized `jsonOptions` into the `json` entry of `formats`, since /v2
-/// rejects a top-level `jsonOptions` key. Adds the `json` format when it is not listed.
-pub(crate) fn fold_json_options(value: &mut Value) {
+/// Top-level option keys that /v2 only accepts inside their format object in `formats`.
+const FORMAT_OPTIONS: [(&str, &str); 4] = [
+    ("jsonOptions", "json"),
+    ("screenshotOptions", "screenshot"),
+    ("changeTrackingOptions", "changeTracking"),
+    ("attributeSelectors", "attributes"),
+];
+
+/// Moves serialized `jsonOptions`, `screenshotOptions`, `changeTrackingOptions` and
+/// `attributeSelectors` into their format object in `formats`, since /v2 rejects them as
+/// top-level keys. Adds the format when it is not listed.
+pub(crate) fn fold_format_options(value: &mut Value) {
     let Some(map) = value.as_object_mut() else {
         return;
     };
-    let Some(Value::Object(options)) = map.remove("jsonOptions") else {
-        return;
-    };
+    for (key, format_type) in FORMAT_OPTIONS {
+        let mut format = serde_json::Map::new();
+        format.insert("type".to_string(), Value::from(format_type));
+        match map.remove(key) {
+            Some(Value::Object(options)) => format.extend(
+                options
+                    .into_iter()
+                    .filter(|(name, _)| name != "systemPrompt"),
+            ),
+            Some(selectors @ Value::Array(_)) => {
+                format.insert("selectors".to_string(), selectors);
+            }
+            _ => continue,
+        }
+        let format = Value::Object(format);
 
-    let mut json_format = serde_json::Map::new();
-    json_format.insert("type".to_string(), Value::from("json"));
-    json_format.extend(options.into_iter().filter(|(key, _)| key != "systemPrompt"));
-    let json_format = Value::Object(json_format);
-
-    let formats = map
-        .entry("formats")
-        .or_insert_with(|| Value::Array(Vec::new()));
-    let Some(formats) = formats.as_array_mut() else {
-        return;
-    };
-    match formats
-        .iter_mut()
-        .find(|format| format.as_str() == Some("json"))
-    {
-        Some(slot) => *slot = json_format,
-        None => formats.push(json_format),
+        let formats = map
+            .entry("formats")
+            .or_insert_with(|| Value::Array(Vec::new()));
+        let Some(formats) = formats.as_array_mut() else {
+            return;
+        };
+        match formats
+            .iter_mut()
+            .find(|entry| entry.as_str() == Some(format_type))
+        {
+            Some(slot) => *slot = format,
+            None => formats.push(format),
+        }
     }
 }
 
-/// Reverses `fold_json_options`: a `json` format object in `formats` becomes the
-/// `"json"` format plus `jsonOptions`, so serialized options deserialize again.
-pub(crate) fn unfold_json_options(value: &mut Value) {
+/// Reverses `fold_format_options`: each format object in `formats` becomes the plain
+/// format name plus its top-level options key, so serialized options deserialize again.
+pub(crate) fn unfold_format_options(value: &mut Value) {
     let Some(map) = value.as_object_mut() else {
         return;
     };
-    let Some(formats) = map.get_mut("formats").and_then(Value::as_array_mut) else {
-        return;
-    };
-    let Some(slot) = formats
-        .iter_mut()
-        .find(|format| format.get("type").and_then(Value::as_str) == Some("json"))
-    else {
-        return;
-    };
-    let Value::Object(mut options) = std::mem::replace(slot, Value::from("json")) else {
-        return;
-    };
-    options.remove("type");
-    map.insert("jsonOptions".to_string(), Value::Object(options));
+    for (key, format_type) in FORMAT_OPTIONS {
+        let Some(formats) = map.get_mut("formats").and_then(Value::as_array_mut) else {
+            return;
+        };
+        let Some(slot) = formats
+            .iter_mut()
+            .find(|entry| entry.get("type").and_then(Value::as_str) == Some(format_type))
+        else {
+            continue;
+        };
+        let Value::Object(mut options) = std::mem::replace(slot, Value::from(format_type)) else {
+            continue;
+        };
+        options.remove("type");
+        let options = if format_type == "attributes" {
+            options.remove("selectors").unwrap_or_default()
+        } else {
+            Value::Object(options)
+        };
+        map.insert(key.to_string(), options);
+    }
 }
 
 /// Location configuration for proxy routing.
