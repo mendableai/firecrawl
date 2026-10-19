@@ -89,6 +89,59 @@ public class FirecrawlClient
         return response.Data ?? throw new FirecrawlException("Scrape response contained no data");
     }
 
+    /// <summary>
+    /// Runs code or a natural-language prompt in the browser session of a scrape job.
+    /// </summary>
+    /// <param name="jobId">The scrape job ID (<c>metadata.scrapeId</c> on the scraped document).</param>
+    /// <param name="code">Code to run. Optional when <paramref name="prompt"/> is set.</param>
+    /// <param name="language">Runtime for the code: "node", "python", or "bash".</param>
+    /// <param name="timeout">Execution timeout in seconds (1-300). The API defaults to 30.</param>
+    /// <param name="prompt">Natural-language instruction for the browser agent. Optional when <paramref name="code"/> is set.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<BrowserExecuteResponse> InteractAsync(
+        string jobId,
+        string? code,
+        string language = "node",
+        int? timeout = null,
+        string? prompt = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+
+        var hasCode = !string.IsNullOrWhiteSpace(code);
+        var hasPrompt = !string.IsNullOrWhiteSpace(prompt);
+        if (!hasCode && !hasPrompt)
+            throw new ArgumentException("Either code or prompt must be provided", nameof(code));
+
+        var body = new Dictionary<string, object>
+        {
+            ["language"] = language,
+            ["origin"] = SdkOrigin,
+        };
+        if (hasCode)
+            body["code"] = code!;
+        if (hasPrompt)
+            body["prompt"] = prompt!;
+        if (timeout.HasValue)
+            body["timeout"] = timeout.Value;
+
+        return await _http.PostAsync<BrowserExecuteResponse>(
+            $"/v2/scrape/{Uri.EscapeDataString(jobId)}/interact", body, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Stops the browser session of a scrape job.
+    /// </summary>
+    public async Task<BrowserDeleteResponse> StopInteractiveBrowserAsync(
+        string jobId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+
+        return await _http.DeleteAsync<BrowserDeleteResponse>(
+            $"/v2/scrape/{Uri.EscapeDataString(jobId)}/interact", cancellationToken);
+    }
+
     // ================================================================
     // CRAWL
     // ================================================================
