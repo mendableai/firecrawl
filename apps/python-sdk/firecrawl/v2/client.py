@@ -1571,8 +1571,10 @@ class FirecrawlClient:
             thread_id: Continue an existing thread instead of starting one
             mode: "extract" (default) or "chat"
             exchange: Data provider options, forwarded as sent
-            location: Proxy country for every request the agent makes, as
-                ``{"country": "DE"}`` (ISO 3166-1 alpha-2). The agent cannot change it.
+            location: Country for the whole run, as ``{"country": "DE"}``
+                (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied
+                from it, and search results are localized to it without changing
+                where requests come from. The agent cannot change it.
         Returns:
             Response payload with job id/status (poll with get_agent_status)
         """
@@ -1635,8 +1637,10 @@ class FirecrawlClient:
             thread_id: Continue an existing thread instead of starting one
             mode: "extract" (default) or "chat"
             exchange: Data provider options, forwarded as sent
-            location: Proxy country for every request the agent makes, as
-                ``{"country": "DE"}`` (ISO 3166-1 alpha-2). The agent cannot change it.
+            location: Country for the whole run, as ``{"country": "DE"}``
+                (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied
+                from it, and search results are localized to it without changing
+                where requests come from. The agent cannot change it.
         Returns:
             Final agent response when completed
         """

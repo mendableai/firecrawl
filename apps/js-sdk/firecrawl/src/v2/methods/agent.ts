@@ -21,7 +21,10 @@ function prepareAgentPayload(args: {
   threadId?: string;
   mode?: AgentMode;
   exchange?: AgentExchangeOptions;
-  /** Proxy country for every request the agent makes (ISO 3166-1 alpha-2). The agent cannot change it. */
+  /**
+   * Country for the whole run (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied from it,
+   * and search results are localized to it without changing where requests come from. The agent cannot change it.
+   */
   location?: { country: string };
 }): Record<string, unknown> {
   const body: Record<string, unknown> = {};
