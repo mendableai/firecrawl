@@ -39,7 +39,7 @@
 
 # **🔥 Firecrawl**
 
-**Supercharge your AI agents with data from the web and beyond. Building the library for superintelligence. 🔥** Open source and available as a [hosted service](https://firecrawl.dev/?ref=github).
+**The API to search, scrape, and interact with the web at scale. Firecrawl is the context API for AI agents. 🔥** Open source and available as a [hosted service](https://firecrawl.dev/?ref=github).
 
 _Pst. Hey, you, join our stargazers :)_
 
