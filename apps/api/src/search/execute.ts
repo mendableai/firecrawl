@@ -76,6 +76,7 @@ interface SearchContext {
 
 interface SearchExecuteResult {
   toolsWarning?: string;
+  toolsUnavailable?: boolean;
   response: SearchV2Response;
   totalResultsCount: number;
   indexResultsCount: number;
@@ -265,6 +266,7 @@ export async function executeSearch(
   const indexResultsCount = indexResults.length;
   totalResultsCount += indexResultsCount;
   let toolsWarning: string | undefined;
+  let toolsUnavailable = false;
 
   if (
     !zeroDataRetention &&
@@ -292,6 +294,7 @@ export async function executeSearch(
     );
     searchResponse.tools = discovery.items;
     toolsWarning = discovery.warning;
+    toolsUnavailable = discovery.unavailable === true;
   }
 
   const isZDR = options.enterprise?.includes("zdr");
@@ -452,6 +455,7 @@ export async function executeSearch(
   return {
     response: searchResponse,
     toolsWarning,
+    toolsUnavailable,
     totalResultsCount,
     indexResultsCount,
     searchCredits,

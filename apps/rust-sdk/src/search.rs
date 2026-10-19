@@ -52,6 +52,7 @@ pub struct SearchOptions {
     pub lr: Option<String>,
 
     /// Whether to ignore invalid URLs in results.
+    #[serde(rename = "ignoreInvalidURLs")]
     pub ignore_invalid_urls: Option<bool>,
 
     /// Timeout in milliseconds.
@@ -333,6 +334,19 @@ mod tests {
         let default_value = serde_json::to_value(SearchOptions::default()).unwrap();
         assert!(default_value.get("cr").is_none());
         assert!(default_value.get("lr").is_none());
+    }
+
+    #[test]
+    fn serializes_ignore_invalid_urls_option() {
+        let options = SearchOptions {
+            ignore_invalid_urls: Some(true),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            serde_json::to_value(options).unwrap(),
+            json!({ "ignoreInvalidURLs": true })
+        );
     }
 
     #[tokio::test]

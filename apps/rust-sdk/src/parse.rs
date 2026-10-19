@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use super::client::Client;
 use super::scrape::ParserConfig;
 use super::types::{
-    fold_json_options, unfold_json_options, AttributeSelector, Document, JsonOptions,
+    fold_format_options, unfold_format_options, AttributeSelector, Document, JsonOptions,
 };
 use crate::{AuditMetadata, FirecrawlError};
 
@@ -194,7 +194,7 @@ impl Serialize for ParseOptions {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut value = ParseOptions::serialize(self, serde_json::value::Serializer)
             .map_err(ser::Error::custom)?;
-        fold_json_options(&mut value);
+        fold_format_options(&mut value);
         value.serialize(serializer)
     }
 }
@@ -202,7 +202,7 @@ impl Serialize for ParseOptions {
 impl<'de> Deserialize<'de> for ParseOptions {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let mut value = Value::deserialize(deserializer)?;
-        unfold_json_options(&mut value);
+        unfold_format_options(&mut value);
         ParseOptions::deserialize(value).map_err(de::Error::custom)
     }
 }
@@ -535,6 +535,28 @@ mod tests {
             restored.json_options.and_then(|options| options.prompt),
             Some("Extract the title".to_string())
         );
+    }
+
+    #[test]
+    fn test_parse_options_send_attribute_selectors_as_attributes_format() {
+        let options = ParseOptions {
+            formats: Some(vec![ParseFormat::Markdown, ParseFormat::Attributes]),
+            attribute_selectors: Some(vec![AttributeSelector {
+                selector: "a".to_string(),
+                attribute: "href".to_string(),
+            }]),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!([
+                "markdown",
+                { "type": "attributes", "selectors": [{ "selector": "a", "attribute": "href" }] }
+            ])
+        );
+        assert!(payload.get("attributeSelectors").is_none());
     }
 
     #[test]

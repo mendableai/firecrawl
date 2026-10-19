@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::client::Client;
 use crate::types::{
-    fold_json_options, unfold_json_options, Action, AttributeSelector, ChangeTrackingOptions,
+    fold_format_options, unfold_format_options, Action, AttributeSelector, ChangeTrackingOptions,
     Document, Format, JsonOptions, LocationConfig, ProfileConfig, ProxyType, ScreenshotOptions,
 };
 use crate::{AuditMetadata, FirecrawlError};
@@ -120,7 +120,7 @@ impl Serialize for ScrapeOptions {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut value = ScrapeOptions::serialize(self, serde_json::value::Serializer)
             .map_err(ser::Error::custom)?;
-        fold_json_options(&mut value);
+        fold_format_options(&mut value);
         value.serialize(serializer)
     }
 }
@@ -128,7 +128,7 @@ impl Serialize for ScrapeOptions {
 impl<'de> Deserialize<'de> for ScrapeOptions {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let mut value = Value::deserialize(deserializer)?;
-        unfold_json_options(&mut value);
+        unfold_format_options(&mut value);
         ScrapeOptions::deserialize(value).map_err(de::Error::custom)
     }
 }
@@ -791,6 +791,94 @@ mod tests {
             json!(["markdown", { "type": "json", "prompt": "Extract the title" }])
         );
         assert!(payload.get("jsonOptions").is_none());
+    }
+
+    #[test]
+    fn test_format_options_serialize_inside_format_objects() {
+        let options = ScrapeOptions {
+            formats: Some(vec![
+                Format::Markdown,
+                Format::Screenshot,
+                Format::ChangeTracking,
+                Format::Attributes,
+            ]),
+            screenshot_options: Some(ScreenshotOptions {
+                full_page: Some(true),
+                quality: Some(80),
+                viewport: Some(crate::types::Viewport {
+                    width: 1280,
+                    height: 720,
+                }),
+            }),
+            change_tracking_options: Some(ChangeTrackingOptions {
+                modes: Some(vec![crate::types::ChangeTrackingMode::GitDiff]),
+                tag: Some("daily".to_string()),
+                ..Default::default()
+            }),
+            attribute_selectors: Some(vec![AttributeSelector {
+                selector: "a".to_string(),
+                attribute: "href".to_string(),
+            }]),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!([
+                "markdown",
+                {
+                    "type": "screenshot",
+                    "fullPage": true,
+                    "quality": 80,
+                    "viewport": { "width": 1280, "height": 720 }
+                },
+                { "type": "changeTracking", "modes": ["git-diff"], "tag": "daily" },
+                { "type": "attributes", "selectors": [{ "selector": "a", "attribute": "href" }] }
+            ])
+        );
+        for key in [
+            "screenshotOptions",
+            "changeTrackingOptions",
+            "attributeSelectors",
+        ] {
+            assert!(payload.get(key).is_none(), "{key} must not be top-level");
+        }
+
+        let restored: ScrapeOptions = serde_json::from_value(payload.clone()).unwrap();
+        assert!(matches!(
+            restored.formats.as_deref(),
+            Some([
+                Format::Markdown,
+                Format::Screenshot,
+                Format::ChangeTracking,
+                Format::Attributes
+            ])
+        ));
+        assert_eq!(restored.screenshot_options.unwrap().quality, Some(80));
+        assert_eq!(
+            restored.change_tracking_options.unwrap().tag,
+            Some("daily".to_string())
+        );
+        assert_eq!(restored.attribute_selectors.unwrap()[0].attribute, "href");
+    }
+
+    #[test]
+    fn test_format_options_add_missing_format() {
+        let options = ScrapeOptions {
+            formats: Some(vec![Format::Markdown]),
+            screenshot_options: Some(ScreenshotOptions {
+                full_page: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let payload = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            payload["formats"],
+            json!(["markdown", { "type": "screenshot", "fullPage": true }])
+        );
     }
 
     #[test]

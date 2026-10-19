@@ -191,6 +191,9 @@ func (c *Client) StartCrawl(ctx context.Context, url string, opts *CrawlOptions)
 	body := map[string]interface{}{"url": url}
 	mergeOptions(body, opts)
 
+	if _, ok := body["origin"]; !ok {
+		body["origin"] = "go-sdk@" + Version
+	}
 	raw, err := c.http.post(ctx, "/v2/crawl", body, nil)
 	if err != nil {
 		return nil, err
@@ -307,6 +310,9 @@ func (c *Client) StartBatchScrape(ctx context.Context, urls []string, opts *Batc
 		}
 	}
 
+	if _, ok := body["origin"]; !ok {
+		body["origin"] = "go-sdk@" + Version
+	}
 	raw, err := c.http.post(ctx, "/v2/batch/scrape", body, extraHeaders)
 	if err != nil {
 		return nil, err
@@ -385,6 +391,9 @@ func (c *Client) Map(ctx context.Context, url string, opts *MapOptions) (*MapDat
 	body := map[string]interface{}{"url": url}
 	mergeOptions(body, opts)
 
+	if _, ok := body["origin"]; !ok {
+		body["origin"] = "go-sdk@" + Version
+	}
 	raw, err := c.http.post(ctx, "/v2/map", body, nil)
 	if err != nil {
 		return nil, err

@@ -157,3 +157,51 @@ it("keeps tools when optional navigation is absent, extended or malformed", asyn
   expect(result.items[0]).toMatchObject({ next: undefined });
   expect(result.items[2]).toMatchObject({ next: undefined });
 });
+
+it("retries a failed discovery leg once", async () => {
+  request
+    .mockResolvedValueOnce({ status: 503, body: {} })
+    .mockResolvedValueOnce({
+      status: 200,
+      body: { success: true, creditsCost: 0, data: { items: [tool] } },
+    });
+  const result = await discoverTools(input, logger);
+  expect(logger.warn).toHaveBeenCalledWith(
+    "Semantic tool discovery unavailable",
+    expect.objectContaining({ attempt: 1 }),
+  );
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(result.items).toHaveLength(1);
+  expect(result.warning).toBeUndefined();
+  expect(result.unavailable).toBeUndefined();
+});
+
+it("reports discovery unavailable when every leg fails", async () => {
+  request.mockResolvedValue({ status: 503, body: {} });
+  const result = await discoverTools(
+    { ...input, urls: ["https://example.com/records"] },
+    logger,
+  );
+  expect(request).toHaveBeenCalledTimes(4);
+  expect(result.items).toEqual([]);
+  expect(result.warning).toBeTruthy();
+  expect(result.unavailable).toBe(true);
+});
+
+it("keeps partial results when only one leg fails", async () => {
+  request.mockImplementation(async args =>
+    args.path === "/v1/skills/resolve"
+      ? { status: 503, body: {} }
+      : {
+          status: 200,
+          body: { success: true, creditsCost: 0, data: { items: [tool] } },
+        },
+  );
+  const result = await discoverTools(
+    { ...input, urls: ["https://example.com/records"] },
+    logger,
+  );
+  expect(result.items).toHaveLength(1);
+  expect(result.warning).toBeTruthy();
+  expect(result.unavailable).toBeUndefined();
+});
