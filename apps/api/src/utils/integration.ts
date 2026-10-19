@@ -34,3 +34,15 @@ export const integrationSchema = z
         .join(" | ")}`,
     },
   );
+
+/** The X-Integration header as an integration value, or undefined when it is missing or invalid. */
+export function integrationFromHeader(req: {
+  headers?: Record<string, string | string[] | undefined>;
+}): string | undefined {
+  const header = req.headers?.["x-integration"];
+  const value =
+    typeof header === "string" ? header.trim().toLowerCase() : undefined;
+  return value && integrationSchema.safeParse(value).success
+    ? value
+    : undefined;
+}
