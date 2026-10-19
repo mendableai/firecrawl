@@ -3,6 +3,7 @@ import type { ThirdPartyDataTermsRequiredError } from "../../lib/exchange";
 import { Request, Response } from "express";
 import { hasCategory } from "../../lib/search-query-builder";
 import { config } from "../../config";
+import { isRequestedModelSupported } from "../../lib/extraction-provider";
 import { z } from "zod";
 import { browserProfileNameSchema } from "../../lib/browser-profiles";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
@@ -365,6 +366,14 @@ const jsonFormatWithOptions = z.strictObject({
     })
     .superRefine(addStrictSchemaIssue),
   prompt: z.string().max(10000).optional(),
+  // Optional: name a configured extraction model for this request.
+  model: z
+    .string()
+    .max(100)
+    .optional()
+    .refine(val => val === undefined || isRequestedModelSupported(val), {
+      message: "Unsupported extraction model.",
+    }),
   // Deprecated: lifted into the top-level checkPromptInjection at parse time.
   checkPromptInjection: z.boolean().optional(),
 });
@@ -2672,8 +2681,24 @@ export const searchRequestSchema = z
   }, "the gov category cannot be combined with other categories")
   .refine(x => waitForRefine(x.scrapeOptions), waitForRefineOpts)
   .transform(x => {
+    // Providers read the country (gl) and the location separately and default
+    // each to the US, so fill in whichever one the caller left out. Georgia is
+    // never inferred because it is also a US state.
+    const locationCountry = x.location?.split(",").at(-1)?.trim().toLowerCase();
     const country =
-      x.country !== undefined ? x.country : x.location ? undefined : "us";
+      x.country ??
+      Object.entries(countries)
+        .find(
+          ([code, c]) =>
+            code !== "GE" && c.name.toLowerCase() === locationCountry,
+        )?.[0]
+        .toLowerCase() ??
+      (x.location ? undefined : "us");
+    const location =
+      x.location ??
+      Object.entries(countries).find(
+        ([code]) => code === x.country?.toUpperCase(),
+      )?.[1].name;
 
     // Transform string array sources to object format
     let sources = x.sources;
@@ -2690,7 +2715,7 @@ export const searchRequestSchema = z
                 filter: x.filter,
                 lang: x.lang,
                 country,
-                location: x.location,
+                location,
               };
             case "images":
               return {
@@ -2703,7 +2728,7 @@ export const searchRequestSchema = z
                 tbs: x.tbs,
                 lang: x.lang,
                 country,
-                location: x.location,
+                location,
               };
             default:
               return { type: s as any };
@@ -2752,6 +2777,7 @@ export const searchRequestSchema = z
     return {
       ...x,
       country,
+      location,
       sources,
       categories,
       scrapeOptions: extractTransform(x.scrapeOptions),

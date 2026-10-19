@@ -299,6 +299,8 @@ final class FirecrawlClient
             $body = array_merge($body, $options->toArray());
         }
 
+        $body['origin'] ??= 'php-sdk@' . Version::SDK_VERSION;
+
         return CrawlResponse::fromArray(
             $this->http->post('/v2/crawl', $body, $extraHeaders, $requestTimeoutSeconds),
         );
@@ -369,6 +371,8 @@ final class FirecrawlClient
             $body = array_merge($body, $options->toArray());
         }
 
+        $body['origin'] ??= 'php-sdk@' . Version::SDK_VERSION;
+
         return BatchScrapeResponse::fromArray(
             $this->http->post('/v2/batch/scrape', $body, $extraHeaders),
         );
@@ -421,6 +425,8 @@ final class FirecrawlClient
         if ($options !== null) {
             $body = array_merge($body, $options->toArray());
         }
+
+        $body['origin'] ??= 'php-sdk@' . Version::SDK_VERSION;
 
         $response = $this->assertSuccess($this->http->post('/v2/map', $body));
 

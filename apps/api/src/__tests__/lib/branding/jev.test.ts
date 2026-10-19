@@ -294,7 +294,21 @@ describe("branding with Jev", () => {
 
     const [request, options] = mocks.systemOne.mock.calls[0];
     expect(request.model).toBe("jev-latest");
-    expect(options).toEqual({ timeout: 5000, retry: { maxRetries: 1 } });
+    expect(options).toEqual({
+      timeout: 5000,
+      retry: {
+        maxRetries: 1,
+        apiTimeoutError: true,
+        backoffInitialMs: 100,
+        httpStatuses: new Set([
+          408,
+          ...Array.from({ length: 100 }, (_, i) => 500 + i).filter(
+            s => s !== 529,
+          ),
+        ]),
+        maxRetryAfterMs: 1000,
+      },
+    });
     expect(Object.keys(request.questions.logo.criteria)).toEqual([
       "logo_0",
       "logo_1",
@@ -385,6 +399,71 @@ describe("branding with Jev", () => {
     );
     const result = await enhanceBrandingWithLLM(input);
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
+  });
+
+  it("fails fast when TypeSafe asks to back off, and retries a 503 or a timeout once, quickly", async () => {
+    // The options Jev passes, run through the real SDK against a fake server.
+    mocks.systemOne.mockResolvedValueOnce(jevResponse());
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    const [request, options] = mocks.systemOne.mock.calls[0];
+    const { TypeSafeClient } =
+      await vi.importActual<typeof import("@typesafe-ai/sdk")>(
+        "@typesafe-ai/sdk",
+      );
+    const call = async (status: number) => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { message: "busy" } }), {
+            status,
+            headers: {
+              "content-type": "application/json",
+              "retry-after": "10",
+            },
+          }),
+      );
+      const client = new TypeSafeClient({
+        apiKey: "test",
+        logLevel: "off",
+        fetch,
+      });
+      const started = Date.now();
+      await expect(client.systemOne(request, options)).rejects.toThrow();
+      return { attempts: fetch.mock.calls.length, ms: Date.now() - started };
+    };
+
+    for (const status of [529, 429]) {
+      const r = await call(status);
+      expect(r.attempts).toBe(1);
+      expect(r.ms).toBeLessThan(500);
+    }
+    const r = await call(503);
+    expect(r.attempts).toBe(2);
+    expect(r.ms).toBeLessThan(2000); // not the 10 s Retry-After
+
+    // A call that runs out of time is tried once more, right away.
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+      fetch.mock.calls.length === 1
+        ? new Promise<Response>((_, reject) =>
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            ),
+          )
+        : new Response(JSON.stringify(jevResponse()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+    );
+    const client = new TypeSafeClient({
+      apiKey: "test",
+      logLevel: "off",
+      fetch,
+    });
+    const started = Date.now();
+    await expect(
+      client.systemOne(request, { ...options, timeout: 100 }),
+    ).resolves.toBeDefined();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(Date.now() - started).toBeLessThan(400); // 100 ms timeout + ~0.1 s backoff
   });
 
   it("stops calling Jev for a minute after repeated failures, then tries again", async () => {

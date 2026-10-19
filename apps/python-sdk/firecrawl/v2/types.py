@@ -1118,7 +1118,7 @@ class DiscoveredTool(ExchangeSearchResult):
 
 
 class FindToolsData(BaseModel):
-    level: Literal["providers", "groups", "tools"]
+    level: Literal["categories", "providers", "groups", "tools"]
     items: List[Dict[str, Any]]
     total: int
     next: Optional[Dict[str, Any]] = None

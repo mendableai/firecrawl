@@ -37,7 +37,7 @@ import java.util.concurrent.ForkJoinPool;
 public class FirecrawlClient {
 
     private static final String DEFAULT_API_URL = "https://api.firecrawl.dev";
-    private static final String SDK_ORIGIN = "java-sdk@1.18.4";
+    private static final String SDK_ORIGIN = "java-sdk@1.18.5";
     private static final long DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final double DEFAULT_BACKOFF_FACTOR = 0.5;
@@ -297,6 +297,7 @@ public class FirecrawlClient {
         if (options != null) {
             mergeOptions(body, options);
         }
+        body.putIfAbsent("origin", SDK_ORIGIN);
         return http.post("/v2/crawl", body, CrawlResponse.class);
     }
 
@@ -396,6 +397,7 @@ public class FirecrawlClient {
                 body.putAll(batchFields);
             }
         }
+        body.putIfAbsent("origin", SDK_ORIGIN);
         return http.post("/v2/batch/scrape", body, BatchScrapeResponse.class, extraHeaders);
     }
 
@@ -476,6 +478,7 @@ public class FirecrawlClient {
         if (options != null) {
             mergeOptions(body, options);
         }
+        body.putIfAbsent("origin", SDK_ORIGIN);
         return extractData(http.post("/v2/map", body, Map.class), MapData.class);
     }
 

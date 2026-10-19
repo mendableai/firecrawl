@@ -3,6 +3,7 @@ import type {
   JsonValue,
   NoulResponse,
   Question,
+  RequestOptions,
   SystemOneResult,
 } from "@typesafe-ai/sdk";
 import { formatHex, hsl, parse } from "culori";
@@ -30,6 +31,23 @@ const JEV_MODEL = "jev-latest";
 // tokens, output tokens are not billed.
 const JEV_INPUT_USD_PER_MTOK = 0.042;
 const DEFAULT_TIMEOUT_MS = 5000;
+
+// One quick retry, for a call that ran out of time or a transient server
+// error. A timed-out call usually succeeds on the next attempt, sooner than
+// the LLM fallback would answer. A 429 or 529 asks us to back off, so it's
+// answered by the LLM at once: waiting it out can take longer than the whole
+// fallback, and adds load to a struggling TypeSafe. A server-requested delay
+// over a second is not waited out either (the SDK backs off instead).
+const JEV_RETRY: RequestOptions["retry"] = {
+  maxRetries: 1,
+  apiTimeoutError: true,
+  backoffInitialMs: 100,
+  httpStatuses: new Set([
+    408,
+    ...Array.from({ length: 100 }, (_, i) => 500 + i).filter(s => s !== 529),
+  ]),
+  maxRetryAfterMs: 1000,
+};
 
 // Circuit breaker: after this many calls in a row fail (timeouts, 5xx), skip
 // Jev for the cooldown and answer with the LLM, so an outage doesn't add the
@@ -924,7 +942,7 @@ export async function enhanceBrandingWithJev(
           },
           {
             timeout: config.BRANDING_JEV_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS,
-            retry: { maxRetries: 1 },
+            retry: JEV_RETRY,
           },
         );
         setSpanAttributes(span, {

@@ -65,15 +65,13 @@ function timestamp(value: unknown): number {
   return parsed.success ? Date.parse(parsed.data) : NaN;
 }
 
+// Acceptance binds to the gating version, as the scrape gate and dashboard
+// compare it; a non-material revision changes the digest without invalidating it.
 export function matchesAcceptance(
   accepted: LedgerAcceptance | undefined,
-  terms: { version: string; digest?: string },
+  terms: { version: string },
 ): boolean {
-  return (
-    terms.digest !== undefined &&
-    accepted?.version === terms.version &&
-    accepted.textHash === terms.digest
-  );
+  return accepted?.version === terms.version;
 }
 
 // Whether the acceptance was recorded after `since`, e.g. an admin revocation

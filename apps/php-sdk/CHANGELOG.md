@@ -5,6 +5,17 @@ All notable changes to the Firecrawl PHP SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.4] - 2026-10-18
+
+### Added
+- `checkPromptInjection` on `ScrapeOptions` and `ParseOptions` scans the
+  content for prompt injection before LLM-backed formats run. A detection fails
+  the request with `SCRAPE_PROMPT_INJECTION_DETECTED`. The option on
+  `JsonFormat` is deprecated in favor of the top-level one.
+- `location` on `browser()` (for example `['country' => 'GB']`) picks the
+  country the browser session runs from. The Laravel facade annotation now
+  lists `profile` and `location`.
+
 ## [1.16.3] - 2026-10-06
 
 ### Fixed

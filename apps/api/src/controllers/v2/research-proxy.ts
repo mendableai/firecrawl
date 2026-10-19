@@ -25,7 +25,10 @@ import type {
 import type { RequestWithAuth } from "../v1/types";
 import { wrap } from "../../routes/shared";
 import { deprecationMiddleware } from "../../lib/deprecations";
-import { integrationSchema } from "../../utils/integration";
+import {
+  integrationFromHeader,
+  integrationSchema,
+} from "../../utils/integration";
 import { requestOrigin } from "../../lib/request-origin";
 
 const SEARCH_CREDITS_PER_TEN_RESULTS = 2;
@@ -351,7 +354,7 @@ function createResearchController(
       external_request_id: externalRequestId(authedReq),
       team_id: authedReq.auth.team_id,
       origin: requestOrigin(params, req),
-      integration: params.integration ?? null,
+      integration: params.integration ?? integrationFromHeader(req) ?? null,
       target_hint: targetHint,
       zeroDataRetention,
       api_key_id: authedReq.acuc?.api_key_id ?? null,

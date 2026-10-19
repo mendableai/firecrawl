@@ -1,5 +1,15 @@
 ## CHANGELOG
 
+## [2.21.6] - 2026-10-18
+
+### Added
+
+- `ScrapeOptions::check_prompt_injection` and
+  `ParseOptions::check_prompt_injection` scan the content for prompt injection
+  before LLM-backed formats run. A detection fails the request with
+  `SCRAPE_PROMPT_INJECTION_DETECTED`. `JsonOptions::check_prompt_injection` is
+  deprecated in favor of these.
+
 ## [2.21.5] - 2026-10-07
 
 ### Added
