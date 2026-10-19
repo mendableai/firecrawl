@@ -62,7 +62,8 @@ describe("merging the model's button picks", () => {
   });
 
   it("adds no buttons when the model call failed", () => {
-    const merged = mergeBrandingResults({}, answer(0, -1, -1), BUTTONS);
+    // Valid indices, so only the confidence check keeps them out.
+    const merged = mergeBrandingResults({}, answer(0), BUTTONS);
 
     expect(merged.components?.buttonPrimary).toBeUndefined();
     expect(merged.components?.buttonSecondary).toBeUndefined();
