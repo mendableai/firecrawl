@@ -201,6 +201,9 @@ export const youtubePostprocessor: Postprocessor = {
         !(error instanceof TransportableError) &&
         isYouTubeErrorPage(engineResult)
       ) {
+        meta.logger.warn("YouTube metadata failed on an error page", {
+          error,
+        });
         throw new YouTubeUnavailableError();
       }
       throw error;
