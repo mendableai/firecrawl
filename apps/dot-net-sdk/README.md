@@ -112,6 +112,33 @@ var doc = await client.ScrapeAsync("https://example.com/restaurant/123",
 Console.WriteLine(doc.Menu);
 ```
 
+### Interact
+
+Run code or a natural-language prompt in the browser session of a scrape job,
+then stop the session when you are done. The job ID is the scraped document's
+`metadata.scrapeId`.
+
+```csharp
+var doc = await client.ScrapeAsync("https://example.com");
+var scrapeId = doc.Metadata!["scrapeId"].ToString()!;
+
+// Run code (language: "node" by default, or "python" / "bash")
+var run = await client.InteractAsync(scrapeId, "console.log(await page.title())");
+Console.WriteLine(run.Stdout);   // Example Domain
+Console.WriteLine(run.ExitCode); // 0
+
+// Or describe what to do in plain language
+var agent = await client.InteractAsync(scrapeId, null, prompt: "Click the first link");
+Console.WriteLine(agent.Output);
+
+// Stop the browser session
+var stop = await client.StopInteractiveBrowserAsync(scrapeId);
+Console.WriteLine(stop.CreditsBilled);
+```
+
+`InteractAsync` returns `Stdout`, `Stderr`, `Result`, `ExitCode`, `Killed`, `Truncated`, and `Output` (for prompts),
+plus `CdpUrl`, `LiveViewUrl` and `InteractiveLiveViewUrl` for the session. `timeout` is in seconds (1-300, default 30).
+
 ### Crawl
 
 ```csharp
