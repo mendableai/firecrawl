@@ -21,8 +21,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ secrets.PREVIEW_APP_ID }}
-          private-key: ${{ secrets.PREVIEW_APP_PRIVATE_KEY }}
+          client-id: ${{ secrets.PREVIEW_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.PREVIEW_DISPATCH_APP_PRIVATE_KEY }}
           repositories: firecrawl-infra
           permission-contents: write
           permission-members: read
