@@ -92,9 +92,9 @@ class Watcher:
         if self._api_key:
             headers_list.append(("Authorization", f"Bearer {self._api_key}"))
 
+        deadline = asyncio.get_event_loop().time() + self._timeout if self._timeout else None
         try:
             async with websockets.connect(uri, max_size=None, additional_headers=headers_list) as websocket:
-                deadline = asyncio.get_event_loop().time() + self._timeout if self._timeout else None
                 while not self._stop.is_set():
                     # Use short recv timeouts to allow HTTP polling fallback
                     if deadline is not None:
@@ -113,13 +113,7 @@ class Watcher:
                     except asyncio.CancelledError:
                         break
                     except Exception:
-                        # Connection error: switch to HTTP polling until terminal or timeout
-                        while not self._stop.is_set():
-                            if await self._poll_status_once():
-                                return
-                            if deadline is not None and asyncio.get_event_loop().time() >= deadline:
-                                return
-                            await asyncio.sleep(self._poll_interval or 2)
+                        await self._poll_until_terminal(deadline)
                         return
 
                     try:
@@ -255,20 +249,30 @@ class Watcher:
                                 self._sent_error = True
                             break
         except Exception:
-            pass
+            # websockets < 14 (all of Python 3.8) rejects additional_headers, and proxies can block
+            # WebSockets; either way keep reporting progress over HTTP.
+            await self._poll_until_terminal(deadline)
         finally:
             # Ensure terminal event parity with v1 even on abrupt disconnects
             if self.status == "completed" and not self._sent_done:
                 self.dispatch_event("done", {"status": self.status, "data": self.data, "id": self._job_id})
                 self._sent_done = True
 
+    async def _poll_until_terminal(self, deadline: Optional[float]) -> None:
+        while not self._stop.is_set():
+            if await self._poll_status_once():
+                return
+            if deadline is not None and asyncio.get_event_loop().time() >= deadline:
+                return
+            await asyncio.sleep(self._poll_interval or 2)
+
     async def _poll_status_once(self) -> bool:
         """Poll job status over HTTP once. Returns True if terminal."""
         try:
             if self._kind == "crawl":
-                job: CrawlJob = await asyncio.to_thread(self._client.get_crawl_status, self._job_id)
+                job: CrawlJob = await asyncio.get_event_loop().run_in_executor(None, self._client.get_crawl_status, self._job_id)
             else:
-                job: BatchScrapeJob = await asyncio.to_thread(self._client.get_batch_scrape_status, self._job_id)
+                job: BatchScrapeJob = await asyncio.get_event_loop().run_in_executor(None, self._client.get_batch_scrape_status, self._job_id)
         except Exception:
             return False
 

@@ -187,8 +187,8 @@ class AsyncWatcher:
                 if inspect.isawaitable(result):
                     return await result
                 return result
-            # Fallback: if we couldn't call directly, try to_thread
-            return await asyncio.to_thread(meth, self._job_id)
+            # Fallback: if we couldn't call directly, run it in a thread
+            return await asyncio.get_event_loop().run_in_executor(None, meth, self._job_id)
 
         # Try on client.v2
         v2 = getattr(self._client, "v2", None)
@@ -203,7 +203,7 @@ class AsyncWatcher:
                     if inspect.isawaitable(result):
                         return await result
                     return result
-                return await asyncio.to_thread(meth, self._job_id)
+                return await asyncio.get_event_loop().run_in_executor(None, meth, self._job_id)
 
         raise RuntimeError(f"Client does not expose {method_name}")
 
