@@ -133,7 +133,10 @@ class FirecrawlClient:
             max_retries: Maximum number of retries for failed requests
             backoff_factor: Exponential backoff factor for retries (e.g. 0.5 means wait 0.5s, then 1s, then 2s between retries)
             origin: Attribution string stamped into API request payloads
-                (defaults to ``python-sdk@<version>``)
+                (defaults to ``python-sdk@<version>``, or
+                ``python-sdk.<package>@<version>`` when an installed package
+                creates the client; set FIRECRAWL_DISABLE_CALLER_ORIGIN=1 to
+                keep the plain default)
         """
         if api_key is None:
             api_key = os.getenv("FIRECRAWL_API_KEY")

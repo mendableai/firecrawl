@@ -334,10 +334,8 @@ public class FirecrawlClient
         var body = BuildBody(options);
         body["url"] = url;
 
-        var response = await _http.PostAsync<ApiResponse<MapData>>(
+        return await _http.PostAsync<MapData>(
             "/v2/map", body, cancellationToken: cancellationToken);
-
-        return response.Data ?? throw new FirecrawlException("Map response contained no data");
     }
 
     // ================================================================
@@ -759,7 +757,7 @@ public class FirecrawlClient
     // INTERNAL UTILITIES
     // ================================================================
 
-    private const string SdkOrigin = "dotnet-sdk@1.14.2";
+    private const string SdkOrigin = "dotnet-sdk@1.14.3";
 
     private static Dictionary<string, object> BuildBody(object? options)
     {

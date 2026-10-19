@@ -1,6 +1,6 @@
 # Firecrawl PHP SDK
 
-PHP SDK for the [Firecrawl](https://firecrawl.dev) v2 API with first-class Laravel support.
+PHP SDK for the [Firecrawl](https://firecrawl.dev) v2 API, the context API for AI agents. Search, scrape, crawl, map, and run agents and browser sessions from PHP, with first-class Laravel support.
 
 ## Requirements
 

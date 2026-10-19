@@ -17,8 +17,8 @@ dependencies = [
     "pydantic>=2.0",
     "aiohttp"
 ]
-authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
-maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
+authors = [{name = "Firecrawl",email = "nick@mendable.ai"}]
+maintainers = [{name = "Firecrawl",email = "nick@mendable.ai"}]
 license = {text = "MIT License"}
 
 classifiers = [

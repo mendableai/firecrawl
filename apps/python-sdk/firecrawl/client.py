@@ -262,13 +262,16 @@ class Firecrawl:
             max_retries: Maximum number of retries for failed requests (default: 3)
             backoff_factor: Exponential backoff factor for retries (default: 0.5)
             origin: Attribution string stamped into API request payloads
-                (defaults to ``python-sdk@<version>``)
+                (defaults to ``python-sdk@<version>``, or
+                ``python-sdk.<package>@<version>`` when an installed package
+                creates the client; set FIRECRAWL_DISABLE_CALLER_ORIGIN=1 to
+                keep the plain default)
         """
         self.api_key = api_key
         self.api_url = api_url
 
         # Initialize version-specific clients
-        self._v1_client = V1FirecrawlApp(api_key=api_key, api_url=api_url) if V1FirecrawlApp else None
+        self._v1_client = V1FirecrawlApp(api_key=api_key, api_url=api_url, origin=origin) if V1FirecrawlApp else None
         self._v2_client = V2FirecrawlClient(
             api_key=api_key,
             api_url=api_url,
@@ -413,7 +416,7 @@ class AsyncFirecrawl:
         self.api_url = api_url
 
         # Initialize version-specific clients
-        self._v1_client = AsyncV1FirecrawlApp(api_key=api_key, api_url=api_url) if AsyncV1FirecrawlApp else None
+        self._v1_client = AsyncV1FirecrawlApp(api_key=api_key, api_url=api_url, origin=origin) if AsyncV1FirecrawlApp else None
         self._v2_client = AsyncFirecrawlClient(
             api_key=api_key,
             api_url=api_url,

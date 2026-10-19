@@ -1,6 +1,6 @@
 # Firecrawl .NET SDK
 
-.NET SDK for the [Firecrawl API](https://firecrawl.dev) — web scraping, crawling, and data extraction.
+.NET SDK for the [Firecrawl API](https://firecrawl.dev) — search, scrape, and crawl the web for AI agents.
 
 ## Installation
 
@@ -223,9 +223,9 @@ var data = await client.MapAsync("https://example.com",
         Limit = 100
     });
 
-foreach (var url in data.Links!)
+foreach (var link in data.Links!)
 {
-    Console.WriteLine(url);
+    Console.WriteLine($"{link.Url} {link.Title}");
 }
 ```
 
