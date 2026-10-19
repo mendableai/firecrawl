@@ -40,6 +40,8 @@ from .v2.methods.research_docs import (
     doc,
 )
 from .v2.types import Document, ParseOptions, ScrapeOptions
+from .v2.utils.caller_origin import default_origin
+from .v2.utils.get_version import get_version
 
 logger = logging.getLogger("firecrawl")
 
@@ -272,7 +274,8 @@ class Firecrawl:
         self.api_key = api_key
         self.api_url = api_url
 
-        self._origin = origin
+        # Resolved here: caller detection reads the stack of whoever constructs the client.
+        self._origin = origin or default_origin(get_version())
         self._v1: Optional[V1Proxy] = None
 
         self._v2_client = V2FirecrawlClient(
@@ -425,7 +428,7 @@ class AsyncFirecrawl:
         self.api_key = api_key
         self.api_url = api_url
 
-        self._origin = origin
+        self._origin = origin or default_origin(get_version())
         self._v1: Optional[AsyncV1Proxy] = None
 
         self._v2_client = AsyncFirecrawlClient(
