@@ -264,6 +264,7 @@ export async function agentController(
         threadId: req.body.threadId,
         mode: req.body.mode,
         exchange: req.body.exchange,
+        location: req.body.location,
       }),
     },
   );
