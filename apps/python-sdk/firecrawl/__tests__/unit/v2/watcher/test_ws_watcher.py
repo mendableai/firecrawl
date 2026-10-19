@@ -362,7 +362,7 @@ def test_ws_watcher_polls_http_when_connect_fails(monkeypatch):
     import websockets
     monkeypatch.setattr(websockets, "connect", _failing_connect)
 
-    watcher = Watcher(PollingClient(["scraping", "completed"]), job_id="jid", kind="crawl", poll_interval=0)
+    watcher = Watcher(PollingClient(["scraping", "completed"]), job_id="jid", kind="crawl", poll_interval=0.01)
     statuses = []
     done = []
     watcher.add_listener(lambda s: statuses.append(s.status))
@@ -378,7 +378,7 @@ def test_ws_watcher_reports_error_when_polling_keeps_failing(monkeypatch):
     import websockets
     monkeypatch.setattr(websockets, "connect", _failing_connect)
 
-    watcher = Watcher(PollingClient([RuntimeError("401")] * 10), job_id="jid", kind="crawl", poll_interval=0)
+    watcher = Watcher(PollingClient([RuntimeError("401")] * 10), job_id="jid", kind="crawl", poll_interval=0.01)
     errors = []
     watcher.add_event_listener("error", lambda d: errors.append(d))
 
