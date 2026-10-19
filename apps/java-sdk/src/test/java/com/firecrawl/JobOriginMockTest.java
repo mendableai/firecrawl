@@ -76,7 +76,7 @@ class JobOriginMockTest {
 
         for (String path : List.of("/v2/crawl", "/v2/batch/scrape", "/v2/map")) {
             String origin = body(path).path("origin").asText();
-            assertTrue(origin.startsWith("java-sdk@"), path + " origin was '" + origin + "'");
+            assertTrue(origin.matches("java-sdk@\\d+\\.\\d+\\.\\d+"), path + " origin was '" + origin + "'");
         }
         assertEquals("markdown", body("/v2/batch/scrape").path("formats").path(0).asText());
     }
