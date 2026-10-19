@@ -673,6 +673,9 @@ const configSchema = z.object({
   DISABLE_ENGPICKER: z.stringbool().optional(),
   DISABLE_MONITORING: z.stringbool().default(false),
 
+  // Stamp an inferred `integration` on unlabelled direct callers.
+  INFER_INTEGRATION_ENABLED: z.stringbool().default(true),
+
   EXTRACT_V3_BETA_URL: z.string().url().optional(),
   AGENT_INTEROP_SECRET: z
     .string()
