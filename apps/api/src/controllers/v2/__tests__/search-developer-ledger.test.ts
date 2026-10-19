@@ -357,3 +357,58 @@ describe("gov category gov_searches ledger", () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 });
+
+describe("tool discovery availability", () => {
+  const unavailable = executeResult({
+    response: { tools: [] },
+    totalResultsCount: 0,
+    indexResultsCount: 0,
+    searchCredits: 0,
+    totalCredits: 0,
+    toolsWarning: "Some tool discovery results are unavailable.",
+    toolsUnavailable: true,
+  });
+
+  it("answers a retryable 503 when a tools-only search finds nothing because discovery failed", async () => {
+    mockExecuteSearch.mockResolvedValue(unavailable);
+    const res = makeRes();
+
+    await searchController(
+      makeReq({ query: "weather", sources: [{ type: "alexandria" }] }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        code: "TOOL_DISCOVERY_UNAVAILABLE",
+      }),
+    );
+  });
+
+  it("keeps the partial success when web results answered", async () => {
+    mockExecuteSearch.mockResolvedValue({
+      ...unavailable,
+      response: { web: developerResults, tools: [] },
+      totalResultsCount: 2,
+    });
+    const res = makeRes();
+
+    await searchController(
+      makeReq({
+        query: "weather",
+        sources: [{ type: "web" }, { type: "alexandria" }],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        warning: "Some tool discovery results are unavailable.",
+      }),
+    );
+  });
+});

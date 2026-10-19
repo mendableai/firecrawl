@@ -473,6 +473,14 @@ async function searchControllerInner(
       logger,
     );
 
+    if (toolsOnly && result.toolsUnavailable) {
+      return res.status(503).json({
+        success: false,
+        code: "TOOL_DISCOVERY_UNAVAILABLE",
+        error: "Tool discovery is temporarily unavailable. Retry the request.",
+      });
+    }
+
     // Bill team for search credits only (scrape jobs bill themselves)
     if (!isSearchPreview && shouldBill) {
       billTeam(
