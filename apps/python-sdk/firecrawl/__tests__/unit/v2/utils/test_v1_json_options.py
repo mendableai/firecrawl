@@ -10,6 +10,7 @@ import pytest
 from pydantic import BaseModel
 
 from firecrawl import AsyncFirecrawl, Firecrawl, ScrapeOptions, V1JsonConfig
+from firecrawl.v2.types import ScrapeFormats
 from firecrawl.v2.utils import v1_compat
 
 
@@ -195,3 +196,68 @@ async def test_v2_json_format_remains_unchanged(local_api, client_type):
     assert requests[0][1]["formats"] == [
         {"type": "json", "schema": SCHEMA, "prompt": "Extract the product name"},
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_type", [Firecrawl, AsyncFirecrawl])
+@pytest.mark.parametrize("operation", ["scrape", "crawl"])
+async def test_legacy_tuple_formats_reach_api(local_api, monkeypatch, client_type, operation):
+    api_url, requests = local_api
+    requests.clear()
+    monkeypatch.setattr(v1_compat, "_warned", False)
+    client = client_type(api_key="fc-test", api_url=api_url)
+    options = {"formats": ("markdown", "json"), "jsonOptions": copy.deepcopy(JSON_OPTIONS)}
+    original = copy.deepcopy(options)
+    with pytest.warns(DeprecationWarning, match="v1-style calls"):
+        result = (
+            client.scrape_url("https://example.com", params=options) if operation == "scrape"
+            else client.async_crawl_url("https://example.com", params={"scrapeOptions": options})
+        )
+        if inspect.isawaitable(result):
+            await result
+    assert len(requests) == 1
+    payload = requests[0][1]
+    payload = payload["scrapeOptions"] if operation == "crawl" else payload
+    assert payload["formats"] == ["markdown", {"type": "json", **JSON_OPTIONS}]
+    assert options == original
+
+
+@pytest.mark.parametrize("formats", [None, "json", ScrapeFormats(json=True), {"json": True}])
+def test_legacy_json_options_reject_unsupported_formats(local_api, monkeypatch, formats):
+    api_url, requests = local_api
+    requests.clear()
+    monkeypatch.setattr(v1_compat, "_warned", False)
+    client = Firecrawl(api_key="fc-test", api_url=api_url)
+    params = {"jsonOptions": copy.deepcopy(JSON_OPTIONS)}
+    if formats is not None:
+        params["formats"] = formats
+    original = copy.deepcopy(params)
+    with pytest.warns(DeprecationWarning, match="v1-style calls"):
+        with pytest.raises(ValueError, match="json_options requires a list or tuple of formats"):
+            client.scrape_url("https://example.com", params=params)
+    assert not requests
+    assert params == original
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("client_type", [Firecrawl, AsyncFirecrawl])
+@pytest.mark.parametrize("value", [None, False, True])
+async def test_legacy_typed_config_aliases_reach_api(local_api, monkeypatch, client_type, value):
+    api_url, requests = local_api
+    requests.clear()
+    monkeypatch.setattr(v1_compat, "_warned", False)
+    client = client_type(api_key="fc-test", api_url=api_url)
+    config = V1JsonConfig(**copy.deepcopy(JSON_OPTIONS), checkPromptInjection=value)
+    original = config.model_dump(by_alias=True)
+    with pytest.warns(DeprecationWarning, match="v1-style calls"):
+        result = client.scrape_url(
+            "https://example.com", params={"formats": ["json"], "jsonOptions": config}
+        )
+        if inspect.isawaitable(result):
+            await result
+    expected = {"type": "json", **JSON_OPTIONS}
+    if value is not None:
+        expected["checkPromptInjection"] = value
+    assert len(requests) == 1
+    assert requests[0][1]["formats"] == [expected]
+    assert config.model_dump(by_alias=True) == original

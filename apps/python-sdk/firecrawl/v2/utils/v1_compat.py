@@ -38,12 +38,17 @@ def _snake_case(key: str) -> str:
 
 
 def _convert_json_options(data: Dict[str, Any]) -> Dict[str, Any]:
-    json_options = data.pop("json_options", None)
+    json_options = data.get("json_options")
     formats = data.get("formats")
-    if json_options is None or not isinstance(formats, list):
+    if json_options is None:
+        data.pop("json_options", None)
         return data
+    if not isinstance(formats, (list, tuple)):
+        raise ValueError("json_options requires a list or tuple of formats")
+    data.pop("json_options")
     if isinstance(json_options, BaseModel):
         json_options = json_options.model_dump(by_alias=True, exclude_none=True)
+    json_options = {_snake_case(key): value for key, value in json_options.items()}
     data["formats"] = [
         v2_types.JsonFormat(**json_options).model_dump(exclude_none=True) if fmt == "json" else fmt
         for fmt in formats
