@@ -104,7 +104,7 @@ import type {
 import { defaultOrigin } from "../utils/callerOrigin";
 import { getVersion } from "./utils/getVersion";
 import { Watcher } from "./watcher";
-import { callV1, type V1Result } from "./utils/v1Compat";
+import { callV1, toV2CrawlOptions, type V1CrawlOptions, type V1Result } from "./utils/v1Compat";
 import type { WatcherOptions } from "./watcher";
 import * as zt from "zod";
 
@@ -737,13 +737,13 @@ export class FirecrawlClient {
   }
 
   /** @deprecated v1 alias for crawl(); its result also carries v1's `success: true`. */
-  async crawlUrl(url: string, req: CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<V1Result<CrawlJob>> {
-    return callV1(() => this.crawl(url, req));
+  async crawlUrl(url: string, req: CrawlOptions & V1CrawlOptions & { pollInterval?: number; timeout?: number; signal?: AbortSignal } = {}): Promise<V1Result<CrawlJob>> {
+    return callV1(() => this.crawl(url, toV2CrawlOptions(req)));
   }
 
   /** @deprecated v1 alias for startCrawl(); its result also carries v1's `success: true`. */
-  async asyncCrawlUrl(url: string, req: CrawlOptions = {}): Promise<V1Result<CrawlResponse>> {
-    return callV1(() => this.startCrawl(url, req));
+  async asyncCrawlUrl(url: string, req: CrawlOptions & V1CrawlOptions = {}): Promise<V1Result<CrawlResponse>> {
+    return callV1(() => this.startCrawl(url, toV2CrawlOptions(req)));
   }
 
   /** @deprecated v1 alias for getCrawlStatus(); its result also carries v1's `success: true`. */

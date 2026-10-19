@@ -414,16 +414,16 @@ class FirecrawlClient:
         """Deprecated v1 alias for scrape(); also takes v1 params and returns v1-readable results."""
         return call_v1(self.scrape, url, params=params, **kwargs)
 
-    def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
-        """Deprecated v1 alias for crawl(); also takes v1 params and returns v1-readable results."""
+    def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
         return call_v1(self.crawl, url, params=params, **kwargs)
 
     def map_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
         """Deprecated v1 alias for map(); also takes v1 params and returns v1-readable results."""
         return call_v1(self.map, url, params=params, **kwargs)
 
-    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
-        """Deprecated v1 alias for start_crawl(); also takes v1 params and returns v1-readable results."""
+    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for start_crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
         return call_v1(self.start_crawl, url, params=params, **kwargs)
 
     def check_crawl_status(self, id: str, **kwargs):

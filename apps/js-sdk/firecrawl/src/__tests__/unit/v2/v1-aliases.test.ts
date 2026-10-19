@@ -44,6 +44,19 @@ describe("V1 deprecated aliases", () => {
     expect(result.markdown).toBe("# hi");
   });
 
+  it("crawlUrl and asyncCrawlUrl rename v1 crawl options to their v2 names", async () => {
+    vi.spyOn(app, "crawl").mockResolvedValue({ status: "completed", data: [] } as any);
+    vi.spyOn(app, "startCrawl").mockResolvedValue({ id: "job-1", url: "u" } as any);
+    const v1Options = { limit: 2, maxDepth: 3, allowBackwardLinks: true, ignoreSitemap: true, scrapeOptions: { formats: ["markdown" as const] } };
+    const expected = { limit: 2, maxDiscoveryDepth: 3, crawlEntireDomain: true, sitemap: "skip", scrapeOptions: { formats: ["markdown"] } };
+
+    await app.crawlUrl("https://example.com", v1Options);
+    await app.asyncCrawlUrl("https://example.com", v1Options);
+
+    expect(app.crawl).toHaveBeenCalledWith("https://example.com", expected);
+    expect(app.startCrawl).toHaveBeenCalledWith("https://example.com", expected);
+  });
+
   it("v2 methods return results without success", async () => {
     const client = new FirecrawlClient({ apiKey: "fc-test", apiUrl: "http://localhost:9" });
     const adapter: AxiosAdapter = async config => ({
@@ -61,11 +74,21 @@ describe("V1 deprecated aliases", () => {
 });
 
 describe("V1 deprecation warning", () => {
-  it("is emitted once per process", async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function freshClient() {
     vi.resetModules();
     const emitWarning = vi.spyOn(process, "emitWarning").mockImplementation(() => {});
     const { FirecrawlClient: FreshClient } = await import("../../../v2/client");
     const app = new FreshClient({ apiKey: "fc-test", apiUrl: "http://localhost:9" });
+    const v1Warnings = () => emitWarning.mock.calls.filter(([, opts]) => (opts as any)?.code === "FIRECRAWL_V1_METHOD");
+    return { app, v1Warnings };
+  }
+
+  it("is emitted once per process", async () => {
+    const { app, v1Warnings } = await freshClient();
     vi.spyOn(app, "scrape").mockResolvedValue({ markdown: "# hi" } as any);
     vi.spyOn(app, "map").mockResolvedValue({ links: [] } as any);
 
@@ -73,9 +96,23 @@ describe("V1 deprecation warning", () => {
     await app.scrapeUrl("https://example.com");
     await app.mapUrl("https://example.com");
 
-    const calls = emitWarning.mock.calls.filter(([, opts]) => (opts as any)?.code === "FIRECRAWL_V1_METHOD");
-    expect(calls).toHaveLength(1);
-    expect((calls[0]![1] as any).type).toBe("DeprecationWarning");
-    emitWarning.mockRestore();
+    expect(v1Warnings()).toHaveLength(1);
+    expect((v1Warnings()[0]![1] as any).type).toBe("DeprecationWarning");
+  });
+
+  it("is not emitted by v2 methods", async () => {
+    const { app, v1Warnings } = await freshClient();
+    const adapter: AxiosAdapter = async config => ({
+      data: { success: true, data: { markdown: "# hi" } },
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config,
+    });
+    (app as any).http.instance.defaults.adapter = adapter;
+
+    await app.scrape("https://example.com", { formats: ["markdown"] });
+
+    expect(v1Warnings()).toHaveLength(0);
   });
 });

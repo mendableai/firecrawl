@@ -85,6 +85,25 @@ def test_crawl_url_accepts_2x_keyword_options(client):
     assert "max_depth" not in kwargs and "allow_backward_links" not in kwargs
 
 
+def test_map_url_translates_sitemap_flags(client):
+    with patch.object(client._v2_client, "map", return_value=None) as map_:
+        client.map_url("https://example.com", params={"ignoreSitemap": True, "includeSubdomains": True})
+        client.map_url("https://example.com", params={"sitemapOnly": True})
+        client.map_url("https://example.com", params={"sitemapOnly": False, "limit": 5})
+    assert map_.call_args_list[0].kwargs == {"sitemap": "skip", "include_subdomains": True}
+    assert map_.call_args_list[1].kwargs == {"sitemap": "only"}
+    assert map_.call_args_list[2].kwargs == {"limit": 5}
+
+
+def test_crawl_aliases_accept_and_drop_idempotency_key(client):
+    job = CrawlJob(status="completed", completed=0, total=0, data=[])
+    with patch.object(client._v2_client, "crawl", return_value=job) as crawl, patch.object(client._v2_client, "start_crawl", return_value=None) as start:
+        client.crawl_url("https://example.com", params={"limit": 1}, idempotency_key="key-1")
+        client.async_crawl_url("https://example.com", {"limit": 1}, idempotency_key="key-1")
+    assert crawl.call_args.kwargs == {"limit": 1}
+    assert start.call_args.kwargs == {"limit": 1}
+
+
 def test_status_alias_results_read_like_v1(client):
     status = BatchScrapeJob(status="completed", completed=1, total=1, data=[_doc()])
     with patch.object(client._v2_client, "get_batch_scrape_status", return_value=status):

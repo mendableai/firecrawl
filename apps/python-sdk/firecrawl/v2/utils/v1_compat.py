@@ -62,6 +62,12 @@ def to_v2_kwargs(params: Optional[Dict[str, Any]], kwargs: Dict[str, Any]) -> Di
     for key, value in {**(params or {}), **kwargs}.items():
         name = _snake_case(key)
         name = _RENAMED_OPTIONS.get(name, name)
+        if name == "ignore_sitemap":
+            name, value = "sitemap", "skip" if value else "include"
+        if name == "sitemap_only":
+            if not value:
+                continue
+            name, value = "sitemap", "only"
         if name == "scrape_options" and isinstance(value, dict):
             value = ScrapeOptions(**value)
         converted[name] = value
