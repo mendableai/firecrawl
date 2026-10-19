@@ -389,6 +389,8 @@ export type GenerateCompletionsOptions = {
   isExtractEndpoint?: boolean;
   mode?: "object" | "no-object";
   providerOptions?: LanguageModelV1ProviderMetadata;
+  /** AI SDK retry count for the primary model call (default: the SDK's). */
+  maxRetries?: number;
   retryModel?: LanguageModel;
   costTrackingOptions: {
     costTracking: CostTracking;
@@ -455,6 +457,7 @@ export async function generateCompletions({
   model = getModel("gpt-4o-mini", "openai"),
   mode = "object",
   providerOptions,
+  maxRetries,
   retryModel = getModel("gpt-4.1-mini", "openai"),
   costTrackingOptions,
   metadata,
@@ -784,6 +787,7 @@ export async function generateCompletions({
     const generateObjectConfig = {
       model: currentModel,
       prompt: prompt,
+      ...(maxRetries !== undefined && { maxRetries }),
       providerOptions: {
         ...(providerOptions || {}),
         google: {
@@ -891,6 +895,7 @@ export async function generateCompletions({
           const retryConfig = {
             ...generateObjectConfig,
             model: currentModel,
+            maxRetries: undefined, // the fallback model keeps the SDK default
           };
           result = await generateObject(retryConfig);
           costTrackingOptions.costTracking.addCall({
@@ -1100,6 +1105,9 @@ export async function performLLMExtract(
       ...generationOptions,
       model: getModel(config.EXTRACTION_PROVIDER_MODEL, "extraction"),
       retryModel: getModel(modelSelection.modelName, "openai"),
+      // An unreachable provider should fall back at once, not after the
+      // SDK's retries (~6 s of connection attempts per request).
+      maxRetries: 0,
     });
 
     // extractData reports generation failures as a warning rather than
