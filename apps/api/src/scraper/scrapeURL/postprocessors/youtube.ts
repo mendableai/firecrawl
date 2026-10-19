@@ -71,9 +71,10 @@ function isYouTubeVideoPath(url: URL): boolean {
 
 // Google's error document ("Error 401 (Bad Request)!!1") rendered into the
 // page, or YouTube's consent interstitial, carries no video content.
-export function isYouTubeErrorPage(
-  page: Pick<EngineScrapeResult, "html" | "markdown">,
-): boolean {
+export function isYouTubeErrorPage(page: {
+  html?: string;
+  markdown?: string;
+}): boolean {
   const html = page.html ?? "";
   const markdownHead = (page.markdown ?? "").trimStart().slice(0, 1000);
   return (
