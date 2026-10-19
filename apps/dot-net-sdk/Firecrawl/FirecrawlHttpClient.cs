@@ -19,7 +19,7 @@ internal class FirecrawlHttpClient
     private readonly int _maxRetries;
     private readonly double _backoffFactor;
 
-    // Null when the caller supplied the HttpClient, whose own Timeout then applies.
+    // Null when there is no timeout: infinite, or a caller-supplied HttpClient whose own Timeout applies.
     private readonly TimeSpan? _timeout;
 
     internal static readonly JsonSerializerOptions JsonOptions = new()
@@ -49,7 +49,7 @@ internal class FirecrawlHttpClient
         else
         {
             _httpClient = new HttpClient { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
-            _timeout = timeout;
+            _timeout = timeout == System.Threading.Timeout.InfiniteTimeSpan ? null : timeout;
         }
     }
 
