@@ -152,7 +152,11 @@ async def get_crawl_status(
 
     # Handle pagination if requested
     auto_paginate = pagination_config.auto_paginate if pagination_config else True
-    if auto_paginate and payload["next"] and (documents or payload["status"] == "completed"):
+    if auto_paginate and payload["next"] and (documents or payload["status"] == "completed") and not (
+        pagination_config
+        and pagination_config.max_results is not None
+        and len(documents) >= pagination_config.max_results
+    ):
         documents = await _fetch_all_pages_async(
             client,
             payload["next"],
