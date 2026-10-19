@@ -236,7 +236,11 @@ export function mergeBrandingResults(
     };
   }
 
-  if (llm.buttonClassification.confidence > 0.5 && buttonSnapshots.length > 0) {
+  // A model that answered gave its most likely buttons. Jev's confidence is a
+  // calibrated probability, often under 0.5 when a page has several plausible
+  // calls to action, and its pick still beats a page without buttons. A
+  // failed call reports 0 and keeps the heuristic result.
+  if (llm.buttonClassification.confidence > 0 && buttonSnapshots.length > 0) {
     const primaryIdx = llm.buttonClassification.primaryButtonIndex;
     const secondaryIdx = llm.buttonClassification.secondaryButtonIndex;
 
