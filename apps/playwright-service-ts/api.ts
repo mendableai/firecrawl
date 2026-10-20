@@ -572,9 +572,22 @@ const start = async () => {
   // re-resolves it on its own, so a rebinding hostname can slip past the
   // pre-check and land on a private address. The guard validates the address
   // each socket actually connects to and destroys it otherwise.
+  // The guard is inert when local targets are allowed, so PROXY_SERVER must
+  // not be parsed in that case: a malformed PROXY_SERVER used to fail the
+  // individual scrape requests that use it, never the boot sequence.
+  let upstreamProxyUrl: string | undefined;
+  if (!ALLOW_LOCAL_WEBHOOKS) {
+    try {
+      upstreamProxyUrl = buildUpstreamProxyUrl();
+    } catch {
+      // A malformed PROXY_SERVER keeps its old failure shape: the affected
+      // scrape requests fail on their own; boot must not.
+      upstreamProxyUrl = undefined;
+    }
+  }
   installConnectTimeSSRFGuard({
     allowLocal: ALLOW_LOCAL_WEBHOOKS,
-    upstreamProxyUrl: buildUpstreamProxyUrl(),
+    upstreamProxyUrl,
   });
   ssrfProxyPort = await startSSRFProxy();
   await initializeBrowser();

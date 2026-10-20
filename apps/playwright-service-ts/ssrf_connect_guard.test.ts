@@ -2,9 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 import * as tls from 'node:tls';
 import {
   InsecureConnectionError,
@@ -31,12 +29,54 @@ const serverPort = (server: net.Server): number => {
   return address.port;
 };
 
+// This package compiles as CommonJS, so __dirname is the test file's own
+// directory and the committed fixtures resolve regardless of the cwd the
+// suite is started from.
+const fixturesDir = path.join(__dirname, 'test-fixtures');
+
+// Same as startLoopbackServer, but counts accepted connections so tests can
+// prove the private target never saw a completed TCP handshake.
+const startCountingLoopbackServer = async (
+  host = '127.0.0.1',
+): Promise<{
+  port: number;
+  connectionCount: () => number;
+  close: () => Promise<void>;
+}> => {
+  let connections = 0;
+  const server = net.createServer((socket) => {
+    connections += 1;
+    socket.on('data', () => {
+      socket.end('pong');
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, host, resolve));
+  return {
+    port: serverPort(server),
+    connectionCount: () => connections,
+    close: () =>
+      new Promise<void>((resolve) => {
+        // closeAllConnections is not available on every Node build in the
+        // wild; where it exists it keeps close() from waiting on a socket
+        // that is mid-destroy.
+        const closeAll = (
+          server as unknown as { closeAllConnections?: () => void }
+        ).closeAllConnections;
+        if (typeof closeAll === 'function') {
+          closeAll.call(server);
+        }
+        server.close(() => resolve());
+      }),
+  };
+};
+
 const connectAndPong = (
   port: number,
   host: string,
+  connectOptions: Record<string, unknown> = {},
 ): Promise<{ ok: boolean; error?: Error; data?: string }> =>
   new Promise((resolve) => {
-    const socket = net.createConnection({ host, port });
+    const socket = net.createConnection({ host, port, ...connectOptions });
     let data = '';
     socket.on('connect', () => socket.write('ping'));
     socket.on('data', (chunk) => {
@@ -166,33 +206,14 @@ test('uninstall restores unguarded behavior', async () => {
   }
 });
 
-test('guard covers TLS connections (proxy-chain https legs)', { timeout: 15000 }, async (t) => {
-  const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ssrf-guard-tls-'));
-  const keyPath = path.join(certDir, 'key.pem');
-  const certPath = path.join(certDir, 'cert.pem');
-  let opensslAvailable = false;
-  try {
-    execSync(
-      'openssl req -x509 -newkey rsa:2048 -nodes -keyout ' +
-        JSON.stringify(keyPath) +
-        ' -out ' +
-        JSON.stringify(certPath) +
-        ' -days 1 -subj "/CN=localhost"',
-    );
-    opensslAvailable = true;
-  } catch {
-    // openssl not available in this environment; the TLS path shares the
-    // patched net.Socket.prototype.connect with plain sockets.
-  }
-  if (!opensslAvailable) {
-    t.skip('openssl unavailable');
-    return;
-  }
-
+// The committed self-signed pair in test-fixtures/ keeps this leg
+// environment-independent: the TLS path runs everywhere instead of being
+// skipped wherever no openssl binary exists.
+test('guard covers TLS connections (proxy-chain https legs)', { timeout: 15000 }, async () => {
   const server = tls.createServer(
     {
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
+      key: fs.readFileSync(path.join(fixturesDir, 'tls-key.pem')),
+      cert: fs.readFileSync(path.join(fixturesDir, 'tls-cert.pem')),
     },
     (socket) => {
       socket.on('data', () => socket.end('pong'));
@@ -220,7 +241,6 @@ test('guard covers TLS connections (proxy-chain https legs)', { timeout: 15000 }
     }
   } finally {
     server.close();
-    fs.rmSync(certDir, { recursive: true, force: true });
   }
 });
 
@@ -301,7 +321,9 @@ test('SSRF proxy tunnel: DNS rebinding is blocked at connect time', { timeout: 2
       }, 8000).unref();
     });
 
+  let internalConnections = 0;
   const internal = net.createServer((socket) => {
+    internalConnections += 1;
     socket.on('data', () => socket.end('internal-service-echo'));
   });
   await new Promise<void>((resolve) => internal.listen(0, '127.0.0.1', resolve));
@@ -328,6 +350,7 @@ test('SSRF proxy tunnel: DNS rebinding is blocked at connect time', { timeout: 2
       const attack = await openTunnel(vulnerable.port, internalPort);
       assert.ok(attack.established, 'repro: rebinding tunnel gets established without the guard');
       assert.ok(attack.relayed, 'repro: payload is relayed to the internal service without the guard');
+      assert.ok(internalConnections > 0, 'repro: the internal service saw the tunnel connection');
     } finally {
       await vulnerable.close(true);
     }
@@ -337,10 +360,20 @@ test('SSRF proxy tunnel: DNS rebinding is blocked at connect time', { timeout: 2
     // relayed.
     const guardedProxy = await startProxy(true);
     await guardedProxy.listen();
-    const { uninstall } = installConnectTimeSSRFGuard({ allowLocal: false });
+    internalConnections = 0;
+    const { uninstall } = installConnectTimeSSRFGuard({
+      allowLocal: false,
+      // The tunnel client plays the browser, whose sockets live in a
+      // separate process and are not patched; exempting the proxy's own
+      // port models exactly that, the same way the operator's PROXY_SERVER
+      // leg is exempt in production.
+      upstreamProxyUrl: 'http://127.0.0.1:' + guardedProxy.port,
+    });
     try {
       const blocked = await openTunnel(guardedProxy.port, internalPort);
+      assert.ok(!blocked.established, 'guard: the rebinding tunnel must not get established');
       assert.ok(!blocked.relayed, 'guard: no payload may reach the internal service');
+      assert.equal(internalConnections, 0, 'guard: the internal service must never see the connection');
     } finally {
       uninstall();
       await guardedProxy.close(true);
@@ -348,4 +381,106 @@ test('SSRF proxy tunnel: DNS rebinding is blocked at connect time', { timeout: 2
   } finally {
     internal.close();
   }
+});
+
+// A hostname whose connect-time resolution is a private address must be
+// refused BEFORE the TCP handshake: destroying the socket after 'connect'
+// still lets the private target observe a completed connection (and use it
+// to leak reachability / open ports). The guard therefore validates inside
+// the (wrapped) DNS lookup and fails the resolution.
+test('rebound hostname is refused before the TCP handshake completes', { timeout: 10000 }, async () => {
+  const loopback = await startCountingLoopbackServer();
+  try {
+    const { uninstall } = installConnectTimeSSRFGuard({ allowLocal: false });
+    try {
+      const result = await connectAndPong(loopback.port, 'rebind.example', {
+        // The rebinding answer, in both dns.lookup callback shapes.
+        lookup: ((_hostname: string, opts: { all?: boolean }, cb: unknown) => {
+          const callback = cb as (...args: unknown[]) => void;
+          if (opts?.all) {
+            callback(null, [{ address: '127.0.0.1', family: 4 }]);
+          } else {
+            callback(null, '127.0.0.1', 4);
+          }
+        }) as unknown as typeof import('node:dns').lookup,
+      });
+      assert.ok(!result.ok, 'a hostname resolving to a private address must not connect');
+      assert.ok(
+        result.error instanceof InsecureConnectionError,
+        'expected InsecureConnectionError, got ' + result.error,
+      );
+      assert.equal(
+        loopback.connectionCount(),
+        0,
+        'the private target must not observe a completed TCP handshake',
+      );
+    } finally {
+      uninstall();
+    }
+  } finally {
+    await loopback.close();
+  }
+});
+
+// `URL.hostname` keeps the square brackets for IPv6 hosts while Node socket
+// targets are unbracketed, so an internal upstream configured as
+// http://[::1]:3128 must still earn the exact (host, port) exemption.
+test('guard exempts an IPv6 upstream proxy URL written with brackets', { timeout: 10000 }, async () => {
+  const loopback = await startCountingLoopbackServer('::1');
+  try {
+    const { uninstall } = installConnectTimeSSRFGuard({
+      allowLocal: false,
+      upstreamProxyUrl: 'http://[::1]:' + loopback.port,
+    });
+    try {
+      const result = await connectAndPong(loopback.port, '::1');
+      assert.ok(
+        result.ok,
+        'the bracketed IPv6 upstream leg must stay connectable, got error: ' +
+          result.error,
+      );
+      assert.equal(result.data, 'pong');
+      // A different private target must not ride the same exemption.
+      const blocked = await connectAndPong(loopback.port, '127.0.0.1');
+      assert.ok(!blocked.ok, 'a non-exempt private target must stay blocked');
+      assert.ok(blocked.error instanceof InsecureConnectionError);
+    } finally {
+      uninstall();
+    }
+  } finally {
+    await loopback.close();
+  }
+});
+
+// The upstream URL is operator configuration; if it is malformed the guard
+// must simply run without the exemption (the affected scrape requests fail
+// on their own), never throw.
+test('guard tolerates an unparseable upstream proxy URL', { timeout: 10000 }, async () => {
+  const loopback = await startCountingLoopbackServer();
+  try {
+    const { uninstall } = installConnectTimeSSRFGuard({
+      allowLocal: false,
+      upstreamProxyUrl: '://not-a-url',
+    });
+    try {
+      const result = await connectAndPong(loopback.port, '127.0.0.1');
+      assert.ok(!result.ok, 'an unparseable upstream URL earns no exemption');
+      assert.ok(result.error instanceof InsecureConnectionError);
+    } finally {
+      uninstall();
+    }
+  } finally {
+    await loopback.close();
+  }
+});
+
+// Boot-safety pin for the api.ts wiring: when ALLOW_LOCAL_WEBHOOKS makes the
+// guard inert, nothing downstream may throw on a malformed PROXY_SERVER
+// (previously it only failed the individual scrape requests that used it).
+test('a disabled guard never parses the upstream proxy URL', () => {
+  const { uninstall } = installConnectTimeSSRFGuard({
+    allowLocal: true,
+    upstreamProxyUrl: '://not-a-url',
+  });
+  uninstall();
 });
