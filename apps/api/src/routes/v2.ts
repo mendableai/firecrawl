@@ -665,7 +665,6 @@ v2Router.get(
 v2Router.post(
   ["/browser/:sessionId/execute", "/interact/:sessionId/execute"],
   authMiddleware(RateLimiterMode.BrowserExecute),
-  inferIntegrationMiddleware,
   wrap(browserExecuteController),
 );
 
