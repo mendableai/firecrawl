@@ -3101,6 +3101,21 @@
                     "default": "extract",
                     "description": "`extract` returns the complete structured result in `data` every turn. `chat` lets a follow-up that asks for no new data get a short reply in `message` instead of a re-run. `exchange.requireApproval` needs `chat` on the same request. Omitted on a follow-up turn keeps the thread's mode."
                   },
+                  "location": {
+                    "type": "object",
+                    "description": "Proxy country for every request the agent makes during the run: scrapes, batch scrapes and browser sessions go out from this country, and the agent cannot change it. Search results are localized to the country. Omitted on a follow-up turn keeps the thread's country. See [Choosing a location](https://docs.firecrawl.dev/features/agent#choosing-a-location).",
+                    "additionalProperties": false,
+                    "required": [
+                      "country"
+                    ],
+                    "properties": {
+                      "country": {
+                        "type": "string",
+                        "description": "ISO 3166-1 alpha-2 country code, case-insensitive (e.g. `DE`, `gb`). Special values such as `us-generic` and `us-whitelist` are rejected.",
+                        "example": "DE"
+                      }
+                    }
+                  },
                   "exchange": {
                     "type": "object",
                     "description": "Let the agent call your team's [Alexandria](https://docs.firecrawl.dev/features/alexandria) data providers during the run. Without this object the run uses the web only (a follow-up turn inherits the previous turn's settings). See [Use your connected Alexandria tools](https://docs.firecrawl.dev/features/agent#use-your-connected-alexandria-tools).",
@@ -9429,7 +9444,7 @@
           "integration": {
             "type": "string",
             "nullable": true,
-            "description": "Optional integration identifier."
+            "description": "Optional integration identifier. When omitted, a valid `X-Integration` request header is used instead; the body value takes precedence."
           },
           "auditMetadata": {
             "$ref": "#/components/schemas/AuditMetadata"
