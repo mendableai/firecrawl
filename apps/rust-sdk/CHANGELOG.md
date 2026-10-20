@@ -1,5 +1,16 @@
 ## CHANGELOG
 
+## [2.21.7] - 2026-10-19
+
+### Fixed
+
+- `screenshot_options`, `change_tracking_options` and `attribute_selectors` on
+  `ScrapeOptions` (and `attribute_selectors` on `ParseOptions`) are now sent
+  inside their v2 `screenshot`, `changeTracking` and `attributes` format
+  objects instead of as top-level fields. The matching format is added to
+  `formats` when it is missing.
+- `SearchOptions::ignore_invalid_urls` now serializes as `ignoreInvalidURLs`.
+
 ## [2.21.6] - 2026-10-18
 
 ### Added

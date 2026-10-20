@@ -5,6 +5,15 @@ All notable changes to the Firecrawl PHP SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.5] - 2026-10-19
+
+### Fixed
+- `changeTracking: true` on `ScrapeOptions` now adds the `changeTracking`
+  format (and `markdown`, which it needs) to `formats` instead of sending a
+  top-level `changeTracking` field.
+- Crawl, batch scrape and map requests now send the SDK origin
+  (`php-sdk@<version>`) like scrape does, unless the caller sets one.
+
 ## [1.16.4] - 2026-10-18
 
 ### Added
