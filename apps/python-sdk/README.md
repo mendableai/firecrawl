@@ -434,22 +434,34 @@ async def example_crawl():
   print(crawl_result)
 ```
 
-## v1 compatibility
+## Migrating to 5.0
 
-For legacy code paths, v1 remains available under `firecrawl.v1` with the original method names.
+Version 5.0 removes the feature-frozen v1 client: `firecrawl.v1`, `V1FirecrawlApp`, `AsyncV1FirecrawlApp`, `V1JsonConfig`, `V1ScrapeOptions` and `V1ChangeTrackingOptions` are gone, along with v1-only features such as deep research and llms.txt generation. Use the v2 methods on the client instead: `scrape`, `crawl`, `map`, `search` and `batch_scrape`. For structured data, call `scrape` with a `json` format or use `agent`. The v1-style aliases on the v2 client (`scrape_url`, `crawl_url`, `batch_scrape_urls` and so on) stay; they call v2 endpoints and warn once.
 
 ```python
 from firecrawl import Firecrawl
 
 firecrawl = Firecrawl(api_key="YOUR_API_KEY")
 
-# v1 methods (feature‑frozen)
-doc_v1 = firecrawl.v1.scrape_url('https://firecrawl.dev', formats=['markdown', 'html'])
-crawl_v1 = firecrawl.v1.crawl_url('https://firecrawl.dev', limit=100)
-map_v1 = firecrawl.v1.map_url('https://firecrawl.dev')
+# Before (4.x):
+# doc = firecrawl.v1.scrape_url("https://firecrawl.dev", formats=["markdown"])
+
+# After (5.0):
+doc = firecrawl.scrape("https://firecrawl.dev", formats=["markdown"])
+data = firecrawl.scrape(
+    "https://firecrawl.dev",
+    formats=[{"type": "json", "prompt": "Extract the product name and price"}],
+)
+
+# Or let an agent gather the data across pages:
+run = firecrawl.agent(
+    urls=["https://firecrawl.dev"],
+    prompt="Find the pricing plans and their monthly credits",
+)
+print(run.data)
 ```
 
-### Alexandria
+## Alexandria
 
 With a matching API deployment, `search()` returns complete contracts in `tools`.
 `domain_tools=True` adds domain matches to that same list. Find Tools provides free,

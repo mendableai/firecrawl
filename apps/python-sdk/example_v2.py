@@ -117,20 +117,18 @@ print("\n=== Map Website ===")
 # print(res.links[3].url)
 
 # =============================================================================
-# EXTRACT EXAMPLES
+# STRUCTURED DATA (scrape with a json format)
 # =============================================================================
 
-# Data extraction with schema
-print("\n=== Extract with Schema ===")
-# schema = {
-#     "type": "object",
-#     "properties": {"title": {"type": "string"}},
-#     "required": ["title"],
-# }
-# 
-# res = firecrawl.extract(
-#     urls=["https://docs.firecrawl.dev"],
-#     prompt="Extract the page title",
-#     schema=schema,
-# )
-# print(res.data["title"])
+print("\n=== Structured data with a JSON format ===")
+schema = {
+    "type": "object",
+    "properties": {"title": {"type": "string"}},
+    "required": ["title"],
+}
+
+res = firecrawl.scrape(
+    "https://docs.firecrawl.dev",
+    formats=[{"type": "json", "prompt": "Extract the page title", "schema": schema}],
+)
+print(res.json["title"])
