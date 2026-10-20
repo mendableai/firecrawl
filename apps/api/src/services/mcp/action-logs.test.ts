@@ -342,8 +342,12 @@ describe("MCP action log contract", () => {
           objective: "Find the refund policy",
           api_job_id: REQUEST_ID,
           user_agent: "Claude/1.0",
+          mcp_origin: "mcp-ua-codex-cli-rs",
+          mcp_client: "codex-cli-rs",
+          mcp_client_source: "user_agent",
           llm_model: "gpt-6.1-sol",
           duration_ms: 55,
+          invalid_arguments: ["limit:invalid_type"],
         }),
       ),
     ).resolves.toEqual({ disposition: "accepted", id: REQUEST_ID });
@@ -355,9 +359,12 @@ describe("MCP action log contract", () => {
       api_key_id: "123",
       objective: "Find the refund policy",
       api_job_id: REQUEST_ID,
+      mcp_origin: "mcp-ua-codex-cli-rs",
+      mcp_client: "codex-cli-rs",
+      mcp_client_source: "user_agent",
       llm_model: "gpt-6.1-sol",
       duration_ms: 55,
-      invalid_arguments: [],
+      invalid_arguments: ["limit:invalid_type"],
     });
     expect(row).not.toHaveProperty("user_agent");
 
