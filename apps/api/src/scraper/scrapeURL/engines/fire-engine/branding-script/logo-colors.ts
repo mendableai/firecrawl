@@ -126,8 +126,12 @@ const isUnpainted = (shape: Element, svg: Element): boolean => {
 const gradientStops = (paint: string, svg: Element): string[] | null => {
   const id = paint.match(/^url\(["']?#([^"')]+)["']?\)/)?.[1];
   if (!id) return null;
-  const doc = svg.ownerDocument;
-  let gradient: Element | null = doc.getElementById(id);
+  // The SVG's own root: a logo inside a shadow root defines its gradients
+  // there, out of the document's sight.
+  const root = svg.getRootNode() as Document | ShadowRoot;
+  const byId = (ref: string) =>
+    root.getElementById?.(ref) ?? svg.ownerDocument.getElementById(ref);
+  let gradient: Element | null = byId(id);
   for (let hop = 0; gradient && hop < 2; hop++) {
     if (!/gradient$/i.test(gradient.localName)) return null;
     const stops = [...gradient.querySelectorAll("stop")];
@@ -143,7 +147,7 @@ const gradientStops = (paint: string, svg: Element): string[] | null => {
       gradient.getAttribute("xlink:href") ??
       ""
     ).replace(/^#/, "");
-    gradient = ref ? doc.getElementById(ref) : null;
+    gradient = ref ? byId(ref) : null;
   }
   return null;
 };
@@ -190,7 +194,7 @@ const svgColors = (svg: SVGSVGElement): LogoColor[] => {
  */
 const imageColors = (
   img: HTMLImageElement,
-  onCrossOrigin?: () => void,
+  readLater?: () => void,
 ): LogoColor[] => {
   if (!img.complete) return [];
   // An SVG file without a size of its own still draws at any size.
@@ -211,7 +215,7 @@ const imageColors = (
     ctx.drawImage(img, 0, 0, w, h);
     data = ctx.getImageData(0, 0, w, h).data;
   } catch {
-    onCrossOrigin?.(); // another origin, read without CORS
+    readLater?.(); // another origin, read without CORS
     return [];
   }
   // Group pixels into 4-bit-per-channel buckets; report each bucket's average.
@@ -256,7 +260,8 @@ export const getLogoColors = (
     if (el instanceof SVGSVGElement) return svgColors(el);
     if (el instanceof HTMLImageElement) {
       return imageColors(el, () => {
-        if (set && el.currentSrc) crossOrigin.push({ url: el.currentSrc, set });
+        const url = el.currentSrc || el.src;
+        if (set && url) crossOrigin.push({ url, set });
       });
     }
     // A logo drawn as a CSS background: read the image when the browser
@@ -267,9 +272,16 @@ export const getLogoColors = (
     if (url) {
       const img = new Image();
       img.src = url;
-      return imageColors(img, () => {
+      const readLater = () => {
         if (set) crossOrigin.push({ url: img.src, set });
-      });
+      };
+      // The browser may not have the background image ready yet: read it
+      // after the scan, like a cross-origin one.
+      if (!img.complete) {
+        readLater();
+        return [];
+      }
+      return imageColors(img, readLater);
     }
   } catch (e) {
     recordError("getLogoColors", e);
