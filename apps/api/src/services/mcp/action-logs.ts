@@ -19,6 +19,11 @@ const SECRET_PATTERN =
   /(?:\bBearer\s+\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b|\b(?:sk-|fc-|fco_|fcr_|fcmcp_)[A-Za-z0-9_-]+)/i;
 const SECRET_PATTERN_ALL = new RegExp(SECRET_PATTERN.source, "gi");
 const OBJECTIVE_MAX_LENGTH = 1000;
+const MCP_CLIENT_SOURCES = ["client_info", "user_agent", "oauth"] as const;
+const DURATION_MS_MAX = 2_147_483_647;
+const INVALID_ARGUMENTS_MAX = 10;
+const INVALID_ARGUMENT_PATTERN =
+  /^(?:\(root\)|\*|[A-Za-z0-9_.-]{1,64}):[a-z_]{1,40}$/;
 const RETENTION_DAYS = 30;
 const ALLOWED_FIELDS = new Set([
   "team_id",
@@ -36,6 +41,12 @@ const ALLOWED_FIELDS = new Set([
   "resource",
   "objective",
   "api_job_id",
+  "mcp_origin",
+  "mcp_client",
+  "mcp_client_source",
+  "llm_model",
+  "duration_ms",
+  "invalid_arguments",
 ]);
 
 export class McpActionLogValidationError extends Error {}
@@ -99,6 +110,36 @@ function objective(value: unknown) {
   return normalized || null;
 }
 
+function durationMs(value: unknown) {
+  if (value == null) return null;
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value > DURATION_MS_MAX
+  ) {
+    invalid("duration_ms must be a non-negative integer");
+  }
+  return value;
+}
+
+function invalidArguments(value: unknown) {
+  if (value == null) return [];
+  if (
+    !Array.isArray(value) ||
+    value.length > INVALID_ARGUMENTS_MAX ||
+    !value.every(
+      label =>
+        typeof label === "string" && INVALID_ARGUMENT_PATTERN.test(label),
+    )
+  ) {
+    invalid(
+      `invalid_arguments must be at most ${INVALID_ARGUMENTS_MAX} <argument>:<issue> labels`,
+    );
+  }
+  return value as string[];
+}
+
 type McpActionLogInput = {
   team_id: string;
   user_id: string | null;
@@ -114,6 +155,12 @@ type McpActionLogInput = {
   resource: string;
   objective: string | null;
   api_job_id: string | null;
+  mcp_origin: string | null;
+  mcp_client: string | null;
+  mcp_client_source: (typeof MCP_CLIENT_SOURCES)[number] | null;
+  llm_model: string | null;
+  duration_ms: number | null;
+  invalid_arguments: string[];
 };
 
 type McpActionLogRow = {
@@ -161,6 +208,15 @@ export function normalizeMcpActionLogInput(
     if (!userId) invalid("user_id is required for oauth events");
     if (!oauthClientId) invalid("oauth_client_id is required for oauth events");
   }
+  const mcpClientSource = payload.mcp_client_source ?? null;
+  if (
+    mcpClientSource !== null &&
+    !MCP_CLIENT_SOURCES.includes(
+      mcpClientSource as (typeof MCP_CLIENT_SOURCES)[number],
+    )
+  ) {
+    invalid("mcp_client_source must be client_info, user_agent or oauth");
+  }
   const resource = text(payload.resource, "resource", 128, true)!;
   if (!RESOURCES.has(resource)) {
     invalid("resource must be a canonical hosted MCP URL");
@@ -180,6 +236,13 @@ export function normalizeMcpActionLogInput(
     resource,
     objective: objective(payload.objective),
     api_job_id: text(payload.api_job_id, "api_job_id"),
+    mcp_origin: text(payload.mcp_origin, "mcp_origin"),
+    mcp_client: text(payload.mcp_client, "mcp_client"),
+    mcp_client_source:
+      mcpClientSource as McpActionLogInput["mcp_client_source"],
+    llm_model: text(payload.llm_model, "llm_model"),
+    duration_ms: durationMs(payload.duration_ms),
+    invalid_arguments: invalidArguments(payload.invalid_arguments),
   };
 }
 
