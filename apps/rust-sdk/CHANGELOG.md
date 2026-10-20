@@ -1,5 +1,15 @@
 ## CHANGELOG
 
+## [2.21.8] - 2026-10-20
+
+### Added
+
+- `Client::developer_search` calls `POST /v2/search/developer`, the developer
+  index of public repositories, GitHub issues, merged pull requests, READMEs
+  and code documentation, with every filter the API takes
+  (`DeveloperSearchOptions`). It replaces the deprecated `search_github`,
+  which stops responding after 2026-11-03.
+
 ## [2.21.7] - 2026-10-19
 
 ### Fixed
