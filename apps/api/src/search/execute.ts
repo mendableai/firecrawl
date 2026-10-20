@@ -141,7 +141,17 @@ export async function executeSearch(
       : null;
   const indexResultsPromise = indexCategorySearch
     ? indexCategorySearch(
-        { query, limit, teamId, timeout: options.timeout },
+        {
+          query,
+          limit,
+          teamId,
+          timeout: options.timeout,
+          zeroDataRetention:
+            zeroDataRetention === true ||
+            options.enterprise?.some(
+              mode => mode === "zdr" || mode === "anon",
+            ) === true,
+        },
         logger,
       )
     : null;

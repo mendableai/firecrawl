@@ -128,6 +128,13 @@ describe.each([
     expect(mocks.logResearchEndpoint).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: true }),
     );
+    expect(mocks.fetchResearchUpstream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "firecrawl-zero-data-retention": "true",
+        }),
+      }),
+    );
   });
 
   it("keeps normal retention for a team that may opt into ZDR", async () => {
@@ -140,6 +147,13 @@ describe.each([
     );
     expect(mocks.logResearchEndpoint).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: false }),
+    );
+    expect(mocks.fetchResearchUpstream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "firecrawl-zero-data-retention": "false",
+        }),
+      }),
     );
   });
 });
