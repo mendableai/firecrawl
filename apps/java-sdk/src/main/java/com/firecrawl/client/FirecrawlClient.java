@@ -37,7 +37,7 @@ import java.util.concurrent.ForkJoinPool;
 public class FirecrawlClient {
 
     private static final String DEFAULT_API_URL = "https://api.firecrawl.dev";
-    private static final String SDK_ORIGIN = "java-sdk@1.18.5";
+    private static final String SDK_ORIGIN = "java-sdk@1.18.6";
     private static final long DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final double DEFAULT_BACKOFF_FACTOR = 0.5;
@@ -448,6 +448,18 @@ public class FirecrawlClient {
     public Map<String, Object> cancelBatchScrape(String jobId) {
         Objects.requireNonNull(jobId, "Job ID is required");
         return http.delete("/v2/batch/scrape/" + jobId, Map.class);
+    }
+
+    /**
+     * Gets errors and robots.txt blocks from a batch scrape job.
+     *
+     * @param jobId the batch scrape job ID
+     * @return error details
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getBatchScrapeErrors(String jobId) {
+        Objects.requireNonNull(jobId, "Job ID is required");
+        return http.get("/v2/batch/scrape/" + jobId + "/errors", Map.class);
     }
 
     // ================================================================
