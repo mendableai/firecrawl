@@ -16,18 +16,13 @@ describe("V2 prototype discoverability", () => {
         "startCrawl",
         "getCrawlStatus",
         "batchScrape",
-        "v1",
       ])
     );
   });
 
-  it("preserves v1 getter on Firecrawl prototype", () => {
-    const desc = Object.getOwnPropertyDescriptor(
-      Object.getPrototypeOf(app),
-      "v1"
-    );
-    expect(desc).toBeDefined();
-    expect(desc!.get).toBeDefined();
+  it("does not expose the removed v1 getter", () => {
+    expect(Object.getOwnPropertyNames(Object.getPrototypeOf(app))).not.toContain("v1");
+    expect("v1" in app).toBe(false);
   });
 
   it("copied descriptors are identical to V2 prototype originals", () => {

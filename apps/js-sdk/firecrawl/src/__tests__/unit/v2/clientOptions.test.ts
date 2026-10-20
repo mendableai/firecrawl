@@ -75,9 +75,9 @@ describe('Firecrawl v2 Client Options', () => {
     expect(() => new Firecrawl('   ')).not.toThrow();
   });
 
-  it('should provide v1 accessor when constructed with string', () => {
+  it('should not expose the removed v1 client', () => {
     const client = new Firecrawl('test-key');
 
-    expect(client.v1).toBeDefined();
+    expect((client as any).v1).toBeUndefined();
   });
 });

@@ -395,19 +395,19 @@ watch.on('done', (state) => {
 await watch.start();
 ```
 
-## v1 compatibility
+## Migrating to 5.0
 
-The feature‑frozen v1 is still available under `app.v1` with the original method names.
+Version 5.0 removes the feature‑frozen v1 client: `app.v1` and the `FirecrawlAppV1` export are gone, along with v1-only features such as deep research and llms.txt generation. Use the v2 methods on the client instead: `scrape`, `crawl`, `map`, `search` and `batchScrape`. For structured data, call `scrape` with a `json` format or use `agent`.
 
 ```js
-import { Firecrawl } from 'firecrawl';
+// Before (4.x):
+// const doc = await app.v1.scrapeUrl('https://firecrawl.dev', { formats: ['markdown'] });
 
-const app = new Firecrawl({ apiKey: 'fc-YOUR_API_KEY' });
-
-// v1 methods (feature‑frozen)
-const scrapeV1 = await app.v1.scrapeUrl('https://firecrawl.dev', { formats: ['markdown', 'html'] });
-const crawlV1 = await app.v1.crawlUrl('https://firecrawl.dev', { limit: 100 });
-const mapV1 = await app.v1.mapUrl('https://firecrawl.dev');
+// After (5.0):
+const doc = await app.scrape('https://firecrawl.dev', { formats: ['markdown'] });
+const data = await app.scrape('https://firecrawl.dev', {
+  formats: [{ type: 'json', prompt: 'Extract the product name and price' }],
+});
 ```
 
 ## Error Handling

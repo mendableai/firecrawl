@@ -54,9 +54,12 @@ describe("v2 request origin", () => {
     expect(bodies.map(b => b.origin)).toEqual(["per-call", "mcp-server"]);
   });
 
-  test("the unified client forwards the origin option to v1", () => {
-    const app = new Firecrawl({ apiKey: "fc-test", origin: "js-sdk.example@1.0.0" });
-    expect((app.v1 as any).clientOrigin).toBe("js-sdk.example@1.0.0");
+  test("the unified client stamps the origin option into request bodies", async () => {
+    const { client, bodies } = withCapture(
+      new Firecrawl({ apiKey: "fc-test", origin: "js-sdk.example@1.0.0" }),
+    );
+    await client.scrape("https://example.com");
+    expect(bodies[0]!.origin).toBe("js-sdk.example@1.0.0");
   });
 
 });
