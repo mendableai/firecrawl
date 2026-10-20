@@ -121,14 +121,14 @@ print("\n=== Map Website ===")
 # =============================================================================
 
 print("\n=== Structured data with a JSON format ===")
-schema = {
-    "type": "object",
-    "properties": {"title": {"type": "string"}},
-    "required": ["title"],
-}
-
-res = firecrawl.scrape(
-    "https://docs.firecrawl.dev",
-    formats=[{"type": "json", "prompt": "Extract the page title", "schema": schema}],
-)
-print(res.json["title"])
+# schema = {
+#     "type": "object",
+#     "properties": {"title": {"type": "string"}},
+#     "required": ["title"],
+# }
+#
+# res = firecrawl.scrape(
+#     "https://docs.firecrawl.dev",
+#     formats=[{"type": "json", "prompt": "Extract the page title", "schema": schema}],
+# )
+# print(res.json["title"])
