@@ -77,17 +77,21 @@ describe("agentController zero data retention", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it.each([
-    ["forced (scrapeZDR)", {}, { scrapeZDR: "forced" }],
+    [
+      "forced (scrapeZDR)",
+      {},
+      { scrapeZDR: "forced", searchZDR: "forced-zdr" },
+    ],
     ["forced (legacy forceZDR)", {}, { forceZDR: true }],
     [
       "forced with an explicit opt-out",
       { zeroDataRetention: false },
-      { scrapeZDR: "forced" },
+      { scrapeZDR: "forced", searchZDR: "allowed" },
     ],
     [
       "allowed with opt-in",
       { zeroDataRetention: true },
-      { scrapeZDR: "allowed" },
+      { scrapeZDR: "allowed", searchZDR: "allowed" },
     ],
   ])("runs with ZDR when %s", async (_name, body, flags) => {
     const res = await run(body, flags);
@@ -115,23 +119,49 @@ describe("agentController zero data retention", () => {
     );
   });
 
-  it("rejects an opt-in from a team without the entitlement", async () => {
-    const res = await run({ zeroDataRetention: true }, {});
+  it.each([
+    ["opt-in, neither enabled", { zeroDataRetention: true }, {}],
+    [
+      "opt-in, scrape ZDR only",
+      { zeroDataRetention: true },
+      { scrapeZDR: "allowed" },
+    ],
+    [
+      "opt-in, search ZDR only",
+      { zeroDataRetention: true },
+      { searchZDR: "allowed" },
+    ],
+    ["scrape ZDR forced, no search ZDR", {}, { scrapeZDR: "forced" }],
+    [
+      "scrape ZDR forced, search anonymous only",
+      {},
+      { scrapeZDR: "forced", searchZDR: "forced-anon" },
+    ],
+  ])("rejects a ZDR run up front when %s", async (_name, body, flags) => {
+    const res = await run(body, flags);
 
-    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       success: false,
+      code: "zdr_not_enabled",
       error:
-        "Zero Data Retention (ZDR) is not enabled for your team. Contact support@firecrawl.com to enable this feature.",
+        "Zero Data Retention (ZDR) for agent runs requires both scrape ZDR and search ZDR to be enabled for your team. Contact support@firecrawl.com to enable it.",
     });
     expect(fetch).not.toHaveBeenCalled();
     expect(logRequest).not.toHaveBeenCalled();
   });
 
+  it("leaves a run that does not ask for ZDR alone, whatever the search flag", async () => {
+    const res = await run({}, { scrapeZDR: "allowed" });
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(forwardedBody()).not.toHaveProperty("zeroDataRetention");
+  });
+
   it("rejects a thread follow-up under ZDR", async () => {
     const res = await run(
       { threadId: "0190e3c8-4b2a-7c3d-8e9f-0a1b2c3d4e5f" },
-      { scrapeZDR: "forced" },
+      { scrapeZDR: "forced", searchZDR: "allowed" },
     );
 
     expect(res.status).toHaveBeenCalledWith(400);
@@ -149,7 +179,7 @@ describe("agentController zero data retention", () => {
   it("rejects exchange options under ZDR", async () => {
     const res = await run(
       { zeroDataRetention: true, exchange: { enabled: true } },
-      { scrapeZDR: "allowed" },
+      { scrapeZDR: "allowed", searchZDR: "allowed" },
     );
 
     expect(res.status).toHaveBeenCalledWith(400);
@@ -174,7 +204,7 @@ describe("agentController zero data retention", () => {
 
     const res = await run(
       { urls: ["https://blocked.example"] },
-      { scrapeZDR: "forced" },
+      { scrapeZDR: "forced", searchZDR: "allowed" },
     );
 
     expect(res.status).toHaveBeenCalledWith(403);

@@ -12,7 +12,7 @@ import { logRequest } from "../../services/logging/log_job";
 import { externalRequestId } from "../../lib/external-request-id";
 import { config } from "../../config";
 import { agentConsumeFreeRequestIfLeft } from "../../db/rpc";
-import { getScrapeZDR } from "../../lib/zdr-helpers";
+import { getScrapeZDR, getSearchZDR } from "../../lib/zdr-helpers";
 import { checkPermissions } from "../../lib/permissions";
 import {
   checkUrlsAgainstThreatPolicy,
@@ -37,6 +37,25 @@ export async function agentController(
   const originalRequest = { ...req.body };
   req.body = agentRequestSchema.parse(req.body);
 
+  // An agent run scrapes and searches under ZDR, so it needs both
+  // entitlements up front instead of failing on its first inner call.
+  const scrapeZDR = getScrapeZDR(req.acuc?.flags);
+  const searchZDR = getSearchZDR(req.acuc?.flags);
+  if (
+    (req.body.zeroDataRetention === true || scrapeZDR === "forced") &&
+    !(
+      (scrapeZDR === "allowed" || scrapeZDR === "forced") &&
+      (searchZDR === "allowed" || searchZDR === "forced-zdr")
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      code: "zdr_not_enabled",
+      error:
+        "Zero Data Retention (ZDR) for agent runs requires both scrape ZDR and search ZDR to be enabled for your team. Contact support@firecrawl.com to enable it.",
+    });
+  }
+
   const permissions = checkPermissions(
     { zeroDataRetention: req.body.zeroDataRetention },
     req.acuc?.flags,
@@ -48,7 +67,6 @@ export async function agentController(
     });
   }
 
-  const scrapeZDR = getScrapeZDR(req.acuc?.flags);
   const zeroDataRetention =
     scrapeZDR === "forced" ||
     (req.body.zeroDataRetention === true && scrapeZDR === "allowed");
