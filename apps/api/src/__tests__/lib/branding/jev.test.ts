@@ -1009,4 +1009,20 @@ describe("branding metrics", () => {
     expect(await value(brandingRoutedTotal, outside)).toBe(before + 1);
     expect(mocks.systemOne).not.toHaveBeenCalled();
   });
+
+  it("counts branding without a TypeSafe key apart from the switch", async () => {
+    const noKey = { model: "llm", reason: "jev_no_key" };
+    const off = { model: "llm", reason: "jev_off" };
+    const [noKeyBefore, offBefore] = [
+      await value(brandingRoutedTotal, noKey),
+      await value(brandingRoutedTotal, off),
+    ];
+    config.TYPESAFE_API_KEY = undefined;
+
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(await value(brandingRoutedTotal, noKey)).toBe(noKeyBefore + 1);
+    expect(await value(brandingRoutedTotal, off)).toBe(offBefore);
+    expect(mocks.systemOne).not.toHaveBeenCalled();
+  });
 });

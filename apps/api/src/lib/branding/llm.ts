@@ -109,7 +109,11 @@ export async function enhanceBrandingWithLLM(
   const logger = input.logger;
 
   if (!isJevBrandingEnabled()) {
-    brandingRoutedTotal.inc({ model: "llm", reason: "jev_off" });
+    brandingRoutedTotal.inc({
+      model: "llm",
+      // No key (self-hosted without TypeSafe) is not the switch turned off.
+      reason: config.TYPESAFE_API_KEY ? "jev_off" : "jev_no_key",
+    });
   } else {
     const jev = await enhanceBrandingWithJev(input);
     if (jev) {
