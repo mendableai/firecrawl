@@ -309,6 +309,33 @@ describe("executeSearch developer category", () => {
     expect(result.resultCategories).toEqual({});
   });
 
+  it.each([
+    {
+      name: "a forced team",
+      context: { zeroDataRetention: true },
+      enterprise: [],
+    },
+    { name: "an enterprise zdr request", context: {}, enterprise: ["zdr"] },
+    { name: "an enterprise anon request", context: {}, enterprise: ["anon"] },
+  ])(
+    "marks the developer upstream call zero data retention for $name",
+    async c => {
+      await executeSearch(
+        {
+          ...options([{ type: "developer" }]),
+          enterprise: c.enterprise,
+        } as any,
+        { ...context, ...c.context } as any,
+        logger,
+      );
+
+      expect(mocks.searchDeveloperCategory).toHaveBeenCalledWith(
+        expect.objectContaining({ zeroDataRetention: true }),
+        logger,
+      );
+    },
+  );
+
   it("rejects developer combined with other categories at the schema", () => {
     const mixed = searchRequestSchema.safeParse({
       query: "retries",
@@ -350,7 +377,13 @@ describe("executeSearch gov category", () => {
     expect(mocks.search).not.toHaveBeenCalled();
     expect(mocks.searchDeveloperCategory).not.toHaveBeenCalled();
     expect(mocks.searchGovCategory).toHaveBeenCalledWith(
-      { query: "retries", limit: 10, teamId: "team-1", timeout: 1_000 },
+      {
+        query: "retries",
+        limit: 10,
+        teamId: "team-1",
+        timeout: 1_000,
+        zeroDataRetention: false,
+      },
       logger,
     );
     expect(result.response).toEqual({ web: [govResult] });

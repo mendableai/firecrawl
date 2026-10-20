@@ -13,6 +13,8 @@ minimumReleaseAgeExclude:
   - "@typescript/typescript-*"
 overrides:
   "@types/express": "^5.0.6"
+  # GHSA-698v-4r3x-3vcv: pin the 8.0 and 8.1 lines to 8.1.6. Cannot resolve to 8.2+.
+  "vite@>=8.0.0 <8.1.6": "8.1.6"
   bigint-buffer: "npm:four-flap-bigint-buffer@1.1.6"
   diff: "^8.0.3"
   ajv: "^8.18.0"
