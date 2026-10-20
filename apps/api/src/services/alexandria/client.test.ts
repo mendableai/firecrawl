@@ -41,6 +41,26 @@ describe("exchangeRequest", () => {
     });
   });
 
+  it("sends the client country only when known", async () => {
+    await exchangeRequest({
+      teamId: "team",
+      path: "/v1/retrieve",
+      body: {},
+      timeoutMs: 1000,
+      clientCountry: "DE",
+    });
+    expect(headersOf()["x-exchange-client-country"]).toBe("DE");
+
+    mocks.fetch.mockClear();
+    await exchangeRequest({
+      teamId: "team",
+      path: "/v1/retrieve",
+      body: {},
+      timeoutMs: 1000,
+    });
+    expect(headersOf()).not.toHaveProperty("x-exchange-client-country");
+  });
+
   it("sends no connectors grant by default", async () => {
     await exchangeRequest({
       teamId: "team",

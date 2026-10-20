@@ -1,5 +1,6 @@
 import { bountyBlocklistMiddleware } from "./exchange-blocklist";
 import { providerScrapeController } from "../controllers/v2/scrape-alexandria";
+import { clientCountry } from "../lib/client-country";
 import { orgIdFromAcuc } from "../lib/team-org";
 import {
   acceptProviderTerms,
@@ -75,6 +76,7 @@ function exchangeProxy(
     }
 
     const hasBody = req.method !== "GET";
+    const country = clientCountry(req);
     const path = req.originalUrl.replace(/^\/exchange/, "/v1");
 
     try {
@@ -89,6 +91,7 @@ function exchangeProxy(
           ),
           ...(hasBody ? { "content-type": "application/json" } : {}),
           "x-exchange-team-id": authedReq.auth.team_id,
+          ...(country ? { "x-exchange-client-country": country } : {}),
           // Built here, never forwarded from the caller: the connectors whitelist is this flag.
           ...(authedReq.acuc?.flags?.exchangeRetrieve
             ? { "x-exchange-connectors": "true" }
