@@ -267,6 +267,10 @@ export type Meta = {
     | undefined; // undefined: no prefetch yet, null: prefetch came back empty
   costTracking: CostTracking;
   winnerEngine?: Engine;
+  /** The `raw-` content-cache key of the PDF this scrape looked up through
+   * the fire-pdf cache service, stored with the URL index entry so a later
+   * index hit can ask whether fire-pdf holds a newer parse. */
+  firePdfCacheKey?: string;
   abortHandle?: NodeJS.Timeout;
   audioCookies?: BrowserCookie[];
   /** Threat protection decisions made during this scrape, in order (mutable, like logs). */
