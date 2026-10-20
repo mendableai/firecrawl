@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -83,6 +84,24 @@ class DeveloperSearchMockTest {
         assertTrue(response.repos.get(0).indexed);
         assertTrue(response.repos.get(0).types.pullRequest);
         assertNull(response.sources);
+    }
+
+    @Test
+    void developerSearchAsyncPostsQuery() {
+        ResearchModels.DeveloperSearchResponse response = client.developerSearchAsync("okhttp interceptor", null).join();
+
+        assertEquals("POST /v2/search/developer", requestLine.get());
+        assertTrue(requestBody.get().contains("\"query\":\"okhttp interceptor\""), requestBody.get());
+        assertTrue(response.success);
+        assertEquals(2, response.results.size());
+    }
+
+    @Test
+    void developerSearchAsyncFailsOnBlankQuery() {
+        CompletionException error = assertThrows(CompletionException.class,
+                () -> client.developerSearchAsync(" ", null).join());
+        assertInstanceOf(IllegalArgumentException.class, error.getCause());
+        assertNull(requestLine.get());
     }
 
     @Test
