@@ -50,7 +50,7 @@ const notFound = (res: Response) =>
 /**
  * GET /v2/alexandria/public/:jobId — the sanitized public record for an
  * Alexandria job, for firecrawl.dev/artifacts/<jobId>. No auth and no team
- * information; the allowlist and kill switch are re-checked on every read.
+ * information; the hardcoded allowlist is re-checked on every read.
  */
 export async function alexandriaPublicResultController(
   req: Request<{ jobId: string }>,

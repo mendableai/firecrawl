@@ -1,14 +1,9 @@
 import express from "express";
 import request from "supertest";
 const mocks = vi.hoisted(() => ({
-  config: {
-    ALEXANDRIA_PUBLIC_RESULTS_ENABLED: true,
-    ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS: [] as string[],
-  },
   load: vi.fn(),
   consume: vi.fn(),
 }));
-vi.mock("../../config", () => ({ config: mocks.config }));
 vi.mock("../../services/alexandria/public-results", () => ({
   loadPublicResult: mocks.load,
 }));
@@ -49,8 +44,6 @@ const record = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_ENABLED = true;
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS = [];
   mocks.consume.mockResolvedValue(undefined);
 });
 
@@ -81,21 +74,13 @@ it("rejects an id that is not a UUID without reading storage", async () => {
   expect(mocks.load).not.toHaveBeenCalled();
 });
 
-it("hides a stored record once its provider or the feature is switched off", async () => {
-  mocks.load.mockResolvedValue(record);
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS = ["espn-com"];
-  const disabled = await request(app).get(`/v2/alexandria/public/${jobId}`);
-  expect(disabled.status).toBe(404);
-  expect(disabled.body).toEqual({ success: false, error: "not_found" });
-
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS = [];
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_ENABLED = false;
-  expect(
-    (await request(app).get(`/v2/alexandria/public/${jobId}`)).status,
-  ).toBe(404);
-
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_ENABLED = true;
+it("hides a stored record whose capability is no longer allowlisted", async () => {
   mocks.load.mockResolvedValue({ ...record, capability: "sports-data/search" });
+  const hidden = await request(app).get(`/v2/alexandria/public/${jobId}`);
+  expect(hidden.status).toBe(404);
+  expect(hidden.body).toEqual({ success: false, error: "not_found" });
+
+  mocks.load.mockResolvedValue({ ...record, provider: "draftsharks-com" });
   expect(
     (await request(app).get(`/v2/alexandria/public/${jobId}`)).status,
   ).toBe(404);

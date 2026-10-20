@@ -1,7 +1,5 @@
 const mocks = vi.hoisted(() => ({
   config: {
-    ALEXANDRIA_PUBLIC_RESULTS_ENABLED: true,
-    ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS: [] as string[],
     GCS_BUCKET_NAME: "bucket",
   },
   save: vi.fn(),
@@ -76,8 +74,6 @@ const build = (overrides: Partial<Parameters<typeof buildPublicRecord>[0]>) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_ENABLED = true;
-  mocks.config.ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS = [];
   mocks.config.GCS_BUCKET_NAME = "bucket";
 });
 
@@ -116,7 +112,13 @@ describe("allowlist", () => {
         "fantasy-sports-rankings/adp",
       ),
     ).toBeDefined();
-    expect(publicCapability("polymarket", "events/by-slug")).toBeDefined();
+    for (const capability of [
+      "events/by-slug",
+      "events/get",
+      "markets/by-slug",
+      "markets/get",
+    ])
+      expect(publicCapability("polymarket", capability)).toBeDefined();
     expect(publicCapability("espn-com", "sports-data/search")).toBeUndefined();
     expect(publicCapability("polymarket", "search/query")).toBeUndefined();
     expect(
@@ -126,16 +128,6 @@ describe("allowlist", () => {
       publicCapability("draftsharks-com", "weekly_rankings"),
     ).toBeUndefined();
     expect(publicCapability("espn-com", "constructor")).toBeUndefined();
-  });
-
-  it("honours the global switch and the per-provider kill switch", () => {
-    mocks.config.ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS = ["espn-com"];
-    expect(
-      publicCapability("espn-com", "sports-data/scoreboard"),
-    ).toBeUndefined();
-    expect(publicCapability("polymarket", "events/by-slug")).toBeDefined();
-    mocks.config.ALEXANDRIA_PUBLIC_RESULTS_ENABLED = false;
-    expect(publicCapability("polymarket", "events/by-slug")).toBeUndefined();
   });
 });
 

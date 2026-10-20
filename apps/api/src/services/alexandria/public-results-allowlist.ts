@@ -1,5 +1,3 @@
-import { config } from "../../config";
-
 /**
  * Capabilities whose successful results get a public page at
  * firecrawl.dev/artifacts/<jobId>. Everything not listed here is never stored.
@@ -8,9 +6,9 @@ import { config } from "../../config";
  * shape each must have; any other option (and any value of the wrong shape)
  * is dropped. Free-text options stay out.
  *
- * `enabled: false` on a provider is the in-code kill switch;
- * ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS is the deploy-time one. Both are
- * checked on write and again on every read.
+ * This list is the only gate, checked on write and again on every read. It
+ * matches the layouts firecrawl-web renders (lib/alexandria/artifacts/registry.ts);
+ * removing an entry hides its existing pages.
  */
 export type PublicParamKind = "string" | "number" | "boolean" | "string[]";
 
@@ -20,112 +18,87 @@ export type PublicCapability = {
   requiredTag?: string;
 };
 
-type PublicProvider = {
-  enabled: boolean;
-  capabilities: Record<string, PublicCapability>;
-};
-
 const ESPN_LEAGUE = { sport: "string", league: "string" } as const;
 const POLYMARKET_SPORTS = "sports";
 
-const PUBLIC_RESULT_PROVIDERS: Record<string, PublicProvider> = {
+const PUBLIC_RESULT_CAPABILITIES: Record<
+  string,
+  Record<string, PublicCapability>
+> = {
   "espn-com": {
-    enabled: true,
-    capabilities: {
-      "sports-data/scoreboard": {
-        params: {
-          ...ESPN_LEAGUE,
-          date: "string",
-          season: "number",
-          seasontype: "number",
-          week: "number",
-          groups: "string",
-          limit: "number",
-        },
+    "sports-data/scoreboard": {
+      params: {
+        ...ESPN_LEAGUE,
+        date: "string",
+        season: "number",
+        seasontype: "number",
+        week: "number",
+        groups: "string",
+        limit: "number",
       },
-      "sports-data/event": {
-        params: { ...ESPN_LEAGUE, event_id: "string" },
-      },
-      "sports-data/standings": {
-        params: {
-          ...ESPN_LEAGUE,
-          season: "number",
-          level: "number",
-          stats: "string[]",
-        },
+    },
+    "sports-data/event": {
+      params: { ...ESPN_LEAGUE, event_id: "string" },
+    },
+    "sports-data/standings": {
+      params: {
+        ...ESPN_LEAGUE,
+        season: "number",
+        level: "number",
+        stats: "string[]",
       },
     },
   },
   "nfl-com": {
-    enabled: true,
-    capabilities: {
-      "sports-league-data/injury_report": {
-        params: {
-          season: "number",
-          season_type: "string",
-          team: "string",
-          week: "number",
-        },
+    "sports-league-data/injury_report": {
+      params: {
+        season: "number",
+        season_type: "string",
+        team: "string",
+        week: "number",
       },
     },
   },
   "fantasyfootballcalculator-com": {
-    enabled: true,
-    capabilities: {
-      "fantasy-sports-rankings/adp": {
-        params: {
-          format: "string",
-          teams: "number",
-          year: "number",
-          position: "string",
-          limit: "number",
-        },
+    "fantasy-sports-rankings/adp": {
+      params: {
+        format: "string",
+        teams: "number",
+        year: "number",
+        position: "string",
+        limit: "number",
       },
     },
   },
   // Polymarket is multi-category; only sports-tagged events and markets.
   polymarket: {
-    enabled: true,
-    capabilities: {
-      "events/by-slug": {
-        params: { slug: "string" },
-        requiredTag: POLYMARKET_SPORTS,
-      },
-      "events/get": {
-        params: { id: "number" },
-        requiredTag: POLYMARKET_SPORTS,
-      },
-      "markets/by-slug": {
-        params: { slug: "string", include_tag: "boolean" },
-        requiredTag: POLYMARKET_SPORTS,
-      },
-      "markets/get": {
-        params: { id: "number", include_tag: "boolean" },
-        requiredTag: POLYMARKET_SPORTS,
-      },
+    "events/by-slug": {
+      params: { slug: "string" },
+      requiredTag: POLYMARKET_SPORTS,
+    },
+    "events/get": {
+      params: { id: "number" },
+      requiredTag: POLYMARKET_SPORTS,
+    },
+    "markets/by-slug": {
+      params: { slug: "string", include_tag: "boolean" },
+      requiredTag: POLYMARKET_SPORTS,
+    },
+    "markets/get": {
+      params: { id: "number", include_tag: "boolean" },
+      requiredTag: POLYMARKET_SPORTS,
     },
   },
 };
 
-/**
- * The allowlist entry for a capability, or undefined when public results are
- * off, the provider is switched off, or the capability is not listed.
- */
+/** The allowlist entry for a capability, or undefined when it is not listed. */
 export function publicCapability(
   provider: string,
   capability: string,
 ): PublicCapability | undefined {
-  if (!config.ALEXANDRIA_PUBLIC_RESULTS_ENABLED) return undefined;
-  if (
-    (config.ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS ?? []).includes(
-      provider,
-    )
-  )
-    return undefined;
-  const entry = Object.hasOwn(PUBLIC_RESULT_PROVIDERS, provider)
-    ? PUBLIC_RESULT_PROVIDERS[provider]
+  if (!Object.hasOwn(PUBLIC_RESULT_CAPABILITIES, provider)) return undefined;
+  const capabilities = PUBLIC_RESULT_CAPABILITIES[provider];
+  return Object.hasOwn(capabilities, capability)
+    ? capabilities[capability]
     : undefined;
-  if (!entry?.enabled || !Object.hasOwn(entry.capabilities, capability))
-    return undefined;
-  return entry.capabilities[capability];
 }
