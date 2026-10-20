@@ -6,5 +6,5 @@ namespace Firecrawl;
 
 final class Version
 {
-    public const SDK_VERSION = '1.16.5';
+    public const SDK_VERSION = '1.16.6';
 }

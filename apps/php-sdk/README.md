@@ -241,6 +241,24 @@ foreach ($result->getWeb() as $item) {
 }
 ```
 
+### Developer search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `developerSearch` replaces the deprecated `searchGithub`.
+
+```php
+use Firecrawl\Models\DeveloperSearchOptions;
+
+$response = $client->developerSearch('retry an http request with exponential backoff', DeveloperSearchOptions::with(
+    k: 5,
+    types: ['issue', 'pull_request'],
+    repos: ['square/okhttp'],
+));
+
+foreach ($response->getResults() as $result) {
+    echo $result->getTitle() . ': ' . $result->getUrl() . "\n";
+}
+```
+
 ### Agent
 
 ```php
