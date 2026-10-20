@@ -72,6 +72,20 @@ public class AgentOptions
     [JsonPropertyName("location")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AgentLocation? Location { get; set; }
+
+    /// <summary>
+    /// Per-request threat protection override, sent as-is (for example <c>new { mode = "normal" }</c>).
+    /// </summary>
+    [JsonPropertyName("threatProtection")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public object? ThreatProtection { get; set; }
+
+    /// <summary>
+    /// Exchange settings (toolkits, maxCalls, requireApproval, approve, decline, onTermsRequired), sent as-is.
+    /// </summary>
+    [JsonPropertyName("exchange")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public object? Exchange { get; set; }
 }
 
 /// <summary>
@@ -165,6 +179,18 @@ public class AgentStatusResponse
     /// </summary>
     [JsonPropertyName("message")]
     public string? Message { get; set; }
+
+    [JsonPropertyName("suggestions")]
+    public object? Suggestions { get; set; }
+
+    /// <summary>
+    /// Set while the job waits for an approval; it stays "processing" until approved or declined.
+    /// </summary>
+    [JsonPropertyName("pendingApproval")]
+    public object? PendingApproval { get; set; }
+
+    [JsonPropertyName("exchange")]
+    public object? Exchange { get; set; }
 
     /// <summary>
     /// Returns true if the agent job has reached a terminal state.

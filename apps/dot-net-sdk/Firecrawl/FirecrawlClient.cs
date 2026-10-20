@@ -704,6 +704,10 @@ public class FirecrawlClient
     /// Runs an agent job and waits until it completes, fails, or is cancelled (auto-polling).
     /// Check <see cref="AgentStatusResponse.Status"/> on the result.
     /// </summary>
+    /// <remarks>
+    /// On timeout this throws <see cref="JobTimeoutException"/> and the job keeps running; pass its
+    /// JobId to <see cref="GetAgentStatusAsync"/> to keep waiting or <see cref="CancelAgentAsync"/> to stop it.
+    /// </remarks>
     public async Task<AgentStatusResponse> AgentAsync(
         string prompt,
         AgentOptions? options = null,

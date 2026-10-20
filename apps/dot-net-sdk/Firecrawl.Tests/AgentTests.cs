@@ -54,6 +54,7 @@ public class AgentTests
             Effort = "high",
             MaxCredits = 500,
             Location = new AgentLocation { Country = "DE" },
+            Exchange = new Dictionary<string, object> { ["requireApproval"] = true },
         });
 
         Assert.True(response.Success);
@@ -73,9 +74,27 @@ public class AgentTests
         Assert.Equal("high", root.GetProperty("effort").GetString());
         Assert.Equal(500, root.GetProperty("maxCredits").GetInt32());
         Assert.Equal("DE", root.GetProperty("location").GetProperty("country").GetString());
+        Assert.True(root.GetProperty("exchange").GetProperty("requireApproval").GetBoolean());
         Assert.StartsWith("dotnet-sdk@", root.GetProperty("origin").GetString());
         Assert.False(root.TryGetProperty("threadId", out _));
         Assert.False(root.TryGetProperty("webhook", out _));
+        Assert.False(root.TryGetProperty("threatProtection", out _));
+    }
+
+    [Fact]
+    public async Task GetAgentStatusAsync_ReadsPendingApproval()
+    {
+        var handler = new StubHandler(
+            "{\"success\":true,\"status\":\"processing\",\"pendingApproval\":{\"kind\":\"calls\",\"approvalId\":\"approval-1\"},\"exchange\":{\"calls\":1}}");
+        var client = ClientFor(handler);
+
+        var status = await client.GetAgentStatusAsync("agent-1");
+
+        Assert.False(status.IsDone);
+        var pending = Assert.IsType<JsonElement>(status.PendingApproval);
+        Assert.Equal("approval-1", pending.GetProperty("approvalId").GetString());
+        Assert.IsType<JsonElement>(status.Exchange);
+        Assert.Null(status.Suggestions);
     }
 
     [Fact]
