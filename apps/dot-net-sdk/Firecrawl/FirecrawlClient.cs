@@ -670,6 +670,70 @@ public class FirecrawlClient
             $"/v2/agent{query}", cancellationToken);
     }
 
+    /// <summary>
+    /// Starts an async agent job and returns immediately.
+    /// </summary>
+    public async Task<AgentResponse> StartAgentAsync(
+        string prompt,
+        AgentOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(prompt);
+
+        var body = BuildBody(options);
+        body["prompt"] = prompt;
+
+        return await _http.PostAsync<AgentResponse>(
+            "/v2/agent", body, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets the status and result of an agent job.
+    /// </summary>
+    public async Task<AgentStatusResponse> GetAgentStatusAsync(
+        string jobId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+
+        return await _http.GetAsync<AgentStatusResponse>(
+            $"/v2/agent/{Uri.EscapeDataString(jobId)}", cancellationToken);
+    }
+
+    /// <summary>
+    /// Runs an agent job and waits until it completes, fails, or is cancelled (auto-polling).
+    /// Check <see cref="AgentStatusResponse.Status"/> on the result.
+    /// </summary>
+    /// <remarks>
+    /// On timeout this throws <see cref="JobTimeoutException"/> and the job keeps running; pass its
+    /// JobId to <see cref="GetAgentStatusAsync"/> to keep waiting or <see cref="CancelAgentAsync"/> to stop it.
+    /// </remarks>
+    public async Task<AgentStatusResponse> AgentAsync(
+        string prompt,
+        AgentOptions? options = null,
+        int pollIntervalSec = DefaultPollIntervalSec,
+        int timeoutSec = DefaultJobTimeoutSec,
+        CancellationToken cancellationToken = default)
+    {
+        var start = await StartAgentAsync(prompt, options, cancellationToken);
+        return await PollAgentAsync(
+            start.Id ?? throw new FirecrawlException(start.Error ?? "Agent start did not return a job ID"),
+            pollIntervalSec, timeoutSec, cancellationToken);
+    }
+
+    /// <summary>
+    /// Cancels a running agent job.
+    /// </summary>
+    public async Task<Dictionary<string, object>> CancelAgentAsync(
+        string jobId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+
+        return await _http.DeleteAsync<Dictionary<string, object>>(
+            $"/v2/agent/{Uri.EscapeDataString(jobId)}", cancellationToken);
+    }
+
     // ================================================================
     // USAGE & METRICS
     // ================================================================
@@ -740,6 +804,28 @@ public class FirecrawlClient
         }
 
         throw new JobTimeoutException(jobId, timeoutSec, "Batch scrape");
+    }
+
+    private async Task<AgentStatusResponse> PollAgentAsync(
+        string jobId,
+        int pollIntervalSec,
+        int timeoutSec,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSec);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var status = await GetAgentStatusAsync(jobId, cancellationToken);
+            if (status.IsDone)
+                return status;
+
+            await Task.Delay(TimeSpan.FromSeconds(pollIntervalSec), cancellationToken);
+        }
+
+        throw new JobTimeoutException(jobId, timeoutSec, "Agent");
     }
 
     private async Task<CrawlJob> PaginateCrawlAsync(
