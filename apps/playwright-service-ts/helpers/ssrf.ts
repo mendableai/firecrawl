@@ -50,27 +50,20 @@ export const isInternalHost = async (hostname: string): Promise<boolean> =>
  * and Node never resolves the host a second time.
  */
 export const pinnedLookup = (addresses: LookupAddress[]): typeof dns.lookup =>
-  ((_hostname: string, options: unknown, callback?: unknown) => {
-    const cb = (typeof options === 'function' ? options : callback) as (
+  ((
+    _hostname: string,
+    opts: dns.LookupOptions,
+    cb: (
       err: NodeJS.ErrnoException | null,
       address?: string | LookupAddress[],
       family?: number,
-    ) => void;
-    const opts: dns.LookupOptions =
-      typeof options === 'number'
-        ? { family: options }
-        : typeof options === 'object' && options !== null
-          ? options
-          : {};
-    const family =
-      opts.family === 4 || opts.family === 'IPv4'
-        ? 4
-        : opts.family === 6 || opts.family === 'IPv6'
-          ? 6
-          : 0;
-    const matches = family
-      ? addresses.filter((a) => a.family === family)
-      : addresses;
+    ) => void,
+  ) => {
+    const family = opts.family;
+    const matches =
+      family === 4 || family === 6
+        ? addresses.filter((a) => a.family === family)
+        : addresses;
 
     process.nextTick(() => {
       if (matches.length === 0) {
