@@ -37,7 +37,7 @@ import java.util.concurrent.ForkJoinPool;
 public class FirecrawlClient {
 
     private static final String DEFAULT_API_URL = "https://api.firecrawl.dev";
-    private static final String SDK_ORIGIN = "java-sdk@1.18.6";
+    private static final String SDK_ORIGIN = "java-sdk@1.18.7";
     private static final long DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final double DEFAULT_BACKOFF_FACTOR = 0.5;
@@ -648,10 +648,9 @@ public class FirecrawlClient {
     }
 
     /**
-     * @deprecated Stops responding after 2026-11-03. Use the developer index at
-     *             GET or POST /v2/search/developer, which this SDK does not wrap
-     *             yet, so call it directly. It does not carry over the score
-     *             breakdown or the web fallback results.
+     * @deprecated Stops responding after 2026-11-03. Use {@link #developerSearch},
+     *             which does not carry over the score breakdown or the web
+     *             fallback results.
      */
     @Deprecated
     public ResearchModels.GitHubSearchResponse searchGitHub(String query) {
@@ -659,10 +658,9 @@ public class FirecrawlClient {
     }
 
     /**
-     * @deprecated Stops responding after 2026-11-03. Use the developer index at
-     *             GET or POST /v2/search/developer, which this SDK does not wrap
-     *             yet, so call it directly. It does not carry over the score
-     *             breakdown or the web fallback results.
+     * @deprecated Stops responding after 2026-11-03. Use {@link #developerSearch},
+     *             which does not carry over the score breakdown or the web
+     *             fallback results.
      */
     @Deprecated
     public ResearchModels.GitHubSearchResponse searchGitHub(String query, ResearchModels.SearchGitHubOptions options) {
@@ -672,6 +670,37 @@ public class FirecrawlClient {
         params.put("origin", SDK_ORIGIN);
         if (options != null) mergeOptions(params, options);
         return http.get("/v2/search/research/github" + researchQuery(params), ResearchModels.GitHubSearchResponse.class);
+    }
+
+    /**
+     * Searches the developer index: public repositories, GitHub issues, merged
+     * pull requests, READMEs and code documentation.
+     *
+     * @param query the search query
+     * @return ranked developer search results
+     */
+    public ResearchModels.DeveloperSearchResponse developerSearch(String query) {
+        return developerSearch(query, null);
+    }
+
+    /**
+     * Searches the developer index with filters.
+     *
+     * @param query   the search query
+     * @param options developer search filters
+     * @return ranked developer search results
+     * @throws IllegalArgumentException if the query is blank
+     */
+    public ResearchModels.DeveloperSearchResponse developerSearch(String query, ResearchModels.DeveloperSearchOptions options) {
+        Objects.requireNonNull(query, "Query is required");
+        if (query.isBlank()) {
+            throw new IllegalArgumentException("Query cannot be empty");
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("query", query);
+        if (options != null) mergeOptions(body, options);
+        body.put("origin", SDK_ORIGIN);
+        return http.post("/v2/search/developer", body, ResearchModels.DeveloperSearchResponse.class);
     }
 
     // ================================================================
@@ -1141,14 +1170,17 @@ public class FirecrawlClient {
     }
 
     /**
-     * @deprecated Stops responding after 2026-11-03. Use the developer index at
-     *             GET or POST /v2/search/developer, which this SDK does not wrap
-     *             yet, so call it directly. It does not carry over the score
-     *             breakdown or the web fallback results.
+     * @deprecated Stops responding after 2026-11-03. Use {@link #developerSearch},
+     *             which does not carry over the score breakdown or the web
+     *             fallback results.
      */
     @Deprecated
     public CompletableFuture<ResearchModels.GitHubSearchResponse> searchGitHubAsync(String query, ResearchModels.SearchGitHubOptions options) {
         return CompletableFuture.supplyAsync(() -> searchGitHub(query, options), asyncExecutor);
+    }
+
+    public CompletableFuture<ResearchModels.DeveloperSearchResponse> developerSearchAsync(String query, ResearchModels.DeveloperSearchOptions options) {
+        return CompletableFuture.supplyAsync(() -> developerSearch(query, options), asyncExecutor);
     }
 
     /**
