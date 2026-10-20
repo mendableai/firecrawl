@@ -408,6 +408,13 @@ const doc = await app.scrape('https://firecrawl.dev', { formats: ['markdown'] })
 const data = await app.scrape('https://firecrawl.dev', {
   formats: [{ type: 'json', prompt: 'Extract the product name and price' }],
 });
+
+// Or let an agent gather the data across pages:
+const run = await app.agent({
+  urls: ['https://firecrawl.dev'],
+  prompt: 'Find the pricing plans and their monthly credits',
+});
+console.log(run.data);
 ```
 
 ## Error Handling
