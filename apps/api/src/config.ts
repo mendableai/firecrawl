@@ -264,6 +264,10 @@ const configSchema = z.object({
   // (e.g. 600000 = 10min) also short-circuits repeat lookups for URLs with no
   // index entry. Kept short so any missed cache-clear self-heals quickly.
   INDEX_CACHE_NEGATIVE_TTL_MS: z.coerce.number().default(0),
+  // `parsers: [{ type: "pdf", refresh: true }]` skips URL index reads, so the
+  // request reaches the PDF engine and its content-cache refresh budget
+  // instead of being answered with the indexed copy of the old parse.
+  INDEX_SKIP_ON_PDF_REFRESH: z.stringbool().default(false),
   REDIS_URL: z.string().optional(),
   REDIS_EVICT_URL: z.string().optional(),
   REDIS_RATE_LIMIT_URL: z.string().optional(),

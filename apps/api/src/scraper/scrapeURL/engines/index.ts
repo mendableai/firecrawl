@@ -33,6 +33,7 @@ import {
   getPDFBlocks,
   getPDFPageMarkdown,
   getPDFPageMarkers,
+  getPDFRefresh,
 } from "../../../controllers/v2/types";
 import type { PdfMetadata, PdfPageBlocks } from "./pdf/types";
 import { BrandingProfile } from "../../../types/branding";
@@ -631,6 +632,11 @@ export function shouldUseIndex(meta: Meta) {
     !getPDFPageMarkers(meta.options.parsers) &&
     !hasCustomScreenshotSettings &&
     meta.options.maxAge !== 0 &&
+    // A PDF refresh asks for a fresh parse; a URL index copy is the parse
+    // being refreshed, so serving it would silently ignore the request.
+    !(
+      config.INDEX_SKIP_ON_PDF_REFRESH && getPDFRefresh(meta.options.parsers)
+    ) &&
     !hasCustomRequestContext(meta.options)
   );
 }
