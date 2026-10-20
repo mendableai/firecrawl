@@ -338,6 +338,58 @@ describeIf(TEST_PRODUCTION || HAS_SEARCH || HAS_PROXY)("Search tests", () => {
     60000,
   );
 
+  concurrentIf(TEST_PRODUCTION)(
+    "targets the country named by location when country is omitted",
+    async () => {
+      const res = await search(
+        {
+          query: "gobierno",
+          location: "Mexico",
+        },
+        identity,
+      );
+      const topHosts = (res.web ?? [])
+        .slice(0, 3)
+        .map(result => new URL(result.url).hostname);
+      expect(topHosts.some(host => host.endsWith("gob.mx"))).toBe(true);
+    },
+    60000,
+  );
+
+  concurrentIf(TEST_PRODUCTION)(
+    "targets the country's location when location is omitted",
+    async () => {
+      const res = await search(
+        {
+          query: "gobierno",
+          country: "mx",
+        },
+        identity,
+      );
+      const topHosts = (res.web ?? [])
+        .slice(0, 3)
+        .map(result => new URL(result.url).hostname);
+      expect(topHosts.some(host => host.endsWith("gob.mx"))).toBe(true);
+    },
+    60000,
+  );
+
+  it.concurrent(
+    "rejects non-string location",
+    async () => {
+      const res = await searchWithFailure(
+        {
+          query: "firecrawl",
+          location: 123,
+        } as any,
+        identity,
+      );
+
+      expect(res.error).toBe("Invalid request body");
+    },
+    60000,
+  );
+
   // SEARXNG-specific pagination tests
   concurrentIf(!!config.SEARXNG_ENDPOINT)(
     "searxng respects limit of 2 results",

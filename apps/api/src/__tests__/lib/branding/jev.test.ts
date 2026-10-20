@@ -618,7 +618,6 @@ describe("branding with Jev", () => {
     expect(request.fonts.map(f => [f.family, f.role])).toEqual([
       ["Inter", "body"],
       ["Cormorant Garamond", "heading"],
-      ["Open-Sans", undefined],
       ["Open Sans", undefined],
     ]);
   });
@@ -994,6 +993,19 @@ describe("Jev request building", () => {
     ];
     expect(buildJevRequest(input).fonts).toEqual([
       { family: "Cormorant Garamond", count: 15, role: undefined },
+    ]);
+  });
+
+  it("merges hyphen and underscore spellings of one family", () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.typography = { fontFamilies: { primary: "Adobe-Clean" } };
+    input.jsAnalysis.fonts = [
+      { family: "Adobe-Clean", count: 12 },
+      { family: "Adobe Clean", count: 8 },
+      { family: "Adobe_Clean", count: 1 },
+    ];
+    expect(buildJevRequest(input).fonts).toEqual([
+      { family: "Adobe Clean", count: 21, role: "body" },
     ]);
   });
 });

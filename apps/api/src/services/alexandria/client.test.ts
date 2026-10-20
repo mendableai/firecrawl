@@ -41,6 +41,26 @@ describe("exchangeRequest", () => {
     });
   });
 
+  it("sends the client IP only when known", async () => {
+    await exchangeRequest({
+      teamId: "team",
+      path: "/v1/retrieve",
+      body: {},
+      timeoutMs: 1000,
+      clientIp: "203.0.113.7",
+    });
+    expect(headersOf()["x-exchange-client-ip"]).toBe("203.0.113.7");
+
+    mocks.fetch.mockClear();
+    await exchangeRequest({
+      teamId: "team",
+      path: "/v1/retrieve",
+      body: {},
+      timeoutMs: 1000,
+    });
+    expect(headersOf()).not.toHaveProperty("x-exchange-client-ip");
+  });
+
   it("sends no connectors grant by default", async () => {
     await exchangeRequest({
       teamId: "team",
@@ -49,5 +69,17 @@ describe("exchangeRequest", () => {
       timeoutMs: 1000,
     });
     expect(headersOf()).not.toHaveProperty("x-exchange-connectors");
+  });
+
+  it("sends the deadline as a whole number of milliseconds", async () => {
+    await exchangeRequest({
+      teamId: "team",
+      path: "/v1/retrieve",
+      body: {},
+      timeoutMs: 12345,
+      maximumCredits: 10,
+    });
+    const deadline = Number(headersOf()["x-exchange-deadline"]);
+    expect(Number.isSafeInteger(deadline)).toBe(true);
   });
 });
