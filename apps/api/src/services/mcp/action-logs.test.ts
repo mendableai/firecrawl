@@ -205,6 +205,68 @@ describe("MCP action log contract", () => {
     );
   });
 
+  it("stores the optional per-call fields the hosted MCP reads itself", () => {
+    expect(input()).toMatchObject({
+      mcp_origin: null,
+      mcp_client: null,
+      mcp_client_source: null,
+      llm_model: null,
+      duration_ms: null,
+      invalid_arguments: [],
+    });
+    expect(
+      input({
+        status: "error",
+        error_class: "InvalidArguments",
+        mcp_origin: "mcp-ua-codex-cli-rs",
+        mcp_client: "codex",
+        mcp_client_source: "user_agent",
+        llm_model: " gpt-6.1-sol ",
+        duration_ms: 55,
+        invalid_arguments: ["limit:invalid_type", "*:unrecognized_keys"],
+      }),
+    ).toMatchObject({
+      mcp_origin: "mcp-ua-codex-cli-rs",
+      mcp_client: "codex",
+      mcp_client_source: "user_agent",
+      llm_model: "gpt-6.1-sol",
+      duration_ms: 55,
+      invalid_arguments: ["limit:invalid_type", "*:unrecognized_keys"],
+    });
+    expect(input({ duration_ms: 0 }).duration_ms).toBe(0);
+    expect(input({ invalid_arguments: ["(root):invalid_type"] })).toMatchObject(
+      { invalid_arguments: ["(root):invalid_type"] },
+    );
+  });
+
+  it("rejects malformed per-call fields", () => {
+    expect(() => input({ mcp_client_source: "header" })).toThrow(
+      "mcp_client_source must be client_info, user_agent or oauth",
+    );
+    for (const duration_ms of [-1, 1.5, "55", 2_147_483_648]) {
+      expect(() => input({ duration_ms })).toThrow(
+        "duration_ms must be a non-negative integer",
+      );
+    }
+    for (const invalid_arguments of [
+      "limit:invalid_type",
+      ["limit"],
+      ["limit:Invalid Type"],
+      ["my secret value:custom"],
+      Array.from({ length: 11 }, (_, i) => `a${i}:invalid_type`),
+    ]) {
+      expect(() => input({ invalid_arguments })).toThrow(
+        "invalid_arguments must be at most 10 <argument>:<issue> labels",
+      );
+    }
+    expect(() => input({ llm_model: "m".repeat(129) })).toThrow(
+      "llm_model must be at most 128 characters",
+    );
+    expect(() => input({ mcp_client: "fc-secret" })).toThrow(
+      "mcp_client must not contain secret-like values",
+    );
+  });
+
   it("validates API-key and OAuth actors against the claimed team", async () => {
     const apiKeyDb = {
       select: vi.fn(() => ({
@@ -280,6 +342,12 @@ describe("MCP action log contract", () => {
           objective: "Find the refund policy",
           api_job_id: REQUEST_ID,
           user_agent: "Claude/1.0",
+          mcp_origin: "mcp-ua-codex-cli-rs",
+          mcp_client: "codex-cli-rs",
+          mcp_client_source: "user_agent",
+          llm_model: "gpt-6.1-sol",
+          duration_ms: 55,
+          invalid_arguments: ["limit:invalid_type"],
         }),
       ),
     ).resolves.toEqual({ disposition: "accepted", id: REQUEST_ID });
@@ -291,6 +359,12 @@ describe("MCP action log contract", () => {
       api_key_id: "123",
       objective: "Find the refund policy",
       api_job_id: REQUEST_ID,
+      mcp_origin: "mcp-ua-codex-cli-rs",
+      mcp_client: "codex-cli-rs",
+      mcp_client_source: "user_agent",
+      llm_model: "gpt-6.1-sol",
+      duration_ms: 55,
+      invalid_arguments: ["limit:invalid_type"],
     });
     expect(row).not.toHaveProperty("user_agent");
 
