@@ -19,6 +19,9 @@ overrides:
   "source-map-js@>=1.0.0 <1.2.2": "1.2.2"
   defu: ">=6.1.5"
   "vite@>=7.0.0 <7.3.5": "7.3.5"
+  # GHSA-698V-4R3X-3VCV: launch-editor escapeCmdArgs % escaping fix, patched
+  # in 8.1.6. Exact pin; cannot resolve to 8.2.x or 9.x.
+  "vite@>=8.0.0 <8.1.6": "8.1.6"
   "js-yaml@>=3.0.0 <3.15.2": "3.15.2"
   "js-yaml@>=4.0.0 <4.3.2": "4.3.2"
   "postcss@<8.5.26": ">=8.5.26 <9.0.0"

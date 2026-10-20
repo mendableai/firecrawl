@@ -68,6 +68,9 @@ overrides:
   "js-cookie@<3.0.7": "3.0.7"
   # GHSA-pqg4-j6r4-53mv: fixed in 1.11.0.
   "shell-quote@<1.11.0": "1.11.0"
+  # GHSA-698V-4R3X-3VCV: launch-editor escapeCmdArgs % escaping fix, patched
+  # in 8.1.6. Exact pin; cannot resolve to 8.2.x or 9.x.
+  "vite@>=8.0.0 <8.1.6": "8.1.6"
   "esbuild@>=0.17.0 <0.28.1": "0.28.1"
   "query-string@>=9.0.0 <10.0.0": ">=9.5.0 <10.0.0"
   # GHSA-866g-f22w-33x8: pin the 4.x line only. Exact 4.0.51 cannot
