@@ -137,19 +137,24 @@ describe("/v2/search/gov", () => {
     },
   );
 
-  it("refuses a forced-ZDR team before the upstream call", async () => {
-    const res = makeRes();
-    await handler("get")(
-      makeReq("GET", { query: "food labeling rules" }, TEAM_ID, {
+  it("refuses a forced-ZDR team ahead of the route handler", async () => {
+    const router: any = createGovRouter();
+    const req = {
+      ...makeReq("GET", { query: "food labeling rules" }, TEAM_ID, {
         searchZDR: "forced-zdr",
       }),
-      res,
-    );
+      url: "/",
+    };
+    const res = makeRes();
+    const next = vi.fn();
+    router(req, res, next);
     await flush();
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(next).not.toHaveBeenCalled();
     expect(mocks.fetchGovUpstream).not.toHaveBeenCalled();
     expect(billTeam).not.toHaveBeenCalled();
+    expect(mocks.logRequest).not.toHaveBeenCalled();
     expect(mocks.logResearchEndpoint).not.toHaveBeenCalled();
   });
 

@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { externalRequestId } from "../../lib/external-request-id";
 import { z } from "zod";
 import { v7 as uuidv7 } from "uuid";
@@ -272,6 +272,16 @@ function researchError(
   });
 }
 
+// First on every router here, so a refused query reaches no log line, credit
+// check or upstream.
+function refuseForcedZdr(req: Request, res: Response, next: NextFunction) {
+  const flags = (req as RequestWithAuth<any, any, any>).acuc?.flags;
+  if (getEffectiveSearchForcedKind(flags, undefined) === "zdr") {
+    return researchError(res, 400, ZDR_UNSUPPORTED_MESSAGE);
+  }
+  next();
+}
+
 function isResearchTimeoutError(error: unknown): boolean {
   return (
     (error instanceof DOMException && error.name === "TimeoutError") ||
@@ -316,14 +326,8 @@ function createResearchController(
 ): ResearchController {
   return async (req, res: Response) => {
     const authedReq = req as RequestWithAuth<any, any, any>;
-    const forcedKind = getEffectiveSearchForcedKind(
-      authedReq.acuc?.flags,
-      undefined,
-    );
-    if (forcedKind === "zdr") {
-      return researchError(res, 400, ZDR_UNSUPPORTED_MESSAGE);
-    }
-    const zeroDataRetention = forcedKind !== null;
+    const zeroDataRetention =
+      getEffectiveSearchForcedKind(authedReq.acuc?.flags, undefined) !== null;
 
     const started = Date.now();
     const jobId = uuidv7();
@@ -494,6 +498,7 @@ function createResearchController(
 
 export function createResearchRouter(options: { legacy?: boolean } = {}) {
   const router = express.Router();
+  router.use(refuseForcedZdr);
 
   if (options.legacy) {
     router.use((req, _res, next) => {
@@ -603,6 +608,7 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
 
 export function createDeveloperRouter(options: { root?: boolean } = {}) {
   const router = express.Router();
+  router.use(refuseForcedZdr);
 
   const controller = wrap(
     createResearchController(
@@ -634,6 +640,7 @@ export function createDeveloperRouter(options: { root?: boolean } = {}) {
 
 export function createGovRouter() {
   const router = express.Router();
+  router.use(refuseForcedZdr);
 
   const controller = wrap(
     createResearchController(govSearchSchema, [], {

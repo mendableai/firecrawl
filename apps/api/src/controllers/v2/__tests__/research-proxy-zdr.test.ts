@@ -34,6 +34,8 @@ vi.mock("../../../lib/logger", () => ({
 }));
 
 import { createDeveloperRouter, createResearchRouter } from "../research-proxy";
+import { billTeam } from "../../../services/billing/credit_billing";
+import { logger } from "../../../lib/logger";
 
 const TEAM_ID = "11111111-1111-1111-1111-111111111111";
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -87,6 +89,35 @@ async function callRoute(
   return res;
 }
 
+async function dispatch(
+  router: any,
+  path: string,
+  query: Record<string, unknown>,
+  flags: Record<string, unknown>,
+) {
+  const req = { ...makeReq(query, flags), url: path };
+  const res = makeRes();
+  const next = vi.fn();
+  router(req, res, next);
+  await flush();
+  return { res, next };
+}
+
+function expectRefused(res: any, next: any) {
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(res.json).toHaveBeenCalledWith(
+    expect.objectContaining({
+      success: false,
+      error: expect.stringContaining("zero data retention"),
+    }),
+  );
+  expect(next).not.toHaveBeenCalled();
+  expect(mocks.fetchResearchUpstream).not.toHaveBeenCalled();
+  expect(mocks.logRequest).not.toHaveBeenCalled();
+  expect(mocks.logResearchEndpoint).not.toHaveBeenCalled();
+  expect(billTeam).not.toHaveBeenCalled();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.logRequest.mockResolvedValue(undefined);
@@ -121,24 +152,15 @@ describe.each([
     { searchZDR: "forced-zdr" },
     { searchZDR: "forced" },
     { forceZDR: true },
-  ])("refuses a forced-ZDR team before the upstream call", async flags => {
-    const res = await callRoute(
+  ])("refuses a forced-ZDR team ahead of every route handler", async flags => {
+    const { res, next } = await dispatch(
       testCase.router(),
       testCase.path,
       testCase.query,
       flags,
     );
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: false,
-        error: expect.stringContaining("zero data retention"),
-      }),
-    );
-    expect(mocks.fetchResearchUpstream).not.toHaveBeenCalled();
-    expect(mocks.logRequest).not.toHaveBeenCalled();
-    expect(mocks.logResearchEndpoint).not.toHaveBeenCalled();
+    expectRefused(res, next);
   });
 
   it("marks forced-anon team payloads for redaction and cleanup", async () => {
@@ -165,5 +187,31 @@ describe.each([
     expect(mocks.logResearchEndpoint).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: false }),
     );
+  });
+});
+
+describe("forced-ZDR refusal ordering", () => {
+  it("refuses on the legacy research mount before its usage log line", async () => {
+    const { res, next } = await dispatch(
+      createResearchRouter({ legacy: true }),
+      "/papers",
+      { query: "private research query" },
+      { searchZDR: "forced-zdr" },
+    );
+
+    expectRefused(res, next);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("refuses GitHub search before its deprecation notice and credit gate", async () => {
+    const { res, next } = await dispatch(
+      createResearchRouter(),
+      "/github",
+      { query: "private code query" },
+      { searchZDR: "forced-zdr" },
+    );
+
+    expectRefused(res, next);
+    expect(res.setHeader).not.toHaveBeenCalled();
   });
 });

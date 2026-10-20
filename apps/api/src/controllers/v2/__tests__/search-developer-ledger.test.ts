@@ -66,6 +66,7 @@ vi.mock("../../../lib/logger", () => ({
 }));
 
 import { searchController } from "../search";
+import { billTeam } from "../../../services/billing/credit_billing";
 
 const TEAM_ID = "11111111-1111-1111-1111-111111111111";
 
@@ -439,6 +440,9 @@ describe("index categories under zero data retention", () => {
       );
       expect(mockExecuteSearch).not.toHaveBeenCalled();
       expect(mockLogRequest).not.toHaveBeenCalled();
+      expect(mockLogSearch).not.toHaveBeenCalled();
+      expect(mockLogResearchEndpoint).not.toHaveBeenCalled();
+      expect(billTeam).not.toHaveBeenCalled();
     },
   );
 
@@ -455,6 +459,10 @@ describe("index categories under zero data retention", () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(mockExecuteSearch).not.toHaveBeenCalled();
+    expect(mockLogRequest).not.toHaveBeenCalled();
+    expect(mockLogSearch).not.toHaveBeenCalled();
+    expect(mockLogResearchEndpoint).not.toHaveBeenCalled();
+    expect(billTeam).not.toHaveBeenCalled();
   });
 
   it("keeps serving the research category for a forced-ZDR team", async () => {
