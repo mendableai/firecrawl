@@ -141,7 +141,7 @@ describe("openai capability classification", () => {
     vi.unstubAllGlobals();
   });
 
-  it("selects Chat when ambiguous Responses 404 is a model error", async () => {
+  it("returns indeterminate when both Responses and Chat report model_not_found", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -160,7 +160,69 @@ describe("openai capability classification", () => {
 
     await expect(
       resolveApiMode(capabilityTargetFor("missing-model", "http://backend/v1")),
+    ).rejects.toMatchObject({ name: "OpenAiCapabilityIndeterminateError" });
+  });
+
+  it("selects and caches Chat when Chat verification succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url, init) => {
+        const method = String(init?.method).toUpperCase();
+        const isResponses = String(_url).endsWith("/responses");
+        if (isResponses && method === "POST") {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message: "model not found",
+                code: "model_not_found",
+              },
+            }),
+            { status: 404 },
+          );
+        }
+        return new Response(JSON.stringify({ id: "chatcmpl_1", choices: [] }), {
+          status: 200,
+        });
+      }),
+    );
+
+    await expect(
+      resolveApiMode(capabilityTargetFor("model", "http://backend/v1")),
     ).resolves.toBe("chat");
+
+    // Second call should be cached (only 2 fetches: responses + chat verify).
+    await expect(
+      resolveApiMode(capabilityTargetFor("model", "http://backend/v1")),
+    ).resolves.toBe("chat");
+    expect(vi.mocked(fetch).mock.calls.length).toBe(2);
+  });
+
+  it("propagates indeterminate without caching when Chat verification returns 500", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url, init) => {
+        const method = String(init?.method).toUpperCase();
+        const isResponses = String(_url).endsWith("/responses");
+        if (isResponses && method === "POST") {
+          return new Response(
+            JSON.stringify({
+              error: { message: "model not found", code: "model_not_found" },
+            }),
+            { status: 404 },
+          );
+        }
+        return new Response("boom", { status: 500 });
+      }),
+    );
+
+    await expect(
+      resolveApiMode(capabilityTargetFor("missing-model", "http://backend/v1")),
+    ).rejects.toMatchObject({ name: "OpenAiCapabilityIndeterminateError" });
+    // Repeat to confirm no caching: same error and same probe count.
+    await expect(
+      resolveApiMode(capabilityTargetFor("missing-model", "http://backend/v1")),
+    ).rejects.toMatchObject({ name: "OpenAiCapabilityIndeterminateError" });
+    expect(vi.mocked(fetch).mock.calls.length).toBe(4);
   });
 
   it("returns indeterminate when Chat verification is not a route answer", async () => {

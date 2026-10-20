@@ -265,7 +265,7 @@ async function verifyResponsesRoute(
   const body = await res.text().catch(() => "");
   const routeStatus = routeRejectionStatus(res.status, body);
   if (routeStatus === "absent") return false;
-  if (res.ok || routeStatus === "ambiguous") return true;
+  if (res.ok) return true;
   throw new OpenAiCapabilityIndeterminateError(
     "Chat verification returned an operational error",
     res.status,
@@ -389,11 +389,30 @@ function toolsAreAbsent(status: number, body: string): boolean {
 
 /** Does the body demonstrate that the strict schema was actually honoured? */
 function strictProbeSatisfied(body: any, apiMode: ApiMode): boolean {
-  const text =
-    apiMode === "responses"
-      ? (body?.output?.[0]?.content?.map((c: any) => c?.text).join("") ??
-        body?.output_text)
-      : body?.choices?.[0]?.message?.content;
+  if (apiMode === "responses") {
+    // Responses output item ordering is model-dependent: a reasoning item may
+    // precede the final assistant message. Find the message by type and role
+    // rather than assuming it is the first output item.
+    const message = body?.output?.find(
+      (item: any) => item?.type === "message" && item?.role === "assistant",
+    );
+    const parts = Array.isArray(message?.content) ? message.content : [];
+    const textParts = parts
+      .filter(
+        (part: any) =>
+          part?.type === "output_text" && typeof part.text === "string",
+      )
+      .map((part: any) => part.text);
+    const text = textParts.length > 0 ? textParts.join("") : body?.output_text;
+    if (typeof text !== "string") return false;
+    try {
+      const parsed = JSON.parse(text);
+      return isProbeSatisfied(parsed);
+    } catch {
+      return false;
+    }
+  }
+  const text = body?.choices?.[0]?.message?.content;
   if (typeof text !== "string") return false;
   try {
     const parsed = JSON.parse(text);

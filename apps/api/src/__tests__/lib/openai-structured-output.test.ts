@@ -625,6 +625,65 @@ describe("openai endpoint + structured transport", () => {
       );
     });
 
+    it("accepts reasoning-first Responses strict output", async () => {
+      // Output item ordering is model-dependent: a reasoning item can precede
+      // the final assistant message. The resolver must find the message by
+      // type and role rather than assuming output[0].
+      backend = await startBackend({
+        onResponses: (res, body) => {
+          if (isStrictProbe(body)) {
+            json(res, 200, {
+              id: "r",
+              object: "response",
+              status: "completed",
+              created_at: 1,
+              output: [
+                { type: "reasoning", summary: [] },
+                {
+                  type: "message",
+                  role: "assistant",
+                  content: [
+                    {
+                      type: "output_text",
+                      text: JSON.stringify({ ok: true }),
+                    },
+                  ],
+                },
+              ],
+            });
+            return true;
+          }
+          return false;
+        },
+      });
+      const c = await load({ ...BASE, OPENAI_BASE_URL: backend.baseURL });
+      await expect(
+        c.resolveStructuredOutputMode(M(), "responses"),
+      ).resolves.toBe("strict");
+    });
+
+    it("rejects Responses output that contains reasoning but no final message", async () => {
+      backend = await startBackend({
+        onResponses: (res, body) => {
+          if (isStrictProbe(body)) {
+            json(res, 200, {
+              id: "r",
+              object: "response",
+              status: "completed",
+              created_at: 1,
+              output: [{ type: "reasoning", summary: [] }],
+            });
+            return true;
+          }
+          return false;
+        },
+      });
+      const c = await load({ ...BASE, OPENAI_BASE_URL: backend.baseURL });
+      await expect(
+        c.resolveStructuredOutputMode(M(), "responses"),
+      ).rejects.toMatchObject({ name: "OpenAiCapabilityIndeterminateError" });
+    });
+
     it("probes the Responses surface when Responses is selected", async () => {
       backend = await startBackend();
       const c = await load({ ...BASE, OPENAI_BASE_URL: backend.baseURL });
