@@ -4,9 +4,10 @@
   "description": "browser rendering service with playwright",
   "main": "api.ts",
   "scripts": {
+    "dev": "tsx api.ts",
     "start": "node dist/api.js",
     "build": "tsc",
-    "dev": "tsx api.ts"
+    "test": "node --import tsx --test ssrf_connect_guard.test.ts"
   },
   "keywords": [],
   "author": "Jeff Pereira",

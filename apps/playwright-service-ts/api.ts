@@ -13,6 +13,7 @@ import { getError } from './helpers/get_error';
 import { lookup } from 'dns/promises';
 import IPAddr from 'ipaddr.js';
 import { Server, RequestError } from 'proxy-chain';
+import { installConnectTimeSSRFGuard } from './helpers/ssrf_connect_guard';
 
 dotenv.config();
 
@@ -566,6 +567,15 @@ app.post('/scrape', async (req: Request, res: Response) => {
 });
 
 const start = async () => {
+  // Connect-time backstop for the SSRF proxy: the hostname pre-check inside
+  // startSSRFProxy() resolves the target once, but the outbound connection
+  // re-resolves it on its own, so a rebinding hostname can slip past the
+  // pre-check and land on a private address. The guard validates the address
+  // each socket actually connects to and destroys it otherwise.
+  installConnectTimeSSRFGuard({
+    allowLocal: ALLOW_LOCAL_WEBHOOKS,
+    upstreamProxyUrl: buildUpstreamProxyUrl(),
+  });
   ssrfProxyPort = await startSSRFProxy();
   await initializeBrowser();
   app.listen(port, () => {
