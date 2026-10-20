@@ -477,6 +477,8 @@ defmodule Firecrawl do
   defp decode_developer_search(%Req.Response{body: %{"results" => results} = body})
        when is_list(results) do
     {:ok, Firecrawl.DeveloperSearch.from_map(body)}
+  rescue
+    exception -> {:error, exception}
   end
 
   defp decode_developer_search(%Req.Response{status: status, body: body}) do

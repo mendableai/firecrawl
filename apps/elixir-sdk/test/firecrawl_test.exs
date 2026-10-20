@@ -1190,6 +1190,15 @@ defmodule FirecrawlTest do
     assert msg =~ "unexpected POST /search/developer response (HTTP 200)"
   end
 
+  test "search_developer returns an error tuple for malformed result entries" do
+    adapter = parse_formats_adapter(self(), 200, %{"success" => true, "results" => ["not a map"]})
+
+    assert {:error, exception} =
+             Firecrawl.search_developer([query: "retry"], api_key: "test-key", adapter: adapter)
+
+    assert is_exception(exception)
+  end
+
   test "all expected API functions are defined with bang variants" do
     functions = Firecrawl.__info__(:functions)
 
