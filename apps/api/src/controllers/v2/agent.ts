@@ -13,7 +13,6 @@ import { externalRequestId } from "../../lib/external-request-id";
 import { config } from "../../config";
 import { agentConsumeFreeRequestIfLeft } from "../../db/rpc";
 import { getScrapeZDR, getSearchZDR } from "../../lib/zdr-helpers";
-import { checkPermissions } from "../../lib/permissions";
 import {
   checkUrlsAgainstThreatPolicy,
   resolveThreatProtection,
@@ -53,17 +52,6 @@ export async function agentController(
       code: "zdr_not_enabled",
       error:
         "Zero Data Retention (ZDR) for agent runs requires both scrape ZDR and search ZDR to be enabled for your team. Contact support@firecrawl.com to enable it.",
-    });
-  }
-
-  const permissions = checkPermissions(
-    { zeroDataRetention: req.body.zeroDataRetention },
-    req.acuc?.flags,
-  );
-  if (permissions.error) {
-    return res.status(403).json({
-      success: false,
-      error: permissions.error,
     });
   }
 
