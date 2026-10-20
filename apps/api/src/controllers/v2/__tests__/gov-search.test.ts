@@ -137,11 +137,27 @@ describe("/v2/search/gov", () => {
     },
   );
 
-  it("stays free under zero data retention and marks the logs", async () => {
+  it("refuses a forced-ZDR team before the upstream call", async () => {
     const res = makeRes();
     await handler("get")(
       makeReq("GET", { query: "food labeling rules" }, TEAM_ID, {
         searchZDR: "forced-zdr",
+      }),
+      res,
+    );
+    await flush();
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mocks.fetchGovUpstream).not.toHaveBeenCalled();
+    expect(billTeam).not.toHaveBeenCalled();
+    expect(mocks.logResearchEndpoint).not.toHaveBeenCalled();
+  });
+
+  it("stays free for a forced-anon team and marks the logs", async () => {
+    const res = makeRes();
+    await handler("get")(
+      makeReq("GET", { query: "food labeling rules" }, TEAM_ID, {
+        searchZDR: "forced-anon",
       }),
       res,
     );

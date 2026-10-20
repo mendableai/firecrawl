@@ -419,3 +419,55 @@ describe("tool discovery availability", () => {
     );
   });
 });
+
+describe("index categories under zero data retention", () => {
+  it.each(["developer", "gov"])(
+    "refuses the %s category for a forced-ZDR team",
+    async category => {
+      const req = makeReq({ query: "http client", categories: [category] });
+      req.acuc = { api_key_id: 7, flags: { searchZDR: "forced-zdr" } };
+      const res = makeRes();
+
+      await searchController(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.stringContaining("zero data retention"),
+        }),
+      );
+      expect(mockExecuteSearch).not.toHaveBeenCalled();
+      expect(mockLogRequest).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses the developer category for a request-scoped ZDR search", async () => {
+    const req = makeReq({
+      query: "http client",
+      categories: ["developer"],
+      enterprise: ["zdr"],
+    });
+    req.acuc = { api_key_id: 7, flags: { searchZDR: "allowed" } };
+    const res = makeRes();
+
+    await searchController(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockExecuteSearch).not.toHaveBeenCalled();
+  });
+
+  it("keeps serving the research category for a forced-ZDR team", async () => {
+    const req = makeReq({ query: "protein folding", categories: ["research"] });
+    req.acuc = { api_key_id: 7, flags: { searchZDR: "forced-zdr" } };
+    const res = makeRes();
+
+    await searchController(req, res);
+    await flushAsync();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockExecuteSearch).toHaveBeenCalled();
+    expect(mockExecuteSearch.mock.calls[0][0].enterprise).toContain("zdr");
+    expect(mockLogResearchEndpoint).not.toHaveBeenCalled();
+  });
+});

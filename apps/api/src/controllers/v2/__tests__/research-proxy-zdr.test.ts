@@ -81,8 +81,10 @@ async function callRoute(
   query: Record<string, unknown>,
   flags: Record<string, unknown>,
 ) {
-  routeHandler(router, path)(makeReq(query, flags), makeRes(), vi.fn());
+  const res = makeRes();
+  routeHandler(router, path)(makeReq(query, flags), res, vi.fn());
   await flush();
+  return res;
 }
 
 beforeEach(() => {
@@ -117,10 +119,32 @@ describe.each([
 ])("standalone ZDR persistence for $name", testCase => {
   it.each([
     { searchZDR: "forced-zdr" },
-    { searchZDR: "forced-anon" },
+    { searchZDR: "forced" },
     { forceZDR: true },
-  ])("marks forced team payloads for redaction and cleanup", async flags => {
-    await callRoute(testCase.router(), testCase.path, testCase.query, flags);
+  ])("refuses a forced-ZDR team before the upstream call", async flags => {
+    const res = await callRoute(
+      testCase.router(),
+      testCase.path,
+      testCase.query,
+      flags,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.stringContaining("zero data retention"),
+      }),
+    );
+    expect(mocks.fetchResearchUpstream).not.toHaveBeenCalled();
+    expect(mocks.logRequest).not.toHaveBeenCalled();
+    expect(mocks.logResearchEndpoint).not.toHaveBeenCalled();
+  });
+
+  it("marks forced-anon team payloads for redaction and cleanup", async () => {
+    await callRoute(testCase.router(), testCase.path, testCase.query, {
+      searchZDR: "forced-anon",
+    });
 
     expect(mocks.logRequest).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: true }),

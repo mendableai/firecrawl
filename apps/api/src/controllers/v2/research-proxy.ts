@@ -37,7 +37,10 @@ const searchCreditGate = () =>
     SEARCH_CREDITS_PER_TEN_RESULTS,
     SEARCH_CREDITS_FEATURE_ID,
   );
-const ZDR_SEARCH_CREDITS_PER_TEN_RESULTS = 10;
+// The research, developer and government index services have no zero data
+// retention mode, so forced-ZDR teams are refused before any upstream call.
+const ZDR_UNSUPPORTED_MESSAGE =
+  "Your team has zero data retention enabled. This is not supported on research, developer or government search. Please contact support@firecrawl.com to unblock this feature.";
 
 const DEVELOPER_SEARCH_TIMEOUT_MS = 15_000;
 const GOV_SEARCH_TIMEOUT_MS = 15_000;
@@ -238,11 +241,7 @@ function resultCount(body: any): number {
   return Array.isArray(body?.data?.web) ? body.data.web.length : 0;
 }
 
-function creditsFor(
-  config: ResearchEndpointConfig,
-  body: any,
-  req: RequestWithAuth<any, any, any>,
-) {
+function creditsFor(config: ResearchEndpointConfig, body: any) {
   // Make certain index accesses free (AI/ML & life-sciences indices and the
   // gov index). Research paper and gov endpoints should have no credit cost.
   // Explicit exceptions remain billable: GitHub search and developer/code
@@ -257,12 +256,7 @@ function creditsFor(
   if (freeResearchKinds.has(config.kind)) return 0;
 
   if (config.billAs === "scrape") return 1;
-  const forcedKind = getEffectiveSearchForcedKind(req.acuc?.flags, undefined);
-  const perTen =
-    forcedKind === "zdr"
-      ? ZDR_SEARCH_CREDITS_PER_TEN_RESULTS
-      : SEARCH_CREDITS_PER_TEN_RESULTS;
-  return Math.ceil(resultCount(body) / 10) * perTen;
+  return Math.ceil(resultCount(body) / 10) * SEARCH_CREDITS_PER_TEN_RESULTS;
 }
 
 function researchError(
@@ -322,8 +316,14 @@ function createResearchController(
 ): ResearchController {
   return async (req, res: Response) => {
     const authedReq = req as RequestWithAuth<any, any, any>;
-    const zeroDataRetention =
-      getEffectiveSearchForcedKind(authedReq.acuc?.flags, undefined) !== null;
+    const forcedKind = getEffectiveSearchForcedKind(
+      authedReq.acuc?.flags,
+      undefined,
+    );
+    if (forcedKind === "zdr") {
+      return researchError(res, 400, ZDR_UNSUPPORTED_MESSAGE);
+    }
+    const zeroDataRetention = forcedKind !== null;
 
     const started = Date.now();
     const jobId = uuidv7();
@@ -413,7 +413,7 @@ function createResearchController(
       }
 
       if (upstream.ok) {
-        credits = creditsFor(endpoint, responseBody, authedReq);
+        credits = creditsFor(endpoint, responseBody);
         if (credits > 0) {
           billTeam(
             authedReq.auth.team_id,

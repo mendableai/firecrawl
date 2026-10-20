@@ -1,5 +1,5 @@
 import { config } from "../../../config";
-import { describeIf, TEST_PRODUCTION } from "../lib";
+import { describeIf, scrapeTimeout, TEST_PRODUCTION } from "../lib";
 import { creditUsage, idmux, researchPostRaw, researchRaw } from "./lib";
 import { HAS_JOB_LOG, jobLogJson, waitForJobLogRow } from "../job-log";
 
@@ -134,13 +134,36 @@ describeIf(HAS_RESEARCH)("Developer Search API", () => {
     expect(requestLog?.integration).toBe("_research_test");
   }, 120000);
 
-  it("redacts stored payloads for a forced-ZDR team", async () => {
+  it(
+    "refuses a forced-ZDR team on every serving path",
+    async () => {
+      const identity = await idmux({
+        name: "developer/forced ZDR refusal",
+        credits: 100,
+        flags: { searchZDR: "forced-zdr" },
+      });
+
+      for (const path of SERVING_PATHS) {
+        const res = await researchRaw(
+          path,
+          { query: "how do I configure retries", k: 1 },
+          identity,
+        );
+        expect(res.statusCode).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error).toContain("zero data retention");
+      }
+    },
+    scrapeTimeout,
+  );
+
+  it("redacts stored payloads for a forced-anon team", async () => {
     if (!config.USE_DB_AUTHENTICATION || !HAS_JOB_LOG) return;
 
     const identity = await idmux({
-      name: "developer/forced ZDR retention",
+      name: "developer/forced anon retention",
       credits: 100,
-      flags: { searchZDR: "forced-zdr" },
+      flags: { searchZDR: "forced-anon" },
     });
 
     const res = await researchRaw(
