@@ -8,7 +8,6 @@ import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { externalRequestId } from "../../lib/external-request-id";
 import { getScrapeZDR } from "../../lib/zdr-helpers";
 import { checkKeyFormatRestriction } from "../../lib/key-restriction";
-import { clientCountry } from "../../lib/client-country";
 import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
@@ -137,7 +136,7 @@ export async function providerScrapeController(
       scrapeId: uuidv7(),
       timeoutMs: body.timeout,
       bypassBilling: body.__agentInterop?.shouldBill === false,
-      clientCountry: clientCountry(req),
+      clientIp: req.ip,
     });
   } catch (error) {
     logger.error("Provider scrape unavailable", {

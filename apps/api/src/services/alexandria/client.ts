@@ -17,8 +17,8 @@ export async function exchangeRequest(input: {
   maximumCredits?: number;
   resultAuthorization?: string;
   termsIdentity?: { organizationId: string; apiKeyId: string };
-  /** Caller's country, resolved server-side from the request IP. */
-  clientCountry?: string;
+  /** Caller's IP as the API sees it; Exchange resolves what it needs from it. */
+  clientIp?: string;
   /**
    * The team may use its own MCP connectors (Alexandria connectors). Sent for teams with the
    * `exchangeRetrieve` flag, which is the connectors whitelist; Exchange reads it as the grant.
@@ -46,9 +46,7 @@ export async function exchangeRequest(input: {
           }
         : {}),
       "x-exchange-extended-catalog-access": "true",
-      ...(input.clientCountry
-        ? { "x-exchange-client-country": input.clientCountry }
-        : {}),
+      ...(input.clientIp ? { "x-exchange-client-ip": input.clientIp } : {}),
       ...(input.connectors ? { "x-exchange-connectors": "true" } : {}),
       ...(input.requestId ? { "x-request-id": input.requestId } : {}),
       ...(input.maximumCredits === undefined

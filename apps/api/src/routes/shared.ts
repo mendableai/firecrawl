@@ -19,7 +19,7 @@ import {
   getRoutePattern,
 } from "../lib/http-metrics";
 import { UNSUPPORTED_SITE_MESSAGE } from "../lib/strings";
-import { clientCountry } from "../lib/client-country";
+import * as geoip from "geoip-country";
 import { isSelfHosted } from "../lib/deployment";
 import { validate as isUuid } from "uuid";
 
@@ -514,16 +514,16 @@ export function countryCheck(
     return next();
   }
 
-  const country = clientCountry(req);
-  if (!country) {
+  const country = geoip.lookup(req.ip);
+  if (!country || !country.country) {
     logger.warn("IP address country data not found", { ip: req.ip });
     return next();
   }
 
-  if (config.RESTRICTED_COUNTRIES?.includes(country)) {
+  if (config.RESTRICTED_COUNTRIES?.includes(country.country)) {
     logger.warn("Denied access to restricted country", {
       ip: req.ip,
-      country,
+      country: country.country,
       teamId: req.auth.team_id,
     });
     return res.status(403).json({
