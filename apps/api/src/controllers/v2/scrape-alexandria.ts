@@ -11,6 +11,7 @@ import { checkKeyFormatRestriction } from "../../lib/key-restriction";
 import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
+import { persistPublicResult } from "../../services/alexandria/public-results";
 import {
   callsSchema,
   callSchema,
@@ -212,6 +213,29 @@ export async function providerScrapeController(
         scrapeId: result.scrapeId,
       }),
     );
+
+    // Public result page (firecrawl.dev/artifacts/<scrape_id>): allowlisted,
+    // terms-free capabilities only, never for a team that can use ZDR. Fire
+    // and forget; it never changes this response.
+    if (
+      result.status === 200 &&
+      served.success &&
+      result.unrestricted &&
+      getScrapeZDR(req.acuc.flags) === "disabled"
+    )
+      void persistPublicResult({
+        jobId: result.scrapeId,
+        origin: body.origin,
+        calls: body.alexandria,
+        results: served.data.results,
+        unrestricted: result.unrestricted,
+        secrets: new Set(
+          [req.auth.team_id, req.acuc.org_id, req.acuc.api_key_id_text].filter(
+            (value): value is string =>
+              typeof value === "string" && value.length >= 16,
+          ),
+        ),
+      });
   }
 
   if (result.status !== 200) {

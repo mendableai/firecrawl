@@ -119,6 +119,10 @@ import {
   slackStatusController,
 } from "../controllers/v2/slack";
 import { agentListController } from "../controllers/v2/agent-list";
+import {
+  alexandriaPublicRateLimit,
+  alexandriaPublicResultController,
+} from "../controllers/v2/alexandria-public";
 export const v2Router = express.Router();
 expressWs(express()).applyTo(v2Router);
 
@@ -182,6 +186,14 @@ v2Router.use(requestTimingMiddleware("v2"));
 // Internal: trusted-proxy (hosted MCP) keyless eligibility probe. Secret-gated
 // inside the controller; no auth middleware.
 v2Router.get("/keyless/eligibility", wrap(keylessEligibilityController));
+
+// Public, unauthenticated: sanitized Alexandria results for
+// firecrawl.dev/artifacts/<jobId>. The job ID is the capability.
+v2Router.get(
+  "/alexandria/public/:jobId",
+  alexandriaPublicRateLimit,
+  wrap(alexandriaPublicResultController),
+);
 
 registerMcpActionLogReadRoute(
   v2Router,

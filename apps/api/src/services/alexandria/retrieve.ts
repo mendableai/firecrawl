@@ -46,6 +46,9 @@ type Retrieval = {
 type ProviderRetrieval = ExchangeResponse & {
   executed: boolean;
   scrapeId: string;
+  /** Set on an executed answer: the `provider/capability` addresses that need
+   *  no data terms and are not paid-plan-only (from the authorization check). */
+  unrestricted?: Set<string>;
 };
 
 const canonical = (value: unknown): unknown =>
@@ -237,12 +240,16 @@ export async function retrieveProviders(input: {
   let lockId: string | undefined;
   let maximumCredits: number;
   let refundable = false;
+  let unrestricted = new Set<string>();
   try {
     const denied = await authorizeProviders(
       input.teamId,
       input.calls,
       input.flags,
       input.orgId,
+      addresses => {
+        unrestricted = addresses;
+      },
     );
     if (denied) return refuse(denied);
 
@@ -456,7 +463,7 @@ export async function retrieveProviders(input: {
 
     const done: ExchangeResponse = { status: 200, body: answer };
     await write({ ...record, phase: "done", response: done });
-    return { ...done, executed: true, scrapeId: input.scrapeId };
+    return { ...done, executed: true, scrapeId: input.scrapeId, unrestricted };
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));
   }

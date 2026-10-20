@@ -94,6 +94,7 @@ it("quotes, reserves, executes within budget, settles actual usage, records once
     body: answer,
     executed: true,
     scrapeId: "scrape-1",
+    unrestricted: new Set(),
   });
   expect(mocks.lock).toHaveBeenCalledWith(
     expect.objectContaining({ value: 5, featureId: "credits", orgId: "org" }),
@@ -642,4 +643,23 @@ it("sends no credentials when the caller supplied none", async () => {
     executed: true,
   });
   expect(executions()[0][0].resultAuthorization).toBeUndefined();
+});
+
+it("returns the authorization's unrestricted addresses with an executed answer", async () => {
+  mocks.authorize.mockImplementation(
+    async (
+      _team: string,
+      _calls: unknown,
+      _flags: unknown,
+      _org: unknown,
+      onUnrestricted?: (addresses: Set<string>) => void,
+    ) => {
+      onUnrestricted?.(new Set(["fred/series/observations"]));
+      return undefined;
+    },
+  );
+  const executed = await run();
+  expect(executed.unrestricted).toEqual(new Set(["fred/series/observations"]));
+  // A replay is not an execution and carries none.
+  expect((await run()).unrestricted).toBeUndefined();
 });

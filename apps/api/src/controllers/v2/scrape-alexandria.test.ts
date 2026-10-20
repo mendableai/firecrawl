@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   log: vi.fn(),
   scrapeLog: vi.fn(),
+  persist: vi.fn(),
 }));
 vi.mock("../../services/alexandria/retrieve", () => ({
   REQUEST_ID_PATTERN: /^[A-Za-z0-9._:-]{1,128}$/,
@@ -12,6 +13,9 @@ vi.mock("../../services/alexandria/retrieve", () => ({
 vi.mock("../../services/logging/log_job", () => ({
   logRequest: mocks.log,
   logProviderScrape: mocks.scrapeLog,
+}));
+vi.mock("../../services/alexandria/public-results", () => ({
+  persistPublicResult: mocks.persist,
 }));
 vi.mock("../../lib/key-restriction", () => ({
   checkKeyFormatRestriction: async () => ({ allowed: true }),
@@ -34,23 +38,29 @@ const call = {
   capability: "categories/category",
   options: {},
 };
-const app = express();
-app.use(express.json());
-app.use((req, _res, next) => {
-  Object.assign(req, {
-    auth: { team_id: "team" },
-    acuc: {
-      api_key_id: 12,
-      org_id: "org",
-      flags: { exchangeRetrieve: true },
-    },
+const appWith = (flags: Record<string, unknown>) => {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    Object.assign(req, {
+      auth: { team_id: "team" },
+      acuc: {
+        api_key_id: 12,
+        org_id: "org",
+        flags,
+      },
+    });
+    next();
   });
-  next();
-});
-app.post("/v2/scrape", (req, res) => providerScrapeController(req as any, res));
-app.post("/exchange/retrieve", (req, res) =>
-  providerScrapeController(req as any, res, true),
-);
+  app.post("/v2/scrape", (req, res) =>
+    providerScrapeController(req as any, res),
+  );
+  app.post("/exchange/retrieve", (req, res) =>
+    providerScrapeController(req as any, res, true),
+  );
+  return app;
+};
+const app = appWith({ exchangeRetrieve: true });
 const result = (results: unknown[], executed = true) => ({
   status: 200,
   body: { success: true, creditsCost: 0, results },
@@ -62,6 +72,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.log.mockResolvedValue(undefined);
   mocks.scrapeLog.mockResolvedValue(undefined);
+  mocks.persist.mockResolvedValue(undefined);
   mocks.retrieve.mockResolvedValue(
     result([{ ...call, creditsCost: 0, data: {} }]),
   );
@@ -285,5 +296,75 @@ it("executes with supplied arguments but stores only tool identifiers in activit
   expect(mocks.scrapeLog).toHaveBeenCalledTimes(1);
   expect(mocks.scrapeLog.mock.calls[0][0].options).toEqual({
     alexandria: [{ provider: call.provider, capability: call.capability }],
+  });
+});
+
+describe("public result pages", () => {
+  const scoreboard = {
+    provider: "espn-com",
+    capability: "sports-data/scoreboard",
+    options: { sport: "football", league: "nfl" },
+  };
+  const served = (unrestricted?: Set<string>) => ({
+    ...result([{ ...scoreboard, creditsCost: 5, data: { events: [] } }]),
+    unrestricted,
+  });
+
+  it("hands an executed answer to the public store without changing the response", async () => {
+    const unrestricted = new Set(["espn-com/sports-data/scoreboard"]);
+    mocks.retrieve.mockResolvedValue(served(unrestricted));
+    mocks.persist.mockReturnValue(new Promise(() => {}));
+    const response = await request(app)
+      .post("/v2/scrape")
+      .send({ alexandria: scoreboard, origin: "mcp-ua-openai-mcp@1.0.0" });
+    expect(response.status).toBe(200);
+    expect(Object.keys(response.body)).toEqual([
+      "success",
+      "scrape_id",
+      "data",
+    ]);
+    expect(mocks.persist).toHaveBeenCalledTimes(1);
+    expect(mocks.persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "scrape-1",
+        origin: "mcp-ua-openai-mcp@1.0.0",
+        calls: [scoreboard],
+        unrestricted,
+      }),
+    );
+  });
+
+  it("stores nothing for replays, failures, agent interop, or ZDR-capable teams", async () => {
+    const unrestricted = new Set(["espn-com/sports-data/scoreboard"]);
+    mocks.retrieve.mockResolvedValue({
+      ...served(unrestricted),
+      executed: false,
+    });
+    await request(app).post("/v2/scrape").send({ alexandria: scoreboard });
+
+    mocks.retrieve.mockResolvedValue({
+      executed: true,
+      scrapeId: "failed-1",
+      status: 503,
+      body: { error: "down" },
+      unrestricted,
+    });
+    await request(app).post("/v2/scrape").send({ alexandria: scoreboard });
+
+    mocks.retrieve.mockResolvedValue(served(unrestricted));
+    await request(app)
+      .post("/v2/scrape")
+      .send({
+        alexandria: scoreboard,
+        __agentInterop: {
+          auth: "test-secret",
+          requestId: "a",
+          shouldBill: false,
+        },
+      });
+    await request(appWith({ scrapeZDR: "allowed" }))
+      .post("/v2/scrape")
+      .send({ alexandria: scoreboard });
+    expect(mocks.persist).not.toHaveBeenCalled();
   });
 });

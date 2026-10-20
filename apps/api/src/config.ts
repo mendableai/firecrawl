@@ -232,6 +232,11 @@ const configSchema = z.object({
     .int()
     .nonnegative()
     .default(10),
+  // Public Alexandria result pages (firecrawl.dev/artifacts/<jobId>). Off by
+  // default; the allowlist lives in services/alexandria/public-results-allowlist.ts.
+  ALEXANDRIA_PUBLIC_RESULTS_ENABLED: z.stringbool().default(false),
+  // Per-provider kill switch, checked on write and on every read.
+  ALEXANDRIA_PUBLIC_RESULTS_DISABLED_PROVIDERS: delimitedList(",").optional(),
 
   // OAuth token introspection
   OAUTH_INTROSPECT_URL: z.string().optional(),

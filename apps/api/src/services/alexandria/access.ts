@@ -34,11 +34,17 @@ const requirementsSchema = z.object({
   ),
 });
 
+/**
+ * `onUnrestricted` receives the `provider/capability` addresses of these calls
+ * that need no data terms and are not paid-plan-only, once the Exchange has
+ * answered. Public result pages reuse it instead of asking the Exchange again.
+ */
 export async function authorizeProviders(
   teamId: string,
   calls: ProviderCall[],
   flags: TeamFlags | null | undefined,
   orgId: string | null = null,
+  onUnrestricted?: (addresses: Set<string>) => void,
 ): Promise<ExchangeResponse | undefined> {
   const providers = [...new Set(calls.map(call => call.provider))];
   const response = await exchangeRequest({
@@ -67,6 +73,7 @@ export async function authorizeProviders(
       503,
       "Provider agreements are unavailable. No provider was executed.",
     );
+  onUnrestricted?.(unrestrictedAddresses(calls, parsed.data.providers));
   if (config.USE_DB_AUTHENTICATION !== true) return undefined;
 
   let ledger: Map<string, LedgerAcceptance> | undefined;
@@ -142,4 +149,21 @@ export async function authorizeProviders(
     }
   }
   return undefined;
+}
+
+function unrestrictedAddresses(
+  calls: ProviderCall[],
+  providers: z.infer<typeof requirementsSchema>["providers"],
+): Set<string> {
+  const byProvider = new Map(providers.map(item => [item.provider, item]));
+  return new Set(
+    calls
+      .filter(call => {
+        const item = byProvider.get(call.provider);
+        if (!item || item.terms) return false;
+        if (item.required || item.exchangeRequired) return false;
+        return !(item.paidPlanOnlyCapabilities ?? []).includes(call.capability);
+      })
+      .map(call => `${call.provider}/${call.capability}`),
+  );
 }

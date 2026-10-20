@@ -501,3 +501,44 @@ it("honors a required Exchange override", async () => {
     code: "THIRD_PARTY_DATA_TERMS_REQUIRED",
   });
 });
+
+it("reports which calls need no data terms and are not paid-plan-only", async () => {
+  mocks.request.mockResolvedValue({
+    status: 200,
+    body: {
+      providers: [
+        { provider: "espn-com", required: false, terms: null },
+        {
+          provider: "polymarket",
+          required: false,
+          terms: null,
+          paidPlanOnlyCapabilities: ["markets/get"],
+        },
+        {
+          provider: "fred",
+          required: true,
+          terms: { key: "fred", version: "2026-01" },
+        },
+      ],
+    },
+  });
+  const flags = {
+    organizationDataSourceAccess: {
+      fred: { status: "enabled", termsKey: "fred", termsVersion: "2026-01" },
+    },
+  };
+  mocks.team.mockResolvedValue({ is_paid_plan: true });
+  const seen = vi.fn();
+  const mixed = [
+    { provider: "espn-com", capability: "sports-data/scoreboard", options: {} },
+    { provider: "polymarket", capability: "events/by-slug", options: {} },
+    { provider: "polymarket", capability: "markets/get", options: {} },
+    { provider: "fred", capability: "series/observations", options: {} },
+  ];
+  expect(
+    await authorizeProviders("team", mixed, flags, "org", seen),
+  ).toBeUndefined();
+  expect(seen).toHaveBeenCalledWith(
+    new Set(["espn-com/sports-data/scoreboard", "polymarket/events/by-slug"]),
+  );
+});
