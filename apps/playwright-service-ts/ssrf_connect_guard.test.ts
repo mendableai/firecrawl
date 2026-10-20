@@ -425,7 +425,10 @@ test('rebound hostname is refused before the TCP handshake completes', { timeout
 // `URL.hostname` keeps the square brackets for IPv6 hosts while Node socket
 // targets are unbracketed, so an internal upstream configured as
 // http://[::1]:3128 must still earn the exact (host, port) exemption.
-test('guard exempts an IPv6 upstream proxy URL written with brackets', { timeout: 10000 }, async () => {
+test('guard exempts an IPv6 upstream proxy URL written with brackets', { timeout: 10000 }, async (t) => {
+  if (!(await ipv6LoopbackAvailable('::1'))) {
+    return t.skip('IPv6 loopback is unavailable on this host');
+  }
   const loopback = await startCountingLoopbackServer('::1');
   try {
     const { uninstall } = installConnectTimeSSRFGuard({
@@ -451,6 +454,18 @@ test('guard exempts an IPv6 upstream proxy URL written with brackets', { timeout
     await loopback.close();
   }
 });
+
+// Hosts with IPv6 loopback disabled (some CI containers) cannot run the
+// bracketed-IPv6 test below: listen(0, '::1') there fails with EADDRNOTAVAIL
+// or EAFNOSUPPORT. Probe it and skip instead of failing.
+const ipv6LoopbackAvailable = (host: string): Promise<boolean> =>
+  new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once('error', () => resolve(false));
+    probe.listen(0, host, () => {
+      probe.close(() => resolve(true));
+    });
+  });
 
 // The upstream URL is operator configuration; if it is malformed the guard
 // must simply run without the exemption (the affected scrape requests fail

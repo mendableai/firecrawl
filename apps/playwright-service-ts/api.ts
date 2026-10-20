@@ -579,9 +579,16 @@ const start = async () => {
   if (!ALLOW_LOCAL_WEBHOOKS) {
     try {
       upstreamProxyUrl = buildUpstreamProxyUrl();
-    } catch {
+    } catch (error) {
       // A malformed PROXY_SERVER keeps its old failure shape: the affected
-      // scrape requests fail on their own; boot must not.
+      // scrape requests fail on their own; boot must not. Warn at startup so
+      // the misconfiguration is visible once, not as opaque per-request
+      // failures.
+      console.warn(
+        `PROXY_SERVER is set but unusable (${
+          error instanceof Error ? error.message : String(error)
+        }); scrape requests that need the upstream proxy will fail until it is fixed.`,
+      );
       upstreamProxyUrl = undefined;
     }
   }
