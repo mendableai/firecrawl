@@ -61,7 +61,8 @@ overrides:
   "form-data@>=3.0.0 <3.0.5": "3.0.5"
   "form-data@>=4.0.0 <4.0.6": "4.0.6"
   "@babel/core@>=7.0.0 <7.29.6": "7.29.7"
-  "follow-redirects@<1.16.0": ">=1.16.0 <2.0.0"
+  # GHSA-8r9p-f939-6h3c / GHSA-q3jh-wrc6-jgq8: pin the 1.x line only.
+  "follow-redirects@<1.16.1": ">=1.16.1 <2.0.0"
   "uuid@<11.1.1": "11.1.1"
   "js-cookie@<3.0.7": "3.0.7"
   # GHSA-pqg4-j6r4-53mv: fixed in 1.11.0.
