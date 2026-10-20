@@ -523,7 +523,7 @@ export function countryCheck(
   if (config.RESTRICTED_COUNTRIES?.includes(country)) {
     logger.warn("Denied access to restricted country", {
       ip: req.ip,
-      country: country,
+      country,
       teamId: req.auth.team_id,
     });
     return res.status(403).json({
