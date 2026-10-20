@@ -515,9 +515,15 @@ function applyLogoAndMonochromeColors(
   }
 
   // A black or white logo alone can't tell a brand accent (Bloomberg's red)
-  // from campaign imagery, so only a primary that is already neutral (the
+  // from campaign imagery, and a gray or navy primary may just be chrome, so
+  // only a neutral black primary that is also the primary button's fill (the
   // black call to action above) marks the brand as monochrome.
-  const neutral = primary && isNeutral(primary) ? primary : undefined;
+  const neutral =
+    primary &&
+    isNeutralDark(primary) &&
+    colorDistance(merged.components?.buttonPrimary?.background, primary) < 40
+      ? primary
+      : undefined;
   if (!neutral || scheme === "dark") return;
 
   const incidental = (value?: string | null) => {

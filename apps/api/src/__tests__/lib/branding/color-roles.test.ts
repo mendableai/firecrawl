@@ -332,6 +332,34 @@ describe("monochrome brands", () => {
     expect(linkOnly.colors?.accent).toBe("#0072F5");
   });
 
+  it("keeps saturated accents when the primary is navy chrome or there is no black call to action", () => {
+    const navy = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      {
+        ...llmPicking("#061B31"),
+        colorRoles: {
+          ...llmPicking("#061B31").colorRoles,
+          accentColor: "#635BFF",
+        },
+      },
+      [button("#061B31", "#FFFFFF", 0)],
+    );
+    expect(navy.colors?.accent).toBe("#635BFF");
+
+    const noButtons = mergeBrandingResults(
+      { colorScheme: "light", colors: {} },
+      {
+        ...llmPicking("#111111"),
+        colorRoles: {
+          ...llmPicking("#111111").colorRoles,
+          accentColor: "#E51503",
+        },
+      },
+      [],
+    );
+    expect(noButtons.colors?.accent).toBe("#E51503");
+  });
+
   it("leaves dark pages alone", () => {
     const merged = mergeBrandingResults(
       { colorScheme: "dark", colors: {} },
