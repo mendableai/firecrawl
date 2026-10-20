@@ -273,6 +273,9 @@ resp, err := client.DeveloperSearch(ctx, "retry an http request with exponential
 	Types: []string{"issue", "pull_request"},
 	Repos: []string{"golang/go"},
 })
+if err != nil {
+	log.Fatal(err)
+}
 for _, r := range resp.Results {
 	fmt.Println(r.Title, r.URL)
 }
