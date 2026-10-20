@@ -23,6 +23,9 @@ module Firecrawl
       attr_reader(*FIELDS)
 
       def initialize(**kwargs)
+        unknown = kwargs.keys - FIELDS
+        raise ArgumentError, "unknown developer search option(s): #{unknown.join(", ")}" unless unknown.empty?
+
         FIELDS.each { |f| instance_variable_set(:"@#{f}", kwargs[f]) }
       end
 

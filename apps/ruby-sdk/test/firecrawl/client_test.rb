@@ -718,6 +718,11 @@ class ClientTest < Minitest::Test
     assert_empty response.results
   end
 
+  def test_developer_search_options_reject_unknown_keys
+    error = assert_raises(ArgumentError) { Firecrawl::Models::DeveloperSearchOptions.new(min_star: 5) }
+    assert_includes error.message, "min_star"
+  end
+
   def test_developer_search_rejects_blank_query
     assert_raises(ArgumentError) { @client.developer_search(nil) }
     assert_raises(ArgumentError) { @client.developer_search("") }
