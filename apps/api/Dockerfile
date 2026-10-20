@@ -66,6 +66,9 @@ RUN test -s dist/src/harness.js && \
     test -s dist/src/controllers/v0/crawl-status.js && \
     printf '%s\n' "$GIT_SHA" > BUILD_SHA
 
+# Build the IP country database into node_modules so it ships with the image.
+RUN node -e 'const { clientCountry } = require("./dist/src/lib/client-country"); if (clientCountry({ ip: "8.8.8.8" }) !== "US") throw new Error("IP country database was not built")'
+
 # Remove dev dependencies
 RUN pnpm prune --prod --ignore-scripts
 

@@ -17,7 +17,9 @@ vi.mock("../../services/idempotency/create", () => ({
 vi.mock("../../services/idempotency/validate", () => ({
   validateIdempotencyKey: vi.fn(),
 }));
-vi.mock("geoip-country", () => ({ lookup: vi.fn(() => null) }));
+vi.mock("../../lib/client-country", () => ({
+  clientCountry: vi.fn(() => undefined),
+}));
 
 import { notFoundHandler } from "../../lib/not-found";
 import { httpRequestDurationSeconds } from "../../lib/http-metrics";

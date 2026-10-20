@@ -40,7 +40,9 @@ vi.mock("../../services/idempotency/validate", () => ({
   validateIdempotencyKey: vi.fn(),
 }));
 
-vi.mock("geoip-country", () => ({ lookup: vi.fn(() => null) }));
+vi.mock("../../lib/client-country", () => ({
+  clientCountry: vi.fn(() => undefined),
+}));
 
 import { checkCreditsMiddleware } from "../../routes/shared";
 import { autumnService } from "../../services/autumn/autumn.service";
