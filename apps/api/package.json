@@ -95,6 +95,7 @@
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "@types/ws": "^8.5.12",
     "@typesafe-ai/sdk": "^0.6.0",
+    "@ai-sdk/provider": "3.0.18",
     "ai": "6.0.86",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
