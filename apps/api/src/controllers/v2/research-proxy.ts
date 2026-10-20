@@ -293,6 +293,7 @@ async function fetchForRequest(
   endpoint: ResearchEndpointConfig,
   params: Record<string, any>,
   queryKeys: string[],
+  zeroDataRetention: boolean,
 ) {
   const headers: Record<string, string> = {};
   for (const h of FORWARDED_REQUEST_HEADERS) {
@@ -300,6 +301,7 @@ async function fetchForRequest(
     if (typeof v === "string") headers[h] = v;
   }
   headers["firecrawl-team-id"] = req.auth.team_id;
+  headers["firecrawl-zero-data-retention"] = String(zeroDataRetention);
 
   if ("fetchUpstream" in endpoint) {
     return endpoint.fetchUpstream(params, headers);
@@ -332,6 +334,7 @@ function createResearchController(
       method: endpoint.action,
       jobId,
       teamId: authedReq.auth.team_id,
+      zeroDataRetention,
     });
 
     const source = req.method === "POST" ? (req.body ?? {}) : req.query;
@@ -391,6 +394,7 @@ function createResearchController(
         endpoint,
         params,
         queryKeys,
+        zeroDataRetention,
       );
       if (!upstream) {
         if (releaseGovCall) await releaseGovCall();
