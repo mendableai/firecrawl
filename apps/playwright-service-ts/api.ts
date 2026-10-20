@@ -307,6 +307,14 @@ const scrapePage = async (
     throw error;
   }
 
+  // The context route handler is called only for the first URL of a redirect
+  // (per Playwright), so an HTTP 3xx to a private host is followed without a
+  // preflight check. Re-check every hop of the navigation's redirect chain,
+  // and the URL the browser actually landed on, with the same guard.
+  for (let req = response?.request() ?? null; req; req = req.redirectedFrom()) {
+    await assertSafeTargetUrl(req.url());
+  }
+
   if (waitAfterLoad > 0) {
     await page.waitForTimeout(waitAfterLoad);
   }
@@ -322,6 +330,8 @@ const scrapePage = async (
   let headers = null,
     content = await page.content(),
     landedUrl = page.url();
+  // Covers client-side redirects (location.href) that happen after goto resolves.
+  if (/^https?:/i.test(landedUrl)) await assertSafeTargetUrl(landedUrl);
   let ct: string | undefined = undefined;
   if (response) {
     headers = await response.allHeaders();
