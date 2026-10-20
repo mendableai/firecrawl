@@ -43,7 +43,7 @@ import {
   isAgentInteropSecretValid,
 } from "../lib/agent-interop";
 import { inferIntegration } from "../lib/infer-integration";
-import { integrationFromHeader } from "../utils/integration";
+import { resolveIntegration } from "../utils/integration";
 
 export function checkCreditsMiddleware(
   _minimum?: number,
@@ -331,8 +331,8 @@ export function authMiddleware(
 }
 
 /**
- * Fills a missing body `integration` from a valid X-Integration header, then
- * from inference. The body value always wins; an invalid header is ignored.
+ * Sets the body `integration` via resolveIntegration, then infers a still
+ * missing one. An invalid header is ignored.
  */
 export function inferIntegrationMiddleware(
   req: Request,
@@ -340,18 +340,13 @@ export function inferIntegrationMiddleware(
   next: NextFunction,
 ) {
   const body = req.body;
-  if (
-    !body ||
-    typeof body !== "object" ||
-    Array.isArray(body) ||
-    body.integration !== undefined
-  ) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return next();
   }
 
-  const header = integrationFromHeader(req);
-  if (header) {
-    body.integration = header;
+  const resolved = resolveIntegration(body.integration, req);
+  if (resolved !== undefined) {
+    body.integration = resolved;
   } else if (config.INFER_INTEGRATION_ENABLED) {
     const inferred = inferIntegration({
       origin: req.get("origin"),

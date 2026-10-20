@@ -26,10 +26,7 @@ import type { RequestWithAuth } from "../v1/types";
 import { checkCreditsMiddleware, wrap } from "../../routes/shared";
 import { SEARCH_CREDITS_FEATURE_ID } from "../../services/autumn/autumn.service";
 import { deprecationMiddleware } from "../../lib/deprecations";
-import {
-  integrationFromHeader,
-  integrationSchema,
-} from "../../utils/integration";
+import { integrationSchema, resolveIntegration } from "../../utils/integration";
 import { requestOrigin } from "../../lib/request-origin";
 
 const SEARCH_CREDITS_PER_TEN_RESULTS = 2;
@@ -362,7 +359,7 @@ function createResearchController(
       external_request_id: externalRequestId(authedReq),
       team_id: authedReq.auth.team_id,
       origin: requestOrigin(params, req),
-      integration: params.integration ?? integrationFromHeader(req) ?? null,
+      integration: resolveIntegration(params.integration, req) ?? null,
       target_hint: targetHint,
       zeroDataRetention,
       api_key_id: authedReq.acuc?.api_key_id ?? null,

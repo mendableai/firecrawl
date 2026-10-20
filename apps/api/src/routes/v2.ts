@@ -206,12 +206,14 @@ v2Router.post(
   "/search/:jobId/feedback",
   authMiddleware(RateLimiterMode.Account),
   validateJobIdParam,
+  inferIntegrationMiddleware,
   wrap(searchFeedbackController),
 );
 
 v2Router.post(
   "/feedback",
   authMiddleware(RateLimiterMode.Account),
+  inferIntegrationMiddleware,
   wrap(feedbackController),
 );
 
@@ -269,6 +271,7 @@ v2Router.post(
   "/scrape/:jobId/interact",
   authMiddleware(RateLimiterMode.BrowserExecute, { allowKeyless: true }),
   validateJobIdParam,
+  inferIntegrationMiddleware,
   wrap(scrapeInteractController),
 );
 
@@ -662,6 +665,7 @@ v2Router.get(
 v2Router.post(
   ["/browser/:sessionId/execute", "/interact/:sessionId/execute"],
   authMiddleware(RateLimiterMode.BrowserExecute),
+  inferIntegrationMiddleware,
   wrap(browserExecuteController),
 );
 
