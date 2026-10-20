@@ -73,6 +73,10 @@ overrides:
   # GHSA-866g-f22w-33x8: pin the 4.x line only. Exact 4.0.51 cannot
   # resolve to 5.x.
   "@ai-sdk/provider-utils@>=4.0.0 <4.0.33": "4.0.51"
+  # GHSA-698V-4R3X-3VCV: vite >=8.0.0 <=8.1.5 vulnerable via
+  # vitest>vite and vitest>@vitest/mocker>vite; patched in >=8.1.6.
+  # Selector ceiling <9.0.0 cannot resolve to vite 9.x.
+  "vite@>=8.0.0 <9.0.0": "8.1.6"
   # GHSA-8988-4f7v-96qf (@opentelemetry/core): only patched on the 2.x
   # line. @google-cloud/bigtable@7 resolves its metrics chain onto OTel
   # 1.x; Google's own exporter 0.22 already peers with 2.x, so force the
