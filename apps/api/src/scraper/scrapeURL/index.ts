@@ -1307,6 +1307,12 @@ export async function scrapeURL(
         }
       }
 
+      // ZDR always verifies TLS, for every engine. Explicit false also wins over
+      // the skip-by-default in applyScrapeOptionsDefaults.
+      if (internalOptions.zeroDataRetention) {
+        options.skipTlsVerification = false;
+      }
+
       const meta = await buildMetaObject(
         id,
         url,
@@ -1852,6 +1858,13 @@ export async function scrapeURL(
           });
         } else if (error instanceof SSLError) {
           errorType = "SSLError";
+          // Engines don't know about ZDR; swap in the message that doesn't
+          // suggest skipTlsVerification, which ZDR overrides above.
+          if (meta.internalOptions.zeroDataRetention) {
+            const zdrError = new SSLError(false, true);
+            zdrError.stack = error.stack;
+            error = zdrError;
+          }
           meta.logger.warn("scrapeURL: SSL error", { error });
         } else if (error instanceof ActionError) {
           errorType = "ActionError";

@@ -297,7 +297,10 @@ type FontRole = BrandingEnhancement["cleanedFonts"][number]["role"];
 type FontCandidate = { family: string; count: number; role?: FontRole };
 
 /** Matching key for a family: case and spacing don't make a different font. */
-const familyKey = (family: string) => family.toLowerCase().replace(/\s/g, "");
+// Spacing, hyphen and underscore variants ("Adobe Clean", "Adobe-Clean",
+// "AdobeClean") are one family: pages self-host a face under a hyphenated alias.
+const familyKey = (family: string) =>
+  family.toLowerCase().replace(/[\s_-]/g, "");
 
 /** Role from the page's own typography: the heading and body stacks it measured. */
 function typographyRole(

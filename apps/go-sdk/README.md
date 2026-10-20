@@ -1,6 +1,6 @@
 # Firecrawl Go SDK
 
-Go SDK for the [Firecrawl](https://firecrawl.dev) v2 web scraping API.
+Go SDK for [Firecrawl](https://firecrawl.dev), the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, and run Agent and Monitor jobs on the v2 API.
 
 ## Requirements
 
@@ -261,6 +261,24 @@ results, err := client.Search(ctx, "firecrawl web scraping", &firecrawl.SearchOp
 		Formats: []string{"markdown"},
 	},
 })
+```
+
+### Developer Search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `DeveloperSearch` replaces the deprecated `SearchGitHub`.
+
+```go
+resp, err := client.DeveloperSearch(ctx, "retry an http request with exponential backoff", &firecrawl.DeveloperSearchOptions{
+	K:     firecrawl.Int(5),
+	Types: []string{"issue", "pull_request"},
+	Repos: []string{"golang/go"},
+})
+if err != nil {
+	log.Fatal(err)
+}
+for _, r := range resp.Results {
+	fmt.Println(r.Title, r.URL)
+}
 ```
 
 ### Agent

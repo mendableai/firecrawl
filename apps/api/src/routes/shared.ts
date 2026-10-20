@@ -24,7 +24,7 @@ import { isSelfHosted } from "../lib/deployment";
 import { validate as isUuid } from "uuid";
 
 import { config } from "../config";
-import { getAgentFreeRequestsLeft } from "../db/rpc";
+import { CREDIT_CHECK_EXEMPT_TEAM_ID } from "../controllers/v2/agent-credit-gate";
 import {
   autumnService,
   CREDITS_FEATURE_ID,
@@ -42,6 +42,8 @@ import {
   agentInteropStatus,
   isAgentInteropSecretValid,
 } from "../lib/agent-interop";
+import { inferIntegration } from "../lib/infer-integration";
+import { resolveIntegration } from "../utils/integration";
 
 export function checkCreditsMiddleware(
   _minimum?: number,
@@ -148,20 +150,10 @@ export function checkCreditsMiddleware(
         }
       }
 
+      // The agent controller gates credits itself, after it has consumed a
+      // free request: only a consumed one may skip the check.
       if (req.path.startsWith("/agent")) {
-        if (config.USE_DB_AUTHENTICATION) {
-          try {
-            const data = await getAgentFreeRequestsLeft(req.auth.team_id);
-            if (data?.[0]?.free_requests_left !== 0) {
-              return next();
-            }
-          } catch (freeRequestError) {
-            logger.warn("Failed to get agent free requests left", {
-              error: freeRequestError,
-              teamId: req.auth.team_id,
-            });
-          }
-        }
+        return next();
       }
 
       const requestedCredits = minimum ?? 1;
@@ -254,7 +246,7 @@ export function checkCreditsMiddleware(
         );
         if (
           !res.headersSent &&
-          req.auth.team_id !== "8c528896-7882-4587-a4b6-768b721b0b53"
+          req.auth.team_id !== CREDIT_CHECK_EXEMPT_TEAM_ID
         ) {
           return res.status(402).json({
             success: false,
@@ -336,6 +328,35 @@ export function authMiddleware(
       next();
     })().catch(err => next(err));
   };
+}
+
+/**
+ * Sets the body `integration` via resolveIntegration, then infers a still
+ * missing one. An invalid header is ignored.
+ */
+export function inferIntegrationMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return next();
+  }
+
+  const resolved = resolveIntegration(body.integration, req);
+  if (resolved !== undefined) {
+    body.integration = resolved;
+  } else if (config.INFER_INTEGRATION_ENABLED) {
+    const inferred = inferIntegration({
+      origin: req.get("origin"),
+      referer: req.get("referer"),
+      userAgent: req.get("user-agent"),
+      bodyOrigin: body.origin,
+    });
+    if (inferred) body.integration = inferred;
+  }
+  next();
 }
 
 export function idempotencyMiddleware(
@@ -466,28 +487,6 @@ export function countryCheck(
     return next();
   }
 
-  const couldBeRestricted =
-    req.body &&
-    (req.body.actions ||
-      (req.body.headers &&
-        typeof req.body.headers === "object" &&
-        Object.keys(req.body.headers).length > 0) ||
-      req.body.agent ||
-      req.body.jsonOptions?.agent ||
-      req.body.extract?.agent ||
-      req.body.scrapeOptions?.actions ||
-      (req.body.scrapeOptions?.headers &&
-        typeof req.body.scrapeOptions.headers === "object" &&
-        Object.keys(req.body.scrapeOptions.headers).length > 0) ||
-      req.body.scrapeOptions?.agent ||
-      req.body.scrapeOptions?.jsonOptions?.agent ||
-      req.body.scrapeOptions?.extract?.agent ||
-      req.path.startsWith("/v2/agent"));
-
-  if (!couldBeRestricted) {
-    return next();
-  }
-
   if (!req.ip) {
     logger.warn("IP address not found, unable to check country");
     return next();
@@ -508,12 +507,41 @@ export function countryCheck(
     return res.status(403).json({
       success: false,
       error: isSelfHosted()
-        ? "Use of headers, actions, and the FIRE-1 agent is not allowed by default in your country. Please check your server configuration."
-        : "Use of headers, actions, and the FIRE-1 agent is not allowed by default in your country. Please contact us at help@firecrawl.com",
+        ? "Use of headers, actions, the agent, and browser/interact sessions is not allowed by default in your country. Please check your server configuration."
+        : "Use of headers, actions, the agent, and browser/interact sessions is not allowed by default in your country. Please contact us at help@firecrawl.com",
     });
   }
 
   next();
+}
+
+export function restrictedOptionsCountryCheck(
+  req: RequestWithAuth<any, any, any>,
+  res: Response,
+  next: NextFunction,
+) {
+  const usesRestrictedOptions =
+    req.body &&
+    (req.body.actions ||
+      (req.body.headers &&
+        typeof req.body.headers === "object" &&
+        Object.keys(req.body.headers).length > 0) ||
+      req.body.agent ||
+      req.body.jsonOptions?.agent ||
+      req.body.extract?.agent ||
+      req.body.scrapeOptions?.actions ||
+      (req.body.scrapeOptions?.headers &&
+        typeof req.body.scrapeOptions.headers === "object" &&
+        Object.keys(req.body.scrapeOptions.headers).length > 0) ||
+      req.body.scrapeOptions?.agent ||
+      req.body.scrapeOptions?.jsonOptions?.agent ||
+      req.body.scrapeOptions?.extract?.agent);
+
+  if (!usesRestrictedOptions) {
+    return next();
+  }
+
+  countryCheck(req, res, next);
 }
 
 export function isValidJobId(jobId: string | undefined): jobId is string {

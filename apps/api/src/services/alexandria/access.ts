@@ -64,6 +64,7 @@ export async function authorizeProviders(
   calls: ProviderCall[],
   flags: TeamFlags | null | undefined,
   orgId: string | null = null,
+  clientIp?: string,
 ): Promise<ExchangeResponse | undefined> {
   const providers = [...new Set(calls.map(call => call.provider))];
   let failure: unknown;
@@ -72,6 +73,7 @@ export async function authorizeProviders(
     path: "/v1/provider-terms/requirements",
     body: { providers },
     timeoutMs: 10000,
+    clientIp,
   }).catch(error => {
     failure = error;
     return undefined;

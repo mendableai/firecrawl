@@ -1,4 +1,5 @@
-// Package firecrawl provides a Go client for the Firecrawl v2 web scraping API.
+// Package firecrawl provides a Go client for Firecrawl, the context API for AI agents:
+// search, scrape, parse, crawl, map, interact, agent, and monitor on the v2 API.
 //
 // Create a client using [NewClient] with functional options:
 //
@@ -190,6 +191,9 @@ func (c *Client) StartCrawl(ctx context.Context, url string, opts *CrawlOptions)
 	body := map[string]interface{}{"url": url}
 	mergeOptions(body, opts)
 
+	if _, ok := body["origin"]; !ok {
+		body["origin"] = "go-sdk@" + Version
+	}
 	raw, err := c.http.post(ctx, "/v2/crawl", body, nil)
 	if err != nil {
 		return nil, err
@@ -306,6 +310,9 @@ func (c *Client) StartBatchScrape(ctx context.Context, urls []string, opts *Batc
 		}
 	}
 
+	if _, ok := body["origin"]; !ok {
+		body["origin"] = "go-sdk@" + Version
+	}
 	raw, err := c.http.post(ctx, "/v2/batch/scrape", body, extraHeaders)
 	if err != nil {
 		return nil, err
@@ -384,6 +391,9 @@ func (c *Client) Map(ctx context.Context, url string, opts *MapOptions) (*MapDat
 	body := map[string]interface{}{"url": url}
 	mergeOptions(body, opts)
 
+	if _, ok := body["origin"]; !ok {
+		body["origin"] = "go-sdk@" + Version
+	}
 	raw, err := c.http.post(ctx, "/v2/map", body, nil)
 	if err != nil {
 		return nil, err
@@ -689,10 +699,8 @@ func (c *Client) RelatedPapers(ctx context.Context, paperID, intent string, opts
 
 // SearchGitHub searches GitHub research content.
 //
-// Deprecated: stops responding after 2026-11-03. Use the developer index at
-// GET or POST /v2/search/developer. This SDK does not wrap it yet, so call it
-// directly. It does not carry over the score breakdown or the web fallback
-// results.
+// Deprecated: stops responding after 2026-11-03. Use DeveloperSearch, which
+// does not carry over the score breakdown or the web fallback results.
 func (c *Client) SearchGitHub(ctx context.Context, query string, opts *SearchGitHubOptions) (*GitHubSearchResponse, error) {
 	if query == "" {
 		return nil, &FirecrawlError{Message: "query is required"}
@@ -708,6 +716,26 @@ func (c *Client) SearchGitHub(ctx context.Context, query string, opts *SearchGit
 		return nil, err
 	}
 	var resp GitHubSearchResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, &FirecrawlError{Message: fmt.Sprintf("failed to decode response: %v", err)}
+	}
+	return &resp, nil
+}
+
+// DeveloperSearch searches the developer index (public repositories, GitHub
+// issues, merged pull requests, READMEs and code documentation).
+func (c *Client) DeveloperSearch(ctx context.Context, query string, opts *DeveloperSearchOptions) (*DeveloperSearchResponse, error) {
+	if strings.TrimSpace(query) == "" {
+		return nil, &FirecrawlError{Message: "query is required"}
+	}
+	body := map[string]interface{}{"query": query}
+	mergeOptions(body, opts)
+	body["origin"] = "go-sdk@" + Version
+	raw, err := c.http.post(ctx, "/v2/search/developer", body, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp DeveloperSearchResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		return nil, &FirecrawlError{Message: fmt.Sprintf("failed to decode response: %v", err)}
 	}
