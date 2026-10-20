@@ -125,17 +125,6 @@ export function queryIndexAtSplitLevel(
   );
 }
 
-export function queryIndexAtDomainSplitLevel(
-  i_level: number,
-  i_domain_hash: Buffer,
-  i_newer_than: string,
-): Promise<{ resolved_url: string }[]> {
-  return execRows(
-    dbIndex,
-    sql`select * from query_index_at_domain_split_level(i_level => ${i_level}, i_domain_hash => ${i_domain_hash}, i_newer_than => ${i_newer_than}::timestamptz)`,
-  );
-}
-
 export function queryOmceSignatures(
   i_domain_hash: Buffer,
   i_newer_than: string,
