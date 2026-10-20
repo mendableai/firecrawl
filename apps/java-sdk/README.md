@@ -350,6 +350,26 @@ if (results.getWeb() != null) {
 }
 ```
 
+### Developer Search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `developerSearch` replaces the deprecated `searchGitHub`.
+
+```java
+import com.firecrawl.models.ResearchModels;
+
+ResearchModels.DeveloperSearchOptions options = new ResearchModels.DeveloperSearchOptions();
+options.k = 5;
+options.types = List.of("issue", "pull_request");
+options.repos = List.of("square/okhttp");
+
+ResearchModels.DeveloperSearchResponse response =
+    client.developerSearch("retry an http request with exponential backoff", options);
+
+for (ResearchModels.DeveloperSearchResult result : response.results) {
+    System.out.println(result.title + " " + result.url);
+}
+```
+
 ### Agent
 
 Run an AI-powered agent to research and extract data from the web.
