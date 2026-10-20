@@ -79,6 +79,43 @@ describeIf(ALLOW_TEST_SUITE_WEBSITE)("X-Integration header", () => {
     scrapeTimeout + 60000,
   );
 
+  concurrentIf(CAN_READ_LOG)(
+    "lets a valid header override a body integration of cli",
+    async () => {
+      const url = createTestIdUrl();
+      const res = await scrapeWithHeader(
+        "/v2/scrape",
+        { url, integration: "cli" },
+        identity,
+        "hermes",
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(await loggedIntegration(identity, url)).toBe("hermes");
+    },
+    scrapeTimeout + 60000,
+  );
+
+  it.concurrent(
+    "keeps a body integration of cli when the header is invalid",
+    async () => {
+      const url = createTestIdUrl();
+      const res = await scrapeWithHeader(
+        "/v2/scrape",
+        { url, integration: "cli" },
+        identity,
+        "not a valid tag!",
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      if (!CAN_READ_LOG) return;
+      expect(await loggedIntegration(identity, url)).toBe("cli");
+    },
+    scrapeTimeout + 60000,
+  );
+
   it.concurrent(
     "ignores an invalid header and still succeeds",
     async () => {

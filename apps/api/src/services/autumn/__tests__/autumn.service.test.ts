@@ -823,6 +823,52 @@ describe("featureIdForBillingEndpoint", () => {
 // getTeamLimits (concurrency + rate-limit multiplier)
 // ---------------------------------------------------------------------------
 
+describe("hasAutoTopUp", () => {
+  const customer = (enabled: boolean, billingMethod?: string) => ({
+    billingControls: {
+      autoTopups: [
+        { featureId: "CREDITS", enabled, threshold: 0, quantity: 1000 },
+      ],
+    },
+    balances: {
+      CREDITS: {
+        breakdown: [
+          { planId: "standard", price: null },
+          ...(billingMethod
+            ? [{ planId: "standard", price: { billingMethod } }]
+            : []),
+        ],
+      },
+    },
+  });
+
+  it("is true for an enabled top-up with a prepaid CREDITS item to buy", async () => {
+    mockCustomerGet.mockResolvedValue(customer(true, "prepaid"));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(true);
+    expect(mockCustomerGet).toHaveBeenCalledWith({ customerId: "org-1" });
+  });
+
+  it("is false when the top-up is disabled", async () => {
+    mockCustomerGet.mockResolvedValue(customer(false, "prepaid"));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(false);
+  });
+
+  it("is false for an enabled top-up with nothing prepaid to buy (free plan)", async () => {
+    mockCustomerGet.mockResolvedValue(customer(true));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(false);
+  });
+
+  it("fails open (true) when Autumn errors", async () => {
+    mockCustomerGet.mockRejectedValue(new Error("autumn down"));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(true);
+  });
+
+  it("fails open (true) without an Autumn client", async () => {
+    state.autumnClientRef = null;
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(true);
+  });
+});
+
 describe("getTeamLimits", () => {
   const lowDefaults = {
     concurrency_limit: 2,

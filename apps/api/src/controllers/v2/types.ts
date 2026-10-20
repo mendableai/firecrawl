@@ -721,6 +721,16 @@ const locationSchema = z
   })
   .optional();
 
+export const countryLocationSchema = z.strictObject({
+  country: z
+    .string()
+    .refine(
+      value => Object.keys(countries).includes(value.toUpperCase()),
+      "Invalid country code. Use a valid ISO 3166-1 alpha-2 country code.",
+    )
+    .transform(value => value.toLowerCase()),
+});
+
 // Unified entity taxonomy exposed to callers. Maps to fire-privacy's
 // internal span kinds (PRIVATE_PERSON / EMAIL_ADDRESS / ACCOUNT_NUMBER /
 // etc.) inside the fire-privacy client. Names chosen to match the public
@@ -1038,6 +1048,7 @@ export type UploadedParseFile = {
 };
 
 const ajv = new Ajv();
+addFormats(ajv);
 const agentAjv = new Ajv();
 addFormats(agentAjv);
 
@@ -1199,6 +1210,7 @@ export const agentRequestSchema = z
     threadId: z.string().uuid().optional(),
     mode: z.enum(["extract", "chat"]).optional(),
     exchange: agentExchangeSchema.optional(),
+    location: countryLocationSchema.optional(),
   })
   // spark-1 is retired and spark-2 is the default. The spark-1 preset names
   // remain valid input and silently resolve to spark-2, so every request —
@@ -2843,22 +2855,40 @@ const missingContentEntrySchema = z.strictObject({
   description: z.string().trim().max(2000).optional(),
 });
 
+/**
+ * A single valuable search result, addressed by the group it appears in and its
+ * 1-indexed position within that group. Results are returned grouped
+ * (`data.web`, `data.images`, `data.news`), each group sliced independently to
+ * `limit`, so a bare position is ambiguous once more than one source is in play.
+ */
+const valuableResultSchema = z.strictObject({
+  source: z.enum(["web", "images", "news"]),
+  // 100 is the max search `limit`, and each group is capped at `limit`
+  // independently, so positions beyond it can only be hallucinated.
+  position: z.number().int().positive().lte(100),
+  reason: z.string().trim().max(1000).optional(),
+});
+
+const valuableResultsSchema = z.array(valuableResultSchema).max(50);
+
 function hasSubstantiveSearchFeedback(data: {
   rating: "good" | "bad" | "partial";
   valuableSources?: unknown[];
+  valuableResults?: unknown[];
   missingContent?: unknown[];
   querySuggestions?: string;
 }): boolean {
   const hasSources = (data.valuableSources?.length ?? 0) > 0;
+  const hasResults = (data.valuableResults?.length ?? 0) > 0;
   const hasMissing = (data.missingContent?.length ?? 0) > 0;
   const hasSuggestions =
     !!data.querySuggestions && data.querySuggestions.length > 0;
 
   switch (data.rating) {
     case "good":
-      return hasSources;
+      return hasSources || hasResults;
     case "partial":
-      return hasSources || hasMissing;
+      return hasSources || hasResults || hasMissing;
     case "bad":
       return hasMissing || hasSuggestions;
   }
@@ -2878,6 +2908,7 @@ export const searchFeedbackSchema = z
       )
       .max(50)
       .optional(),
+    valuableResults: valuableResultsSchema.optional(),
     missingContent: z.array(missingContentEntrySchema).max(20).optional(),
     querySuggestions: z.string().trim().max(2000).optional(),
     origin: z.string().optional().prefault("api"),
@@ -2885,7 +2916,7 @@ export const searchFeedbackSchema = z
   })
   .refine(data => hasSubstantiveSearchFeedback(data), {
     message:
-      "Feedback must be substantive. 'good' requires at least one valuableSources entry; 'partial' requires valuableSources or at least one missingContent entry; 'bad' requires at least one missingContent entry or querySuggestions.",
+      "Feedback must be substantive. 'good' requires valuableSources or valuableResults; 'partial' requires valuableSources, valuableResults, or at least one missingContent entry; 'bad' requires at least one missingContent entry or querySuggestions.",
   });
 
 export type SearchFeedbackRequest = z.infer<typeof searchFeedbackSchema>;
@@ -2966,6 +2997,7 @@ export const endpointFeedbackSchema = z
       )
       .max(50)
       .optional(),
+    valuableResults: valuableResultsSchema.optional(),
     missingContent: z.array(missingContentEntrySchema).max(50).optional(),
     querySuggestions: z.string().trim().max(2000).optional(),
     url: searchFeedbackUrlSchema.optional(),
@@ -2981,6 +3013,7 @@ export const endpointFeedbackSchema = z
         (data.tags?.length ?? 0) > 0 ||
         (data.note?.length ?? 0) > 0 ||
         (data.valuableSources?.length ?? 0) > 0 ||
+        (data.valuableResults?.length ?? 0) > 0 ||
         (data.missingContent?.length ?? 0) > 0 ||
         !!data.querySuggestions ||
         !!data.url ||
@@ -2989,14 +3022,21 @@ export const endpointFeedbackSchema = z
     },
     {
       message:
-        "Feedback must include at least one substantive signal: issues, note, sources, missingContent, querySuggestions, url, or pageNumbers.",
+        "Feedback must include at least one substantive signal: issues, note, sources, valuableResults, missingContent, querySuggestions, url, or pageNumbers.",
+    },
+  )
+  .refine(
+    data =>
+      data.endpoint === "search" || (data.valuableResults?.length ?? 0) === 0,
+    {
+      message: "valuableResults is only supported for search feedback.",
     },
   )
   .refine(
     data => data.endpoint !== "search" || hasSubstantiveSearchFeedback(data),
     {
       message:
-        "Search feedback must be substantive. 'good' requires at least one valuableSources entry; 'partial' requires valuableSources or at least one missingContent entry; 'bad' requires at least one missingContent entry or querySuggestions.",
+        "Search feedback must be substantive. 'good' requires valuableSources or valuableResults; 'partial' requires valuableSources, valuableResults, or at least one missingContent entry; 'bad' requires at least one missingContent entry or querySuggestions.",
     },
   );
 

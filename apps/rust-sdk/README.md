@@ -234,6 +234,30 @@ match map_result {
 }
 ```
 
+### Developer search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `developer_search` replaces the deprecated `search_github`.
+
+```rust
+use firecrawl::{Client, DeveloperSearchOptions};
+
+let client = Client::new("fc-YOUR-API-KEY")?;
+let response = client
+    .developer_search(
+        "retry an http request with exponential backoff",
+        DeveloperSearchOptions {
+            k: Some(5),
+            repos: Some(vec!["tokio-rs/tokio".to_string()]),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+for result in response.results {
+    println!("{} {}", result.title.unwrap_or_default(), result.url);
+}
+```
+
 ### Scrape-bound interactive browsing (v2)
 
 Use a scrape job ID to keep interacting with the replayed browser context:

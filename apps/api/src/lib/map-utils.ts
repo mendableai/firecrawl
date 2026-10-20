@@ -51,7 +51,7 @@ function dedupeMapDocumentArray(documents: MapDocument[]): MapDocument[] {
   return Array.from(urlMap.values());
 }
 
-async function queryIndex(
+export async function queryIndex(
   url: string,
   limit: number,
   useIndex: boolean,

@@ -136,6 +136,7 @@ export async function providerScrapeController(
       scrapeId: uuidv7(),
       timeoutMs: body.timeout,
       bypassBilling: body.__agentInterop?.shouldBill === false,
+      clientIp: req.ip,
     });
   } catch (error) {
     logger.error("Provider scrape unavailable", {

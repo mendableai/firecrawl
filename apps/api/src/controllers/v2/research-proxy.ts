@@ -23,15 +23,20 @@ import type {
   ResearchTableName,
 } from "../../services/logging/log_job";
 import type { RequestWithAuth } from "../v1/types";
-import { wrap } from "../../routes/shared";
+import { checkCreditsMiddleware, wrap } from "../../routes/shared";
+import { SEARCH_CREDITS_FEATURE_ID } from "../../services/autumn/autumn.service";
 import { deprecationMiddleware } from "../../lib/deprecations";
-import {
-  integrationFromHeader,
-  integrationSchema,
-} from "../../utils/integration";
+import { integrationSchema, resolveIntegration } from "../../utils/integration";
 import { requestOrigin } from "../../lib/request-origin";
 
 const SEARCH_CREDITS_PER_TEN_RESULTS = 2;
+// Billed developer and GitHub searches are refused up front when the team
+// can't cover the smallest search charge, the same gate /v2/search applies.
+const searchCreditGate = () =>
+  checkCreditsMiddleware(
+    SEARCH_CREDITS_PER_TEN_RESULTS,
+    SEARCH_CREDITS_FEATURE_ID,
+  );
 const ZDR_SEARCH_CREDITS_PER_TEN_RESULTS = 10;
 
 const DEVELOPER_SEARCH_TIMEOUT_MS = 15_000;
@@ -288,6 +293,7 @@ async function fetchForRequest(
   endpoint: ResearchEndpointConfig,
   params: Record<string, any>,
   queryKeys: string[],
+  zeroDataRetention: boolean,
 ) {
   const headers: Record<string, string> = {};
   for (const h of FORWARDED_REQUEST_HEADERS) {
@@ -295,6 +301,7 @@ async function fetchForRequest(
     if (typeof v === "string") headers[h] = v;
   }
   headers["firecrawl-team-id"] = req.auth.team_id;
+  headers["firecrawl-zero-data-retention"] = String(zeroDataRetention);
 
   if ("fetchUpstream" in endpoint) {
     return endpoint.fetchUpstream(params, headers);
@@ -327,6 +334,7 @@ function createResearchController(
       method: endpoint.action,
       jobId,
       teamId: authedReq.auth.team_id,
+      zeroDataRetention,
     });
 
     const source = req.method === "POST" ? (req.body ?? {}) : req.query;
@@ -354,7 +362,7 @@ function createResearchController(
       external_request_id: externalRequestId(authedReq),
       team_id: authedReq.auth.team_id,
       origin: requestOrigin(params, req),
-      integration: params.integration ?? integrationFromHeader(req) ?? null,
+      integration: resolveIntegration(params.integration, req) ?? null,
       target_hint: targetHint,
       zeroDataRetention,
       api_key_id: authedReq.acuc?.api_key_id ?? null,
@@ -386,6 +394,7 @@ function createResearchController(
         endpoint,
         params,
         queryKeys,
+        zeroDataRetention,
       );
       if (!upstream) {
         if (releaseGovCall) await releaseGovCall();
@@ -574,6 +583,7 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
   router.get(
     "/github",
     deprecationMiddleware("v2_research_github_search"),
+    searchCreditGate(),
     wrap(
       createResearchController(
         githubSearchSchema,
@@ -614,12 +624,13 @@ export function createDeveloperRouter(options: { root?: boolean } = {}) {
     ),
   );
 
+  const gate = searchCreditGate();
   if (options.root) {
-    router.get("/", controller);
-    router.post("/", controller);
+    router.get("/", gate, controller);
+    router.post("/", gate, controller);
   } else {
-    router.get("/search", controller);
-    router.post("/search", controller);
+    router.get("/search", gate, controller);
+    router.post("/search", gate, controller);
   }
 
   return router;

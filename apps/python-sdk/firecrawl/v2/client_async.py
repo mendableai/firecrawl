@@ -876,6 +876,7 @@ class AsyncFirecrawlClient:
         thread_id: Optional[str] = None,
         mode: Optional[Literal["extract", "chat"]] = None,
         exchange: Optional[Union[AgentExchangeOptions, Dict[str, Any]]] = None,
+        location: Optional[Dict[str, str]] = None,
     ):
         return await async_agent.agent(
             self.async_http_client,
@@ -895,6 +896,7 @@ class AsyncFirecrawlClient:
             thread_id=thread_id,
             mode=mode,
             exchange=exchange,
+            location=location,
         )
 
     async def get_agent_status(self, job_id: str):
@@ -917,6 +919,7 @@ class AsyncFirecrawlClient:
         thread_id: Optional[str] = None,
         mode: Optional[Literal["extract", "chat"]] = None,
         exchange: Optional[Union[AgentExchangeOptions, Dict[str, Any]]] = None,
+        location: Optional[Dict[str, str]] = None,
     ):
         return await async_agent.start_agent(
             self.async_http_client,
@@ -934,6 +937,7 @@ class AsyncFirecrawlClient:
             thread_id=thread_id,
             mode=mode,
             exchange=exchange,
+            location=location,
         )
 
     async def cancel_agent(self, job_id: str) -> bool:

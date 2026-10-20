@@ -1552,6 +1552,7 @@ class FirecrawlClient:
         thread_id: Optional[str] = None,
         mode: Optional[Literal["extract", "chat"]] = None,
         exchange: Optional[Union[AgentExchangeOptions, Dict[str, Any]]] = None,
+        location: Optional[Dict[str, str]] = None,
     ):
         """Start an agent job (non-blocking).
 
@@ -1570,6 +1571,10 @@ class FirecrawlClient:
             thread_id: Continue an existing thread instead of starting one
             mode: "extract" (default) or "chat"
             exchange: Data provider options, forwarded as sent
+            location: Country for the whole run, as ``{"country": "DE"}``
+                (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied
+                from it, and search results are localized to it without changing
+                where requests come from. The agent cannot change it.
         Returns:
             Response payload with job id/status (poll with get_agent_status)
         """
@@ -1589,6 +1594,7 @@ class FirecrawlClient:
             thread_id=thread_id,
             mode=mode,
             exchange=exchange,
+            location=location,
         )
 
     def agent(
@@ -1610,6 +1616,7 @@ class FirecrawlClient:
         thread_id: Optional[str] = None,
         mode: Optional[Literal["extract", "chat"]] = None,
         exchange: Optional[Union[AgentExchangeOptions, Dict[str, Any]]] = None,
+        location: Optional[Dict[str, str]] = None,
     ):
         """Run an agent and wait until completion.
 
@@ -1630,6 +1637,10 @@ class FirecrawlClient:
             thread_id: Continue an existing thread instead of starting one
             mode: "extract" (default) or "chat"
             exchange: Data provider options, forwarded as sent
+            location: Country for the whole run, as ``{"country": "DE"}``
+                (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied
+                from it, and search results are localized to it without changing
+                where requests come from. The agent cannot change it.
         Returns:
             Final agent response when completed
         """
@@ -1651,6 +1662,7 @@ class FirecrawlClient:
             thread_id=thread_id,
             mode=mode,
             exchange=exchange,
+            location=location,
         )
 
     def get_agent_status(self, job_id: str):

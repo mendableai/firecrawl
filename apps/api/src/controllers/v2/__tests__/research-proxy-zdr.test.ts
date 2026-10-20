@@ -43,7 +43,7 @@ function routeHandler(router: any, path: string) {
     (candidate: any) =>
       candidate.route?.path === path && candidate.route?.methods?.get,
   );
-  return layer.route.stack[0].handle;
+  return layer.route.stack.at(-1).handle;
 }
 
 function makeReq(
@@ -128,6 +128,13 @@ describe.each([
     expect(mocks.logResearchEndpoint).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: true }),
     );
+    expect(mocks.fetchResearchUpstream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "firecrawl-zero-data-retention": "true",
+        }),
+      }),
+    );
   });
 
   it("keeps normal retention for a team that may opt into ZDR", async () => {
@@ -140,6 +147,13 @@ describe.each([
     );
     expect(mocks.logResearchEndpoint).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: false }),
+    );
+    expect(mocks.fetchResearchUpstream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "firecrawl-zero-data-retention": "false",
+        }),
+      }),
     );
   });
 });

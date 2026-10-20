@@ -89,6 +89,7 @@ function exchangeProxy(
           ),
           ...(hasBody ? { "content-type": "application/json" } : {}),
           "x-exchange-team-id": authedReq.auth.team_id,
+          ...(req.ip ? { "x-exchange-client-ip": req.ip } : {}),
           // Built here, never forwarded from the caller: the connectors whitelist is this flag.
           ...(authedReq.acuc?.flags?.exchangeRetrieve
             ? { "x-exchange-connectors": "true" }
@@ -253,25 +254,26 @@ exchangeRouter.delete(
   wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
 );
 
+// Every team may list, read and write its own skills; Exchange scopes them by the stamped team.
 exchangeRouter.get(
   "/team-skills{/*path}",
   authMiddleware(RateLimiterMode.Labs),
-  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );
 exchangeRouter.post(
   "/team-skills{/*path}",
   authMiddleware(RateLimiterMode.Labs),
-  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );
 exchangeRouter.patch(
   "/team-skills{/*path}",
   authMiddleware(RateLimiterMode.Labs),
-  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );
 exchangeRouter.delete(
   "/team-skills{/*path}",
   authMiddleware(RateLimiterMode.Labs),
-  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );
 
 exchangeRouter.post(
