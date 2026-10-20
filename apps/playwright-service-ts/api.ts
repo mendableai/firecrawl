@@ -330,8 +330,10 @@ const scrapePage = async (
   let headers = null,
     content = await page.content(),
     landedUrl = page.url();
-  // Covers client-side redirects (location.href) that happen after goto resolves.
-  if (/^https?:/i.test(landedUrl)) await assertSafeTargetUrl(landedUrl);
+  // Re-check the landed URL too, which also covers client-side (location.href)
+  // redirects. Unconditional, like the initial-URL check above, so a non-http(s)
+  // client-side navigation (about:blank, data:, file:) is rejected, not returned.
+  await assertSafeTargetUrl(landedUrl);
   let ct: string | undefined = undefined;
   if (response) {
     headers = await response.allHeaders();
