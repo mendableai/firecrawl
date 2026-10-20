@@ -194,6 +194,43 @@ foreach (var doc in job.Data!)
 }
 ```
 
+### Agent
+
+Describe what you need in a prompt; the agent searches, navigates and extracts it.
+Pass a JSON Schema to get structured output.
+
+```csharp
+// Run an agent job with auto-polling (waits until it completes, fails or is cancelled)
+var result = await client.AgentAsync("Find the pricing plans and their monthly prices",
+    new AgentOptions
+    {
+        Urls = new List<string> { "https://example.com" },
+        Schema = new Dictionary<string, object>
+        {
+            ["type"] = "object",
+            ["properties"] = new Dictionary<string, object>
+            {
+                ["plans"] = new Dictionary<string, object> { ["type"] = "array" }
+            }
+        }
+    });
+
+if (result.Status == "completed")
+    Console.WriteLine(result.Data);
+else
+    Console.WriteLine($"{result.Status}: {result.Error}");
+
+// Start an agent job without waiting
+var started = await client.StartAgentAsync("Summarize the latest blog post on example.com");
+
+// Check status later
+var status = await client.GetAgentStatusAsync(started.Id!);
+Console.WriteLine($"Status: {status.Status}, Credits used: {status.CreditsUsed}");
+
+// Cancel an agent job
+await client.CancelAgentAsync(started.Id!);
+```
+
 ### Parse
 
 Upload and parse a local file (HTML, PDF, DOCX, etc.) through the `/v2/parse`

@@ -2,7 +2,7 @@ import { autumnService } from "../../services/autumn/autumn.service";
 import { logger } from "../../lib/logger";
 
 export const AGENT_DEFAULT_MAX_CREDITS = 2500;
-export const AGENT_MIN_CREDITS = 20;
+const AGENT_MIN_CREDITS = 20;
 export const CREDIT_CHECK_EXEMPT_TEAM_ID =
   "8c528896-7882-4587-a4b6-768b721b0b53";
 
