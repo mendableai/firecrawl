@@ -1050,6 +1050,7 @@ export type UploadedParseFile = {
 };
 
 const ajv = new Ajv();
+addFormats(ajv);
 const agentAjv = new Ajv();
 addFormats(agentAjv);
 
