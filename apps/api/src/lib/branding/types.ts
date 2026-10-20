@@ -86,6 +86,9 @@ export interface BrandingLLMInput {
     area?: number;
   }>;
   screenshot?: string;
+  /** The page's first screen for Jev (a JPEG/PNG URL or data URL), captured
+   * after the branding scan when the team is in BRANDING_JEV_SCREENSHOT_PERCENT. */
+  firstScreen?: string;
   url: string;
   /** Optional header/nav HTML chunk for LLM when no logo candidates (fallback context). */
   headerHtmlChunk?: string;

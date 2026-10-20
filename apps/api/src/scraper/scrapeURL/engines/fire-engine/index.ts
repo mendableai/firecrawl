@@ -56,6 +56,7 @@ import { AbortManagerThrownError } from "../../lib/abortManager";
 import { youtubePostprocessor } from "../../postprocessors/youtube";
 import { withSpan, setSpanAttributes } from "../../../../lib/otel-tracer";
 import { getBrandingScript } from "./brandingScript";
+import { wantsBrandingScreenshot } from "../../../../lib/branding/jev";
 import { abTestFireEngine } from "../../../../services/ab-test";
 import { scheduleABComparison } from "../../../../services/ab-test-comparison";
 
@@ -383,6 +384,15 @@ export async function scrapeURLWithFireEngineChromeCDP(
         ? meta.options.waitFor
         : defaultWait;
 
+    // The page's first screen for Jev's branding call: taken after the branding
+    // scan (so the scan still measures the real viewport), as a 1280x720 JPEG.
+    // TypeSafe accepts at most 1568 px a side; 1280 is what the quality eval
+    // used and costs about a third fewer image tokens.
+    const brandingScreenshot =
+      !wantsRawBase64 &&
+      !!hasFormatOfType(meta.options.formats, "branding") &&
+      wantsBrandingScreenshot(meta.internalOptions.zeroDataRetention);
+
     const actions: InternalAction[] = [
       // Transform waitFor option into an action (unsupported by chrome-cdp).
       // When branding is requested and user didn't set waitFor, use a default wait so the page is ready and we avoid JS errors.
@@ -426,6 +436,19 @@ export async function scrapeURLWithFireEngineChromeCDP(
               type: "executeJavascript" as const,
               script: getBrandingScript(),
               realViewport: true,
+              metadata: { __firecrawl_internal: true },
+            },
+          ]
+        : []),
+      ...(brandingScreenshot
+        ? [
+            {
+              type: "screenshot" as const,
+              fullPage: false,
+              quality: 70,
+              // Spread like the screenshot format's viewport: fire-engine takes
+              // it, the v1 action type doesn't declare it.
+              ...{ viewport: { width: 1280, height: 720 } },
               metadata: { __firecrawl_internal: true },
             },
           ]
@@ -521,6 +544,14 @@ export async function scrapeURLWithFireEngineChromeCDP(
       true,
     );
 
+    // Ours is the last screenshot action; take it out before the screenshot
+    // format and the user's actions claim theirs.
+    let brandingScreenshotUrl: string | undefined;
+    if (brandingScreenshot && response.screenshots?.length) {
+      brandingScreenshotUrl = response.screenshots.slice(-1)[0];
+      response.screenshots = response.screenshots.slice(0, -1);
+    }
+
     let screenshot: string | undefined;
     if (hasFormatOfType(meta.options.formats, "screenshot")) {
       if (response.screenshots && response.screenshots.length > 0) {
@@ -604,6 +635,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
       contentType,
 
       screenshot,
+      brandingScreenshot: brandingScreenshotUrl,
       ...(actions.length > 0
         ? {
             actions: {

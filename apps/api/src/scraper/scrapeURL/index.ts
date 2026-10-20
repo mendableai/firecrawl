@@ -162,6 +162,9 @@ export type BrowserCookie = {
 };
 
 export type Meta = {
+  /** URL of the page's first screen captured for Jev's branding call (see
+   * BRANDING_JEV_SCREENSHOT). Internal: never part of the document. */
+  brandingScreenshot?: string;
   id: string;
   url: string;
   rewrittenUrl?: string;
@@ -1222,6 +1225,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           : warning;
     }
 
+    meta.brandingScreenshot = engineResult.brandingScreenshot;
     document = await executeTransformers(meta, document);
 
     // Set final span attributes

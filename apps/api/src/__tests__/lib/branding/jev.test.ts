@@ -401,6 +401,72 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
   });
 
+  describe("with the page's first screen", () => {
+    // 1x1 PNG
+    const PNG =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    const sentWith = () => mocks.systemOne.mock.calls[0];
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("attaches it as an image, opts in, and points the questions at it", async () => {
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = `data:image/png;base64,${PNG}`;
+      await enhanceBrandingWithLLM(input);
+
+      const [request, options] = sentWith();
+      expect(Object.keys(request.assets ?? {})).toEqual(["<screenshot>"]);
+      expect(request.state.page.first_screen).toBe("<screenshot>");
+      expect(request.questions.primary_button.instructions).toContain(
+        "<screenshot>",
+      );
+      expect(options.headers).toEqual({
+        "TypeSafe-Danger-Zone-Images": "true",
+      });
+    });
+
+    it("downloads a screenshot fire-engine uploaded", async () => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(Buffer.from(PNG, "base64"), {
+            status: 200,
+            headers: { "content-type": "image/jpeg" },
+          }),
+      );
+      vi.stubGlobal("fetch", fetch);
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = "https://storage.example/branding.jpg";
+      await enhanceBrandingWithLLM(input);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://storage.example/branding.jpg",
+        expect.anything(),
+      );
+      expect(Object.keys(sentWith()[0].assets ?? {})).toEqual(["<screenshot>"]);
+    });
+
+    it("answers without it when the screenshot can't be read", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response("gone", { status: 404 })),
+      );
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = "https://storage.example/missing.jpg";
+      const result = await enhanceBrandingWithLLM(input);
+
+      const [request, options] = sentWith();
+      expect(request.assets).toBeUndefined();
+      expect(request.state.page.first_screen).toBeUndefined();
+      expect(options.headers).toBeUndefined();
+      expect(
+        result.buttonClassification.primaryButtonIndex,
+      ).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   it("fails fast when TypeSafe asks to back off, and retries a 503 or a timeout once, quickly", async () => {
     // The options Jev passes, run through the real SDK against a fake server.
     mocks.systemOne.mockResolvedValueOnce(jevResponse());

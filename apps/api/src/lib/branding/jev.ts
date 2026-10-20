@@ -11,7 +11,7 @@ import { formatHex, hsl, parse, wcagContrast } from "culori";
 import { config } from "../../config";
 import { setSpanAttributes, SpanKind, withSpan } from "../otel-tracer";
 import { getTypeSafeClient } from "../typesafe";
-import { APITimeoutError, RateLimitError } from "@typesafe-ai/sdk";
+import { APITimeoutError, Image, RateLimitError } from "@typesafe-ai/sdk";
 import {
   brandingJevBreakerOpensTotal,
   brandingJevCallsTotal,
@@ -518,6 +518,8 @@ const wellFormed = (value: JsonValue): JsonValue =>
 type JevRequest = {
   state: Record<string, JsonValue>;
   questions: Record<string, Question>;
+  /** The page's first screen, referenced as SCREENSHOT in state and questions. */
+  assets?: Record<string, Image>;
   colors: ColorCandidate[];
   fonts: FontCandidate[];
   logoCount: number;
@@ -528,7 +530,67 @@ type JevRequest = {
   buttonBackgrounds: string[];
 };
 
-export function buildJevRequest(input: BrandingLLMInput): JevRequest {
+// The page's first screen, when the scrape captured one, is attached as an image
+// and referenced from the questions a look at the page answers better.
+const SCREENSHOT = "<screenshot>";
+const SCREENSHOT_FETCH_TIMEOUT_MS = 3000;
+const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
+
+/** Whether a branding scrape captures a first screen for Jev to look at. */
+export function wantsBrandingScreenshot(
+  zeroDataRetention: boolean | undefined,
+): boolean {
+  return (
+    isJevBrandingEnabled() &&
+    config.BRANDING_JEV_SCREENSHOT !== false &&
+    !zeroDataRetention
+  );
+}
+
+/**
+ * The first screen as a TypeSafe image: a PNG/JPEG data URL, or a URL to one
+ * (fire-engine uploads screenshots). Undefined when it can't be read in time,
+ * so Jev answers from the page data alone.
+ */
+async function loadFirstScreen(
+  firstScreen: string | undefined,
+  logger: BrandingLLMInput["logger"],
+): Promise<Image | undefined> {
+  if (!firstScreen) return undefined;
+  const inline = firstScreen.match(/^data:image\/(?:png|jpeg);base64,(.+)$/);
+  if (inline) return Image.fromBase64(inline[1]);
+  if (!/^https?:\/\//.test(firstScreen)) return undefined;
+  try {
+    const response = await fetch(firstScreen, {
+      signal: AbortSignal.timeout(SCREENSHOT_FETCH_TIMEOUT_MS),
+    });
+    const type = response.headers.get("content-type") ?? "";
+    if (!response.ok || !/^image\/(png|jpeg)/.test(type)) {
+      logger.warn("Branding screenshot not usable for Jev", {
+        status: response.status,
+        type,
+      });
+      return undefined;
+    }
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength === 0 || bytes.byteLength > SCREENSHOT_MAX_BYTES) {
+      return undefined;
+    }
+    return new Image(bytes);
+  } catch (error) {
+    logger.warn("Branding screenshot could not be read for Jev", { error });
+    return undefined;
+  }
+}
+
+export function buildJevRequest(
+  input: BrandingLLMInput,
+  screenshot?: Image,
+): JevRequest {
+  const look = (what: string) =>
+    screenshot
+      ? ` ${SCREENSHOT} shows the top of the page as a visitor first sees it: ${what}`
+      : "";
   const pageUrl = input.pageUrl || input.url;
   const logos = (input.logoCandidates ?? []).slice(0, MAX_LOGOS);
   const buttons = (input.buttons ?? []).slice(0, MAX_BUTTONS);
@@ -541,6 +603,7 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
       title: clip(input.pageTitle, 200),
       brand_name_hint: clip(input.brandName, 80),
       color_scheme: input.jsAnalysis.colorScheme ?? "unknown",
+      ...(screenshot ? { first_screen: SCREENSHOT } : {}),
     },
   };
 
@@ -641,7 +704,10 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
     questions.logo = {
       type: "choice",
       instructions:
-        "Which entry in `logo_candidates` is this website's own primary brand logo: the mark of the brand named by `page` (title, URL, brand_name_hint), normally visible in the header and linking to the homepage? Menu, hamburger, close, social, partner, customer and payment icons are not the brand logo.",
+        "Which entry in `logo_candidates` is this website's own primary brand logo: the mark of the brand named by `page` (title, URL, brand_name_hint), normally visible in the header and linking to the homepage? Menu, hamburger, close, social, partner, customer and payment icons are not the brand logo." +
+        look(
+          "the brand logo is the mark it shows for this site, usually top left.",
+        ),
       criteria: options(
         ids("logo", logos.length),
         "No candidate is this website's own brand logo.",
@@ -654,14 +720,18 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
     questions.primary_button = {
       type: "choice",
       instructions:
-        "Which entry in `buttons` is the site's primary call-to-action button: the most prominent action a visitor is invited to take (such as Sign up, Get started, Buy, Book a demo, Donate)? It is usually filled with the brand's color; a white, gray, black or transparent button is the primary only when no call to action uses a brand color, or the brand is deliberately monochrome. Cookie-consent buttons are not calls to action.",
+        "Which entry in `buttons` is the site's primary call-to-action button: the most prominent action a visitor is invited to take (such as Sign up, Get started, Buy, Book a demo, Donate)? It is usually filled with the brand's color; a white, gray, black or transparent button is the primary only when no call to action uses a brand color, or the brand is deliberately monochrome. Cookie-consent buttons are not calls to action." +
+        look(
+          "the primary button is the one that stands out most there, usually a filled, colored button in the hero or header. A gray, pale or disabled-looking button is not it.",
+        ),
       // No "none": when a page has buttons, one of them is the primary style.
       criteria: options(buttonIds),
     };
     questions.secondary_button = {
       type: "choice",
       instructions:
-        "Which entry in `buttons` is the secondary action button: a less prominent alternative to the primary one (such as Learn more, Contact sales, Log in), usually outlined, neutral or a different color?",
+        "Which entry in `buttons` is the secondary action button: a less prominent alternative to the primary one (such as Learn more, Contact sales, Log in), usually outlined, neutral or a different color?" +
+        look("the secondary button is usually next to the primary one."),
       criteria: options(buttonIds, "There is no secondary button."),
     };
   }
@@ -671,7 +741,10 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
     questions.primary_color = {
       type: "choice",
       instructions:
-        "Which entry in `colors` is the brand's main color: the distinctive color of its logo, primary buttons and highlights? Page chrome such as white or black backgrounds, gray text and borders is not the brand color unless the brand is deliberately monochrome.",
+        "Which entry in `colors` is the brand's main color: the distinctive color of its logo, primary buttons and highlights? Page chrome such as white or black backgrounds, gray text and borders is not the brand color unless the brand is deliberately monochrome." +
+        look(
+          "the brand color is the one its logo and main buttons show there.",
+        ),
       criteria: options(colorIds),
     };
     questions.accent_color = {
@@ -775,6 +848,7 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
   return {
     state: wellFormed(state) as Record<string, JsonValue>,
     questions,
+    ...(screenshot ? { assets: { [SCREENSHOT]: screenshot } } : {}),
     colors,
     fonts,
     logoCount: logos.length,
@@ -1021,12 +1095,13 @@ export async function enhanceBrandingWithJev(
     count("breaker_open");
     return null;
   }
+  const screenshot = await loadFirstScreen(input.firstScreen, input.logger);
   const started = Date.now();
   let request: JevRequest;
   let response: JevResponse;
   let called = false;
   try {
-    request = buildJevRequest(input);
+    request = buildJevRequest(input, screenshot);
     response = await withSpan(
       "typesafe.systemone",
       async span => {
@@ -1036,10 +1111,15 @@ export async function enhanceBrandingWithJev(
             model: JEV_MODEL,
             state: request.state,
             questions: request.questions,
+            ...(request.assets ? { assets: request.assets } : {}),
           },
           {
             timeout: config.BRANDING_JEV_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS,
             retry: JEV_RETRY,
+            // Image input is opt-in per request.
+            ...(request.assets
+              ? { headers: { "TypeSafe-Danger-Zone-Images": "true" } }
+              : {}),
           },
         );
         setSpanAttributes(span, {
@@ -1057,6 +1137,7 @@ export async function enhanceBrandingWithJev(
         attributes: {
           feature: "branding",
           "branding.jev.questions": Object.keys(request.questions).length,
+          "branding.jev.screenshot": !!screenshot,
           ...(input.scrapeId ? { scrapeId: input.scrapeId } : {}),
           ...(input.teamId ? { teamId: input.teamId } : {}),
         },
