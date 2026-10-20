@@ -61,7 +61,9 @@ overrides:
   "form-data@>=3.0.0 <3.0.5": "3.0.5"
   "form-data@>=4.0.0 <4.0.6": "4.0.6"
   "@babel/core@>=7.0.0 <7.29.6": "7.29.7"
-  "follow-redirects@<1.16.0": ">=1.16.0 <2.0.0"
+  # GHSA-Q3JH-WRC6-JGQ8 / GHSA-8R9P-F939-6H3C: fixed in 1.16.1.
+  # Replacement is bounded <2.0.0; cannot resolve to follow-redirects 2.x.
+  "follow-redirects@<1.16.1": ">=1.16.1 <2.0.0"
   "uuid@<11.1.1": "11.1.1"
   "js-cookie@<3.0.7": "3.0.7"
   # GHSA-pqg4-j6r4-53mv: fixed in 1.11.0.

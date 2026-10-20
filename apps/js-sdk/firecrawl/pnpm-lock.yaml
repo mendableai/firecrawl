@@ -11,7 +11,7 @@ overrides:
   picomatch@<4.0.4: '>=4.0.4'
   brace-expansion@>=5.0.0 <5.0.12: 5.0.12
   axios@>=1.0.0 <1.20.0: 1.20.0
-  follow-redirects@<1.16.0: '>=1.16.0 <2.0.0'
+  follow-redirects@<1.16.1: '>=1.16.1 <2.0.0'
   form-data@>=4.0.0 <4.0.6: 4.0.6
   esbuild@>=0.17.0 <0.28.1: 0.28.1
 
@@ -719,8 +719,8 @@ packages:
   fix-dts-default-cjs-exports@1.0.1:
     resolution: {integrity: sha512-pVIECanWFC61Hzl2+oOCtoJ3F17kglZC/6N94eRWycFgBH35hHx0Li604ZIzhseh97mf2p0cv7vVrOZGoqhlEg==}
 
-  follow-redirects@1.16.0:
-    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
+  follow-redirects@1.16.1:
+    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -1573,7 +1573,7 @@ snapshots:
 
   axios@1.20.0:
     dependencies:
-      follow-redirects: 1.16.0
+      follow-redirects: 1.16.1
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -1727,7 +1727,7 @@ snapshots:
       mlly: 1.7.4
       rollup: 4.59.0
 
-  follow-redirects@1.16.0: {}
+  follow-redirects@1.16.1: {}
 
   foreground-child@3.3.1:
     dependencies:
