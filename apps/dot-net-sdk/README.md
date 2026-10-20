@@ -305,6 +305,25 @@ var results = await client.SearchAsync("firecrawl web scraping",
     });
 ```
 
+### Developer Search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `DeveloperSearchAsync` replaces the deprecated `SearchGitHubAsync`.
+
+```csharp
+var response = await client.DeveloperSearchAsync("retry an http request with exponential backoff",
+    new DeveloperSearchOptions
+    {
+        K = 5,
+        Types = new List<string> { "issue", "pull_request" },
+        Repos = new List<string> { "square/okhttp" }
+    });
+
+foreach (var result in response.Results!)
+{
+    Console.WriteLine($"{result.Title} {result.Url}");
+}
+```
+
 ### Usage & Metrics
 
 ```csharp
