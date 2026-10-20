@@ -835,6 +835,21 @@ describe("V2 Types Validation", () => {
       expect(result.prompt).toBe("Extract the title");
     });
 
+    it("should accept an extract schema that uses standard string formats", () => {
+      const input: ExtractRequestInput = {
+        urls: ["https://example.com"],
+        schema: {
+          type: "object",
+          properties: {
+            contact: { type: "string", format: "email" },
+          },
+        },
+      };
+
+      const result = extractRequestSchema.parse(input);
+      expect(result.schema).toBeDefined();
+    });
+
     it("should reject extract request without urls or prompt", () => {
       const input = {
         schema: {
