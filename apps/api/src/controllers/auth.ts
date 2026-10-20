@@ -52,7 +52,7 @@ import {
   type TeamLimits,
 } from "../services/autumn/autumn.service";
 import { ReplyError } from "ioredis";
-import { integrationFromHeader } from "../utils/integration";
+import { resolveIntegration } from "../utils/integration";
 
 const ACUC_TTL_SECONDS = 600;
 // A chunk built on the fail-open limits is cached only briefly, so a
@@ -627,7 +627,7 @@ async function handleKeylessAuth(
   }
 
   const origin = req.body?.origin;
-  const integration = req.body?.integration ?? integrationFromHeader(req);
+  const integration = resolveIntegration(req.body?.integration, req);
   // No origin/surface gate: any request without an API key may use the free
   // tier on the allowlisted endpoints (the API itself is free). origin and
   // integration are still recorded below for abuse monitoring, and pick the
