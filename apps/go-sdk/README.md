@@ -417,6 +417,9 @@ func (b *cappedBody) Read(p []byte) (int, error) {
 	}
 	n, err := b.ReadCloser.Read(p)
 	b.remaining -= int64(n)
+	if b.remaining <= 0 {
+		return n, errResponseTooLarge
+	}
 	return n, err
 }
 
