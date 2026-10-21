@@ -26,6 +26,7 @@ import {
   describeColor,
   loadFirstScreen,
   resetJevBreaker,
+  wantsBrandingScreenshot,
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
 import {
@@ -479,6 +480,24 @@ describe("branding with Jev", () => {
       ).resolves.toBeUndefined();
     });
 
+    it("skips a screenshot past the size cap without reading all of it", async () => {
+      const big = new Response(new Uint8Array(9 * 1024 * 1024), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => big),
+      );
+      await expect(
+        loadFirstScreen("https://storage.example/huge.jpg", logger),
+      ).resolves.toBeUndefined();
+      const inline = Buffer.alloc(9 * 1024 * 1024).toString("base64");
+      await expect(
+        loadFirstScreen(`data:image/jpeg;base64,${inline}`, logger),
+      ).resolves.toBeUndefined();
+    });
+
     it("answers without it when the screenshot can't be read", async () => {
       vi.stubGlobal(
         "fetch",
@@ -574,10 +593,12 @@ describe("branding with Jev", () => {
     }
     expect(mocks.systemOne).toHaveBeenCalledTimes(5);
 
-    // Open: answered by the LLM without waiting on Jev.
+    // Open: answered by the LLM without waiting on Jev, and no first screen
+    // is captured for a call that won't happen.
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
     expect(mocks.systemOne).toHaveBeenCalledTimes(5);
     expect(generateObject).toHaveBeenCalledTimes(6);
+    expect(wantsBrandingScreenshot(false)).toBe(false);
 
     // After the cooldown Jev is tried again, and a success keeps it in use.
     vi.setSystemTime(Date.now() + 61_000);

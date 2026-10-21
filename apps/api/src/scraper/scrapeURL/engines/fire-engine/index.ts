@@ -388,10 +388,20 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // scan (so the scan still measures the real viewport), as a 1280x720 JPEG.
     // TypeSafe accepts at most 1568 px a side; 1280 is what the quality eval
     // used and costs about a third fewer image tokens.
-    const brandingScreenshot =
+    const brandingScreenshotAction =
       !wantsRawBase64 &&
       !!hasFormatOfType(meta.options.formats, "branding") &&
-      wantsBrandingScreenshot(meta.internalOptions.zeroDataRetention);
+      wantsBrandingScreenshot(meta.internalOptions.zeroDataRetention)
+        ? ({
+            type: "screenshot" as const,
+            fullPage: false,
+            quality: 70,
+            // Spread like the screenshot format's viewport: fire-engine takes
+            // it, the v1 action type doesn't declare it.
+            ...{ viewport: { width: 1280, height: 720 } },
+            metadata: { __firecrawl_internal: true },
+          } as InternalAction)
+        : undefined;
 
     const actions: InternalAction[] = [
       // Transform waitFor option into an action (unsupported by chrome-cdp).
@@ -440,19 +450,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
             },
           ]
         : []),
-      ...(brandingScreenshot
-        ? [
-            {
-              type: "screenshot" as const,
-              fullPage: false,
-              quality: 70,
-              // Spread like the screenshot format's viewport: fire-engine takes
-              // it, the v1 action type doesn't declare it.
-              ...{ viewport: { width: 1280, height: 720 } },
-              metadata: { __firecrawl_internal: true },
-            },
-          ]
-        : []),
+      ...(brandingScreenshotAction ? [brandingScreenshotAction] : []),
       ...(hasAudio || hasVideo || shouldRunYoutubePostprocessor
         ? ([
             {
@@ -544,12 +542,24 @@ export async function scrapeURLWithFireEngineChromeCDP(
       true,
     );
 
-    // Ours is the last screenshot action; take it out before the screenshot
+    // Take ours out, found by its own action's result, before the screenshot
     // format and the user's actions claim theirs.
+    const brandingScreenshotIdx = brandingScreenshotAction
+      ? actions.indexOf(brandingScreenshotAction)
+      : -1;
+    const brandingScreenshotResult = (response.actionResults ?? []).find(
+      x => x.type === "screenshot" && x.idx === brandingScreenshotIdx,
+    );
     let brandingScreenshotUrl: string | undefined;
-    if (brandingScreenshot && response.screenshots?.length) {
-      brandingScreenshotUrl = response.screenshots.slice(-1)[0];
-      response.screenshots = response.screenshots.slice(0, -1);
+    if (brandingScreenshotResult?.type === "screenshot") {
+      const at =
+        response.screenshots?.lastIndexOf(
+          brandingScreenshotResult.result.path,
+        ) ?? -1;
+      if (at >= 0) {
+        brandingScreenshotUrl = response.screenshots![at];
+        response.screenshots = response.screenshots!.filter((_, i) => i !== at);
+      }
     }
 
     let screenshot: string | undefined;

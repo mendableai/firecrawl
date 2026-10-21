@@ -543,8 +543,36 @@ export function wantsBrandingScreenshot(
   return (
     isJevBrandingEnabled() &&
     config.BRANDING_JEV_SCREENSHOT !== false &&
-    !zeroDataRetention
+    !zeroDataRetention &&
+    // Jev won't be called while its breaker is open.
+    !isJevBreakerOpen()
   );
+}
+
+/** The body, or undefined once it passes `max` bytes (the rest isn't read). */
+async function readCapped(
+  response: Response,
+  max: number,
+): Promise<Uint8Array | undefined> {
+  if (Number(response.headers.get("content-length") ?? 0) > max) {
+    await response.body?.cancel();
+    return undefined;
+  }
+  if (!response.body) return new Uint8Array(await response.arrayBuffer());
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      return undefined;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
 }
 
 /**
@@ -559,7 +587,11 @@ export async function loadFirstScreen(
   if (!firstScreen) return undefined;
   try {
     const inline = firstScreen.match(/^data:image\/(?:png|jpeg);base64,(.+)$/);
-    if (inline) return Image.fromBase64(inline[1]);
+    if (inline) {
+      // base64 is 4 characters per 3 bytes
+      if ((inline[1].length * 3) / 4 > SCREENSHOT_MAX_BYTES) return undefined;
+      return Image.fromBase64(inline[1]);
+    }
     if (!/^https?:\/\//.test(firstScreen)) return undefined;
     const response = await fetch(firstScreen, {
       signal: AbortSignal.timeout(SCREENSHOT_FETCH_TIMEOUT_MS),
@@ -572,8 +604,11 @@ export async function loadFirstScreen(
       });
       return undefined;
     }
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength === 0 || bytes.byteLength > SCREENSHOT_MAX_BYTES) {
+    const bytes = await readCapped(response, SCREENSHOT_MAX_BYTES);
+    if (!bytes || bytes.byteLength === 0) {
+      logger.warn("Branding screenshot empty or too large for Jev", {
+        length: response.headers.get("content-length"),
+      });
       return undefined;
     }
     return new Image(bytes);

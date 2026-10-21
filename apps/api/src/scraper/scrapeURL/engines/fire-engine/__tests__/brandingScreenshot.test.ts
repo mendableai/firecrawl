@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fake = vi.hoisted(() => ({
   requests: [] as any[],
-  response: {} as Record<string, unknown>,
+  response: (_request: any) => ({}) as Record<string, unknown>,
 }));
 
 vi.mock("../scrape", async importOriginal => ({
@@ -10,7 +10,7 @@ vi.mock("../scrape", async importOriginal => ({
   fireEngineScrape: vi.fn(
     async (_meta: unknown, _logger: unknown, request: unknown) => {
       fake.requests.push(request);
-      return fake.response;
+      return fake.response(request);
     },
   ),
 }));
@@ -55,14 +55,29 @@ function meta(
   } as any;
 }
 
-const respondWith = (screenshots: string[]) => {
-  fake.response = {
-    url: "https://example.com",
-    content: "<html><body>hi</body></html>",
-    pageStatusCode: 200,
-    responseHeaders: { "content-type": "text/html" },
-    screenshots,
-    actionResults: [],
+/** Screenshots in the order the request's screenshot actions take them, each
+ * reported against its action's index like fire-engine does. Actions matching
+ * `skip` get no result. */
+const respondWith = (
+  shots: string[],
+  skip: (action: any) => boolean = () => false,
+) => {
+  fake.response = (request: any) => {
+    const queue = [...shots];
+    const actionResults = (request.actions ?? []).flatMap(
+      (a: any, idx: number) =>
+        a.type === "screenshot" && !skip(a)
+          ? [{ idx, type: "screenshot", result: { path: queue.shift() } }]
+          : [],
+    );
+    return {
+      url: "https://example.com",
+      content: "<html><body>hi</body></html>",
+      pageStatusCode: 200,
+      responseHeaders: { "content-type": "text/html" },
+      screenshots: actionResults.map((r: any) => r.result.path),
+      actionResults,
+    };
   };
 };
 
@@ -132,6 +147,20 @@ describe("branding first-screen screenshot", () => {
     ]);
   });
 
+  it("never takes a caller's screenshot for its own when its capture has no result", async () => {
+    respondWith(
+      ["https://storage.example/format.png"],
+      a => a.metadata?.__firecrawl_internal,
+    );
+
+    const result = await scrapeURLWithFireEngineChromeCDP(
+      meta([{ type: "branding" }, { type: "screenshot" }]),
+    );
+
+    expect(result.brandingScreenshot).toBeUndefined();
+    expect(result.screenshot).toBe("https://storage.example/format.png");
+  });
+
   it("captures nothing for zero data retention, when switched off, when Jev is off, or without branding", async () => {
     const cases = [
       () => meta([{ type: "branding" }], { zeroDataRetention: true }),
@@ -140,13 +169,15 @@ describe("branding first-screen screenshot", () => {
         return meta([{ type: "branding" }]);
       },
       () => {
-        config.BRANDING_JEV_SCREENSHOT = undefined;
         config.BRANDING_JEV = false;
         return meta([{ type: "branding" }]);
       },
       () => meta([{ type: "markdown" }]),
     ];
     for (const make of cases) {
+      // each case starts from the defaults
+      config.BRANDING_JEV = undefined;
+      config.BRANDING_JEV_SCREENSHOT = undefined;
       fake.requests = [];
       respondWith([]);
       const result = await scrapeURLWithFireEngineChromeCDP(make());
