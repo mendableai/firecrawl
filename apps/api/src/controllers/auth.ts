@@ -875,7 +875,7 @@ async function supaAuthenticateUser(
       "Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.",
     );
   }
-  if (token == config.PREVIEW_TOKEN) {
+  if (timingSafeSecretEqual(token, config.PREVIEW_TOKEN)) {
     if (mode == RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus);
     } else if (mode == RateLimiterMode.ExtractStatus) {
