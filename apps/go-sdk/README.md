@@ -399,9 +399,23 @@ last underlying error, so errors raised by a custom `http.Client` (passed with
 `option.WithHTTPClient`) can be matched with `errors.Is` or `errors.As`:
 
 ```go
-doc, err := client.Scrape(ctx, "https://example.com", nil)
-if errors.Is(err, errResponseTooLarge) {
-	// errResponseTooLarge was returned by your transport or response body reader.
+var errLimitReached = errors.New("response limit reached")
+
+type limitingTransport struct{}
+
+func (limitingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Context().Err() != nil {
+		return nil, errLimitReached
+	}
+	return http.DefaultTransport.RoundTrip(req)
+}
+
+client, _ := firecrawl.NewClient(
+	option.WithHTTPClient(&http.Client{Transport: limitingTransport{}}),
+)
+_, err := client.Scrape(ctx, "https://example.com", nil)
+if errors.Is(err, errLimitReached) {
+	// The error came from limitingTransport.
 }
 ```
 
