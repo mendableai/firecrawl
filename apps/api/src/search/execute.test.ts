@@ -207,6 +207,44 @@ describe("executeSearch safe search", () => {
   });
 });
 
+describe("executeSearch zero data retention rate", () => {
+  const results = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      url: `https://result${index}.example/`,
+      title: "Result",
+      description: "A result.",
+    }));
+
+  it.each([
+    { name: "a default search", enterprise: undefined, ten: 2, eleven: 4 },
+    {
+      name: "an enterprise anon search",
+      enterprise: ["anon"],
+      ten: 2,
+      eleven: 4,
+    },
+    {
+      name: "an enterprise zdr search",
+      enterprise: ["zdr"],
+      ten: 10,
+      eleven: 20,
+    },
+  ])("bills $name per ten results", async ({ enterprise, ten, eleven }) => {
+    for (const [count, credits] of [
+      [10, ten],
+      [11, eleven],
+    ]) {
+      mocks.search.mockResolvedValue({ web: results(count) });
+      const result = await executeSearch(
+        { ...options([]), limit: 20, enterprise },
+        context,
+        logger,
+      );
+      expect(result.searchCredits).toBe(credits);
+    }
+  });
+});
+
 describe("executeSearch developer category", () => {
   it("returns sole developer-category results in web without running SERP", async () => {
     const result = await executeSearch(
