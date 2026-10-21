@@ -40,6 +40,8 @@ type Retrieval = {
   lockId?: string;
   maximumCredits?: number;
   response?: ExchangeResponse;
+  // Set instead of response under zero data retention.
+  responseWithheld?: boolean;
   failure?: string;
 };
 
@@ -94,6 +96,7 @@ export async function retrieveProviders(input: {
   timeoutMs: number;
   bypassBilling?: boolean;
   resultAuthorization?: string;
+  zeroDataRetention?: boolean;
   clientIp?: string;
   billingCountry?: string;
 }): Promise<ProviderRetrieval> {
@@ -163,11 +166,14 @@ export async function retrieveProviders(input: {
   const billable = !input.bypassBilling;
   const id = hash([input.teamId, input.requestId]);
   const key = `alexandria:retrieve:${id}`;
-  const fingerprint = hash(
-    termsOnly
+  const zeroDataRetention = input.zeroDataRetention === true;
+  // Appended only when set so existing non-ZDR fingerprints stay stable.
+  const fingerprint = hash([
+    ...(termsOnly
       ? [input.calls, billable, termsIdentity ?? null]
-      : [input.calls, billable],
-  );
+      : [input.calls, billable]),
+    ...(zeroDataRetention ? [{ zeroDataRetention }] : []),
+  ]);
   const record: Retrieval = {
     fingerprint,
     phase: "executing",
@@ -192,6 +198,18 @@ export async function retrieveProviders(input: {
   if (claimed !== "OK") {
     const raw = await redisRateLimitClient.get(key);
     const existing: Retrieval | null = raw ? JSON.parse(raw) : null;
+    if (
+      existing?.phase === "done" &&
+      existing.fingerprint === fingerprint &&
+      existing.responseWithheld
+    )
+      return notExecuted(
+        refusal(
+          409,
+          "This provider request already completed. Its response is not kept under zero data retention.",
+          { code: "response_not_retained", chargeId: id },
+        ),
+      );
     if (existing?.phase === "done" && existing.fingerprint === fingerprint)
       return {
         ...existing.response!,
@@ -273,6 +291,7 @@ export async function retrieveProviders(input: {
       clientIp: input.clientIp,
       billingCountry: input.billingCountry,
       connectors: input.flags?.exchangeRetrieve === true,
+      ...(zeroDataRetention ? { zeroDataRetention } : {}),
     }).catch(error => {
       logger.warn("Provider quote unavailable", { error, chargeId: id });
       return undefined;
@@ -408,6 +427,7 @@ export async function retrieveProviders(input: {
         ? { resultAuthorization: input.resultAuthorization }
         : {}),
       ...(termsIdentity ? { termsIdentity } : {}),
+      ...(zeroDataRetention ? { zeroDataRetention } : {}),
       maximumCredits,
     }).catch(error => {
       throw new Error(`Alexandria did not answer: ${error?.message ?? error}`);
@@ -463,7 +483,11 @@ export async function retrieveProviders(input: {
       });
 
     const done: ExchangeResponse = { status: 200, body: answer };
-    await write({ ...record, phase: "done", response: done });
+    await write(
+      zeroDataRetention
+        ? { ...record, phase: "done", responseWithheld: true }
+        : { ...record, phase: "done", response: done },
+    );
     return { ...done, executed: true, scrapeId: input.scrapeId };
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));

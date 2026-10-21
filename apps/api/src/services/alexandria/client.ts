@@ -26,6 +26,7 @@ export async function exchangeRequest(input: {
    * `exchangeRetrieve` flag, which is the connectors whitelist; Exchange reads it as the grant.
    */
   connectors?: boolean;
+  zeroDataRetention?: boolean;
 }): Promise<ExchangeResponse> {
   if (!config.FIRE_EXCHANGE_URL)
     throw new Error("Alexandria is not configured");
@@ -53,6 +54,9 @@ export async function exchangeRequest(input: {
         ? { "x-exchange-billing-country": input.billingCountry }
         : {}),
       ...(input.connectors ? { "x-exchange-connectors": "true" } : {}),
+      ...(input.zeroDataRetention
+        ? { "x-exchange-zero-data-retention": "true" }
+        : {}),
       ...(input.requestId ? { "x-request-id": input.requestId } : {}),
       ...(input.maximumCredits === undefined
         ? {}
