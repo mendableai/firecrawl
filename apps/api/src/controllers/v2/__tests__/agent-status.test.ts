@@ -230,6 +230,8 @@ describe("agentStatusController", () => {
     ["python-sdk@4.37.1rc0", "spark-1-pro"],
     // everything else sees the real model
     ["python-sdk@4.37.1", "spark-2"],
+    ["python-sdk.some-agent@4.37.0", "spark-1-pro"],
+    ["python-sdk.some-agent@4.52.0", "spark-2"],
     ["python-sdk@4.38.0", "spark-2"],
     ["python-sdk@5.0.0", "spark-2"],
     ["js-sdk@4.0.0", "spark-2"],

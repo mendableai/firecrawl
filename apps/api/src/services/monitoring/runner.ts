@@ -1233,9 +1233,21 @@ export async function processMonitorCheckJob(
       }
     }
 
-    await updateMonitorCheckIfRunning(check.id, {
+    const stored = await updateMonitorCheckIfRunning(check.id, {
       target_results: targetResults,
     });
+
+    // Search targets finish inline, so a search-only check is complete here.
+    // Any failure or lost lease leaves it to the reconciler, as before.
+    if (stored && monitor.targets.every(target => target.type === "search")) {
+      await reconcileMonitorCheckCandidate(stored, () => {}).catch(error =>
+        logger.warn("Failed to finalize monitor check inline", {
+          error,
+          monitorId: monitor.id,
+          checkId: check.id,
+        }),
+      );
+    }
   } catch (error) {
     if (error instanceof ExistingCreditsLockError) throw error;
     // Atomically flip running -> failed. Returns null when the check already
@@ -1393,28 +1405,36 @@ async function processRemovedPagesForCompletedCrawls(params: {
   }
 }
 
-async function isMonitorCheckComplete(
+// The first target still in flight, with the figures that decided it, or null
+// once every target is done.
+async function findUnfinishedMonitorTarget(
   check: MonitorCheckRow,
   monitor?: MonitorRow,
-): Promise<boolean> {
+): Promise<Record<string, unknown> | null> {
   let targetResults = Array.isArray(check.target_results)
     ? (check.target_results as any[])
     : [];
 
   if (targetResults.length === 0) {
-    if (!monitor) return false;
+    if (!monitor) return { reason: "no_target_results" };
 
     targetResults = await recoverTargetRunsFromRecordedPages({
       monitor,
       check,
     });
-    if (targetResults.length === 0) return false;
+    if (targetResults.length === 0) return { reason: "no_target_results" };
   }
 
   for (const target of targetResults) {
     if (target?.type === "search") {
       // Not complete until the inline search has stamped its credits.
-      if (!target.searchCompleted) return false;
+      if (!target.searchCompleted) {
+        return {
+          type: "search",
+          targetId: target.targetId,
+          searchCompleted: false,
+        };
+      }
     } else if (target?.type === "scrape") {
       const expected = Array.isArray(target.expectedJobs)
         ? target.expectedJobs.length
@@ -1423,22 +1443,47 @@ async function isMonitorCheckComplete(
         checkId: check.id,
         targetId: target.targetId,
       });
-      if (recorded < expected) return false;
+      if (recorded < expected) {
+        return {
+          type: "scrape",
+          targetId: target.targetId,
+          recorded,
+          expected,
+        };
+      }
     } else if (target?.type === "crawl") {
       const group = await crawlGroup.getGroup(target.crawlId);
-      if (!group || group.status === "active") return false;
+      if (!group) {
+        return {
+          type: "crawl",
+          targetId: target.targetId,
+          crawlId: target.crawlId,
+          groupStatus: null,
+        };
+      }
 
       const stats = await scrapeQueue.getGroupNumericStats(
         target.crawlId,
         logger,
       );
-      const unfinished =
-        (stats.active ?? 0) + (stats.queued ?? 0) + (stats.backlog ?? 0);
-      if (unfinished > 0) return false;
+      const active = stats.active ?? 0;
+      const queued = stats.queued ?? 0;
+      const backlog = stats.backlog ?? 0;
+      if (group.status === "active" || active + queued + backlog > 0) {
+        return {
+          type: "crawl",
+          targetId: target.targetId,
+          crawlId: target.crawlId,
+          groupStatus: group.status,
+          active,
+          queued,
+          backlog,
+        };
+      }
     }
   }
 
-  return true;
+  return null;
 }
 
 async function failStaleMonitorCheck(params: {
@@ -1733,15 +1778,22 @@ async function reconcileMonitorCheckCandidate(
       targetResults,
     });
 
-    if (
-      !(await isMonitorCheckComplete(
-        {
-          ...check,
-          target_results: targetResults,
-        },
-        monitor,
-      ))
-    ) {
+    const unfinished = await findUnfinishedMonitorTarget(
+      {
+        ...check,
+        target_results: targetResults,
+      },
+      monitor,
+    );
+    if (unfinished) {
+      logger.info("Monitor check not ready to finalize", {
+        monitorId: monitor.id,
+        checkId: check.id,
+        runningForMs: check.started_at
+          ? Date.now() - Date.parse(check.started_at)
+          : null,
+        ...unfinished,
+      });
       // Only persist target_results we recovered from an empty snapshot. Writing
       // back a non-empty stale snapshot here can DOWNGRADE a searchCompleted=true
       // that the inline handler persisted after this reconciler loaded its

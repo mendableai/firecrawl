@@ -373,16 +373,18 @@ async function searchControllerInner(
     }
 
     const toolsOnly = isToolsOnlySearch(req.body.sources, req.body.categories);
+    const govSearch = wantsGovCategory(categories);
     const projectedKeylessCredits =
       !isSearchPreview &&
       shouldBill &&
       !toolsOnly &&
-      !wantsGovCategory(categories)
+      (!govSearch || requestedFormats.length > 0)
         ? projectSearchTotalCredits(
             {
               limit: req.body.limit,
               enterprise: req.body.enterprise,
               scrapeOptions: req.body.scrapeOptions,
+              freeSearch: govSearch,
             },
             req.acuc?.flags ?? null,
             zeroDataRetention,
@@ -416,6 +418,10 @@ async function searchControllerInner(
     if (wantsGovCategory(categories)) {
       const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
       if (!indexBudget.ok) {
+        if (reservedKeylessCredits > 0) {
+          await adjustKeylessCredits(req.auth.team_id, -reservedKeylessCredits);
+          reconciledKeylessCredits = true;
+        }
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
           success: false,
@@ -467,6 +473,33 @@ async function searchControllerInner(
       logger,
     );
 
+    if (toolsOnly && result.toolsUnavailable) {
+      const error =
+        "Tool discovery is temporarily unavailable. Retry the request.";
+      setSpanAttributes(span, { "search.status_code": 503 });
+      logSearch({
+        id: jobId,
+        request_id: agentRequestId ?? jobId,
+        query: req.body.query,
+        is_successful: false,
+        error,
+        results: result.response as any,
+        num_results: 0,
+        time_taken: (Date.now() - middlewareStartTime) / 1000,
+        team_id: req.auth.team_id,
+        options: req.body,
+        credits_cost: 0,
+        zeroDataRetention,
+      }).catch(error => {
+        logger.error("Failed to log search", { error, jobId });
+      });
+      return res.status(503).json({
+        success: false,
+        code: "TOOL_DISCOVERY_UNAVAILABLE",
+        error,
+      });
+    }
+
     // Bill team for search credits only (scrape jobs bill themselves)
     if (!isSearchPreview && shouldBill) {
       billTeam(
@@ -506,6 +539,8 @@ async function searchControllerInner(
       error: undefined,
       results: result.response as any,
       num_results: result.totalResultsCount,
+      num_results_by_source: result.resultCountsBySource,
+      result_categories: result.resultCategories,
       time_taken: timeTakenInSeconds,
       team_id: req.auth.team_id,
       options: req.body,

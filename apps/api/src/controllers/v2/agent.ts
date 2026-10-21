@@ -22,6 +22,10 @@ import { calculateThreatScanCredits } from "../../lib/scrape-billing";
 import { billTeam } from "../../services/billing/credit_billing";
 import { emitRejectedScrapeActivityEvents } from "../../lib/siem-logging";
 import { fetchAgentThread, threadErrorFor } from "./agent-thread";
+import {
+  AGENT_DEFAULT_MAX_CREDITS,
+  gateAgentCredits,
+} from "./agent-credit-gate";
 
 export async function agentController(
   req: RequestWithAuth<{}, AgentResponse, AgentRequest>,
@@ -179,9 +183,11 @@ export async function agentController(
     }
   }
 
-  // If maxCredits > 2500, skip free request consumption — this is always a paid request
+  // A request above the free cap is always paid. Otherwise a free request is
+  // consumed atomically here, and only a consumed one skips the credit gate.
   const highCreditRequest =
-    req.body.maxCredits !== undefined && req.body.maxCredits > 2500;
+    req.body.maxCredits !== undefined &&
+    req.body.maxCredits > AGENT_DEFAULT_MAX_CREDITS;
 
   let freeRequest: any;
 
@@ -194,6 +200,28 @@ export async function agentController(
     : config.USE_DB_AUTHENTICATION
       ? !!freeRequest?.[0]?.consumed
       : true;
+
+  let maxCredits = req.body.maxCredits;
+  let stopOnInsufficientCredits = false;
+  if (!isFreeRequest) {
+    const gate = await gateAgentCredits({
+      teamId: req.auth.team_id,
+      orgId: req.auth.org_id,
+      apiKeyId: req.acuc?.api_key_id ?? null,
+      requestedMaxCredits: req.body.maxCredits,
+    });
+    if (!gate.allowed) {
+      logger.warn("Insufficient credits to start agent run", {
+        balance: gate.balance,
+      });
+      return res.status(402).json({
+        success: false,
+        error: `Insufficient credits to start an agent run. Your team's credit balance is ${gate.balance} credits. Add credits at https://firecrawl.dev/pricing to continue.`,
+      });
+    }
+    maxCredits = gate.maxCredits;
+    stopOnInsufficientCredits = gate.stopOnInsufficientCredits;
+  }
 
   await logRequest({
     id: agentId,
@@ -226,7 +254,8 @@ export async function agentController(
         apiKeyId: req.acuc!.api_key_id ?? undefined,
         teamId: req.auth.team_id,
         isFreeRequest,
-        maxCredits: req.body.maxCredits ?? undefined,
+        maxCredits: maxCredits ?? undefined,
+        stopOnInsufficientCredits: stopOnInsufficientCredits || undefined,
         strictConstrainToURLs: req.body.strictConstrainToURLs ?? undefined,
         webhook: req.body.webhook ?? undefined,
         model: req.body.model,
@@ -235,6 +264,7 @@ export async function agentController(
         threadId: req.body.threadId,
         mode: req.body.mode,
         exchange: req.body.exchange,
+        location: req.body.location,
       }),
     },
   );

@@ -39,6 +39,7 @@ export async function authorizeProviders(
   calls: ProviderCall[],
   flags: TeamFlags | null | undefined,
   orgId: string | null = null,
+  clientIp?: string,
 ): Promise<ExchangeResponse | undefined> {
   const providers = [...new Set(calls.map(call => call.provider))];
   const response = await exchangeRequest({
@@ -46,6 +47,7 @@ export async function authorizeProviders(
     path: "/v1/provider-terms/requirements",
     body: { providers },
     timeoutMs: 10000,
+    clientIp,
   }).catch(() => undefined);
   if (response?.status === 404)
     return refusal(404, "Unknown provider. No provider was executed.", {

@@ -10,7 +10,13 @@ export function wantsDeveloperCategory(categories?: CategoryOption[]): boolean {
 }
 
 export async function searchDeveloperCategory(
-  options: { query: string; limit: number; teamId: string; timeout: number },
+  options: {
+    query: string;
+    limit: number;
+    teamId: string;
+    timeout: number;
+    zeroDataRetention: boolean;
+  },
   logger: Logger,
 ): Promise<WebSearchResult[]> {
   try {
@@ -18,7 +24,10 @@ export async function searchDeveloperCategory(
       path: "/v2/code/search",
       params: { query: options.query, k: options.limit },
       queryKeys: DEVELOPER_QUERY_KEYS,
-      headers: { "firecrawl-team-id": options.teamId },
+      headers: {
+        "firecrawl-team-id": options.teamId,
+        "firecrawl-zero-data-retention": String(options.zeroDataRetention),
+      },
       timeoutMs: options.timeout,
     });
     if (upstream === null) {
