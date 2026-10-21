@@ -552,9 +552,6 @@ jobs:
   #     FIRE_ENGINE_STAGING_URL: ${{ secrets.FIRE_ENGINE_STAGING_URL }}
   #     USE_DB_AUTHENTICATION: true
   #     ENV: ${{ secrets.ENV }}
-  #     RUNPOD_MU_POD_ID: ${{ secrets.RUNPOD_MU_POD_ID }}
-  #     RUNPOD_MUV2_POD_ID: ${{ secrets.RUNPOD_MUV2_POD_ID }}
-  #     RUNPOD_MU_API_KEY: ${{ secrets.RUNPOD_MU_API_KEY }}
   #     GCS_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
   #     GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
   #     GCS_INDEX_BUCKET_NAME: ${{ secrets.GCS_INDEX_BUCKET_NAME }}
