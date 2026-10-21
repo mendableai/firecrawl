@@ -671,6 +671,113 @@ describe("branding with Jev", () => {
     ]);
   });
 
+  it("reads the heading face from headings even when the first paragraph uses it", () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.typography = {
+      fontFamilies: { primary: "IBM Plex Sans", heading: "Libre Baskerville" },
+      fontStacks: {
+        body: ["IBM Plex Sans", "ui-sans-serif"],
+        heading: ["Libre Baskerville", "Georgia"],
+        paragraph: ["Libre Baskerville", "Georgia"],
+      },
+    };
+    input.jsAnalysis.fonts = [
+      { family: "IBM Plex Sans", count: 54 },
+      { family: "Libre Baskerville", count: 26 },
+      { family: "Lato", count: 10 },
+    ];
+    expect(buildJevRequest(input).fonts.map(f => [f.family, f.role])).toEqual([
+      ["IBM Plex Sans", "body"],
+      ["Libre Baskerville", "heading"],
+      ["Lato", undefined],
+    ]);
+
+    // A paragraph font nothing else places is still body text.
+    input.jsAnalysis.typography.fontStacks!.paragraph = ["Lato"];
+    expect(buildJevRequest(input).fonts[2].role).toBe("body");
+  });
+
+  it("drops the browser's default font when a real face is the body text", async () => {
+    const input = baseInput(new CostTracking());
+    // The page styles inner elements, so <body> measures the default serif.
+    input.jsAnalysis.typography = {
+      fontFamilies: { primary: "Times New Roman" },
+      fontStacks: { paragraph: ["Heebo", "sans-serif"] },
+    };
+    input.jsAnalysis.fonts = [
+      { family: "Heebo", count: 200 },
+      { family: "Times New Roman", count: 2 },
+    ];
+    respondWith(
+      jevResponse({
+        font_0_is_brand: { type: "noul", noul: 0.9 },
+        font_1_is_brand: { type: "noul", noul: 0.6 },
+      }),
+    );
+
+    expect((await enhanceBrandingWithLLM(input)).cleanedFonts).toEqual([
+      { family: "Heebo", role: "body" },
+    ]);
+  });
+
+  it("keeps the measured fonts when Jev rejects every one", async () => {
+    const input = baseInput(new CostTracking());
+    input.jsAnalysis.typography = {
+      fontFamilies: { primary: "Times New Roman" },
+    };
+    input.jsAnalysis.fonts = [{ family: "Times New Roman", count: 5 }];
+    respondWith(jevResponse({ font_0_is_brand: { type: "noul", noul: 0.4 } }));
+
+    expect((await enhanceBrandingWithLLM(input)).cleanedFonts).toEqual([
+      { family: "Times New Roman", role: "body" },
+    ]);
+  });
+
+  it("shows Jev one button the scan reported twice, keeping the styled one", () => {
+    const input = baseInput(new CostTracking());
+    const cta = {
+      ...input.buttons[0],
+      text: "Book a demo",
+      background: "#0D46DB",
+      top: 459,
+      left: 200,
+      width: 140,
+    };
+    input.buttons = [
+      // the link around the button: inherited text color, square corners
+      { ...cta, index: 0, textColor: "#333333", borderRadius: "0px" },
+      { ...cta, index: 1, textColor: "#FFFFFF", borderRadius: "6px", top: 461 },
+      // the same label lower down the page is a different button
+      {
+        ...cta,
+        index: 2,
+        textColor: "#333333",
+        borderRadius: "0px",
+        top: 9000,
+      },
+      // and so is one beside it in the same row
+      {
+        ...cta,
+        index: 3,
+        textColor: "#333333",
+        borderRadius: "0px",
+        left: 360,
+      },
+    ];
+
+    expect(Object.keys(buildJevRequest(input).state.buttons as object)).toEqual(
+      ["button_1", "button_2", "button_3"],
+    );
+  });
+
+  it("tells Jev the primary button is usually the brand-colored one", () => {
+    const request = buildJevRequest(baseInput(new CostTracking()));
+    expect(
+      (request.questions.primary_button as { instructions: string })
+        .instructions,
+    ).toMatch(/brand's color/);
+  });
+
   it("treats a pick between identical-looking buttons as confident", async () => {
     const input = baseInput(new CostTracking());
     input.buttons.push({
@@ -983,6 +1090,30 @@ describe("Jev request building", () => {
     expect(cleanFontFamily("system-ui, sans-serif")).toBeUndefined();
     expect(cleanFontFamily("Inter, sans-serif")).toBe("Inter");
     expect(cleanFontFamily("Newsreader Variable")).toBe("Newsreader");
+  });
+
+  it("drops the weight from self-hosted font names and spaces run-together ones", () => {
+    expect(cleanFontFamily("OpenSans--Regular")).toBe("Open Sans");
+    expect(cleanFontFamily("Verdana-Regular")).toBe("Verdana");
+    expect(cleanFontFamily("Inter Bold")).toBe("Inter");
+    expect(cleanFontFamily("GmarketSansMedium")).toBe("Gmarket Sans");
+    expect(cleanFontFamily("GlacialIndifference")).toBe("Glacial Indifference");
+    expect(cleanFontFamily("Playfair Display Italic")).toBe("Playfair Display");
+    // A weight alone is not a family; names that only contain one stay.
+    expect(cleanFontFamily("Regular")).toBeUndefined();
+    expect(cleanFontFamily("Bold Italic")).toBeUndefined();
+    expect(cleanFontFamily("Times New Roman")).toBe("Times New Roman");
+    expect(cleanFontFamily("Black Han Sans")).toBe("Black Han Sans");
+    expect(cleanFontFamily("Book Antiqua")).toBe("Book Antiqua");
+    // Families that end in a heavy weight keep it; a self-hosted face doesn't.
+    expect(cleanFontFamily("Cooper Black")).toBe("Cooper Black");
+    expect(cleanFontFamily("Arial Black")).toBe("Arial Black");
+    expect(cleanFontFamily("Roboto-Black")).toBe("Roboto");
+    expect(cleanFontFamily("Roboto_Black")).toBe("Roboto");
+    expect(cleanFontFamily("__Roboto_Mono_Book_c8ca7d")).toBe("Roboto Mono");
+    // Acronyms aren't split.
+    expect(cleanFontFamily("TIActuBeta")).toBe("TIActuBeta");
+    expect(cleanFontFamily("HardwoodLP")).toBe("HardwoodLP");
   });
 
   it("merges a family listed with and without spaces", () => {

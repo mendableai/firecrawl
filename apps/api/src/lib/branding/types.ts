@@ -20,6 +20,9 @@ export interface ButtonSnapshot {
   shadow?: string | null;
   /** Distance from the top of the page in px, when the scan measured it. */
   top?: number;
+  /** Left edge and width in px, when the scan measured them. */
+  left?: number;
+  width?: number;
   // Debug: original color values before conversion to hex
   originalBackgroundColor?: string;
   originalTextColor?: string;
