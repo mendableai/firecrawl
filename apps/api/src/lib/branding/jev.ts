@@ -273,10 +273,17 @@ const FALLBACK_FONTS = new Set([
   "noto color emoji",
 ]);
 
-const WEIGHTS =
-  "regular|reg|book|medium|semi-?bold|demi-?bold|bold|extra-?bold|ultra-?bold|black|heavy|light|extra-?light|ultra-?light|thin|hairline|italic|oblique";
+// Families can end in a heavy weight ("Cooper Black", "Arial Black"), so
+// after a space only the weights no family name ends in are stripped. After a
+// hyphen or underscore ("Roboto-Black") the name is a self-hosted face.
+const SPACED_WEIGHTS =
+  "regular|reg|medium|semi-?bold|demi-?bold|bold|extra-?bold|ultra-?bold|light|extra-?light|ultra-?light|thin|hairline|italic|oblique";
+const WEIGHTS = `${SPACED_WEIGHTS}|book|black|heavy`;
 const FONT_WEIGHT = new RegExp(`^\\s*(?:(?:${WEIGHTS})\\s*)+$`, "i");
-const FONT_WEIGHT_SUFFIX = new RegExp(`(?<=\\S)[\\s_-]+(?:${WEIGHTS})$`, "i");
+const FONT_WEIGHT_SUFFIX = new RegExp(
+  `(?<=\\S)(?:[_-]+(?:${WEIGHTS})|\\s+(?:${SPACED_WEIGHTS}))$`,
+  "i",
+);
 
 // "GlacialIndifference" → "Glacial Indifference". Only words made of whole
 // capitalized parts split, so "TIActuBeta" and "HardwoodLP" stay.
@@ -445,8 +452,9 @@ const radiusPx = (b: { borderRadius?: string }) =>
 
 /**
  * The scan can report one button twice, as the link and as the styled element
- * inside it: same label, place and fill, but the outer one has the inherited
+ * inside it: same label, fill and box, but the outer one has the inherited
  * text color and square corners. Keep the one that reads as a button.
+ * Buttons side by side don't overlap, so they are never twins.
  */
 function withoutTwins<
   T extends {
@@ -456,15 +464,23 @@ function withoutTwins<
       textColor?: string;
       borderRadius?: string;
       top?: number;
+      left?: number;
+      width?: number;
     };
   },
 >(entries: T[]): T[] {
+  const near = (a?: number, b?: number) =>
+    a !== undefined && b !== undefined && Math.abs(a - b) <= 8;
+  const overlapping = (a: T["button"], b: T["button"]) =>
+    a.left !== undefined &&
+    b.left !== undefined &&
+    (near(a.left, b.left) ||
+      (a.left < b.left + (b.width ?? 0) && b.left < a.left + (a.width ?? 0)));
   const twins = (a: T["button"], b: T["button"]) =>
     clip(a.text, 80).toLowerCase() === clip(b.text, 80).toLowerCase() &&
     normalizeHex(a.background) === normalizeHex(b.background) &&
-    a.top !== undefined &&
-    b.top !== undefined &&
-    Math.abs(a.top - b.top) <= 8;
+    near(a.top, b.top) &&
+    overlapping(a, b);
   const better = (a: T["button"], b: T["button"]) =>
     readability(a) - readability(b) || radiusPx(a) - radiusPx(b);
   return entries.filter(

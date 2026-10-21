@@ -740,6 +740,8 @@ describe("branding with Jev", () => {
       text: "Book a demo",
       background: "#0D46DB",
       top: 459,
+      left: 200,
+      width: 140,
     };
     input.buttons = [
       // the link around the button: inherited text color, square corners
@@ -753,10 +755,18 @@ describe("branding with Jev", () => {
         borderRadius: "0px",
         top: 9000,
       },
+      // and so is one beside it in the same row
+      {
+        ...cta,
+        index: 3,
+        textColor: "#333333",
+        borderRadius: "0px",
+        left: 360,
+      },
     ];
 
     expect(Object.keys(buildJevRequest(input).state.buttons as object)).toEqual(
-      ["button_1", "button_2"],
+      ["button_1", "button_2", "button_3"],
     );
   });
 
@@ -1095,6 +1105,10 @@ describe("Jev request building", () => {
     expect(cleanFontFamily("Times New Roman")).toBe("Times New Roman");
     expect(cleanFontFamily("Black Han Sans")).toBe("Black Han Sans");
     expect(cleanFontFamily("Book Antiqua")).toBe("Book Antiqua");
+    // Families that end in a heavy weight keep it; a self-hosted face doesn't.
+    expect(cleanFontFamily("Cooper Black")).toBe("Cooper Black");
+    expect(cleanFontFamily("Arial Black")).toBe("Arial Black");
+    expect(cleanFontFamily("Roboto-Black")).toBe("Roboto");
     // Acronyms aren't split.
     expect(cleanFontFamily("TIActuBeta")).toBe("TIActuBeta");
     expect(cleanFontFamily("HardwoodLP")).toBe("HardwoodLP");
