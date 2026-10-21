@@ -1109,6 +1109,8 @@ describe("Jev request building", () => {
     expect(cleanFontFamily("Cooper Black")).toBe("Cooper Black");
     expect(cleanFontFamily("Arial Black")).toBe("Arial Black");
     expect(cleanFontFamily("Roboto-Black")).toBe("Roboto");
+    expect(cleanFontFamily("Roboto_Black")).toBe("Roboto");
+    expect(cleanFontFamily("__Roboto_Mono_Book_c8ca7d")).toBe("Roboto Mono");
     // Acronyms aren't split.
     expect(cleanFontFamily("TIActuBeta")).toBe("TIActuBeta");
     expect(cleanFontFamily("HardwoodLP")).toBe("HardwoodLP");

@@ -280,6 +280,7 @@ const SPACED_WEIGHTS =
   "regular|reg|medium|semi-?bold|demi-?bold|bold|extra-?bold|ultra-?bold|light|extra-?light|ultra-?light|thin|hairline|italic|oblique";
 const WEIGHTS = `${SPACED_WEIGHTS}|book|black|heavy`;
 const FONT_WEIGHT = new RegExp(`^\\s*(?:(?:${WEIGHTS})\\s*)+$`, "i");
+const DELIMITED_WEIGHT_SUFFIX = new RegExp(`(?<=\\S)[_-]+(?:${WEIGHTS})$`, "i");
 const FONT_WEIGHT_SUFFIX = new RegExp(
   `(?<=\\S)(?:[_-]+(?:${WEIGHTS})|\\s+(?:${SPACED_WEIGHTS}))$`,
   "i",
@@ -307,6 +308,9 @@ export function cleanFontFamily(raw: string): string | undefined {
   if (/fallback/i.test(name)) return undefined;
   // next/font obfuscation: "__Roboto_Mono_c8ca7d" → "Roboto Mono"
   name = name.replace(/^_+/, "").replace(/_[0-9a-f]{6}$/i, "");
+  // "Roboto_Black": the weight goes before underscores turn into spaces.
+  while (DELIMITED_WEIGHT_SUFFIX.test(name))
+    name = name.replace(DELIMITED_WEIGHT_SUFFIX, "");
   name = name.replace(/_/g, " ").replace(/\s+/g, " ").trim();
   // Variable-font builds name the same family: "Newsreader Variable".
   name = name.replace(/\s+(variable|vf)$/i, "");
