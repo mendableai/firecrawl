@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 const store = vi.hoisted(() => new Map<string, string>());
+const expiries = vi.hoisted(() => new Map<string, unknown[]>());
 const failNextWrite = vi.hoisted(() => ({ value: false }));
 const warn = vi.hoisted(() => vi.fn());
 vi.mock("./logger", () => ({ logger: { warn } }));
@@ -9,8 +10,9 @@ vi.mock("../services/rate-limiter", () => ({
     pipeline: () => {
       const writes: [string, string][] = [];
       const pipeline = {
-        set: (key: string, value: string) => {
+        set: (key: string, value: string, ...expiry: unknown[]) => {
           writes.push([key, value]);
+          expiries.set(key, expiry);
           return pipeline;
         },
         exec: async () => {
@@ -34,6 +36,7 @@ import {
 
 beforeEach(() => {
   store.clear();
+  expiries.clear();
   warn.mockClear();
 });
 
@@ -43,6 +46,9 @@ it("attributes a call to the latest search and find-tools jobs that showed it", 
   recordDiscoveredTools("team", "find_tools", "scrape-1", [sponsors]);
   recordDiscoveredTools("team", "find_tools", "scrape-2", [sponsors]);
   await vi.waitFor(() => expect(store.size).toBe(2));
+  for (const key of store.keys()) {
+    expect(expiries.get(key)).toEqual(["EX", 3600]);
+  }
 
   const [found, missing] = await discoveryForCalls("team", [
     sponsors,
