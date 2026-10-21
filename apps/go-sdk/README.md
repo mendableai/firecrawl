@@ -399,23 +399,45 @@ last underlying error, so errors raised by a custom `http.Client` (passed with
 `option.WithHTTPClient`) can be matched with `errors.Is` or `errors.As`:
 
 ```go
-var errLimitReached = errors.New("response limit reached")
+var errResponseTooLarge = errors.New("response too large")
 
-type limitingTransport struct{}
+const maxResponseBytes = 20 << 20
 
-func (limitingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if req.Context().Err() != nil {
-		return nil, errLimitReached
+type cappedBody struct {
+	io.ReadCloser
+	remaining int64
+}
+
+func (b *cappedBody) Read(p []byte) (int, error) {
+	if b.remaining <= 0 {
+		return 0, errResponseTooLarge
 	}
-	return http.DefaultTransport.RoundTrip(req)
+	if int64(len(p)) > b.remaining {
+		p = p[:b.remaining]
+	}
+	n, err := b.ReadCloser.Read(p)
+	b.remaining -= int64(n)
+	return n, err
+}
+
+type cappingTransport struct{}
+
+func (cappingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body = &cappedBody{ReadCloser: resp.Body, remaining: maxResponseBytes + 1}
+	return resp, nil
 }
 
 client, _ := firecrawl.NewClient(
-	option.WithHTTPClient(&http.Client{Transport: limitingTransport{}}),
+	option.WithHTTPClient(&http.Client{Transport: cappingTransport{}}),
+	option.WithMaxRetries(0),
 )
 _, err := client.Scrape(ctx, "https://example.com", nil)
-if errors.Is(err, errLimitReached) {
-	// The error came from limitingTransport.
+if errors.Is(err, errResponseTooLarge) {
+	// The response exceeded maxResponseBytes.
 }
 ```
 
