@@ -60,6 +60,7 @@ import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
+import { recordDiscoveredTools } from "../../lib/alexandria-discovery";
 
 const RESEARCH_CATEGORY_NOTICE: Notice = {
   message:
@@ -599,7 +600,15 @@ async function searchControllerInner(
       scrapeful: result.shouldScrape,
     });
 
-    if (result.response.tools) markAlexandriaActivity(req.auth.team_id);
+    if (result.response.tools) {
+      markAlexandriaActivity(req.auth.team_id);
+      recordDiscoveredTools(
+        req.auth.team_id,
+        "search",
+        jobId,
+        result.response.tools,
+      );
+    }
     return res.status(200).json({
       success: true,
       data: result.response,

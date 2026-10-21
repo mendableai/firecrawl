@@ -186,17 +186,24 @@ function inferPalette(
   });
   // Text color from what text is written in: the most common text color of
   // non-button elements that stands out from the background. Voting over every
-  // sampled color let button fills outvote the paragraphs.
-  const textVotes = new Map<string, number>();
-  for (const s of snapshots) {
-    if (s.isButton || s.visible === false || !s.text || !s.text.trim()) {
-      continue;
+  // sampled color let button fills outvote the paragraphs, and links outvote
+  // body text on link-heavy pages, so links vote only when nothing else does.
+  const voteText = (links: boolean) => {
+    const votes = new Map<string, number>();
+    for (const s of snapshots) {
+      if (s.isButton || s.visible === false || !s.text || !s.text.trim()) {
+        continue;
+      }
+      if (!links && (s.isLink || s.tag === "a")) continue;
+      const hex = hexify(s.colors.text, pageBackground);
+      if (hex && !isBrowserLinkColor(hex)) {
+        votes.set(hex, (votes.get(hex) || 0) + 1);
+      }
     }
-    const hex = hexify(s.colors.text, pageBackground);
-    if (hex && !isBrowserLinkColor(hex)) {
-      textVotes.set(hex, (textVotes.get(hex) || 0) + 1);
-    }
-  }
+    return votes;
+  };
+  const bodyVotes = voteText(false);
+  const textVotes = bodyVotes.size > 0 ? bodyVotes : voteText(true);
   const readableText = Array.from(textVotes.entries())
     .sort((x, y) => y[1] - x[1])
     .map(([h]) => h)
@@ -512,7 +519,13 @@ export function processRawBranding(raw: BrandingScriptReturn): BrandingProfile {
       borderRadius: representativeBorderRadius,
       borderRadiusCorners: corners,
       shadow: s.shadow || null,
-      ...(s.position ? { top: Math.round(s.position.top) } : {}),
+      ...(s.position
+        ? {
+            top: Math.round(s.position.top),
+            left: Math.round(s.position.left),
+            width: Math.round(s.rect.w),
+          }
+        : {}),
       // Debug: original color values before hex conversion
       originalBackgroundColor: s.colors.background || undefined,
       originalTextColor: s.colors.text || undefined,

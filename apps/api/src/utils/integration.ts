@@ -46,3 +46,15 @@ export function integrationFromHeader(req: {
     ? value
     : undefined;
 }
+
+/**
+ * The integration to attribute: a valid X-Integration header replaces a
+ * missing or `cli` explicit value; any other explicit value wins.
+ */
+export function resolveIntegration<T>(
+  explicit: T,
+  req: { headers?: Record<string, string | string[] | undefined> },
+): T | string {
+  if (explicit != null && explicit !== "cli") return explicit;
+  return integrationFromHeader(req) ?? explicit;
+}

@@ -79,6 +79,19 @@ All params are passed as keyword lists with snake_case keys. Invalid keys, missi
 # Search
 {:ok, response} = Firecrawl.search_and_scrape(query: "firecrawl web scraping")
 
+# Search the developer index: public repositories, GitHub issues, merged pull
+# requests, READMEs and code documentation. Replaces the deprecated search_github.
+{:ok, %Firecrawl.DeveloperSearch{results: results}} = Firecrawl.search_developer(
+  query: "retry an http request with exponential backoff",
+  repos: ["square/okhttp"],
+  types: ["issue", "pull_request"],
+  k: 5
+)
+
+for %Firecrawl.DeveloperSearch.Result{title: title, url: url} <- results do
+  IO.puts("#{title} #{url}")
+end
+
 # Check crawl status
 {:ok, response} = Firecrawl.get_crawl_status("job-uuid")
 

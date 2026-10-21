@@ -175,8 +175,11 @@ export interface SearchV2Response {
  * group is present and non-negative — a source that was not requested, or that
  * returned nothing, counts 0. Persisted per search so position-based feedback
  * can be bounded exactly per source rather than against a combined total.
+ * `tools` is present only when provider discovery ran.
  */
-export type SearchResultCountsBySource = Record<SearchResultType, number>;
+export type SearchResultCountsBySource = Record<SearchResultType, number> & {
+  tools?: number;
+};
 
 export function countSearchResultsBySource(
   response: SearchV2Response,
@@ -185,6 +188,7 @@ export function countSearchResultsBySource(
     web: response.web?.length ?? 0,
     images: response.images?.length ?? 0,
     news: response.news?.length ?? 0,
+    ...(response.tools ? { tools: response.tools.length } : {}),
   };
 }
 
