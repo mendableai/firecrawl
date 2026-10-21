@@ -241,3 +241,39 @@ describe("analytics team ids", () => {
       expect(rows.map(row => row.team_id)).toEqual([stored]);
   });
 });
+
+describe("search request tracking", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("writes a whole-number record of a fractional search charge", async () => {
+    await trackSearchRequest({
+      searchId: "search-1",
+      requestId: "request-1",
+      teamId: "team-1",
+      query: "q",
+      origin: "api",
+      kind: "search",
+      apiVersion: "v2",
+      sources: ["web"],
+      numResults: 30,
+      searchCredits: 7.5,
+      scrapeCredits: 0,
+      totalCredits: 7.5,
+      hasScrapeFormats: false,
+      scrapeFormats: [],
+      isSuccessful: true,
+      timeTaken: 0,
+      zeroDataRetention: false,
+    });
+
+    expect(chInsert).toHaveBeenCalledWith("search_requests", [
+      expect.objectContaining({
+        search_credits: 8,
+        scrape_credits: 0,
+        total_credits: 8,
+      }),
+    ]);
+  });
+});
