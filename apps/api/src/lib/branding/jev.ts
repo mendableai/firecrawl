@@ -6,7 +6,7 @@ import type {
   RequestOptions,
   SystemOneResult,
 } from "@typesafe-ai/sdk";
-import { formatHex, hsl, parse } from "culori";
+import { formatHex, hsl, parse, wcagContrast } from "culori";
 
 import { config } from "../../config";
 import { setSpanAttributes, SpanKind, withSpan } from "../otel-tracer";
@@ -273,6 +273,23 @@ const FALLBACK_FONTS = new Set([
   "noto color emoji",
 ]);
 
+const WEIGHTS =
+  "regular|reg|book|medium|semi-?bold|demi-?bold|bold|extra-?bold|ultra-?bold|black|heavy|light|extra-?light|ultra-?light|thin|hairline|italic|oblique";
+const FONT_WEIGHT = new RegExp(`^\\s*(?:(?:${WEIGHTS})\\s*)+$`, "i");
+const FONT_WEIGHT_SUFFIX = new RegExp(`(?<=\\S)[\\s_-]+(?:${WEIGHTS})$`, "i");
+
+// "GlacialIndifference" → "Glacial Indifference". Only words made of whole
+// capitalized parts split, so "TIActuBeta" and "HardwoodLP" stay.
+const splitCamelCase = (name: string) =>
+  name
+    .split(" ")
+    .map(word =>
+      /^(?:[A-Z][a-z]{2,}){2,}$/.test(word)
+        ? word.replace(/(?<=[a-z])(?=[A-Z])/g, " ")
+        : word,
+    )
+    .join(" ");
+
 export function cleanFontFamily(raw: string): string | undefined {
   // A whole stack ("system-ui, sans-serif") reports its first family.
   let name = raw
@@ -286,6 +303,14 @@ export function cleanFontFamily(raw: string): string | undefined {
   name = name.replace(/_/g, " ").replace(/\s+/g, " ").trim();
   // Variable-font builds name the same family: "Newsreader Variable".
   name = name.replace(/\s+(variable|vf)$/i, "");
+  // Self-hosted faces carry their weight: "OpenSans--Regular", "Inter Bold".
+  // A name that is only a weight ("Regular") is not a family.
+  if (FONT_WEIGHT.test(name)) return undefined;
+  // Before and after the weight goes: "GmarketSansMedium", "OpenSans--Regular".
+  name = splitCamelCase(name);
+  while (FONT_WEIGHT_SUFFIX.test(name))
+    name = name.replace(FONT_WEIGHT_SUFFIX, "");
+  name = splitCamelCase(name);
   if (!name || GENERIC_FONTS.has(name.toLowerCase())) return undefined;
   if (name === name.toLowerCase()) {
     name = name.replace(/\b\w/g, ch => ch.toUpperCase());
@@ -315,11 +340,7 @@ function typographyRole(
   };
   const name = familyKey(family);
   if (/\b(mono|code)\b|consolas|menlo/i.test(family)) return "monospace";
-  const body = [
-    first(t?.fontFamilies?.primary),
-    first(t?.fontStacks?.body),
-    first(t?.fontStacks?.paragraph),
-  ];
+  const body = [first(t?.fontFamilies?.primary), first(t?.fontStacks?.body)];
   const heading = [
     first(t?.fontFamilies?.heading),
     first(t?.fontStacks?.heading),
@@ -327,6 +348,9 @@ function typographyRole(
   // A family used for both is reported as body, the page's primary font.
   if (body.includes(name)) return "body";
   if (heading.includes(name)) return "heading";
+  // The first paragraph is often a styled lead in the heading face, so it
+  // only names a body font the other measurements don't place.
+  if (first(t?.fontStacks?.paragraph) === name) return "body";
   return undefined;
 }
 
@@ -410,6 +434,49 @@ const buttonStyle = (b: {
     b.borderRadius ?? "",
     b.shadow ?? "",
   ].join("/");
+
+const readability = (b: { background?: string; textColor?: string }) => {
+  const bg = normalizeHex(b.background);
+  const fg = normalizeHex(b.textColor);
+  return bg && fg ? wcagContrast(bg, fg) : 0;
+};
+const radiusPx = (b: { borderRadius?: string }) =>
+  parseFloat(b.borderRadius ?? "") || 0;
+
+/**
+ * The scan can report one button twice, as the link and as the styled element
+ * inside it: same label, place and fill, but the outer one has the inherited
+ * text color and square corners. Keep the one that reads as a button.
+ */
+function withoutTwins<
+  T extends {
+    button: {
+      text?: string;
+      background?: string;
+      textColor?: string;
+      borderRadius?: string;
+      top?: number;
+    };
+  },
+>(entries: T[]): T[] {
+  const twins = (a: T["button"], b: T["button"]) =>
+    clip(a.text, 80).toLowerCase() === clip(b.text, 80).toLowerCase() &&
+    normalizeHex(a.background) === normalizeHex(b.background) &&
+    a.top !== undefined &&
+    b.top !== undefined &&
+    Math.abs(a.top - b.top) <= 8;
+  const better = (a: T["button"], b: T["button"]) =>
+    readability(a) - readability(b) || radiusPx(a) - radiusPx(b);
+  return entries.filter(
+    ({ button }) =>
+      !entries.some(
+        other =>
+          other.button !== button &&
+          twins(button, other.button) &&
+          better(other.button, button) > 0,
+      ),
+  );
+}
 
 const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
 
@@ -498,9 +565,11 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
   }
 
   // Ids keep each button's index in `input.buttons`, which is what merge reads.
-  const ctaButtons = buttons
-    .map((button, i) => ({ button, id: `button_${i}` }))
-    .filter(({ button }) => !isConsentButton(button));
+  const ctaButtons = withoutTwins(
+    buttons
+      .map((button, i) => ({ button, id: `button_${i}` }))
+      .filter(({ button }) => !isConsentButton(button)),
+  );
 
   if (ctaButtons.length > 0) {
     state.buttons = Object.fromEntries(
@@ -575,7 +644,7 @@ export function buildJevRequest(input: BrandingLLMInput): JevRequest {
     questions.primary_button = {
       type: "choice",
       instructions:
-        "Which entry in `buttons` is the site's primary call-to-action button: the most prominent action a visitor is invited to take (such as Sign up, Get started, Buy, Book a demo, Donate)? Cookie-consent buttons are not calls to action.",
+        "Which entry in `buttons` is the site's primary call-to-action button: the most prominent action a visitor is invited to take (such as Sign up, Get started, Buy, Book a demo, Donate)? It is usually filled with the brand's color; a white, gray, black or transparent button is the primary only when no call to action uses a brand color, or the brand is deliberately monochrome. Cookie-consent buttons are not calls to action.",
       // No "none": when a page has buttons, one of them is the primary style.
       criteria: options(buttonIds),
     };
@@ -826,11 +895,16 @@ function mapJevAnswers(
         keep: isBrand?.type === "noul" ? isBrand.noul >= 0.5 : true,
       };
     })
-    .filter(f => f.keep);
+    .filter((f, _, all) => f.keep || (f.measured && !all.some(o => o.keep)));
   // Drop fallback faces the page doesn't use for text, and once headings or
-  // body are covered, fonts nobody could place.
+  // body are covered, fonts nobody could place. A fallback measured as body
+  // (the browser default on a page that styles inner elements) goes too when
+  // a real face also is body text.
+  const fallbackFace = (f: { family: string }) =>
+    FALLBACK_FONTS.has(f.family.toLowerCase());
+  const realBody = realFonts.some(f => f.role === "body" && !fallbackFace(f));
   const isFallback = (f: (typeof realFonts)[number]) =>
-    FALLBACK_FONTS.has(f.family.toLowerCase()) && !f.measured;
+    fallbackFace(f) && (!f.measured || (f.role === "body" && realBody));
   const withoutFallbacks = realFonts.some(f => !isFallback(f))
     ? realFonts.filter(f => !isFallback(f))
     : realFonts;
