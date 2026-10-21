@@ -264,6 +264,11 @@ const configSchema = z.object({
   // (e.g. 600000 = 10min) also short-circuits repeat lookups for URLs with no
   // index entry. Kept short so any missed cache-clear self-heals quickly.
   INDEX_CACHE_NEGATIVE_TTL_MS: z.coerce.number().default(0),
+  // On a URL index hit for a PDF whose entry recorded its fire-pdf content
+  // key, ask the fire-pdf cache service whether it holds a newer parse; if it
+  // does, the index copy is treated as a miss so the request is answered from
+  // the newer entry (no parse) and re-indexed. Needs FIRE_PDF_CACHE_BASE_URL.
+  INDEX_PDF_SUPERSEDE_CHECK: z.stringbool().default(false),
   REDIS_URL: z.string().optional(),
   REDIS_EVICT_URL: z.string().optional(),
   REDIS_RATE_LIMIT_URL: z.string().optional(),

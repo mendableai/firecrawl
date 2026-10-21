@@ -82,6 +82,70 @@ const lookupOutcomeSchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
+// An index entry and the content-cache entry it was built from are written
+// moments apart; only an entry written well after the index row is a newer
+// parse rather than the same one.
+const SUPERSEDE_MARGIN_MS = 15 * 60 * 1000;
+const SUPERSEDE_TIMEOUT_MS = 1_000;
+
+const supersedeAnswerSchema = z.object({
+  outcome: z.string(),
+  cached_at: z.string().optional(),
+});
+
+/**
+ * Whether the cache service holds a fresh (no campaign match) entry for
+ * `key` written after `indexCreatedAt`. Asks by key alone, so no bytes are
+ * fetched and nothing is parsed. Any failure is "error": the caller keeps
+ * serving the index copy.
+ */
+export async function checkFirePdfSupersedes(
+  meta: Meta,
+  key: string,
+  indexCreatedAt: Date,
+): Promise<"superseded" | "current" | "error"> {
+  try {
+    const answer = await robustFetch({
+      url: `${config.FIRE_PDF_CACHE_BASE_URL}/cache/lookup`,
+      method: "POST",
+      headers: config.FIRE_PDF_API_KEY
+        ? { Authorization: `Bearer ${config.FIRE_PDF_API_KEY}` }
+        : undefined,
+      body: {
+        keys: [key],
+        options: {},
+        team_id: meta.internalOptions.teamId,
+        kind: firePdfRequestKind(meta),
+        source_kind: "pdf",
+        scrape_id: meta.id,
+      },
+      schema: supersedeAnswerSchema,
+      logger: meta.logger,
+      mock: meta.mock,
+      tryCount: 1,
+      abort: AbortSignal.any([
+        meta.abort.asSignal(),
+        AbortSignal.timeout(SUPERSEDE_TIMEOUT_MS),
+      ]),
+    });
+    if (answer.outcome !== "hit" || answer.cached_at === undefined) {
+      return "current";
+    }
+    const cachedAt = new Date(answer.cached_at).getTime();
+    if (isNaN(cachedAt)) return "current";
+    return cachedAt - indexCreatedAt.getTime() > SUPERSEDE_MARGIN_MS
+      ? "superseded"
+      : "current";
+  } catch (error) {
+    meta.abort.throwIfAborted();
+    meta.logger.warn("FirePDF supersede check failed, serving index copy", {
+      scrapeId: meta.id,
+      error,
+    });
+    return "error";
+  }
+}
+
 export async function lookupCachedResult(
   meta: Meta,
   input: PdfCacheKeyInput,
@@ -120,6 +184,14 @@ async function lookupWithinSpan(
   } = args;
   // An already-cancelled scrape sends nothing.
   meta.abort.throwIfAborted();
+  const keys = await cacheLookupKeys(input);
+  if (
+    sourceKind === "pdf" &&
+    keys[0].startsWith("raw-") &&
+    meta.firePdfCacheKey !== undefined
+  ) {
+    meta.firePdfCacheKey.current = keys[0];
+  }
   let answer: z.infer<typeof lookupOutcomeSchema>;
   try {
     answer = await robustFetch({
@@ -129,7 +201,7 @@ async function lookupWithinSpan(
         ? { Authorization: `Bearer ${config.FIRE_PDF_API_KEY}` }
         : undefined,
       body: {
-        keys: await cacheLookupKeys(input),
+        keys,
         options: {
           ...(mode !== undefined && { mode }),
           ...(includePageMarkdown && { include_page_markdown: true }),
