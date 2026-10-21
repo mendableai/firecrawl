@@ -180,6 +180,11 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: ./apps/playwright-service-ts
 
+      - name: Run Playwright service unit tests
+        if: matrix.engine == 'playwright' && matrix.proxy == 'no-proxy'
+        run: pnpm test
+        working-directory: ./apps/playwright-service-ts
+
       - name: Install Playwright system deps
         if: matrix.engine == 'playwright'
         run: pnpm exec playwright install-deps chromium
