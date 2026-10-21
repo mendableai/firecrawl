@@ -16,6 +16,18 @@ const emptyStringAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 const emptyStringAsDefault = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(value => (value === "" ? undefined : value), schema);
 
+// Trim strings and treat blank ones as unset (optional or default schemas).
+const blankStringAsUnset = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(
+    value =>
+      typeof value === "string"
+        ? value.trim() === ""
+          ? undefined
+          : value.trim()
+        : value,
+    schema,
+  );
+
 const RESEARCH_PAPER_OPERATIONS = [
   "search",
   "inspect",
@@ -252,6 +264,15 @@ const configSchema = z.object({
   // (e.g. 600000 = 10min) also short-circuits repeat lookups for URLs with no
   // index entry. Kept short so any missed cache-clear self-heals quickly.
   INDEX_CACHE_NEGATIVE_TTL_MS: z.coerce.number().default(0),
+  // `parsers: [{ type: "pdf", refresh: true }]` skips URL index reads, so the
+  // request reaches the PDF engine and its content-cache refresh budget
+  // instead of being answered with the indexed copy of the old parse.
+  INDEX_SKIP_ON_PDF_REFRESH: z.stringbool().default(false),
+  // On a URL index hit for a PDF whose entry recorded its fire-pdf content
+  // key, ask the fire-pdf cache service whether it holds a newer parse; if it
+  // does, the index copy is treated as a miss so the request is answered from
+  // the newer entry (no parse) and re-indexed. Needs FIRE_PDF_CACHE_BASE_URL.
+  INDEX_PDF_SUPERSEDE_CHECK: z.stringbool().default(false),
   REDIS_URL: z.string().optional(),
   REDIS_EVICT_URL: z.string().optional(),
   REDIS_RATE_LIMIT_URL: z.string().optional(),
@@ -558,24 +579,13 @@ const configSchema = z.object({
   DISABLE_BLOCKLIST: z.stringbool().optional(),
   FORCED_ENGINE_DOMAINS: z.string().optional(),
   DEBUG_BRANDING: z.stringbool().optional(),
-  // TypeSafe Jev for branding decisions (lib/branding/jev.ts); needs
-  // TYPESAFE_API_KEY. BRANDING_JEV turns it on for every team,
-  // BRANDING_JEV_TEAM_IDS (comma-separated) for listed teams, and
-  // BRANDING_JEV_ROLLOUT_PERCENT for a stable share of teams.
+  // TypeSafe Jev answers branding decisions whenever TYPESAFE_API_KEY is set
+  // (lib/branding/jev.ts), with the LLM as fallback. BRANDING_JEV=false sends
+  // every branding request to the LLM instead.
   BRANDING_JEV: emptyStringAsUndefined(z.stringbool()),
-  BRANDING_JEV_TEAM_IDS: delimitedList(",").optional(),
-  BRANDING_JEV_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
   BRANDING_JEV_TIMEOUT_MS: emptyStringAsUndefined(
     z.coerce.number().int().positive(),
   ),
-  // Rerun branding on the LLM when Jev's logo confidence is below this (0-1).
-  BRANDING_JEV_ESCALATE_BELOW: emptyStringAsUndefined(
-    z.coerce.number().min(0).max(1),
-  ),
-  // Share of LLM-answered branding requests (0-100) that also ask Jev in the
-  // background and record how its answer compares (lib/branding/jev-shadow.ts).
-  // Customers always get the LLM's answer.
-  BRANDING_JEV_SHADOW_PERCENT: z.coerce.number().min(0).max(100).default(0),
   // Warn scrapes of search engine results pages (google.*/search, ...) that
   // /search returns those results directly (lib/serp-url.ts).
   // SERP_SCRAPE_WARNING turns it on for every team, SERP_SCRAPE_WARNING_TEAM_IDS
@@ -591,6 +601,44 @@ const configSchema = z.object({
 
   // AI/ML
   MODEL_NAME: z.string().optional(),
+  // Optional OpenAI-compatible provider for JSON extraction. Traffic is routed
+  // by team cohort (stable hash) at ROLLOUT_PERCENT, mirrored without using the
+  // result at SHADOW_PERCENT, and always routed for TEAM_IDS. Any failure falls
+  // back to the default model for that request.
+  EXTRACTION_PROVIDER_BASE_URL: blankStringAsUnset(z.string().url().optional()),
+  EXTRACTION_PROVIDER_API_KEY: blankStringAsUnset(z.string().optional()),
+  EXTRACTION_PROVIDER_MODEL: blankStringAsUnset(
+    z.string().min(1).default("extraction-v1"),
+  ),
+  EXTRACTION_PROVIDER_ROLLOUT_PERCENT: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .default(0),
+  EXTRACTION_PROVIDER_SHADOW_PERCENT: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .default(0),
+  EXTRACTION_PROVIDER_TEAM_IDS: z.string().optional(),
+  // Let any team pick the provider per request (json format `model`); off =
+  // only teams in TEAM_IDS may.
+  EXTRACTION_PROVIDER_REQUEST_OPT_IN: z.stringbool().optional(),
+  EXTRACTION_PROVIDER_MAX_INPUT_BYTES: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(400_000),
+  EXTRACTION_PROVIDER_INPUT_COST_PER_MTOK: z.coerce
+    .number()
+    .nonnegative()
+    .default(0.07),
+  EXTRACTION_PROVIDER_OUTPUT_COST_PER_MTOK: z.coerce
+    .number()
+    .nonnegative()
+    .default(0.2),
   MODEL_EMBEDDING_NAME: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
   VERTEX_CREDENTIALS: z.string().optional(),
@@ -721,6 +769,18 @@ const configSchema = z.object({
 });
 
 const validatedConfigSchema = configSchema.superRefine((value, context) => {
+  if (
+    value.EXTRACTION_PROVIDER_ROLLOUT_PERCENT +
+      value.EXTRACTION_PROVIDER_SHADOW_PERCENT >
+    100
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["EXTRACTION_PROVIDER_SHADOW_PERCENT"],
+      message:
+        "EXTRACTION_PROVIDER_ROLLOUT_PERCENT + EXTRACTION_PROVIDER_SHADOW_PERCENT must not exceed 100",
+    });
+  }
   for (const error of getMcpActionLogConfigErrors(value)) {
     context.addIssue({
       code: "custom",

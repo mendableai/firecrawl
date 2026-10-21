@@ -45,6 +45,7 @@ import {
   blocklistMiddleware,
   scrapeBlocklistMiddleware,
   countryCheck,
+  restrictedOptionsCountryCheck,
   idempotencyMiddleware,
   requestTimingMiddleware,
   wrap,
@@ -196,7 +197,7 @@ v2Router.post(
     allowAgentManagedKey: true,
   }),
   inferIntegrationMiddleware,
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(undefined, SEARCH_CREDITS_FEATURE_ID),
   blocklistMiddleware,
   wrap(searchController),
@@ -206,12 +207,14 @@ v2Router.post(
   "/search/:jobId/feedback",
   authMiddleware(RateLimiterMode.Account),
   validateJobIdParam,
+  inferIntegrationMiddleware,
   wrap(searchFeedbackController),
 );
 
 v2Router.post(
   "/feedback",
   authMiddleware(RateLimiterMode.Account),
+  inferIntegrationMiddleware,
   wrap(feedbackController),
 );
 
@@ -224,7 +227,7 @@ v2Router.get(
 v2Router.post(
   "/parse/upload-url",
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   wrap(parseUploadUrlController),
 );
 
@@ -238,7 +241,7 @@ v2Router.put(
 v2Router.post(
   "/parse",
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   parsePayloadMiddleware,
   inferIntegrationMiddleware,
@@ -252,7 +255,7 @@ v2Router.post(
     allowAgentManagedKey: true,
   }),
   inferIntegrationMiddleware,
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   scrapeBlocklistMiddleware,
   wrap(scrapeController),
@@ -268,7 +271,9 @@ v2Router.get(
 v2Router.post(
   "/scrape/:jobId/interact",
   authMiddleware(RateLimiterMode.BrowserExecute, { allowKeyless: true }),
+  countryCheck,
   validateJobIdParam,
+  inferIntegrationMiddleware,
   wrap(scrapeInteractController),
 );
 
@@ -283,7 +288,7 @@ v2Router.post(
   "/batch/scrape",
   authMiddleware(RateLimiterMode.Scrape, { allowAgentManagedKey: true }),
   inferIntegrationMiddleware,
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(),
   blocklistMiddleware,
   wrap(batchScrapeController),
@@ -302,7 +307,7 @@ v2Router.post(
   "/crawl",
   authMiddleware(RateLimiterMode.Crawl),
   inferIntegrationMiddleware,
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(),
   scrapeBlocklistMiddleware,
   idempotencyMiddleware,
@@ -390,7 +395,7 @@ v2Router.post(
   authMiddleware(RateLimiterMode.Extract),
   inferIntegrationMiddleware,
   deprecationMiddleware("v2_extract"),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(20),
   blocklistMiddleware,
   wrap(extractController),
@@ -555,7 +560,7 @@ v2Router.post(
 v2Router.post(
   "/monitor",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(createMonitorController),
@@ -584,7 +589,7 @@ v2Router.get(
 v2Router.patch(
   "/monitor/:monitorId",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(updateMonitorController),
@@ -599,7 +604,7 @@ v2Router.delete(
 v2Router.post(
   "/monitor/:monitorId/run",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(runMonitorController),
@@ -662,6 +667,7 @@ v2Router.get(
 v2Router.post(
   ["/browser/:sessionId/execute", "/interact/:sessionId/execute"],
   authMiddleware(RateLimiterMode.BrowserExecute),
+  countryCheck,
   wrap(browserExecuteController),
 );
 

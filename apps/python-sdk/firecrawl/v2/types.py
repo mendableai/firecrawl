@@ -1919,7 +1919,12 @@ class AgentTraceError(BaseModel):
     """Structured error attached to terminal/error trace events."""
 
     code: Literal[
-        "cancelled", "credit_limit_reached", "parent_finished", "refused", "internal"
+        "cancelled",
+        "credit_limit_reached",
+        "insufficient_credits",
+        "parent_finished",
+        "refused",
+        "internal",
     ]
     source: Literal["agent", "tool", "billing", "system"]
     retryable: bool

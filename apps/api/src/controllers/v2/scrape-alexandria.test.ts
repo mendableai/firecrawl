@@ -1,5 +1,9 @@
 import express from "express";
 import request from "supertest";
+
+vi.mock("../../lib/billing-country", () => ({
+  billingCountryForTeam: vi.fn(async () => undefined),
+}));
 const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   log: vi.fn(),
@@ -34,6 +38,7 @@ const call = {
   capability: "categories/category",
   options: {},
 };
+let flags: Record<string, unknown> = { exchangeRetrieve: true };
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
@@ -42,7 +47,7 @@ app.use((req, _res, next) => {
     acuc: {
       api_key_id: 12,
       org_id: "org",
-      flags: { exchangeRetrieve: true },
+      flags,
     },
   });
   next();
@@ -60,6 +65,7 @@ const result = (results: unknown[], executed = true) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags = { exchangeRetrieve: true };
   mocks.log.mockResolvedValue(undefined);
   mocks.scrapeLog.mockResolvedValue(undefined);
   mocks.retrieve.mockResolvedValue(
@@ -286,4 +292,71 @@ it("executes with supplied arguments but stores only tool identifiers in activit
   expect(mocks.scrapeLog.mock.calls[0][0].options).toEqual({
     alexandria: [{ provider: call.provider, capability: call.capability }],
   });
+});
+
+it("forwards zero data retention for forced-ZDR teams instead of refusing them", async () => {
+  flags = { exchangeRetrieve: true, forceZDR: true };
+  const response = await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call });
+  expect(response.status).toBe(200);
+  expect(mocks.retrieve).toHaveBeenCalledWith(
+    expect.objectContaining({ zeroDataRetention: true }),
+  );
+  await vi.waitFor(() =>
+    expect(mocks.log).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
+it("accepts zero data retention in the body and forwards it", async () => {
+  const response = await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call, zeroDataRetention: true });
+  expect(response.status).toBe(200);
+  expect(mocks.retrieve).toHaveBeenCalledWith(
+    expect.objectContaining({ zeroDataRetention: true }),
+  );
+  await vi.waitFor(() =>
+    expect(mocks.log).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
+it("accepts zero data retention on both legacy request shapes", async () => {
+  const single = await request(app)
+    .post("/exchange/retrieve")
+    .send({ ...call, zeroDataRetention: true });
+  expect(single.status).toBe(200);
+  const batch = await request(app)
+    .post("/exchange/retrieve")
+    .send({ requests: [call], zeroDataRetention: true });
+  expect(batch.status).toBe(200);
+  for (const [arg] of mocks.retrieve.mock.calls)
+    expect(arg).toMatchObject({ calls: [call], zeroDataRetention: true });
+});
+
+it("tells the provider activity log about zero data retention", async () => {
+  await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call, zeroDataRetention: true });
+  await vi.waitFor(() =>
+    expect(mocks.scrapeLog).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
+it("does not ask for zero data retention by default", async () => {
+  await request(app).post("/v2/scrape").send({ alexandria: call });
+  expect(mocks.retrieve).toHaveBeenCalledWith(
+    expect.objectContaining({ zeroDataRetention: false }),
+  );
+  await vi.waitFor(() =>
+    expect(mocks.log).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: false }),
+    ),
+  );
 });

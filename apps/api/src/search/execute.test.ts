@@ -219,6 +219,44 @@ describe("executeSearch safe search", () => {
   });
 });
 
+describe("executeSearch zero data retention rate", () => {
+  const results = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      url: `https://result${index}.example/`,
+      title: "Result",
+      description: "A result.",
+    }));
+
+  it.each([
+    { name: "a default search", enterprise: undefined, ten: 2, eleven: 4 },
+    {
+      name: "an enterprise anon search",
+      enterprise: ["anon"],
+      ten: 2,
+      eleven: 4,
+    },
+    {
+      name: "an enterprise zdr search",
+      enterprise: ["zdr"],
+      ten: 10,
+      eleven: 20,
+    },
+  ])("bills $name per ten results", async ({ enterprise, ten, eleven }) => {
+    for (const [count, credits] of [
+      [10, ten],
+      [11, eleven],
+    ]) {
+      mocks.search.mockResolvedValue({ web: results(count) });
+      const result = await executeSearch(
+        { ...options([]), limit: 20, enterprise },
+        context,
+        logger,
+      );
+      expect(result.searchCredits).toBe(credits);
+    }
+  });
+});
+
 describe("executeSearch developer category", () => {
   it("returns sole developer-category results in web without running SERP", async () => {
     const result = await executeSearch(
@@ -231,6 +269,9 @@ describe("executeSearch developer category", () => {
     expect(result.response).toEqual({ web: [developerResult] });
     expect(result.response).not.toHaveProperty("developer");
     expect(result.indexResultsCount).toBe(1);
+    // The vertical that served the result survives the response as a label
+    // keyed by the position the client sees.
+    expect(result.resultCategories).toEqual({ web: { "1": "developer" } });
   });
 
   it("filters blocked developer results via threat protection and renumbers", async () => {
@@ -275,7 +316,75 @@ describe("executeSearch developer category", () => {
       ["https://ok.example/a", 1],
       ["https://ok.example/c", 2],
     ]);
+    // Keyed by the renumbered positions, not the upstream ones — position 2 is
+    // the surviving third result.
+    expect(result.resultCategories).toEqual({
+      web: { "1": "developer", "2": "developer" },
+    });
   });
+
+  it("returns an empty group and no categories when every result is blocked", async () => {
+    mocks.searchDeveloperCategory.mockResolvedValue([
+      {
+        url: "https://blocked.example/a",
+        title: "A",
+        description: "",
+        position: 1,
+        category: "developer",
+      },
+      {
+        url: "https://blocked.example/b",
+        title: "B",
+        description: "",
+        position: 2,
+        category: "developer",
+      },
+    ]);
+    mocks.checkUrlsAgainstThreatPolicy.mockResolvedValue({
+      decisionsByUrl: new Map([
+        ["https://blocked.example/a", { allowed: false }],
+        ["https://blocked.example/b", { allowed: false }],
+      ]),
+    });
+
+    const result = await executeSearch(
+      options([{ type: "developer" }]),
+      { ...context, threatProtectionPolicy: { mode: "block" } } as any,
+      logger,
+    );
+
+    expect(result.response.web ?? []).toEqual([]);
+    // An empty map, not absent: the search ran and tagged nothing, which
+    // feedback must tell apart from a row that predates the column.
+    expect(result.resultCategories).toEqual({});
+  });
+
+  it.each([
+    {
+      name: "a forced team",
+      context: { zeroDataRetention: true },
+      enterprise: [],
+    },
+    { name: "an enterprise zdr request", context: {}, enterprise: ["zdr"] },
+    { name: "an enterprise anon request", context: {}, enterprise: ["anon"] },
+  ])(
+    "marks the developer upstream call zero data retention for $name",
+    async c => {
+      await executeSearch(
+        {
+          ...options([{ type: "developer" }]),
+          enterprise: c.enterprise,
+        } as any,
+        { ...context, ...c.context } as any,
+        logger,
+      );
+
+      expect(mocks.searchDeveloperCategory).toHaveBeenCalledWith(
+        expect.objectContaining({ zeroDataRetention: true }),
+        logger,
+      );
+    },
+  );
 
   it("rejects developer combined with other categories at the schema", () => {
     const mixed = searchRequestSchema.safeParse({
@@ -318,7 +427,13 @@ describe("executeSearch gov category", () => {
     expect(mocks.search).not.toHaveBeenCalled();
     expect(mocks.searchDeveloperCategory).not.toHaveBeenCalled();
     expect(mocks.searchGovCategory).toHaveBeenCalledWith(
-      { query: "retries", limit: 10, teamId: "team-1", timeout: 1_000 },
+      {
+        query: "retries",
+        limit: 10,
+        teamId: "team-1",
+        timeout: 1_000,
+        zeroDataRetention: false,
+      },
       logger,
     );
     expect(result.response).toEqual({ web: [govResult] });

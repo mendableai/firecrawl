@@ -40,6 +40,8 @@ from .v2.methods.research_docs import (
     doc,
 )
 from .v2.types import Document, ParseOptions, ScrapeOptions
+from .v2.utils.caller_origin import default_origin
+from .v2.utils.get_version import get_version
 
 logger = logging.getLogger("firecrawl")
 
@@ -272,8 +274,10 @@ class Firecrawl:
         self.api_key = api_key
         self.api_url = api_url
 
-        # Initialize version-specific clients
-        self._v1_client = V1FirecrawlApp(api_key=api_key, api_url=api_url, origin=origin) if V1FirecrawlApp else None
+        # Resolved here: caller detection reads the stack of whoever constructs the client.
+        self._origin = origin or default_origin(get_version())
+        self._v1: Optional[V1Proxy] = None
+
         self._v2_client = V2FirecrawlClient(
             api_key=api_key,
             api_url=api_url,
@@ -283,8 +287,6 @@ class Firecrawl:
             origin=origin,
         ) if V2FirecrawlClient else None
         
-        # Create version-specific proxies
-        self.v1 = V1Proxy(self._v1_client) if self._v1_client else None
         self.v2 = V2Proxy(self._v2_client)
         
         self.scrape = self._v2_client.scrape
@@ -364,6 +366,13 @@ class Firecrawl:
         self.check_batch_scrape_status = self._v2_client.check_batch_scrape_status
         self.check_batch_scrape_errors = self._v2_client.check_batch_scrape_errors
 
+    @property
+    def v1(self) -> V1Proxy:
+        """Feature-frozen v1 client, created on first use because it requires an API key on the cloud API."""
+        if self._v1 is None:
+            self._v1 = V1Proxy(V1FirecrawlApp(api_key=self.api_key, api_url=self.api_url, origin=self._origin))
+        return self._v1
+
     def parse(
         self,
         file: Union[str, Path, bytes, bytearray, BinaryIO],
@@ -419,8 +428,9 @@ class AsyncFirecrawl:
         self.api_key = api_key
         self.api_url = api_url
 
-        # Initialize version-specific clients
-        self._v1_client = AsyncV1FirecrawlApp(api_key=api_key, api_url=api_url, origin=origin) if AsyncV1FirecrawlApp else None
+        self._origin = origin or default_origin(get_version())
+        self._v1: Optional[AsyncV1Proxy] = None
+
         self._v2_client = AsyncFirecrawlClient(
             api_key=api_key,
             api_url=api_url,
@@ -430,8 +440,6 @@ class AsyncFirecrawl:
             origin=origin,
         ) if AsyncFirecrawlClient else None
         
-        # Create version-specific proxies
-        self.v1 = AsyncV1Proxy(self._v1_client) if self._v1_client else None
         self.v2 = AsyncV2Proxy(self._v2_client)
 
         # Expose v2 async surface directly on the top-level client for ergonomic access
@@ -511,6 +519,13 @@ class AsyncFirecrawl:
         self.async_batch_scrape_urls = self._v2_client.async_batch_scrape_urls
         self.check_batch_scrape_status = self._v2_client.check_batch_scrape_status
         self.check_batch_scrape_errors = self._v2_client.check_batch_scrape_errors
+
+    @property
+    def v1(self) -> AsyncV1Proxy:
+        """Feature-frozen async v1 client, created on first use because it requires an API key on the cloud API."""
+        if self._v1 is None:
+            self._v1 = AsyncV1Proxy(AsyncV1FirecrawlApp(api_key=self.api_key, api_url=self.api_url, origin=self._origin))
+        return self._v1
 
     async def parse(
         self,

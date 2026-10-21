@@ -308,6 +308,74 @@ type SearchGitHubOptions struct {
 	K *int `json:"k,omitempty"`
 }
 
+// DeveloperSearchOptions configures DeveloperSearch.
+type DeveloperSearchOptions struct {
+	// K is the total number of ranked results, 1 to 100 (default 10).
+	K *int `json:"k,omitempty"`
+	// Passages is the number of passages per result, 1 to 5 (default 1).
+	Passages *int `json:"passages,omitempty"`
+	// Types limits result kinds: "doc", "issue", "pull_request", "readme".
+	Types []string `json:"types,omitempty"`
+	// Repos filters by GitHub owner/name, at most 20.
+	Repos []string `json:"repos,omitempty"`
+	// Sources filters by developer documentation source ID, at most 20.
+	Sources []string `json:"sources,omitempty"`
+	// Language is one case-insensitive GitHub Linguist primary language.
+	Language string `json:"language,omitempty"`
+	// Topic lists repository topics that must all match, at most 8.
+	Topic []string `json:"topic,omitempty"`
+	// License is one case-insensitive SPDX repository license identifier.
+	License  string `json:"license,omitempty"`
+	MinStars *int   `json:"min_stars,omitempty"`
+	MaxStars *int   `json:"max_stars,omitempty"`
+	Archived *bool  `json:"archived,omitempty"`
+	Fork     *bool  `json:"fork,omitempty"`
+	// Skills set to "only" returns packaged agent-skill evidence only.
+	Skills string `json:"skills,omitempty"`
+}
+
+// DeveloperSearchPassage is one matched passage of a developer search result.
+type DeveloperSearchPassage struct {
+	Text        string `json:"text"`
+	CitationURL string `json:"citation_url,omitempty"`
+}
+
+// DeveloperSearchResult is one ranked developer search result. License is
+// either an SPDX string or a disclosure object, so it is kept raw.
+type DeveloperSearchResult struct {
+	ID       string                   `json:"id"`
+	URL      string                   `json:"url"`
+	Title    string                   `json:"title,omitempty"`
+	Passages []DeveloperSearchPassage `json:"passages"`
+	License  json.RawMessage          `json:"license,omitempty"`
+}
+
+// DeveloperSearchRepoStatus reports whether a requested repository is indexed.
+type DeveloperSearchRepoStatus struct {
+	Repo    string `json:"repo"`
+	Indexed bool   `json:"indexed"`
+	Types   struct {
+		Issue       bool `json:"issue"`
+		PullRequest bool `json:"pullRequest"`
+		Readme      bool `json:"readme"`
+	} `json:"types"`
+}
+
+// DeveloperSearchSourceStatus reports whether a requested source is indexed.
+type DeveloperSearchSourceStatus struct {
+	Source  string `json:"source"`
+	Indexed bool   `json:"indexed"`
+}
+
+// DeveloperSearchResponse is returned by DeveloperSearch. Repos and Sources
+// are present only when those filters were requested.
+type DeveloperSearchResponse struct {
+	Success bool                          `json:"success"`
+	Results []DeveloperSearchResult       `json:"results"`
+	Repos   []DeveloperSearchRepoStatus   `json:"repos,omitempty"`
+	Sources []DeveloperSearchSourceStatus `json:"sources,omitempty"`
+}
+
 // CrawlResponse is returned when starting an async crawl.
 type CrawlResponse struct {
 	ID  string `json:"id"`

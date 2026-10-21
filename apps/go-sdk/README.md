@@ -263,6 +263,24 @@ results, err := client.Search(ctx, "firecrawl web scraping", &firecrawl.SearchOp
 })
 ```
 
+### Developer Search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `DeveloperSearch` replaces the deprecated `SearchGitHub`.
+
+```go
+resp, err := client.DeveloperSearch(ctx, "retry an http request with exponential backoff", &firecrawl.DeveloperSearchOptions{
+	K:     firecrawl.Int(5),
+	Types: []string{"issue", "pull_request"},
+	Repos: []string{"golang/go"},
+})
+if err != nil {
+	log.Fatal(err)
+}
+for _, r := range resp.Results {
+	fmt.Println(r.Title, r.URL)
+}
+```
+
 ### Agent
 
 Run an AI-powered agent to extract structured data.

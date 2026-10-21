@@ -25,6 +25,8 @@ use Firecrawl\Models\CrawlJob;
 use Firecrawl\Models\CrawlOptions;
 use Firecrawl\Models\CrawlResponse;
 use Firecrawl\Models\CreditUsage;
+use Firecrawl\Models\DeveloperSearchOptions;
+use Firecrawl\Models\DeveloperSearchResponse;
 use Firecrawl\Models\Document;
 use Firecrawl\Models\MapData;
 use Firecrawl\Models\MapOptions;
@@ -182,10 +184,9 @@ final class FirecrawlClient
     /**
      * Search GitHub research content.
      *
-     * @deprecated Stops responding after 2026-11-03. Use the developer index at
-     *   GET or POST /v2/search/developer, which this SDK does not wrap yet, so
-     *   call it directly. It does not carry over the score breakdown or the web
-     *   fallback results.
+     * @deprecated Stops responding after 2026-11-03. Use {@see self::developerSearch()},
+     *   which does not carry over the score breakdown or the web fallback
+     *   results.
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
@@ -195,6 +196,29 @@ final class FirecrawlClient
             ['query' => $query, 'origin' => 'php-sdk@' . Version::SDK_VERSION],
             $options,
         )));
+    }
+
+    /**
+     * Search the developer index: public repositories, GitHub issues, merged
+     * pull requests, READMEs and code documentation.
+     *
+     * @throws FirecrawlException if the query is blank
+     */
+    public function developerSearch(string $query, ?DeveloperSearchOptions $options = null): DeveloperSearchResponse
+    {
+        if (trim($query) === '') {
+            throw new FirecrawlException('Query cannot be empty');
+        }
+
+        $body = ['query' => $query];
+        if ($options !== null) {
+            $body = array_merge($body, $options->toArray());
+        }
+        $body['origin'] = 'php-sdk@' . Version::SDK_VERSION;
+
+        return DeveloperSearchResponse::fromArray(
+            $this->assertSuccess($this->http->post('/v2/search/developer', $body)),
+        );
     }
 
     /**

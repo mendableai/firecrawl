@@ -686,7 +686,7 @@ export default class FirecrawlApp {
       return packageJson.default.version;
     } catch (error) {
       // Suppress noisy logs under test environments
-      const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+      const isTest = typeof process !== 'undefined' && !!process.env && process.env.NODE_ENV === 'test';
       if (!isTest) {
         // eslint-disable-next-line no-console
         console.error("Error getting version:", error);
@@ -2220,6 +2220,9 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     this.id = id;
     // replace `http` with `ws` (`http://` -> `ws://` and `https://` -> `wss://`)
     const wsUrl = app.apiUrl.replace(/^http/, "ws");
+    if (typeof WebSocket === "undefined") {
+      throw new Error("Watching a crawl needs a global WebSocket (Node 22+, Bun, Deno or a browser). On older Node, use the v2 client's watcher(), which polls instead.");
+    }
     this.ws = new WebSocket(`${wsUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];

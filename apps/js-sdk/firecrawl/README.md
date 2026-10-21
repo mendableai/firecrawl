@@ -15,7 +15,7 @@ npm install firecrawl
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
 2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as the `apiKey` option to the `Firecrawl` class.
 
-Here's an example of how to use the SDK with error handling:
+Here's an example of how to use the SDK with error handling. It uses ES modules and top-level `await`, so save it as an `.mjs` file or set `"type": "module"` in your `package.json`:
 
 ```js
 import { Firecrawl } from 'firecrawl';
