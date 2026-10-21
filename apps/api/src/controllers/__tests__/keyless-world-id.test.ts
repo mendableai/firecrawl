@@ -1,17 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 
-const { consume } = vi.hoisted(() => ({ consume: vi.fn() }));
+const { consume, client } = vi.hoisted(() => ({
+  consume: vi.fn(),
+  client: { ip: "203.0.113.8" },
+}));
 
 vi.mock("rate-limiter-flexible", async importOriginal => ({
   ...(await importOriginal<typeof import("rate-limiter-flexible")>()),
   RateLimiterRedis: class {
-    consume = consume;
+    keyPrefix: string;
+    constructor(options: { keyPrefix: string }) {
+      this.keyPrefix = options.keyPrefix;
+    }
+    consume(key: string) {
+      return consume(this.keyPrefix, key);
+    }
   },
 }));
 vi.mock("../../services/rate-limiter", () => ({ redisRateLimitClient: {} }));
 vi.mock("../../db/connection", () => ({ db: {}, dbRr: {}, dbIndex: {} }));
-vi.mock("../auth", () => ({ keylessClientIp: () => "203.0.113.8" }));
+vi.mock("../auth", () => ({ keylessClientIp: () => client.ip }));
 
 import { RateLimiterRes } from "rate-limiter-flexible";
 import { config } from "../../config";
@@ -56,6 +65,7 @@ async function call(
   return {
     status: res.status.mock.calls[0]?.[0],
     body: res.json.mock.calls[0]?.[0],
+    headers: Object.fromEntries(res.setHeader.mock.calls),
   };
 }
 
@@ -67,6 +77,7 @@ describe("World ID keyless endpoints", () => {
 
   beforeEach(() => {
     configure();
+    client.ip = "203.0.113.8";
     consume.mockResolvedValue(undefined);
     fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
@@ -75,6 +86,7 @@ describe("World ID keyless endpoints", () => {
   afterEach(() => {
     Object.assign(config, original);
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -89,7 +101,7 @@ describe("World ID keyless endpoints", () => {
       await call(keylessWorldIdDeviceController),
       await call(keylessWorldIdTokenController, { device_handle: handle }),
     ]) {
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         status: 404,
         body: { success: false, error: "Not found" },
       });
@@ -98,7 +110,8 @@ describe("World ID keyless endpoints", () => {
     expect(consume).not.toHaveBeenCalled();
   });
 
-  it("calls World's default issuer with a bounded timeout", async () => {
+  it("calls World's default issuer with a 10s timeout", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
     fetch.mockResolvedValue(
       Response.json({
         device_code: "device-code",
@@ -113,8 +126,9 @@ describe("World ID keyless endpoints", () => {
     });
     expect(fetch).toHaveBeenCalledWith(
       "https://auth.world.org/api/v1/device_authorization",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: timeout.mock.results[0].value }),
     );
+    expect(timeout).toHaveBeenCalledExactlyOnceWith(10_000);
   });
 
   it.each([
@@ -136,18 +150,49 @@ describe("World ID keyless endpoints", () => {
         body: { success: false, error: "temporarily_unavailable" },
       };
 
-      expect(await call(keylessWorldIdDeviceController)).toEqual(unavailable);
-      expect(await poll()).toEqual(unavailable);
+      expect(await call(keylessWorldIdDeviceController)).toMatchObject(
+        unavailable,
+      );
+      expect(await poll()).toMatchObject(unavailable);
     },
   );
 
-  it("throttles a caller before calling the issuer", async () => {
-    consume.mockRejectedValue(new RateLimiterRes(0, 5_000));
+  it.each([
+    [
+      "an IPv4 caller in its own bucket",
+      "::ffff:203.0.113.8",
+      "",
+      "203.0.113.8",
+    ],
+    [
+      "a non-IPv4 caller in the shared bucket",
+      "2001:db8::1",
+      "_shared",
+      "shared",
+    ],
+  ])("throttles %s", async (_, ip, suffix, key) => {
+    client.ip = ip;
+    fetch.mockRejectedValue(new TypeError("fetch failed"));
 
-    expect(await call(keylessWorldIdDeviceController)).toEqual({
+    await call(keylessWorldIdDeviceController);
+    await poll();
+
+    expect(consume.mock.calls).toEqual([
+      [`keyless_world_id_start${suffix}`, key],
+      [`keyless_world_id_poll${suffix}`, key],
+    ]);
+  });
+
+  it("answers 429 before calling the issuer once a caller is out of starts or polls", async () => {
+    consume.mockRejectedValue(new RateLimiterRes(0, 5_000));
+    const throttled = {
       status: 429,
       body: { success: false, error: "slow_down" },
-    });
+      headers: { "Retry-After": 5 },
+    };
+
+    expect(await call(keylessWorldIdDeviceController)).toEqual(throttled);
+    expect(await poll()).toEqual(throttled);
     expect(fetch).not.toHaveBeenCalled();
   });
 });
