@@ -107,6 +107,7 @@ describe("agentIndexOnly and PDF refresh", () => {
     const list = await buildFallbackList(
       agentMeta([{ type: "pdf", refresh: true }]),
     );
+    expect(list.length).toBeGreaterThan(0);
     expect(list.every(x => x.engine.startsWith("index"))).toBe(true);
   });
 });
