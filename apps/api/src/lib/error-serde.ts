@@ -116,7 +116,6 @@ const errorMap: Record<ErrorCodes, any> = {
 
   // Agent zero data retention rejections are API-level too.
   zdr_threads_unsupported: null,
-  zdr_exchange_unsupported: null,
   zdr_expired: null,
   zdr_no_snapshots: null,
   zdr_not_enabled: null,
