@@ -70,6 +70,29 @@ security, availability, capacity, upgrades, data retention, and compliance.
 Treat the Kubernetes and Helm examples as versioned starting points, not as
 evidence that these production decisions have been made for you.
 
+## Admin routes
+
+Admin routes exist only when `BULL_AUTH_KEY` is set. The root Compose file
+passes `BULL_AUTH_KEY` alone; set the other variables in the API container's
+environment.
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `BULL_AUTH_KEY` | unset | Turns on admin routes. Routes under `/admin/ops/` accept `Authorization: Bearer <BULL_AUTH_KEY>`. |
+| `BULL_AUTH_KEY_PREVIOUS` | unset | A second accepted bearer value, so callers can move to a new key without downtime. Clear it once every caller sends the new key. |
+| `BULL_AUTH_KEY_PATH_ROUTES` | `true` | Keeps the routes that take the key as a path segment, `/admin/<key>/...`, including the queue UI at `/admin/<key>/queues`. Set `false` once callers use `/admin/ops/` or the internal listener. |
+| `ADMIN_INTERNAL_PORT` | unset | Starts a second listener on this port that serves the queue UI at `/admin/queues`, the metrics routes and the diagnostic routes with no key. Never publish this port. |
+
+Header-authenticated routes: `GET /admin/ops/redis-health`,
+`GET /admin/ops/autumn-health`, `POST /admin/ops/acuc-cache-clear`,
+`POST /admin/ops/ip-restriction-cache-clear`,
+`POST /admin/ops/key-restriction-cache-clear` and
+`POST /admin/ops/concurrency-queue-backfill`.
+
+The `firecrawl_admin_path_route_requests_total` metric counts requests to the
+`/admin/<key>/...` routes, so you can confirm nothing still uses them before
+turning them off.
+
 Stuck? Open a
 [self-host issue template](https://github.com/firecrawl/firecrawl/issues/new?template=self_host_issue.md)
 or join the [Firecrawl Discord community](https://discord.gg/firecrawl).

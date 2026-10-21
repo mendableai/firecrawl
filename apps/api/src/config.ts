@@ -231,6 +231,11 @@ const configSchema = z.object({
 
   // API Keys & Authentication
   BULL_AUTH_KEY: z.string().optional(),
+  BULL_AUTH_KEY_PREVIOUS: emptyStringAsUndefined(z.string()),
+  BULL_AUTH_KEY_PATH_ROUTES: emptyStringAsDefault(z.stringbool().default(true)),
+  ADMIN_INTERNAL_PORT: emptyStringAsUndefined(
+    z.coerce.number().int().positive(),
+  ),
   S2S_FIRECRAWL_INTEGRATIONS_TO_FIRECRAWL_API_KEY: emptyStringAsUndefined(
     z.string().trim().min(1),
   ),
