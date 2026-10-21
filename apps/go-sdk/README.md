@@ -394,6 +394,17 @@ The SDK automatically retries transient failures:
 - **Not retried:** 401, 429, and other 4xx errors
 - **Backoff:** Exponential backoff with configurable factor
 
+When every attempt fails at the transport layer, the returned `*FirecrawlError` wraps the
+last underlying error, so errors raised by a custom `http.Client` (passed with
+`option.WithHTTPClient`) can be matched with `errors.Is` or `errors.As`:
+
+```go
+doc, err := client.Scrape(ctx, "https://example.com", nil)
+if errors.Is(err, errResponseTooLarge) {
+	// errResponseTooLarge was returned by your transport or response body reader.
+}
+```
+
 ## Context Support
 
 All methods accept a `context.Context` for cancellation and deadline control:
