@@ -1,4 +1,4 @@
-import express, { NextFunction, Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { externalRequestId } from "../../lib/external-request-id";
 import { z } from "zod";
 import { v7 as uuidv7 } from "uuid";
@@ -37,10 +37,7 @@ const searchCreditGate = () =>
     SEARCH_CREDITS_PER_TEN_RESULTS,
     SEARCH_CREDITS_FEATURE_ID,
   );
-// The research, developer and government index services have no zero data
-// retention mode, so forced-ZDR teams are refused before any upstream call.
-const ZDR_UNSUPPORTED_MESSAGE =
-  "Your team has zero data retention enabled. This is not supported on research, developer or government search. Please contact support@firecrawl.com to unblock this feature.";
+const ZDR_SEARCH_CREDITS_PER_TEN_RESULTS = 10;
 
 const DEVELOPER_SEARCH_TIMEOUT_MS = 15_000;
 const GOV_SEARCH_TIMEOUT_MS = 15_000;
@@ -241,7 +238,11 @@ function resultCount(body: any): number {
   return Array.isArray(body?.data?.web) ? body.data.web.length : 0;
 }
 
-function creditsFor(config: ResearchEndpointConfig, body: any) {
+function creditsFor(
+  config: ResearchEndpointConfig,
+  body: any,
+  req: RequestWithAuth<any, any, any>,
+) {
   // Make certain index accesses free (AI/ML & life-sciences indices and the
   // gov index). Research paper and gov endpoints should have no credit cost.
   // Explicit exceptions remain billable: GitHub search and developer/code
@@ -256,7 +257,12 @@ function creditsFor(config: ResearchEndpointConfig, body: any) {
   if (freeResearchKinds.has(config.kind)) return 0;
 
   if (config.billAs === "scrape") return 1;
-  return Math.ceil(resultCount(body) / 10) * SEARCH_CREDITS_PER_TEN_RESULTS;
+  const forcedKind = getEffectiveSearchForcedKind(req.acuc?.flags, undefined);
+  const perTen =
+    forcedKind === "zdr"
+      ? ZDR_SEARCH_CREDITS_PER_TEN_RESULTS
+      : SEARCH_CREDITS_PER_TEN_RESULTS;
+  return Math.ceil(resultCount(body) / 10) * perTen;
 }
 
 function researchError(
@@ -270,16 +276,6 @@ function researchError(
     error,
     ...(details === undefined ? {} : { details }),
   });
-}
-
-// First on every router here, so a refused query reaches no log line, credit
-// check or upstream.
-function refuseForcedZdr(req: Request, res: Response, next: NextFunction) {
-  const flags = (req as RequestWithAuth<any, any, any>).acuc?.flags;
-  if (getEffectiveSearchForcedKind(flags, undefined) === "zdr") {
-    return researchError(res, 400, ZDR_UNSUPPORTED_MESSAGE);
-  }
-  next();
 }
 
 function isResearchTimeoutError(error: unknown): boolean {
@@ -421,7 +417,7 @@ function createResearchController(
       }
 
       if (upstream.ok) {
-        credits = creditsFor(endpoint, responseBody);
+        credits = creditsFor(endpoint, responseBody, authedReq);
         if (credits > 0) {
           billTeam(
             authedReq.auth.team_id,
@@ -502,16 +498,19 @@ function createResearchController(
 
 export function createResearchRouter(options: { legacy?: boolean } = {}) {
   const router = express.Router();
-  router.use(refuseForcedZdr);
 
   if (options.legacy) {
     router.use((req, _res, next) => {
+      const authedReq = req as RequestWithAuth<any, any, any>;
       rootLogger.warn("Legacy research endpoint used", {
         module: "api/v2/research",
-        teamId: (req as RequestWithAuth<any, any, any>).auth?.team_id,
+        teamId: authedReq.auth?.team_id,
         method: req.method,
         path: req.originalUrl,
         requestId: req.headers["x-request-id"],
+        zeroDataRetention:
+          getEffectiveSearchForcedKind(authedReq.acuc?.flags, undefined) !==
+          null,
       });
       next();
     });
@@ -612,7 +611,6 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
 
 export function createDeveloperRouter(options: { root?: boolean } = {}) {
   const router = express.Router();
-  router.use(refuseForcedZdr);
 
   const controller = wrap(
     createResearchController(
@@ -644,7 +642,6 @@ export function createDeveloperRouter(options: { root?: boolean } = {}) {
 
 export function createGovRouter() {
   const router = express.Router();
-  router.use(refuseForcedZdr);
 
   const controller = wrap(
     createResearchController(govSearchSchema, [], {

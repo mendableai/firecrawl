@@ -7,6 +7,7 @@ import { logger } from "../../lib/logger";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { externalRequestId } from "../../lib/external-request-id";
 import { getScrapeZDR } from "../../lib/zdr-helpers";
+import { billingCountryForTeam } from "../../lib/billing-country";
 import { checkKeyFormatRestriction } from "../../lib/key-restriction";
 import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
@@ -35,6 +36,7 @@ const providerScrapeSchema = z.strictObject({
     .transform(value => Math.min(value, 120_000)),
   origin: z.string().default("api"),
   integration: z.string().nullable().optional(),
+  zeroDataRetention: z.boolean().optional(),
   __agentInterop: z
     .strictObject({
       auth: z.string(),
@@ -50,17 +52,21 @@ export async function providerScrapeController(
   res: Response,
   legacy = false,
 ) {
+  const legacyZeroDataRetention = { zeroDataRetention: z.boolean().optional() };
   const legacyBody = legacy
     ? z
-        .union([callSchema, z.strictObject({ requests: callsSchema })])
+        .union([
+          callSchema.extend(legacyZeroDataRetention),
+          z.strictObject({ requests: callsSchema, ...legacyZeroDataRetention }),
+        ])
         .parse(req.body)
     : null;
   const body = providerScrapeSchema.parse(
     legacyBody
-      ? {
-          alexandria:
-            "requests" in legacyBody ? legacyBody.requests : [legacyBody],
-        }
+      ? (({ zeroDataRetention, ...rest }) => ({
+          alexandria: "requests" in rest ? rest.requests : [rest],
+          zeroDataRetention,
+        }))(legacyBody)
       : req.body,
   );
 
@@ -91,11 +97,10 @@ export async function providerScrapeController(
       success: false,
       error: "This endpoint is not enabled for this team.",
     });
-  if (getScrapeZDR(req.acuc.flags) === "forced")
-    return res.status(403).json({
-      success: false,
-      error: "Provider tools do not support zero data retention.",
-    });
+  // Exchange refuses capabilities that cannot honour ZDR, per call.
+  const zeroDataRetention =
+    getScrapeZDR(req.acuc.flags) === "forced" ||
+    body.zeroDataRetention === true;
   if (
     (req as any).agentIndexOnly ||
     ["pending", "blocked"].includes(req.acuc._agentSponsor?.status ?? "")
@@ -136,7 +141,9 @@ export async function providerScrapeController(
       scrapeId: uuidv7(),
       timeoutMs: body.timeout,
       bypassBilling: body.__agentInterop?.shouldBill === false,
+      zeroDataRetention,
       clientIp: req.ip,
+      billingCountry: await billingCountryForTeam(req.auth.team_id),
     });
   } catch (error) {
     logger.error("Provider scrape unavailable", {
@@ -181,7 +188,7 @@ export async function providerScrapeController(
         origin: body.origin,
         integration: body.integration ?? null,
         target_hint: target,
-        zeroDataRetention: false,
+        zeroDataRetention,
         jobAccess: false,
       });
       await logProviderScrape({
@@ -206,6 +213,7 @@ export async function providerScrapeController(
         error: successful
           ? undefined
           : (error ?? `Provider request failed (${result.status}).`),
+        zeroDataRetention,
       });
     })().catch(error =>
       logger.warn("Provider activity logging failed", {

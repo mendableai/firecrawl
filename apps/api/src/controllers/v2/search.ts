@@ -349,15 +349,6 @@ async function searchControllerInner(
       }
     }
 
-    // The developer and gov indexes have no zero data retention mode upstream.
-    if (isZDR && indexCategory) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "The developer and gov search categories are not supported with zero data retention.",
-      });
-    }
-
     // Kick off the `requests` row insert without blocking: it queues on the
     // Postgres pool and can take seconds under pool pressure. We only need it
     // committed before the child-row writes (logSearch et al. below) to keep

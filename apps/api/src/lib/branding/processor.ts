@@ -519,7 +519,13 @@ export function processRawBranding(raw: BrandingScriptReturn): BrandingProfile {
       borderRadius: representativeBorderRadius,
       borderRadiusCorners: corners,
       shadow: s.shadow || null,
-      ...(s.position ? { top: Math.round(s.position.top) } : {}),
+      ...(s.position
+        ? {
+            top: Math.round(s.position.top),
+            left: Math.round(s.position.left),
+            width: Math.round(s.rect.w),
+          }
+        : {}),
       // Debug: original color values before hex conversion
       originalBackgroundColor: s.colors.background || undefined,
       originalTextColor: s.colors.text || undefined,

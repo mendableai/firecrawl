@@ -33,9 +33,8 @@ vi.mock("../../../lib/logger", () => ({
   },
 }));
 
+import { logger as rootLogger } from "../../../lib/logger";
 import { createDeveloperRouter, createResearchRouter } from "../research-proxy";
-import { billTeam } from "../../../services/billing/credit_billing";
-import { logger } from "../../../lib/logger";
 
 const TEAM_ID = "11111111-1111-1111-1111-111111111111";
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -83,39 +82,8 @@ async function callRoute(
   query: Record<string, unknown>,
   flags: Record<string, unknown>,
 ) {
-  const res = makeRes();
-  routeHandler(router, path)(makeReq(query, flags), res, vi.fn());
+  routeHandler(router, path)(makeReq(query, flags), makeRes(), vi.fn());
   await flush();
-  return res;
-}
-
-async function dispatch(
-  router: any,
-  path: string,
-  query: Record<string, unknown>,
-  flags: Record<string, unknown>,
-) {
-  const req = { ...makeReq(query, flags), url: path };
-  const res = makeRes();
-  const next = vi.fn();
-  router(req, res, next);
-  await flush();
-  return { res, next };
-}
-
-function expectRefused(res: any, next: any) {
-  expect(res.status).toHaveBeenCalledWith(400);
-  expect(res.json).toHaveBeenCalledWith(
-    expect.objectContaining({
-      success: false,
-      error: expect.stringContaining("zero data retention"),
-    }),
-  );
-  expect(next).not.toHaveBeenCalled();
-  expect(mocks.fetchResearchUpstream).not.toHaveBeenCalled();
-  expect(mocks.logRequest).not.toHaveBeenCalled();
-  expect(mocks.logResearchEndpoint).not.toHaveBeenCalled();
-  expect(billTeam).not.toHaveBeenCalled();
 }
 
 beforeEach(() => {
@@ -150,23 +118,10 @@ describe.each([
 ])("standalone ZDR persistence for $name", testCase => {
   it.each([
     { searchZDR: "forced-zdr" },
-    { searchZDR: "forced" },
+    { searchZDR: "forced-anon" },
     { forceZDR: true },
-  ])("refuses a forced-ZDR team ahead of every route handler", async flags => {
-    const { res, next } = await dispatch(
-      testCase.router(),
-      testCase.path,
-      testCase.query,
-      flags,
-    );
-
-    expectRefused(res, next);
-  });
-
-  it("marks forced-anon team payloads for redaction and cleanup", async () => {
-    await callRoute(testCase.router(), testCase.path, testCase.query, {
-      searchZDR: "forced-anon",
-    });
+  ])("marks forced team payloads for redaction and cleanup", async flags => {
+    await callRoute(testCase.router(), testCase.path, testCase.query, flags);
 
     expect(mocks.logRequest).toHaveBeenCalledWith(
       expect.objectContaining({ zeroDataRetention: true }),
@@ -204,28 +159,33 @@ describe.each([
   });
 });
 
-describe("forced-ZDR refusal ordering", () => {
-  it("refuses on the legacy research mount before its usage log line", async () => {
-    const { res, next } = await dispatch(
-      createResearchRouter({ legacy: true }),
-      "/papers",
-      { query: "private research query" },
-      { searchZDR: "forced-zdr" },
+describe("legacy research mount notice", () => {
+  function logNotice(flags: Record<string, unknown>) {
+    const req = makeReq({ query: "private research query" }, flags);
+    req.originalUrl = "/v2/research/papers?query=private+research+query";
+    createResearchRouter({ legacy: true }).stack[0].handle(
+      req,
+      makeRes(),
+      vi.fn(),
     );
+    return (rootLogger.warn as any).mock.calls.find(
+      ([message]: any[]) => message === "Legacy research endpoint used",
+    )?.[1];
+  }
 
-    expectRefused(res, next);
-    expect(logger.warn).not.toHaveBeenCalled();
+  it.each([
+    { searchZDR: "forced-zdr" },
+    { searchZDR: "forced-anon" },
+    { forceZDR: true },
+  ])("marks the notice so the log filter drops it", flags => {
+    expect(logNotice(flags)).toEqual(
+      expect.objectContaining({ zeroDataRetention: true }),
+    );
   });
 
-  it("refuses GitHub search before its deprecation notice and credit gate", async () => {
-    const { res, next } = await dispatch(
-      createResearchRouter(),
-      "/github",
-      { query: "private code query" },
-      { searchZDR: "forced-zdr" },
+  it("keeps the notice for a team that may opt into ZDR", () => {
+    expect(logNotice({ searchZDR: "allowed" })).toEqual(
+      expect.objectContaining({ zeroDataRetention: false }),
     );
-
-    expectRefused(res, next);
-    expect(res.setHeader).not.toHaveBeenCalled();
   });
 });
