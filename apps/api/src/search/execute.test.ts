@@ -145,6 +145,18 @@ it("mixed search bills only normal web results", async () => {
   expect(result.response.tools).toHaveLength(1);
 });
 
+it("forwards cr and lr to the provider search", async () => {
+  mocks.search.mockResolvedValue({ web: [] });
+  await executeSearch(
+    { ...options([]), cr: "countryGR", lr: "lang_el" },
+    context,
+    logger,
+  );
+  expect(mocks.search).toHaveBeenCalledWith(
+    expect.objectContaining({ cr: "countryGR", lr: "lang_el" }),
+  );
+});
+
 describe("executeSearch safe search", () => {
   const webResult = {
     url: "https://example.com/",

@@ -138,3 +138,30 @@ describe("searchRequestSchema geo targeting", () => {
     },
   );
 });
+
+describe("searchRequestSchema result restrictions", () => {
+  it("keeps cr and lr as given", () => {
+    const request = searchRequestSchema.parse({
+      query: "gaming blog",
+      cr: "countryGR|countryCY",
+      lr: "lang_el",
+    });
+
+    expect(request.cr).toBe("countryGR|countryCY");
+    expect(request.lr).toBe("lang_el");
+  });
+
+  it("leaves cr and lr unset by default", () => {
+    const request = searchRequestSchema.parse({ query: "gaming blog" });
+
+    expect(request.cr).toBeUndefined();
+    expect(request.lr).toBeUndefined();
+  });
+
+  it.each([{ cr: 1 }, { lr: ["lang_el"] }])("rejects %j", restriction => {
+    expect(
+      searchRequestSchema.safeParse({ query: "gaming blog", ...restriction })
+        .success,
+    ).toBe(false);
+  });
+});

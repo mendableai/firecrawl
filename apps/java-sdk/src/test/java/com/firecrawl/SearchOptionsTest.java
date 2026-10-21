@@ -34,4 +34,17 @@ class SearchOptionsTest {
         assertEquals("de", set.get("country").asText());
         assertFalse(omitted.has("country"));
     }
+
+    @Test
+    void serializesRestrictionOptions() {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode set = mapper.valueToTree(
+                SearchOptions.builder().cr("countryGR").lr("lang_el").build());
+        JsonNode omitted = mapper.valueToTree(SearchOptions.builder().build());
+
+        assertEquals("countryGR", set.get("cr").asText());
+        assertEquals("lang_el", set.get("lr").asText());
+        assertFalse(omitted.has("cr"));
+        assertFalse(omitted.has("lr"));
+    }
 }

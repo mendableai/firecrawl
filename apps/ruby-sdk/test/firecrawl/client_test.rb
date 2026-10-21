@@ -654,6 +654,34 @@ class ClientTest < Minitest::Test
     assert_equal 0, result.web.size
   end
 
+  def test_search_with_restrictions
+    stub_request(:post, "#{BASE_URL}/v2/search")
+      .with { |req| body = JSON.parse(req.body); body["cr"] == "countryGR" && body["lr"] == "lang_el" }
+      .to_return(
+        status: 200,
+        body: JSON.generate(data: { web: [], news: [], images: [] }),
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    options = Firecrawl::Models::SearchOptions.new(cr: "countryGR", lr: "lang_el")
+    result = @client.search("test query", options)
+    assert_equal 0, result.web.size
+  end
+
+  def test_search_omits_restrictions_when_unset
+    stub_request(:post, "#{BASE_URL}/v2/search")
+      .with { |req| body = JSON.parse(req.body); !body.key?("cr") && !body.key?("lr") }
+      .to_return(
+        status: 200,
+        body: JSON.generate(data: { web: [], news: [], images: [] }),
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    options = Firecrawl::Models::SearchOptions.new(limit: 5)
+    result = @client.search("test query", options)
+    assert_equal 0, result.web.size
+  end
+
   # ================================================================
   # DEVELOPER SEARCH
   # ================================================================

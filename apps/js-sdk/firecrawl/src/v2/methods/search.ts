@@ -39,6 +39,8 @@ function prepareSearchPayload(req: SearchRequest): Record<string, unknown> {
   if (req.tbs != null) payload.tbs = req.tbs;
   if (req.location != null) payload.location = req.location;
   if (req.country != null) payload.country = req.country;
+  if (req.cr != null) payload.cr = req.cr;
+  if (req.lr != null) payload.lr = req.lr;
   if (req.ignoreInvalidURLs != null)
     payload.ignoreInvalidURLs = req.ignoreInvalidURLs;
   if (req.timeout != null) payload.timeout = req.timeout;

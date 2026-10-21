@@ -440,6 +440,8 @@ async function searchControllerInner(
         lang: req.body.lang,
         country: req.body.country,
         location: req.body.location,
+        cr: req.body.cr,
+        lr: req.body.lr,
         safe: req.body.safe,
         sources: req.body.sources as Array<{ type: string }>,
         categories: req.body.categories as CategoryOption[],

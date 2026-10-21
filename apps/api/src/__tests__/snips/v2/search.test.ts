@@ -374,6 +374,45 @@ describeIf(TEST_PRODUCTION || HAS_SEARCH || HAS_PROXY)("Search tests", () => {
     60000,
   );
 
+  concurrentIf(TEST_PRODUCTION)(
+    "restricts results to the country in cr",
+    async () => {
+      const res = await search(
+        {
+          query: "gaming blog",
+          country: "gr",
+          cr: "countryGR",
+        },
+        identity,
+      );
+      const hosts = (res.web ?? []).map(result => new URL(result.url).hostname);
+      expect(hosts.length).toBeGreaterThan(0);
+      expect(
+        hosts.filter(host => host.endsWith(".gr")).length,
+      ).toBeGreaterThanOrEqual(hosts.length / 2);
+    },
+    60000,
+  );
+
+  concurrentIf(TEST_PRODUCTION)(
+    "restricts results to the language in lr",
+    async () => {
+      const res = await search(
+        {
+          query: "gaming blog",
+          country: "gr",
+          lr: "lang_el",
+        },
+        identity,
+      );
+      const greek = (res.web ?? []).filter(result =>
+        /[\u0370-\u03FF]/.test(`${result.title} ${result.description}`),
+      );
+      expect(greek.length).toBeGreaterThanOrEqual(3);
+    },
+    60000,
+  );
+
   it.concurrent(
     "rejects non-string location",
     async () => {

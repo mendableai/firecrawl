@@ -308,6 +308,26 @@ func TestSearchOptionsSerializesCountry(t *testing.T) {
 	}
 }
 
+func TestSearchOptionsSerializesRestrictions(t *testing.T) {
+	payload, err := json.Marshal(SearchOptions{CR: String("countryGR"), LR: String("lang_el")})
+	if err != nil {
+		t.Fatalf("Marshal SearchOptions: %v", err)
+	}
+
+	if !strings.Contains(string(payload), `"cr":"countryGR"`) || !strings.Contains(string(payload), `"lr":"lang_el"`) {
+		t.Fatalf("serialized search options = %s", payload)
+	}
+
+	payload, err = json.Marshal(SearchOptions{})
+	if err != nil {
+		t.Fatalf("Marshal SearchOptions: %v", err)
+	}
+
+	if strings.Contains(string(payload), `"cr"`) || strings.Contains(string(payload), `"lr"`) {
+		t.Fatalf("serialized search options without restrictions = %s", payload)
+	}
+}
+
 func TestAuditMetadataSerializesAcrossRequestOptions(t *testing.T) {
 	metadata := &AuditMetadata{Username: "alice@example.com"}
 	for name, options := range map[string]interface{}{

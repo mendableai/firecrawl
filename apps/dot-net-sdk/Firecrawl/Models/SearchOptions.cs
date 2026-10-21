@@ -60,6 +60,16 @@ public class SearchOptions
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Country { get; set; }
 
+    /// <summary>Country restriction, e.g. <c>countryGR</c> or <c>countryGR|countryCY</c>. Drops results from other countries.</summary>
+    [JsonPropertyName("cr")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Cr { get; set; }
+
+    /// <summary>Language restriction, e.g. <c>lang_el</c>. Drops results in other languages.</summary>
+    [JsonPropertyName("lr")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Lr { get; set; }
+
     /// <summary>
     /// Enterprise search options. Use <c>["zdr"]</c> for end-to-end Zero Data
     /// Retention or <c>["anon"]</c> for anonymized search. Must be enabled for your team.

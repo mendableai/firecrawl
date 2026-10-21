@@ -4712,6 +4712,14 @@
                     "description": "ISO country code for geo-targeting search results (e.g. `US`). For best results, set both this and the `location` parameter.",
                     "default": "US"
                   },
+                  "cr": {
+                    "type": "string",
+                    "description": "Restricts results to sites from one or more countries. Use `country` followed by an uppercase ISO 3166-1 alpha-2 code (e.g. `countryGR`), and join several with `|` (e.g. `countryGR|countryCY`). Unlike `country`, which only geo-targets the search, this drops results from other countries. Not applied to end-to-end Zero Data Retention searches (`enterprise` set to `zdr`)."
+                  },
+                  "lr": {
+                    "type": "string",
+                    "description": "Restricts results to pages written in one or more languages. Use `lang_` followed by a language code (e.g. `lang_el`, `lang_zh-TW`), and join several with `|` (e.g. `lang_el|lang_en`). Not applied to end-to-end Zero Data Retention searches (`enterprise` set to `zdr`)."
+                  },
                   "safe": {
                     "type": "boolean",
                     "description": "When `true`, filters explicit content from search results (SafeSearch). Omit to keep the default behavior, which does not apply the filter."

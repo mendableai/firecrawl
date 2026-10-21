@@ -42,6 +42,8 @@ export async function fire_engine_search_v2(
     lang?: string;
     country?: string;
     location?: string;
+    cr?: string;
+    lr?: string;
     safe?: boolean;
     numResults: number;
     page?: number;
@@ -64,6 +66,8 @@ export async function fire_engine_search_v2(
     lang: options.lang,
     country: options.country,
     location: options.location,
+    cr: options.cr,
+    lr: options.lr,
     tbs: options.tbs,
     numResults: options.numResults,
     page: options.page ?? 1,

@@ -17,6 +17,8 @@ public class SearchOptions {
     private String tbs;
     private String location;
     private String country;
+    private String cr;
+    private String lr;
     private Boolean ignoreInvalidURLs;
     private Integer timeout;
     private Boolean highlights;
@@ -33,6 +35,8 @@ public class SearchOptions {
     public String getTbs() { return tbs; }
     public String getLocation() { return location; }
     public String getCountry() { return country; }
+    public String getCr() { return cr; }
+    public String getLr() { return lr; }
     public Boolean getIgnoreInvalidURLs() { return ignoreInvalidURLs; }
     public Integer getTimeout() { return timeout; }
     public Boolean getHighlights() { return highlights; }
@@ -50,6 +54,8 @@ public class SearchOptions {
         private String tbs;
         private String location;
         private String country;
+        private String cr;
+        private String lr;
         private Boolean ignoreInvalidURLs;
         private Integer timeout;
         private Boolean highlights;
@@ -74,6 +80,10 @@ public class SearchOptions {
         public Builder location(String location) { this.location = location; return this; }
         /** Country code to geo-target search results (e.g., "us"). */
         public Builder country(String country) { this.country = country; return this; }
+        /** Country restriction (e.g., "countryGR" or "countryGR|countryCY"). Drops results from other countries. */
+        public Builder cr(String cr) { this.cr = cr; return this; }
+        /** Language restriction (e.g., "lang_el"). Drops results in other languages. */
+        public Builder lr(String lr) { this.lr = lr; return this; }
         /** Ignore invalid URLs in results. */
         public Builder ignoreInvalidURLs(Boolean ignoreInvalidURLs) { this.ignoreInvalidURLs = ignoreInvalidURLs; return this; }
         /** Timeout in milliseconds. */
@@ -95,6 +105,8 @@ public class SearchOptions {
             o.tbs = this.tbs;
             o.location = this.location;
             o.country = this.country;
+            o.cr = this.cr;
+            o.lr = this.lr;
             o.ignoreInvalidURLs = this.ignoreInvalidURLs;
             o.timeout = this.timeout;
             o.highlights = this.highlights;

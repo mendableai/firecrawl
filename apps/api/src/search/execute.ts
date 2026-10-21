@@ -45,6 +45,8 @@ interface SearchOptions {
   lang?: string;
   country?: string;
   location?: string;
+  cr?: string;
+  lr?: string;
   safe?: boolean;
   sources: Array<{ type: string }>;
   categories?: CategoryOption[];
@@ -170,6 +172,8 @@ export async function executeSearch(
           lang: options.lang,
           country: options.country,
           location: options.location,
+          cr: options.cr,
+          lr: options.lr,
           safe: options.safe,
           type: searchTypes,
           enterprise: options.enterprise,

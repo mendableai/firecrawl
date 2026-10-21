@@ -175,6 +175,8 @@ type SearchOptions struct {
 	TBS               *string        `json:"tbs,omitempty"`
 	Location          *string        `json:"location,omitempty"`
 	Country           *string        `json:"country,omitempty"`
+	CR                *string        `json:"cr,omitempty"` // Country restriction, e.g. "countryGR" or "countryGR|countryCY"
+	LR                *string        `json:"lr,omitempty"` // Language restriction, e.g. "lang_el"
 	IgnoreInvalidURLs *bool          `json:"ignoreInvalidURLs,omitempty"`
 	Timeout           *int           `json:"timeout,omitempty"`
 	Highlights        *bool          `json:"highlights,omitempty"`

@@ -45,6 +45,12 @@ pub struct SearchOptions {
     /// Country code to geo-target search results (e.g., "de").
     pub country: Option<String>,
 
+    /// Country restriction (e.g., "countryGR" or "countryGR|countryCY"). Drops results from other countries.
+    pub cr: Option<String>,
+
+    /// Language restriction (e.g., "lang_el"). Drops results in other languages.
+    pub lr: Option<String>,
+
     /// Whether to ignore invalid URLs in results.
     #[serde(rename = "ignoreInvalidURLs")]
     pub ignore_invalid_urls: Option<bool>,
@@ -310,6 +316,24 @@ mod tests {
 
         let default_value = serde_json::to_value(SearchOptions::default()).unwrap();
         assert!(default_value.get("country").is_none());
+    }
+
+    #[test]
+    fn serializes_restriction_options() {
+        let options = SearchOptions {
+            cr: Some("countryGR".to_string()),
+            lr: Some("lang_el".to_string()),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            serde_json::to_value(options).unwrap(),
+            json!({ "cr": "countryGR", "lr": "lang_el" })
+        );
+
+        let default_value = serde_json::to_value(SearchOptions::default()).unwrap();
+        assert!(default_value.get("cr").is_none());
+        assert!(default_value.get("lr").is_none());
     }
 
     #[test]
