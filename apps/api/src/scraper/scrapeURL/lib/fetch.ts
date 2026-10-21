@@ -26,6 +26,21 @@ type RobustFetchParams<Schema extends z.Schema<any>> = {
   useCacheableLookup?: boolean;
 };
 
+const SENSITIVE_HEADER =
+  /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key)$|token|secret/i;
+
+export function redactHeaders(
+  headers: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  if (headers === undefined) return undefined;
+  return Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [
+      name,
+      SENSITIVE_HEADER.test(name) ? "[REDACTED]" : value,
+    ]),
+  );
+}
+
 const robustAgent = new Agent({
   headersTimeout: 0,
   bodyTimeout: 0,
@@ -79,23 +94,30 @@ export async function robustFetch<
     abort,
   };
 
-  // omit pdf file content from logs
-  const logParams = {
-    ...params,
-    body: body?.input
+  // omit pdf file content and credentials from logs
+  const logBody = body?.input
+    ? {
+        ...body,
+        input: {
+          ...body.input,
+          file_content: undefined,
+        },
+      }
+    : body?.pdf
       ? {
           ...body,
-          input: {
-            ...body.input,
-            file_content: undefined,
-          },
+          pdf: undefined,
         }
-      : body?.pdf
-        ? {
-            ...body,
-            pdf: undefined,
-          }
-        : body,
+      : body;
+  const logParams = {
+    ...params,
+    headers: redactHeaders(headers),
+    body:
+      logBody?.headers !== null &&
+      typeof logBody?.headers === "object" &&
+      !(logBody instanceof FormData)
+        ? { ...logBody, headers: redactHeaders(logBody.headers) }
+        : logBody,
     logger: undefined,
   };
 

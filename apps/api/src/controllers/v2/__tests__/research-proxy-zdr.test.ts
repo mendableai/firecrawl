@@ -33,6 +33,7 @@ vi.mock("../../../lib/logger", () => ({
   },
 }));
 
+import { logger as rootLogger } from "../../../lib/logger";
 import { createDeveloperRouter, createResearchRouter } from "../research-proxy";
 
 const TEAM_ID = "11111111-1111-1111-1111-111111111111";
@@ -154,6 +155,37 @@ describe.each([
           "firecrawl-zero-data-retention": "false",
         }),
       }),
+    );
+  });
+});
+
+describe("legacy research mount notice", () => {
+  function logNotice(flags: Record<string, unknown>) {
+    const req = makeReq({ query: "private research query" }, flags);
+    req.originalUrl = "/v2/research/papers?query=private+research+query";
+    createResearchRouter({ legacy: true }).stack[0].handle(
+      req,
+      makeRes(),
+      vi.fn(),
+    );
+    return (rootLogger.warn as any).mock.calls.find(
+      ([message]: any[]) => message === "Legacy research endpoint used",
+    )?.[1];
+  }
+
+  it.each([
+    { searchZDR: "forced-zdr" },
+    { searchZDR: "forced-anon" },
+    { forceZDR: true },
+  ])("marks the notice so the log filter drops it", flags => {
+    expect(logNotice(flags)).toEqual(
+      expect.objectContaining({ zeroDataRetention: true }),
+    );
+  });
+
+  it("keeps the notice for a team that may opt into ZDR", () => {
+    expect(logNotice({ searchZDR: "allowed" })).toEqual(
+      expect.objectContaining({ zeroDataRetention: false }),
     );
   });
 });
