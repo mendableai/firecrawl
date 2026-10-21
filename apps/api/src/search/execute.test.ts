@@ -207,6 +207,44 @@ describe("executeSearch safe search", () => {
   });
 });
 
+describe("executeSearch zero data retention rate", () => {
+  const results = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      url: `https://result${index}.example/`,
+      title: "Result",
+      description: "A result.",
+    }));
+
+  it.each([
+    { name: "a default search", enterprise: undefined, ten: 2, eleven: 4 },
+    {
+      name: "an enterprise anon search",
+      enterprise: ["anon"],
+      ten: 2,
+      eleven: 4,
+    },
+    {
+      name: "an enterprise zdr search",
+      enterprise: ["zdr"],
+      ten: 10,
+      eleven: 20,
+    },
+  ])("bills $name per ten results", async ({ enterprise, ten, eleven }) => {
+    for (const [count, credits] of [
+      [10, ten],
+      [11, eleven],
+    ]) {
+      mocks.search.mockResolvedValue({ web: results(count) });
+      const result = await executeSearch(
+        { ...options([]), limit: 20, enterprise },
+        context,
+        logger,
+      );
+      expect(result.searchCredits).toBe(credits);
+    }
+  });
+});
+
 describe("executeSearch developer category", () => {
   it("returns sole developer-category results in web without running SERP", async () => {
     const result = await executeSearch(
@@ -309,6 +347,33 @@ describe("executeSearch developer category", () => {
     expect(result.resultCategories).toEqual({});
   });
 
+  it.each([
+    {
+      name: "a forced team",
+      context: { zeroDataRetention: true },
+      enterprise: [],
+    },
+    { name: "an enterprise zdr request", context: {}, enterprise: ["zdr"] },
+    { name: "an enterprise anon request", context: {}, enterprise: ["anon"] },
+  ])(
+    "marks the developer upstream call zero data retention for $name",
+    async c => {
+      await executeSearch(
+        {
+          ...options([{ type: "developer" }]),
+          enterprise: c.enterprise,
+        } as any,
+        { ...context, ...c.context } as any,
+        logger,
+      );
+
+      expect(mocks.searchDeveloperCategory).toHaveBeenCalledWith(
+        expect.objectContaining({ zeroDataRetention: true }),
+        logger,
+      );
+    },
+  );
+
   it("rejects developer combined with other categories at the schema", () => {
     const mixed = searchRequestSchema.safeParse({
       query: "retries",
@@ -350,7 +415,13 @@ describe("executeSearch gov category", () => {
     expect(mocks.search).not.toHaveBeenCalled();
     expect(mocks.searchDeveloperCategory).not.toHaveBeenCalled();
     expect(mocks.searchGovCategory).toHaveBeenCalledWith(
-      { query: "retries", limit: 10, teamId: "team-1", timeout: 1_000 },
+      {
+        query: "retries",
+        limit: 10,
+        teamId: "team-1",
+        timeout: 1_000,
+        zeroDataRetention: false,
+      },
       logger,
     );
     expect(result.response).toEqual({ web: [govResult] });

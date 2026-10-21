@@ -193,6 +193,25 @@ results = client.search("latest news",
   Firecrawl::Models::SearchOptions.new(limit: 5, location: "US"))
 ```
 
+### Developer Search
+
+Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `developer_search` replaces the deprecated `search_github`.
+
+```ruby
+response = client.developer_search(
+  "retry an http request with exponential backoff",
+  Firecrawl::Models::DeveloperSearchOptions.new(
+    k: 5,
+    types: ["issue", "pull_request"],
+    repos: ["square/okhttp"]
+  )
+)
+
+response.results.each do |result|
+  puts "#{result.title} #{result.url}"
+end
+```
+
 ### Agent
 
 ```ruby

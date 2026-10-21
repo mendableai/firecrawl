@@ -1,9 +1,19 @@
 import express from "express";
 import request from "supertest";
+
+vi.mock("../../lib/billing-country", () => ({
+  billingCountryForTeam: vi.fn(async () => undefined),
+}));
 const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   log: vi.fn(),
   scrapeLog: vi.fn(),
+  discovery: vi.fn(),
+  recordDiscovered: vi.fn(),
+}));
+vi.mock("../../lib/alexandria-discovery", () => ({
+  discoveryForCalls: mocks.discovery,
+  recordDiscoveredTools: mocks.recordDiscovered,
 }));
 vi.mock("../../services/alexandria/retrieve", () => ({
   REQUEST_ID_PATTERN: /^[A-Za-z0-9._:-]{1,128}$/,
@@ -34,6 +44,7 @@ const call = {
   capability: "categories/category",
   options: {},
 };
+let flags: Record<string, unknown> = { exchangeRetrieve: true };
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
@@ -42,7 +53,7 @@ app.use((req, _res, next) => {
     acuc: {
       api_key_id: 12,
       org_id: "org",
-      flags: { exchangeRetrieve: true },
+      flags,
     },
   });
   next();
@@ -60,8 +71,12 @@ const result = (results: unknown[], executed = true) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags = { exchangeRetrieve: true };
   mocks.log.mockResolvedValue(undefined);
   mocks.scrapeLog.mockResolvedValue(undefined);
+  mocks.discovery.mockImplementation(async (_teamId, calls: unknown[]) =>
+    calls.map(() => ({})),
+  );
   mocks.retrieve.mockResolvedValue(
     result([{ ...call, creditsCost: 0, data: {} }]),
   );
@@ -286,4 +301,182 @@ it("executes with supplied arguments but stores only tool identifiers in activit
   expect(mocks.scrapeLog.mock.calls[0][0].options).toEqual({
     alexandria: [{ provider: call.provider, capability: call.capability }],
   });
+});
+
+it("forwards zero data retention for forced-ZDR teams instead of refusing them", async () => {
+  flags = { exchangeRetrieve: true, forceZDR: true };
+  const response = await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call });
+  expect(response.status).toBe(200);
+  expect(mocks.retrieve).toHaveBeenCalledWith(
+    expect.objectContaining({ zeroDataRetention: true }),
+  );
+  await vi.waitFor(() =>
+    expect(mocks.log).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
+it("accepts zero data retention in the body and forwards it", async () => {
+  const response = await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call, zeroDataRetention: true });
+  expect(response.status).toBe(200);
+  expect(mocks.retrieve).toHaveBeenCalledWith(
+    expect.objectContaining({ zeroDataRetention: true }),
+  );
+  await vi.waitFor(() =>
+    expect(mocks.log).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
+it("accepts zero data retention on both legacy request shapes", async () => {
+  const single = await request(app)
+    .post("/exchange/retrieve")
+    .send({ ...call, zeroDataRetention: true });
+  expect(single.status).toBe(200);
+  const batch = await request(app)
+    .post("/exchange/retrieve")
+    .send({ requests: [call], zeroDataRetention: true });
+  expect(batch.status).toBe(200);
+  for (const [arg] of mocks.retrieve.mock.calls)
+    expect(arg).toMatchObject({ calls: [call], zeroDataRetention: true });
+});
+
+it("tells the provider activity log about zero data retention", async () => {
+  await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call, zeroDataRetention: true });
+  await vi.waitFor(() =>
+    expect(mocks.scrapeLog).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
+it("does not ask for zero data retention by default", async () => {
+  await request(app).post("/v2/scrape").send({ alexandria: call });
+  expect(mocks.retrieve).toHaveBeenCalledWith(
+    expect.objectContaining({ zeroDataRetention: false }),
+  );
+  await vi.waitFor(() =>
+    expect(mocks.log).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: false }),
+    ),
+  );
+});
+
+const findTools = {
+  provider: "firecrawl",
+  capability: "find-tools",
+  options: {
+    query: "podcast sponsors",
+    providers: ["particle"],
+    urls: ["https://a.example/", "https://b.example/"],
+    token: "secret-token",
+  },
+};
+
+it("logs find-tools options and result size, and remembers the tools it showed", async () => {
+  mocks.retrieve.mockResolvedValue(
+    result([
+      {
+        provider: "firecrawl",
+        capability: "find-tools",
+        creditsCost: 0,
+        data: {
+          level: "tools",
+          items: [
+            { provider: "particle", capability: "advertising/sponsors" },
+            { provider: "particle", capability: "podcasts/show" },
+            { provider: "particle", id: "particle" },
+          ],
+        },
+      },
+    ]),
+  );
+  const response = await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: findTools });
+  expect(response.status).toBe(200);
+  expect(mocks.recordDiscovered).toHaveBeenCalledWith(
+    "team",
+    "find_tools",
+    "scrape-1",
+    [
+      { provider: "particle", capability: "advertising/sponsors" },
+      { provider: "particle", capability: "podcasts/show" },
+    ],
+  );
+  await vi.waitFor(() => expect(mocks.scrapeLog).toHaveBeenCalledTimes(1));
+  expect(mocks.scrapeLog.mock.calls[0][0].options).toEqual({
+    alexandria: [
+      {
+        provider: "firecrawl",
+        capability: "find-tools",
+        options: {
+          query: "podcast sponsors",
+          providers: ["particle"],
+          urlCount: 2,
+        },
+        returned: 3,
+      },
+    ],
+  });
+});
+
+it("attributes each provider call to the discovery that showed it", async () => {
+  mocks.discovery.mockResolvedValue([
+    {
+      search: { id: "search-1", secondsBefore: 40 },
+      find_tools: { id: "scrape-0", secondsBefore: 12 },
+    },
+  ]);
+  await request(app).post("/v2/scrape").send({ alexandria: call });
+  expect(mocks.discovery).toHaveBeenCalledWith("team", [call]);
+  await vi.waitFor(() => expect(mocks.scrapeLog).toHaveBeenCalledTimes(1));
+  expect(mocks.scrapeLog.mock.calls[0][0].options).toEqual({
+    alexandria: [
+      {
+        provider: call.provider,
+        capability: call.capability,
+        discovery: {
+          search: { id: "search-1", secondsBefore: 40 },
+          find_tools: { id: "scrape-0", secondsBefore: 12 },
+        },
+      },
+    ],
+  });
+});
+
+it("still logs the call when the discovery lookup fails", async () => {
+  mocks.discovery.mockRejectedValue(new Error("Redis unavailable"));
+  await request(app).post("/v2/scrape").send({ alexandria: call });
+  await vi.waitFor(() => expect(mocks.scrapeLog).toHaveBeenCalledTimes(1));
+  expect(mocks.scrapeLog.mock.calls[0][0].options).toEqual({
+    alexandria: [{ provider: call.provider, capability: call.capability }],
+  });
+});
+
+it("neither reads nor records discovery under zero data retention", async () => {
+  mocks.retrieve.mockResolvedValue(
+    result([
+      {
+        provider: "firecrawl",
+        capability: "find-tools",
+        creditsCost: 0,
+        data: { items: [{ provider: "fred", capability: "series/search" }] },
+      },
+    ]),
+  );
+  await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: findTools, zeroDataRetention: true });
+  await vi.waitFor(() => expect(mocks.scrapeLog).toHaveBeenCalledTimes(1));
+  expect(mocks.discovery).not.toHaveBeenCalled();
+  expect(mocks.recordDiscovered).not.toHaveBeenCalled();
 });

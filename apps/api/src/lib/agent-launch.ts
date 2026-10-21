@@ -24,8 +24,10 @@ export async function launchAgentJob(params: {
   orgId: string | null | undefined;
   externalRequestId?: string | null;
   request: AgentRequest;
+  zeroDataRetention?: boolean;
 }): Promise<LaunchAgentJobResult> {
   const { agentId, teamId, request } = params;
+  const zeroDataRetention = params.zeroDataRetention === true;
 
   if (!config.EXTRACT_V3_BETA_URL) {
     throw new Error("Agent beta is not enabled.");
@@ -78,7 +80,7 @@ export async function launchAgentJob(params: {
     origin: request.origin ?? "api",
     integration: request.integration,
     target_hint: request.urls?.[0] ?? request.prompt ?? "",
-    zeroDataRetention: false, // not supported for agent
+    zeroDataRetention,
     api_key_id: params.apiKeyId,
     creditsShards: AGENT_REQUEST_CREDITS_SHARDS,
   });
@@ -111,6 +113,7 @@ export async function launchAgentJob(params: {
         mode: request.mode,
         exchange: request.exchange,
         location: request.location,
+        ...(zeroDataRetention ? { zeroDataRetention: true } : {}),
       }),
     },
   );

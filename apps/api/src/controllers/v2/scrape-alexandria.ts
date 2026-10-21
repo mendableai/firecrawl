@@ -7,10 +7,15 @@ import { logger } from "../../lib/logger";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { externalRequestId } from "../../lib/external-request-id";
 import { getScrapeZDR } from "../../lib/zdr-helpers";
+import { billingCountryForTeam } from "../../lib/billing-country";
 import { checkKeyFormatRestriction } from "../../lib/key-restriction";
 import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
+import {
+  discoveryForCalls,
+  recordDiscoveredTools,
+} from "../../lib/alexandria-discovery";
 import {
   callsSchema,
   callSchema,
@@ -21,6 +26,26 @@ import {
   retrieveProviders,
 } from "../../services/alexandria/retrieve";
 import type { RequestWithAuth } from "./types";
+
+const FIND_TOOLS_LOGGED_OPTIONS = [
+  "query",
+  "providers",
+  "categories",
+  "groups",
+  "capabilities",
+  "level",
+  "limit",
+  "offset",
+  "expand",
+];
+
+const isFindTools = (call: { provider?: string; capability?: string }) =>
+  call.provider === "firecrawl" && call.capability === "find-tools";
+
+const findToolsItems = (data: unknown): unknown[] => {
+  const items = (data as { items?: unknown } | null)?.items;
+  return Array.isArray(items) ? items : [];
+};
 
 const providerScrapeSchema = z.strictObject({
   alexandria: z.preprocess(
@@ -35,6 +60,7 @@ const providerScrapeSchema = z.strictObject({
     .transform(value => Math.min(value, 120_000)),
   origin: z.string().default("api"),
   integration: z.string().nullable().optional(),
+  zeroDataRetention: z.boolean().optional(),
   __agentInterop: z
     .strictObject({
       auth: z.string(),
@@ -50,17 +76,21 @@ export async function providerScrapeController(
   res: Response,
   legacy = false,
 ) {
+  const legacyZeroDataRetention = { zeroDataRetention: z.boolean().optional() };
   const legacyBody = legacy
     ? z
-        .union([callSchema, z.strictObject({ requests: callsSchema })])
+        .union([
+          callSchema.extend(legacyZeroDataRetention),
+          z.strictObject({ requests: callsSchema, ...legacyZeroDataRetention }),
+        ])
         .parse(req.body)
     : null;
   const body = providerScrapeSchema.parse(
     legacyBody
-      ? {
-          alexandria:
-            "requests" in legacyBody ? legacyBody.requests : [legacyBody],
-        }
+      ? (({ zeroDataRetention, ...rest }) => ({
+          alexandria: "requests" in rest ? rest.requests : [rest],
+          zeroDataRetention,
+        }))(legacyBody)
       : req.body,
   );
 
@@ -91,11 +121,10 @@ export async function providerScrapeController(
       success: false,
       error: "This endpoint is not enabled for this team.",
     });
-  if (getScrapeZDR(req.acuc.flags) === "forced")
-    return res.status(403).json({
-      success: false,
-      error: "Provider tools do not support zero data retention.",
-    });
+  // Exchange refuses capabilities that cannot honour ZDR, per call.
+  const zeroDataRetention =
+    getScrapeZDR(req.acuc.flags) === "forced" ||
+    body.zeroDataRetention === true;
   if (
     (req as any).agentIndexOnly ||
     ["pending", "blocked"].includes(req.acuc._agentSponsor?.status ?? "")
@@ -121,6 +150,13 @@ export async function providerScrapeController(
       .json({ success: false, error: "This endpoint is not available." });
 
   const target = `alexandria:${body.alexandria.map(call => `${call.provider}/${call.capability}`).join(",")}`;
+  const discovery =
+    zeroDataRetention || body.__agentInterop
+      ? Promise.resolve(null)
+      : discoveryForCalls(req.auth.team_id, body.alexandria).catch(error => {
+          logger.warn("Alexandria discovery lookup failed", { error });
+          return null;
+        });
   const startedAt = Date.now();
   let result;
   try {
@@ -136,6 +172,9 @@ export async function providerScrapeController(
       scrapeId: uuidv7(),
       timeoutMs: body.timeout,
       bypassBilling: body.__agentInterop?.shouldBill === false,
+      zeroDataRetention,
+      clientIp: req.ip,
+      billingCountry: await billingCountryForTeam(req.auth.team_id),
     });
   } catch (error) {
     logger.error("Provider scrape unavailable", {
@@ -168,8 +207,35 @@ export async function providerScrapeController(
     const credits = served.success
       ? served.data.creditsCost
       : failure?.creditsCost;
+    if (served.success && !zeroDataRetention)
+      recordDiscoveredTools(
+        req.auth.team_id,
+        "find_tools",
+        result.scrapeId,
+        served.data.results.flatMap(item =>
+          isFindTools(item)
+            ? findToolsItems(item.data).flatMap(tool => {
+                const { provider, capability } = (tool ?? {}) as {
+                  provider?: unknown;
+                  capability?: unknown;
+                };
+                return typeof provider === "string" &&
+                  typeof capability === "string"
+                  ? [{ provider, capability }]
+                  : [];
+              })
+            : [],
+        ),
+      );
     // Preserve parent/child ordering without delaying the provider response.
     void (async () => {
+      // Bounded so a slow Redis never holds back the activity log.
+      const discovered = await Promise.race([
+        discovery,
+        new Promise<null>(resolve =>
+          setTimeout(() => resolve(null), 500).unref(),
+        ),
+      ]);
       await logRequest({
         id: result.scrapeId,
         kind: "alexandria",
@@ -180,7 +246,7 @@ export async function providerScrapeController(
         origin: body.origin,
         integration: body.integration ?? null,
         target_hint: target,
-        zeroDataRetention: false,
+        zeroDataRetention,
         jobAccess: false,
       });
       await logProviderScrape({
@@ -189,10 +255,35 @@ export async function providerScrapeController(
         target,
         team_id: req.auth.team_id,
         options: {
-          alexandria: body.alexandria.map(({ provider, capability }) => ({
-            provider,
-            capability,
-          })),
+          alexandria: body.alexandria.map(
+            ({ provider, capability, options }, i) => ({
+              provider,
+              capability,
+              ...(isFindTools({ provider, capability })
+                ? {
+                    options: {
+                      ...Object.fromEntries(
+                        Object.entries(options).filter(([key]) =>
+                          FIND_TOOLS_LOGGED_OPTIONS.includes(key),
+                        ),
+                      ),
+                      ...(Array.isArray(options.urls)
+                        ? { urlCount: options.urls.length }
+                        : {}),
+                    },
+                    ...(served.success
+                      ? {
+                          returned: findToolsItems(served.data.results[i]?.data)
+                            .length,
+                        }
+                      : {}),
+                  }
+                : {}),
+              ...(discovered && Object.keys(discovered[i]).length
+                ? { discovery: discovered[i] }
+                : {}),
+            }),
+          ),
         },
         time_taken: timeTaken,
         credits_cost:
@@ -205,6 +296,7 @@ export async function providerScrapeController(
         error: successful
           ? undefined
           : (error ?? `Provider request failed (${result.status}).`),
+        zeroDataRetention,
       });
     })().catch(error =>
       logger.warn("Provider activity logging failed", {

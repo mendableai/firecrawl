@@ -8,7 +8,13 @@ vi.mock("../../../lib/crawl-regex", async () => {
 import { agentController } from "../agent";
 import { agentRequestSchema } from "../types";
 vi.mock("../../../lib/logger", () => {
-  const logger = { info: vi.fn(), error: vi.fn(), child: vi.fn() };
+  const logger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(),
+  };
   logger.child.mockReturnValue(logger);
   return { logger };
 });
