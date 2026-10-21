@@ -68,11 +68,11 @@ function listsSubject(list: string | undefined, subjectHash: string): boolean {
     .includes(subjectHash);
 }
 
-export function isWorldIdSubjectDenied(subjectHash: string): boolean {
+function isWorldIdSubjectDenied(subjectHash: string): boolean {
   return listsSubject(config.WORLD_ID_DENIED_SUBJECTS, subjectHash);
 }
 
-export function isWorldIdSubjectAllowed(subjectHash: string): boolean {
+function isWorldIdSubjectAllowed(subjectHash: string): boolean {
   if (isWorldIdSubjectDenied(subjectHash)) return false;
   const allowed = config.WORLD_ID_ALLOWED_SUBJECTS;
   return !allowed || listsSubject(allowed, subjectHash);
@@ -304,9 +304,7 @@ const TOKEN_REJECTIONS = [
  * Validates a World ID ID token and returns its subject hash, or null when the
  * token is rejected. Throws when the issuer's keys can't be fetched.
  */
-export async function verifyWorldIdIdToken(
-  idToken: string,
-): Promise<string | null> {
+async function verifyWorldIdIdToken(idToken: string): Promise<string | null> {
   try {
     const { payload } = await jwtVerify(idToken, issuerJwks(), {
       issuer: issuer(),
