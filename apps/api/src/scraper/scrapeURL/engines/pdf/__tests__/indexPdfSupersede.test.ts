@@ -6,12 +6,28 @@ vi.mock("../../../../../db/rpc", () => ({
   queryMaxAge: vi.fn(),
   indexGetRecent5: vi.fn(),
 }));
+vi.mock("../../../../../services/index-cache", async importOriginal => ({
+  ...(await importOriginal<
+    typeof import("../../../../../services/index-cache")
+  >()),
+  useIndexCache: true,
+  useIndexNegativeCache: false,
+  getCachedIndexEntries: vi.fn(async () => ({ status: "miss" })),
+  upsertCachedIndexEntries: vi.fn(async () => {}),
+  deleteCachedIndexEntry: vi.fn(async () => {}),
+  getCachedMaxAge: vi.fn(async () => null),
+  setCachedMaxAge: vi.fn(async () => {}),
+}));
 vi.mock("../fire-pdf/cache-service", () => ({
   cacheServiceConfigured: vi.fn(() => true),
   checkFirePdfSupersedes: vi.fn(),
 }));
 
 import { getIndexFromGCS } from "../../../../../services";
+import {
+  deleteCachedIndexEntry,
+  getCachedIndexEntries,
+} from "../../../../../services/index-cache";
 import { indexGetRecent5 } from "../../../../../db/rpc";
 import { checkFirePdfSupersedes } from "../fire-pdf/cache-service";
 import { scrapeURLWithIndex } from "../../index/index";
@@ -75,6 +91,8 @@ describe("URL index PDF supersede check", () => {
       },
     ] as any);
     vi.mocked(checkFirePdfSupersedes).mockReset();
+    vi.mocked(deleteCachedIndexEntry).mockClear();
+    vi.mocked(getCachedIndexEntries).mockResolvedValue({ status: "miss" });
   });
 
   afterEach(() => {
@@ -105,6 +123,49 @@ describe("URL index PDF supersede check", () => {
       rawKey,
       new Date(createdAt),
     );
+    expect(deleteCachedIndexEntry).toHaveBeenCalledWith(
+      expect.any(String),
+      "row-1",
+      expect.anything(),
+    );
+  });
+
+  it("drops the Dragonfly entry after a superseded cache hit", async () => {
+    mutable.INDEX_PDF_SUPERSEDE_CHECK = true;
+    vi.mocked(getCachedIndexEntries).mockResolvedValue({
+      status: "hit",
+      entries: [
+        {
+          id: "row-cached",
+          created_at: new Date().toISOString(),
+          status: 200,
+          has_screenshot: false,
+          has_screenshot_fullscreen: false,
+          wait_time_ms: null,
+        },
+      ],
+    });
+    vi.mocked(getIndexFromGCS).mockResolvedValue(
+      indexedPdf({ firePdfCacheKey: rawKey }),
+    );
+    vi.mocked(checkFirePdfSupersedes).mockResolvedValue("superseded");
+    await expect(scrapeURLWithIndex(meta())).rejects.toBeInstanceOf(
+      IndexMissError,
+    );
+    expect(deleteCachedIndexEntry).toHaveBeenCalledWith(
+      expect.any(String),
+      "row-cached",
+      expect.anything(),
+    );
+  });
+
+  it("does not ask for a non-PDF index entry", async () => {
+    mutable.INDEX_PDF_SUPERSEDE_CHECK = true;
+    vi.mocked(getIndexFromGCS).mockResolvedValue(
+      indexedPdf({ firePdfCacheKey: rawKey, contentType: "text/html" }),
+    );
+    await scrapeURLWithIndex(meta());
+    expect(checkFirePdfSupersedes).not.toHaveBeenCalled();
   });
 
   it.each(["current", "error"] as const)(

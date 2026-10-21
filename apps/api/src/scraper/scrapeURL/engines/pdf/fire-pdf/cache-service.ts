@@ -185,7 +185,13 @@ async function lookupWithinSpan(
   // An already-cancelled scrape sends nothing.
   meta.abort.throwIfAborted();
   const keys = await cacheLookupKeys(input);
-  if (keys[0].startsWith("raw-")) meta.firePdfCacheKey = keys[0];
+  if (
+    sourceKind === "pdf" &&
+    keys[0].startsWith("raw-") &&
+    meta.firePdfCacheKey !== undefined
+  ) {
+    meta.firePdfCacheKey.current = keys[0];
+  }
   let answer: z.infer<typeof lookupOutcomeSchema>;
   try {
     answer = await robustFetch({

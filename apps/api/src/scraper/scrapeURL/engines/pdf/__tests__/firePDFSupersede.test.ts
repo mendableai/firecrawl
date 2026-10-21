@@ -19,6 +19,7 @@ function meta() {
     logger: { info: vi.fn(), warn: vi.fn() },
     internalOptions: { zeroDataRetention: false, teamId: "team-1" },
     mock: null,
+    firePdfCacheKey: {},
     abort: {
       asSignal: () => new AbortController().signal,
       throwIfAborted: vi.fn(),
@@ -59,6 +60,14 @@ describe("checkFirePdfSupersedes", () => {
       scrape_id: "supersede-test",
     });
     expect(call.tryCount).toBe(1);
+  });
+
+  it("bounds the check at one second", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    answerWith({ outcome: "miss", reason: "not_found" });
+    await checkFirePdfSupersedes(meta(), rawKey, indexedAt);
+    expect(timeout).toHaveBeenCalledWith(1_000);
+    timeout.mockRestore();
   });
 
   it("is superseded by a fresh entry written well after the index row", async () => {
@@ -134,13 +143,31 @@ describe("lookupCachedResult records the content key", () => {
       .createHash("sha256")
       .update(Buffer.from(base64, "base64"))
       .digest("hex")}`;
-    expect(m.firePdfCacheKey).toBe(expected);
+    expect(m.firePdfCacheKey.current).toBe(expected);
   });
 
   it("stores a by-reference raw key on meta", async () => {
     answerWith({ outcome: "miss", reason: "not_found" });
     const m = meta();
     await lookupCachedResult(m, { key: rawKey }, args);
-    expect(m.firePdfCacheKey).toBe(rawKey);
+    expect(m.firePdfCacheKey.current).toBe(rawKey);
+  });
+
+  it("does not record a key for a raster image", async () => {
+    answerWith({ outcome: "miss", reason: "not_found" });
+    const m = meta();
+    await lookupCachedResult(m, Buffer.from("png").toString("base64"), {
+      ...args,
+      sourceKind: "image",
+    });
+    expect(m.firePdfCacheKey.current).toBeUndefined();
+  });
+
+  it("records the key on the holder shared by engine copies of meta", async () => {
+    answerWith({ outcome: "miss", reason: "not_found" });
+    const outer = meta();
+    const engineCopy = { ...outer };
+    await lookupCachedResult(engineCopy, { key: rawKey }, args);
+    expect(outer.firePdfCacheKey.current).toBe(rawKey);
   });
 });

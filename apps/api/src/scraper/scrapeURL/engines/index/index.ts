@@ -142,8 +142,9 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
           contentType: document.metadata.contentType,
           postprocessorsUsed: document.metadata.postprocessorsUsed,
           proxyUsed: document.metadata.proxyUsed,
-          ...(meta.firePdfCacheKey !== undefined
-            ? { firePdfCacheKey: meta.firePdfCacheKey }
+          ...(meta.firePdfCacheKey?.current !== undefined &&
+          document.metadata.contentType === "application/pdf"
+            ? { firePdfCacheKey: meta.firePdfCacheKey.current }
             : {}),
         });
       } catch (error) {
@@ -593,6 +594,7 @@ export async function scrapeURLWithIndex(
   if (
     config.INDEX_PDF_SUPERSEDE_CHECK &&
     typeof doc.firePdfCacheKey === "string" &&
+    doc.contentType === "application/pdf" &&
     !isCachedPdfBase64 &&
     cacheServiceConfigured()
   ) {
@@ -603,9 +605,8 @@ export async function scrapeURLWithIndex(
     );
     indexPdfSupersedeCounter.inc({ result });
     if (result === "superseded") {
-      if (servedFromCache) {
-        deleteCachedIndexEntry(variantKey, id, meta.logger).catch(() => {});
-      }
+      // The DB path may have just written this id through to Dragonfly.
+      deleteCachedIndexEntry(variantKey, id, meta.logger).catch(() => {});
       logLookup("debug", "hit", {
         pdfSuperseded: true,
         indexDocumentId: id,
