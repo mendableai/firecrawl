@@ -65,11 +65,13 @@ const connectViaProxy = (proxyPort: number, target: string): Promise<number> =>
       port: proxyPort,
       method: 'CONNECT',
       path: target,
+      timeout: 1000,
     });
     req.on('connect', (res, socket) => {
       socket.destroy();
       resolve(res.statusCode ?? 0);
     });
+    req.on('timeout', () => req.destroy(new Error('Proxy CONNECT timed out')));
     req.on('error', reject);
     req.end();
   });
