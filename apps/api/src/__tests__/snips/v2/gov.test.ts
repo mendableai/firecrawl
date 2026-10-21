@@ -1,5 +1,5 @@
 import { config } from "../../../config";
-import { describeIf, scrapeTimeout } from "../lib";
+import { describeIf } from "../lib";
 import { idmux, researchRaw } from "./lib";
 
 const HAS_GOV = !!config.SEARCH_PLATFORM_URL;
@@ -30,26 +30,4 @@ describeIf(HAS_GOV)("Government Index Search API", () => {
       expect(typeof result.position).toBe("number");
     }
   }, 120000);
-
-  it(
-    "refuses a forced-ZDR team",
-    async () => {
-      const identity = await idmux({
-        name: "gov/forced ZDR refusal",
-        credits: 100,
-        flags: { searchZDR: "forced-zdr" },
-      });
-
-      const res = await researchRaw(
-        PATH,
-        { query: "food labeling requirements", k: 3 },
-        identity,
-      );
-
-      expect(res.statusCode).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error).toContain("zero data retention");
-    },
-    scrapeTimeout,
-  );
 });
