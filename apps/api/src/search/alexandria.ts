@@ -221,17 +221,21 @@ export async function discoverTools(
                 )
                   return [];
                 const providers = [match.id];
-                // Without a query Exchange lists a provider's tools alphabetically.
-                const ranked =
-                  !capabilities.length && rankQuery
-                    ? await lookup({ providers, query: rankQuery })
-                    : [];
-                const tools = ranked.length
-                  ? ranked
-                  : await lookup({
-                      providers,
-                      ...(capabilities.length ? { capabilities } : {}),
-                    });
+                // Each provider retries on its own, so one failure keeps the other matches.
+                const tools =
+                  (await leg("Domain tool lookup unavailable", async () => {
+                    // Without a query Exchange lists a provider's tools alphabetically.
+                    const ranked =
+                      !capabilities.length && rankQuery
+                        ? await lookup({ providers, query: rankQuery })
+                        : [];
+                    return ranked.length
+                      ? ranked
+                      : await lookup({
+                          providers,
+                          ...(capabilities.length ? { capabilities } : {}),
+                        });
+                  })) ?? [];
                 return tools
                   .filter(tool => tool.provider === match.id)
                   .map(tool => ({

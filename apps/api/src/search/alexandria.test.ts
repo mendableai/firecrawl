@@ -323,4 +323,33 @@ describe("domain discovery", () => {
       "small/records/1",
     ]);
   });
+  it("keeps other providers when one provider's lookup fails", async () => {
+    request.mockImplementation(async args => {
+      if (args.path === "/v1/skills/resolve")
+        return resolve([
+          { id: "broken", matchedDomains: ["broken.example"] },
+          { id: "small", matchedDomains: ["small.example"] },
+        ]);
+      const [provider] = (args.body as any).options.providers;
+      return provider === "broken"
+        ? { status: 503, body: {} }
+        : answer(toolsOf(provider, 1));
+    });
+    const result = await discoverTools(
+      {
+        ...input,
+        query: undefined,
+        toolDetail: "compact",
+        urls: ["https://broken.example/a", "https://small.example/b"],
+      },
+      logger,
+    );
+    expect(result.items.map(item => item.provider)).toEqual(["small"]);
+    expect(result.warning).toBeTruthy();
+    expect(result.unavailable).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Domain tool lookup unavailable",
+      expect.objectContaining({ attempt: 2 }),
+    );
+  });
 });
