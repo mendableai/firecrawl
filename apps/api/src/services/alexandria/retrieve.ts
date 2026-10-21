@@ -95,6 +95,7 @@ export async function retrieveProviders(input: {
   bypassBilling?: boolean;
   resultAuthorization?: string;
   clientIp?: string;
+  billingCountry?: string;
 }): Promise<ProviderRetrieval> {
   const notExecuted = (response: ExchangeResponse): ProviderRetrieval => ({
     ...response,
@@ -245,6 +246,7 @@ export async function retrieveProviders(input: {
       input.flags,
       input.orgId,
       input.clientIp,
+      input.billingCountry,
     );
     if (denied) return refuse(denied);
 
@@ -269,6 +271,7 @@ export async function retrieveProviders(input: {
       body: { requests: input.calls },
       timeoutMs: Math.min(10000, remaining()),
       clientIp: input.clientIp,
+      billingCountry: input.billingCountry,
       connectors: input.flags?.exchangeRetrieve === true,
     }).catch(error => {
       logger.warn("Provider quote unavailable", { error, chargeId: id });
@@ -396,6 +399,7 @@ export async function retrieveProviders(input: {
       timeoutMs: remaining(),
       requestId: id,
       clientIp: input.clientIp,
+      billingCountry: input.billingCountry,
       // The team's own MCP connectors (mcp-...) resolve only when Exchange is told it may use them.
       connectors: input.flags?.exchangeRetrieve === true,
       // Sent with every execution so Exchange tools that call Firecrawl as the caller

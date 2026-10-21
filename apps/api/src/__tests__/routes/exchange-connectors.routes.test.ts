@@ -1,6 +1,10 @@
 import express from "express";
 import request from "supertest";
 
+vi.mock("../../lib/billing-country", () => ({
+  billingCountryForTeam: vi.fn(async () => undefined),
+}));
+
 // The real exchangeRouter, authMiddleware and auth.ts; only I/O is mocked.
 const mocks = vi.hoisted(() => ({
   authChunk: vi.fn(),

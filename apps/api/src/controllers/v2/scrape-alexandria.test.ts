@@ -1,5 +1,9 @@
 import express from "express";
 import request from "supertest";
+
+vi.mock("../../lib/billing-country", () => ({
+  billingCountryForTeam: vi.fn(async () => undefined),
+}));
 const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   log: vi.fn(),
