@@ -488,6 +488,79 @@ describe("authenticateUser", () => {
       expect(auth).toMatchObject({ success: false, status: 401 });
       expect(consumeKeylessRequest).not.toHaveBeenCalled();
     });
+
+    const ipv4Request = (headers: Record<string, string> = {}) => ({
+      body: { origin: "cli" },
+      headers,
+      socket: { remoteAddress: "203.0.113.8" },
+    });
+
+    it("keeps IPv4 callers on the IP bucket and prompt whether or not it is configured", async () => {
+      config.KEYLESS_SIGNUP_LINK_KEYS = "AAECAwQFBgcICQoLDA0ODw==";
+      enableWorldId();
+      vi.mocked(consumeKeylessRequest).mockResolvedValue({
+        ok: false,
+        reason: "credits",
+        requestsUsed: 1,
+        creditsUsed: 100,
+      });
+      const { credential } = mintWorldIdCredential(
+        worldIdSubjectHash("https://issuer.test", "human-1"),
+      );
+      const run = (headers: Record<string, string> = {}) =>
+        authenticateUser(ipv4Request(headers), {}, RateLimiterMode.Scrape, {
+          allowKeyless: true,
+        });
+
+      const configured = await run();
+      const forged = await run({
+        "x-firecrawl-world-id": "fcwid_forged.credential",
+      });
+      config.WORLD_ID_CLIENT_ID = undefined;
+      config.WORLD_ID_CLIENT_SECRET = undefined;
+      config.WORLD_ID_CREDENTIAL_SECRET = undefined;
+      config.WORLD_ID_SUBJECT_SECRET = undefined;
+      const unset = await run();
+      const unsetWithCredential = await run({
+        "x-firecrawl-world-id": credential,
+      });
+
+      const links = [configured, forged, unset, unsetWithCredential].map(
+        auth => {
+          expect(auth).toMatchObject({ success: false, status: 429 });
+          return decodedLink((auth as { signupUrl?: string }).signupUrl);
+        },
+      );
+      expect(links[0]).toMatchObject({ ipv4: "203.0.113.8", reason: "limit" });
+      expect(links).toEqual(Array(4).fill(links[0]));
+      expect(vi.mocked(consumeKeylessRequest).mock.calls).toEqual(
+        Array(4).fill(["203.0.113.8"]),
+      );
+      expect(vi.mocked(isKeylessIpSuspicious).mock.calls).toEqual(
+        Array(4).fill(["203.0.113.8"]),
+      );
+    });
+
+    it("authenticates a credential without calling the issuer", async () => {
+      enableWorldId();
+      const fetch = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+      vi.stubGlobal("fetch", fetch);
+      const hash = worldIdSubjectHash("https://issuer.test", "human-1");
+      const { credential } = mintWorldIdCredential(hash);
+
+      const auth = await authenticateUser(
+        ipv4Request({ "x-firecrawl-world-id": credential }),
+        {},
+        RateLimiterMode.Scrape,
+        { allowKeyless: true },
+      );
+
+      expect(auth).toMatchObject({
+        success: true,
+        team_id: `preview_keyless_wid_${hash}`,
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    });
   });
 
   it("falls back to the regular signup link and still returns the 429 when no key is configured", async () => {

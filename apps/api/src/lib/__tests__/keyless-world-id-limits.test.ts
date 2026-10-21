@@ -45,6 +45,28 @@ describe("keyless limits for a World ID identity", () => {
     });
   });
 
+  it("leaves the per-IP tier at its configured limits", async () => {
+    const ip = "203.0.113.8";
+    redis.incr.mockResolvedValue(10);
+    expect((await consumeKeylessRequest(ip)).ok).toBe(true);
+    redis.incr.mockResolvedValue(11);
+    expect(await consumeKeylessRequest(ip)).toMatchObject({
+      ok: false,
+      reason: "requests",
+    });
+    expect(redis.incr).toHaveBeenLastCalledWith(`keyless_requests:${ip}`);
+
+    await reserveKeylessCredits(keylessTeamId(ip), 5);
+    expect(redis.eval).toHaveBeenLastCalledWith(
+      expect.any(String),
+      1,
+      `keyless_credits:${ip}`,
+      5,
+      100,
+      86400,
+    );
+  });
+
   it("keeps its own request bucket, apart from any IP", async () => {
     redis.incr.mockResolvedValue(1);
     await consumeKeylessRequest(WORLD_ID);
