@@ -295,6 +295,7 @@ export async function executeSearch(
         connectors: flags?.exchangeRetrieve === true,
         limit,
         query: wantsTools ? query : undefined,
+        rankQuery: query,
         urls:
           options.domainTools === false
             ? []
