@@ -8,14 +8,23 @@ export function wantsGovCategory(categories?: CategoryOption[]): boolean {
 }
 
 export async function searchGovCategory(
-  options: { query: string; limit: number; teamId: string; timeout: number },
+  options: {
+    query: string;
+    limit: number;
+    teamId: string;
+    timeout: number;
+    zeroDataRetention: boolean;
+  },
   logger: Logger,
 ): Promise<WebSearchResult[]> {
   try {
     const upstream = await fetchGovUpstream({
       query: options.query,
       k: options.limit,
-      headers: { "firecrawl-team-id": options.teamId },
+      headers: {
+        "firecrawl-team-id": options.teamId,
+        "firecrawl-zero-data-retention": String(options.zeroDataRetention),
+      },
       timeoutMs: options.timeout,
     });
     if (upstream === null) {

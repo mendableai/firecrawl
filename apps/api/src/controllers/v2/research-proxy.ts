@@ -501,12 +501,16 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
 
   if (options.legacy) {
     router.use((req, _res, next) => {
+      const authedReq = req as RequestWithAuth<any, any, any>;
       rootLogger.warn("Legacy research endpoint used", {
         module: "api/v2/research",
-        teamId: (req as RequestWithAuth<any, any, any>).auth?.team_id,
+        teamId: authedReq.auth?.team_id,
         method: req.method,
         path: req.originalUrl,
         requestId: req.headers["x-request-id"],
+        zeroDataRetention:
+          getEffectiveSearchForcedKind(authedReq.acuc?.flags, undefined) !==
+          null,
       });
       next();
     });

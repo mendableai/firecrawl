@@ -7,6 +7,7 @@ import { logger } from "../../lib/logger";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { externalRequestId } from "../../lib/external-request-id";
 import { getScrapeZDR } from "../../lib/zdr-helpers";
+import { billingCountryForTeam } from "../../lib/billing-country";
 import { checkKeyFormatRestriction } from "../../lib/key-restriction";
 import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
@@ -137,6 +138,7 @@ export async function providerScrapeController(
       timeoutMs: body.timeout,
       bypassBilling: body.__agentInterop?.shouldBill === false,
       clientIp: req.ip,
+      billingCountry: await billingCountryForTeam(req.auth.team_id),
     });
   } catch (error) {
     logger.error("Provider scrape unavailable", {
