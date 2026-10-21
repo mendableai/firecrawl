@@ -229,7 +229,13 @@ export async function providerScrapeController(
       );
     // Preserve parent/child ordering without delaying the provider response.
     void (async () => {
-      const discovered = await discovery;
+      // Bounded so a slow Redis never holds back the activity log.
+      const discovered = await Promise.race([
+        discovery,
+        new Promise<null>(resolve =>
+          setTimeout(() => resolve(null), 500).unref(),
+        ),
+      ]);
       await logRequest({
         id: result.scrapeId,
         kind: "alexandria",

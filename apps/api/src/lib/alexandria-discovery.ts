@@ -14,7 +14,7 @@ const discoveredKey = (
   teamId: string,
   tool: ToolRef,
 ) =>
-  `alexandria:discovered:${source}:${teamId}:${tool.provider}/${tool.capability}`;
+  `alexandria:discovered:${JSON.stringify([source, teamId, tool.provider, tool.capability])}`;
 
 /**
  * Remembers for an hour that a search or find-tools job showed these tools to
@@ -38,6 +38,10 @@ export function recordDiscoveredTools(
     );
   pipeline
     .exec()
+    .then(results => {
+      const error = results?.find(([commandError]) => commandError)?.[0];
+      if (error) throw error;
+    })
     .catch(error =>
       logger.warn("Failed to record Alexandria discovery", { error, teamId }),
     );
@@ -59,8 +63,14 @@ export async function discoveryForCalls(
       SOURCES.flatMap((source, j) => {
         const value = values[i * SOURCES.length + j];
         if (!value) return [];
-        const { id, at } = JSON.parse(value) as { id: string; at: number };
-        return [[source, { id, secondsBefore: Math.round((now - at) / 1000) }]];
+        try {
+          const { id, at } = JSON.parse(value) as { id: string; at: number };
+          return [
+            [source, { id, secondsBefore: Math.round((now - at) / 1000) }],
+          ];
+        } catch {
+          return [];
+        }
       }),
     ),
   );
