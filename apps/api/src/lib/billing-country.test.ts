@@ -1,6 +1,7 @@
 const mocks = vi.hoisted(() => ({
   rows: [] as { billing_address: unknown }[],
   query: vi.fn(),
+  orderBy: vi.fn(),
   getValue: vi.fn(),
   setValue: vi.fn(),
 }));
@@ -9,7 +10,8 @@ vi.mock("../db/connection", () => {
   const chain: Record<string, unknown> = {};
   for (const name of ["select", "from", "innerJoin", "where"])
     chain[name] = () => chain;
-  chain.orderBy = async () => {
+  chain.orderBy = async (...args: unknown[]) => {
+    mocks.orderBy(...args);
     mocks.query();
     return mocks.rows;
   };
@@ -20,13 +22,17 @@ vi.mock("../services/redis", () => ({
   setValue: mocks.setValue,
 }));
 
+import { asc } from "drizzle-orm";
+import * as schema from "../db/schema";
 import { billingCountryForTeam } from "./billing-country";
 
 describe("billingCountryForTeam", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.orderBy.mockReset();
     mocks.getValue.mockResolvedValue(null);
     mocks.setValue.mockResolvedValue(undefined);
+    mocks.query.mockReturnValue(undefined);
     mocks.rows = [];
   });
 
@@ -34,6 +40,7 @@ describe("billingCountryForTeam", () => {
     mocks.rows = [
       { billing_address: null },
       { billing_address: { country: "xx1" } },
+      { billing_address: { country: "ZZ" } },
       { billing_address: { country: " de " } },
       { billing_address: { country: "FR" } },
     ];
@@ -43,6 +50,14 @@ describe("billingCountryForTeam", () => {
       "DE",
       3600,
     );
+  });
+
+  it("asks for the members oldest first", async () => {
+    await billingCountryForTeam("team");
+    expect(mocks.orderBy).toHaveBeenCalledTimes(1);
+    expect(mocks.orderBy.mock.calls[0]).toEqual([
+      asc(schema.user_teams.created_at),
+    ]);
   });
 
   it("caches a team with no billing country so it is not queried again", async () => {
@@ -63,8 +78,39 @@ describe("billingCountryForTeam", () => {
     expect(mocks.query).not.toHaveBeenCalled();
   });
 
-  it("reads any failure as unknown", async () => {
-    mocks.getValue.mockRejectedValue(new Error("redis down"));
+  it.each([
+    [
+      "a cache read",
+      () => mocks.getValue.mockRejectedValue(new Error("redis down")),
+    ],
+    [
+      "the query",
+      () =>
+        mocks.orderBy.mockImplementation(() => {
+          throw new Error("db down");
+        }),
+    ],
+    [
+      "a cache write",
+      () => {
+        mocks.rows = [{ billing_address: { country: "DE" } }];
+        mocks.setValue.mockRejectedValue(new Error("redis down"));
+      },
+    ],
+  ])("reads a failed %s as unknown", async (_, fail) => {
+    fail();
     await expect(billingCountryForTeam("team")).resolves.toBeUndefined();
+  });
+
+  it("reads a lookup that never answers as unknown", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.getValue.mockReturnValue(new Promise(() => {}));
+      const pending = billingCountryForTeam("team");
+      await vi.advanceTimersByTimeAsync(1000);
+      await expect(pending).resolves.toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
