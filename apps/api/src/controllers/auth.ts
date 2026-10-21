@@ -2,6 +2,7 @@ import { RateLimiterRedis } from "rate-limiter-flexible";
 import { isValidUuid } from "../lib/owner-id";
 import { config } from "../config";
 import { logger } from "../lib/logger";
+import { timingSafeSecretEqual } from "../lib/secret-compare";
 import { parseApi } from "../lib/parseApi";
 import { withAuth } from "../lib/withAuth";
 import { getAgentSponsorStatus } from "../services/agent-sponsor";
@@ -216,7 +217,7 @@ async function getACUC(
     mode === RateLimiterMode.ExtractStatus ||
     mode === RateLimiterMode.ExtractAgentPreview;
 
-  if (api_key === config.PREVIEW_TOKEN) {
+  if (timingSafeSecretEqual(api_key, config.PREVIEW_TOKEN)) {
     const acuc = mockPreviewACUC(api_key, isExtract);
     acuc.is_extract = isExtract;
     return acuc;
@@ -565,8 +566,10 @@ function keylessSuspiciousIpMessage(signupUrl: string): string {
 function keylessClientIp(req): string {
   let ip = req.ip ?? req.socket?.remoteAddress ?? "unknown";
   if (
-    config.KEYLESS_PROXY_SECRET &&
-    req.headers["x-firecrawl-keyless-secret"] === config.KEYLESS_PROXY_SECRET
+    timingSafeSecretEqual(
+      req.headers["x-firecrawl-keyless-secret"],
+      config.KEYLESS_PROXY_SECRET,
+    )
   ) {
     const forwarded = req.headers["x-firecrawl-keyless-ip"];
     if (typeof forwarded === "string" && forwarded.trim()) {
@@ -1096,7 +1099,9 @@ async function supaAuthenticateUser(
     }
   }
 
-  const team_endpoint_token = token === config.PREVIEW_TOKEN ? iptoken : teamId;
+  const team_endpoint_token = timingSafeSecretEqual(token, config.PREVIEW_TOKEN)
+    ? iptoken
+    : teamId;
 
   try {
     await rateLimiter.consume(team_endpoint_token);
@@ -1126,7 +1131,7 @@ async function supaAuthenticateUser(
   }
 
   if (
-    token === config.PREVIEW_TOKEN &&
+    timingSafeSecretEqual(token, config.PREVIEW_TOKEN) &&
     (mode === RateLimiterMode.Scrape ||
       mode === RateLimiterMode.Preview ||
       mode === RateLimiterMode.Map ||
