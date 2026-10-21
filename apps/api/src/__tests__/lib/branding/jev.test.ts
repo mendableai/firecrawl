@@ -24,6 +24,7 @@ import {
   buildJevRequest,
   cleanFontFamily,
   describeColor,
+  loadFirstScreen,
   resetJevBreaker,
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
@@ -445,6 +446,37 @@ describe("branding with Jev", () => {
         expect.anything(),
       );
       expect(Object.keys(sentWith()[0].assets ?? {})).toEqual(["<screenshot>"]);
+    });
+
+    it("uses the download started when the engine returned instead of fetching again", async () => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(Buffer.from(PNG, "base64"), {
+            status: 200,
+            headers: { "content-type": "image/jpeg" },
+          }),
+      );
+      vi.stubGlobal("fetch", fetch);
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = "https://storage.example/branding.jpg";
+      input.firstScreenImage = loadFirstScreen(input.firstScreen, logger);
+      await enhanceBrandingWithLLM(input);
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(Object.keys(sentWith()[0].assets ?? {})).toEqual(["<screenshot>"]);
+    });
+
+    it("resolves to nothing when the download fails, so an early start can't reject", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new Error("socket hang up");
+        }),
+      );
+      await expect(
+        loadFirstScreen("https://storage.example/branding.jpg", logger),
+      ).resolves.toBeUndefined();
     });
 
     it("answers without it when the screenshot can't be read", async () => {

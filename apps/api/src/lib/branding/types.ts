@@ -1,6 +1,7 @@
 import { Logger } from "winston";
 import { BrandingProfile } from "../../types/branding";
 import { CostTracking } from "../cost-tracking";
+import type { loadFirstScreen } from "./jev";
 
 export interface ButtonSnapshot {
   index: number;
@@ -87,8 +88,11 @@ export interface BrandingLLMInput {
   }>;
   screenshot?: string;
   /** The page's first screen for Jev (a JPEG/PNG URL or data URL), captured
-   * after the branding scan when the team is in BRANDING_JEV_SCREENSHOT_PERCENT. */
+   * after the branding scan (see BRANDING_JEV_SCREENSHOT). */
   firstScreen?: string;
+  /** The first screen already being downloaded since the engine returned, so
+   * the download overlaps the transformers that run before branding. */
+  firstScreenImage?: ReturnType<typeof loadFirstScreen>;
   url: string;
   /** Optional header/nav HTML chunk for LLM when no logo candidates (fallback context). */
   headerHtmlChunk?: string;

@@ -552,15 +552,15 @@ export function wantsBrandingScreenshot(
  * (fire-engine uploads screenshots). Undefined when it can't be read in time,
  * so Jev answers from the page data alone.
  */
-async function loadFirstScreen(
+export async function loadFirstScreen(
   firstScreen: string | undefined,
   logger: BrandingLLMInput["logger"],
 ): Promise<Image | undefined> {
   if (!firstScreen) return undefined;
-  const inline = firstScreen.match(/^data:image\/(?:png|jpeg);base64,(.+)$/);
-  if (inline) return Image.fromBase64(inline[1]);
-  if (!/^https?:\/\//.test(firstScreen)) return undefined;
   try {
+    const inline = firstScreen.match(/^data:image\/(?:png|jpeg);base64,(.+)$/);
+    if (inline) return Image.fromBase64(inline[1]);
+    if (!/^https?:\/\//.test(firstScreen)) return undefined;
     const response = await fetch(firstScreen, {
       signal: AbortSignal.timeout(SCREENSHOT_FETCH_TIMEOUT_MS),
     });
@@ -1095,7 +1095,8 @@ export async function enhanceBrandingWithJev(
     count("breaker_open");
     return null;
   }
-  const screenshot = await loadFirstScreen(input.firstScreen, input.logger);
+  const screenshot = await (input.firstScreenImage ??
+    loadFirstScreen(input.firstScreen, input.logger));
   const started = Date.now();
   let request: JevRequest;
   let response: JevResponse;
