@@ -51,17 +51,21 @@ export async function providerScrapeController(
   res: Response,
   legacy = false,
 ) {
+  const legacyZeroDataRetention = { zeroDataRetention: z.boolean().optional() };
   const legacyBody = legacy
     ? z
-        .union([callSchema, z.strictObject({ requests: callsSchema })])
+        .union([
+          callSchema.extend(legacyZeroDataRetention),
+          z.strictObject({ requests: callsSchema, ...legacyZeroDataRetention }),
+        ])
         .parse(req.body)
     : null;
   const body = providerScrapeSchema.parse(
     legacyBody
-      ? {
-          alexandria:
-            "requests" in legacyBody ? legacyBody.requests : [legacyBody],
-        }
+      ? (({ zeroDataRetention, ...rest }) => ({
+          alexandria: "requests" in rest ? rest.requests : [rest],
+          zeroDataRetention,
+        }))(legacyBody)
       : req.body,
   );
 
@@ -207,6 +211,7 @@ export async function providerScrapeController(
         error: successful
           ? undefined
           : (error ?? `Provider request failed (${result.status}).`),
+        zeroDataRetention,
       });
     })().catch(error =>
       logger.warn("Provider activity logging failed", {

@@ -321,6 +321,30 @@ it("accepts zero data retention in the body and forwards it", async () => {
   );
 });
 
+it("accepts zero data retention on both legacy request shapes", async () => {
+  const single = await request(app)
+    .post("/exchange/retrieve")
+    .send({ ...call, zeroDataRetention: true });
+  expect(single.status).toBe(200);
+  const batch = await request(app)
+    .post("/exchange/retrieve")
+    .send({ requests: [call], zeroDataRetention: true });
+  expect(batch.status).toBe(200);
+  for (const [arg] of mocks.retrieve.mock.calls)
+    expect(arg).toMatchObject({ calls: [call], zeroDataRetention: true });
+});
+
+it("tells the provider activity log about zero data retention", async () => {
+  await request(app)
+    .post("/v2/scrape")
+    .send({ alexandria: call, zeroDataRetention: true });
+  await vi.waitFor(() =>
+    expect(mocks.scrapeLog).toHaveBeenCalledWith(
+      expect.objectContaining({ zeroDataRetention: true }),
+    ),
+  );
+});
+
 it("does not ask for zero data retention by default", async () => {
   await request(app).post("/v2/scrape").send({ alexandria: call });
   expect(mocks.retrieve).toHaveBeenCalledWith(
