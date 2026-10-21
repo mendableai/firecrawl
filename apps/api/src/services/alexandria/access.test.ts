@@ -4,7 +4,8 @@ vi.mock("../../config", () => ({
 }));
 vi.mock("./client", () => ({ exchangeRequest: mocks.request }));
 vi.mock("../../controllers/auth", () => ({ getACUCTeam: mocks.team }));
-import { authorizeProviders } from "./access";
+
+let authorizeProviders: typeof import("./access.js").authorizeProviders;
 
 const calls = [
   { provider: "fred", capability: "series/observations", options: {} },
@@ -22,7 +23,24 @@ const requirement = (required: boolean) => ({
   },
 });
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(async () => {
+  vi.clearAllMocks();
+  vi.resetModules();
+  ({ authorizeProviders } = await import("./access.js"));
+});
+
+afterEach(() => vi.useRealTimers());
+
+it("serves the last requirements for up to an hour when the Exchange cannot answer", async () => {
+  vi.useFakeTimers({ now: new Date("2026-10-19T06:00:00Z") });
+  mocks.request.mockResolvedValue(requirement(false));
+  expect(await authorizeProviders("team", calls, {})).toBeUndefined();
+  mocks.request.mockRejectedValue(new Error("timeout"));
+  vi.setSystemTime(new Date("2026-10-19T06:59:00Z"));
+  expect(await authorizeProviders("team", calls, {})).toBeUndefined();
+  vi.setSystemTime(new Date("2026-10-19T07:01:00Z"));
+  expect((await authorizeProviders("team", calls, {}))?.status).toBe(503);
+});
 
 it("refuses a provider the Exchange does not know before any quote or execution", async () => {
   mocks.request.mockResolvedValue({ status: 404, body: { code: "not_found" } });
