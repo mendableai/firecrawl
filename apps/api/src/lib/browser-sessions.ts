@@ -6,6 +6,7 @@ import { redisRateLimitClient } from "../services/rate-limiter";
 import { db } from "../db/connection";
 import * as schema from "../db/schema";
 import { browserProfileDeletedKey } from "./browser-profiles";
+import { persistedTeamId } from "./keyless-team";
 
 type BrowserSessionStatus = "active" | "destroyed" | "error";
 
@@ -131,7 +132,12 @@ export async function insertBrowserSession(
   const now = new Date().toISOString();
   const [data] = await db
     .insert(schema.browser_sessions)
-    .values({ ...row, created_at: now, updated_at: now })
+    .values({
+      ...row,
+      persisted_team_id: persistedTeamId(row.team_id),
+      created_at: now,
+      updated_at: now,
+    })
     .returning();
   return data as BrowserSessionRow;
 }
