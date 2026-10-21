@@ -575,6 +575,18 @@ describe("HTML Transformer", () => {
       expect(await postProcessMarkdown(json)).toBe(json);
       expect(await postProcessMarkdown(python)).toBe(python);
       expect(await postProcessMarkdown(nested)).toBe(nested);
+
+      // A fence left open runs to the end of the document
+      const unclosed = '```json\n{\n  "a": [\n    1,\n';
+      expect(await postProcessMarkdown(unclosed)).toBe(unclosed);
+
+      // A fence in a blockquote, and one after a `[` that opened no link
+      const quoted = "> ```json\n> [\n>   1\n> ]\n> ```";
+      const afterBracket = `Use \`[\` to start a list:\n\n${json}`;
+      expect(await postProcessMarkdown(quoted)).toBe(quoted);
+      expect(
+        (await postProcessMarkdown(afterBracket)).endsWith(`\n${json}`),
+      ).toBe(true);
       expect(
         await postProcessMarkdown(
           `${json}\n\nSee [the\ndocs](https://x.example).`,

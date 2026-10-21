@@ -985,7 +985,8 @@ fn escape_newlines_in_link_text(markdown: &str) -> String {
   let mut out = String::with_capacity(markdown.len());
 
   for line in markdown.split_inclusive('\n') {
-    let trimmed = line.trim_start_matches([' ', '\t']);
+    // A fence may be indented (in a list item) or quoted (in a blockquote)
+    let trimmed = line.trim_start_matches([' ', '\t', '>']);
     if let Some((fence_char, fence_len)) = fence {
       let run = trimmed.len() - trimmed.trim_start_matches(fence_char).len();
       if run >= fence_len && trimmed[run..].trim().is_empty() {
@@ -994,15 +995,15 @@ fn escape_newlines_in_link_text(markdown: &str) -> String {
       out.push_str(line);
       continue;
     }
-    if link_open_count == 0 {
-      if let Some(fence_char) = trimmed.chars().next().filter(|c| matches!(c, '`' | '~')) {
-        let run = trimmed.len() - trimmed.trim_start_matches(fence_char).len();
-        // A backtick fence's info string cannot contain a backtick
-        if run >= 3 && !(fence_char == '`' && trimmed[run..].contains('`')) {
-          fence = Some((fence_char, run));
-          out.push_str(line);
-          continue;
-        }
+    if let Some(fence_char) = trimmed.chars().next().filter(|c| matches!(c, '`' | '~')) {
+      let run = trimmed.len() - trimmed.trim_start_matches(fence_char).len();
+      // A backtick fence's info string cannot contain a backtick
+      if run >= 3 && !(fence_char == '`' && trimmed[run..].contains('`')) {
+        fence = Some((fence_char, run));
+        // Link text does not run into a code block: a `[` left open before it was no link
+        link_open_count = 0;
+        out.push_str(line);
+        continue;
       }
     }
 
