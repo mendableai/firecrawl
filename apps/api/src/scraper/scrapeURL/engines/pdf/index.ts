@@ -551,12 +551,14 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       // failure) and go straight to pdf-parse, which reads from disk —
       // buffering and base64-encoding hundreds of MB here would only burn
       // worker memory.
-      const firePdfInlineUsable =
-        (forceFirePDF ||
-          (!!config.FIRE_PDF_ENABLE && !!config.FIRE_PDF_BASE_URL)) &&
-        (fileSizeBytes < FIRE_PDF_MAX_FILE_SIZE ||
-          (forceFirePDF &&
-            fileSizeBytes <= FIRE_PDF_INLINE_HARD_MAX_FILE_SIZE));
+      // Unforced traffic is sampled here, before the read, so a PDF outside
+      // the FIRE_PDF_PERCENT sample is never encoded.
+      const firePdfInlineUsable = forceFirePDF
+        ? fileSizeBytes <= FIRE_PDF_INLINE_HARD_MAX_FILE_SIZE
+        : !!config.FIRE_PDF_ENABLE &&
+          !!config.FIRE_PDF_BASE_URL &&
+          fileSizeBytes < FIRE_PDF_MAX_FILE_SIZE &&
+          (alwaysFirePdf || Math.random() * 100 < config.FIRE_PDF_PERCENT);
       const base64Content = firePdfInlineUsable
         ? (await readFile(tempFilePath)).toString("base64")
         : undefined;
@@ -588,16 +590,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
         });
       }
 
-      // Route a percentage of traffic to Fire PDF; forceFirePDF always wins.
-      const useFirePDF =
-        base64Content !== undefined &&
-        (forceFirePDF ||
-          (config.FIRE_PDF_ENABLE &&
-            config.FIRE_PDF_BASE_URL &&
-            fileSizeBytes < FIRE_PDF_MAX_FILE_SIZE &&
-            (alwaysFirePdf || Math.random() * 100 < config.FIRE_PDF_PERCENT)));
-
-      if (useFirePDF) {
+      if (base64Content !== undefined) {
         // Async is a server-controlled cohort within traffic already selected
         // for FirePDF. ZDR and short-deadline requests are always kept out.
         const asyncDecision = decideFirePdfAsyncRoute({
