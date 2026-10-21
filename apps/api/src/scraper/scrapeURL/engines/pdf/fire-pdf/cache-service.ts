@@ -16,7 +16,10 @@ import {
 } from "../../../../../lib/otel-tracer";
 import { safeMarkdownToHtml } from "../markdownToHtml";
 import type { PDFProcessorResult } from "../types";
-import { submitBackgroundRefresh } from "./background-refresh";
+import {
+  refreshOptionsForVariant,
+  submitBackgroundRefresh,
+} from "./background-refresh";
 import { firePdfCacheEventsTotal } from "./metrics";
 import { recordRefreshDecision } from "./refresh-budget";
 import { type FirePdfSourceKind, firePdfRequestKind } from "./request-metadata";
@@ -124,6 +127,14 @@ async function lookupWithinSpan(
   } = args;
   // An already-cancelled scrape sends nothing.
   meta.abort.throwIfAborted();
+  // Background refresh is only offered when this client could act on a
+  // grant: it needs the bytes (inline, not by reference) of a PDF (images
+  // are only parsed through the sync endpoint), outside zero data retention.
+  const canRefreshInBackground =
+    config.FIRE_PDF_CACHE_BACKGROUND_REFRESH === true &&
+    typeof input === "string" &&
+    sourceKind === "pdf" &&
+    meta.internalOptions.zeroDataRetention !== true;
   let answer: z.infer<typeof lookupOutcomeSchema>;
   try {
     answer = await robustFetch({
@@ -145,9 +156,7 @@ async function lookupWithinSpan(
         refresh,
         source_kind: sourceKind,
         scrape_id: meta.id,
-        ...(config.FIRE_PDF_CACHE_BACKGROUND_REFRESH && {
-          background_refresh: true,
-        }),
+        ...(canRefreshInBackground && { background_refresh: true }),
       },
       schema: lookupOutcomeSchema,
       logger: meta.logger,
@@ -239,15 +248,12 @@ async function lookupWithinSpan(
   });
   // Never awaited: the stale entry is served now, the refresh lands later.
   if (
-    config.FIRE_PDF_CACHE_BACKGROUND_REFRESH &&
+    canRefreshInBackground &&
     answer.outcome === "stale" &&
     answer.refresh_requested === true
   ) {
     void submitBackgroundRefresh(meta, input, {
-      mode,
-      includePageMarkdown,
-      includeBlocks,
-      pageMarkers,
+      ...refreshOptionsForVariant(answer.variant, mode),
       sourceKind,
     });
   }

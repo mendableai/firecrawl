@@ -31,6 +31,30 @@ const REFRESH_DEADLINE_MS = MAX_DEADLINE_MS;
 const SUBMIT_TIMEOUT_MS = 30_000;
 
 /**
+ * The job options that re-create the variant the cache service served. A
+ * lookup may be answered from a richer or OCR variant than the request would
+ * write, and that served variant is the one to refresh. Variant names follow
+ * fire-pdf's lattice (cache.ts cacheKeyShape): an `ocr` prefix, and
+ * `page-markdown`, `blocks` and `markers` capabilities.
+ */
+export function refreshOptionsForVariant(
+  variant: string,
+  requestMode: PDFMode | undefined,
+): {
+  mode: PDFMode | undefined;
+  includePageMarkdown: boolean;
+  includeBlocks: boolean;
+  pageMarkers: boolean;
+} {
+  return {
+    mode: variant.startsWith("ocr") ? "ocr" : requestMode,
+    includePageMarkdown: variant.includes("page-markdown"),
+    includeBlocks: variant.includes("blocks"),
+    pageMarkers: variant.includes("markers"),
+  };
+}
+
+/**
  * Submits a fresh parse of a document the cache service answered stale with
  * `refresh_requested: true`. Fire-and-forget: the scrape has already been
  * served the stale entry, this is never awaited by it, never polls, and never
@@ -41,8 +65,8 @@ const SUBMIT_TIMEOUT_MS = 30_000;
  * fallback metrics and is bound to the scrape's abort signal. The job:
  *   - uses a fresh scrape_id, so it can never collide with the caller's job;
  *   - carries `options.refresh`, so fire-pdf parses rather than answering
- *     from the cache, with the lookup's options, so it writes the variant
- *     that was found stale;
+ *     from the cache, with the options of the variant that was served stale
+ *     (refreshOptionsForVariant), so it rewrites that entry;
  *   - carries BACKGROUND_REFRESH_CRAWL_ID, so it lands on the bulk queue;
  *   - carries no team_id (nor team_concurrency): it is internal work the
  *     cache tier budgeted, so it must not count against the requesting

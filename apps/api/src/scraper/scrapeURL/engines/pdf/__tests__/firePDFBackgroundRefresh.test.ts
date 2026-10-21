@@ -1,8 +1,10 @@
+import { createHash } from "crypto";
 import { fetch as undiciFetch } from "undici";
 import { config } from "../../../../../config";
 import { robustFetch } from "../../../lib/fetch";
 import {
   BACKGROUND_REFRESH_CRAWL_ID,
+  refreshOptionsForVariant,
   submitBackgroundRefresh,
 } from "../fire-pdf/background-refresh";
 import { lookupCachedResult } from "../fire-pdf/cache-service";
@@ -124,16 +126,18 @@ describe("FirePDF cache background refresh", () => {
       staleResult,
     );
     await settle();
-    const body = lookupFetch.mock.calls[0][0].body as Record<string, unknown>;
-    expect(Object.keys(body)).toEqual([
-      "keys",
-      "options",
-      "team_id",
-      "kind",
-      "refresh",
-      "source_kind",
-      "scrape_id",
-    ]);
+    expect(lookupFetch.mock.calls[0][0].body).toStrictEqual({
+      keys: [
+        `raw-${createHash("sha256").update(Buffer.from(base64, "base64")).digest("hex")}`,
+        createHash("sha256").update(base64).digest("hex"),
+      ],
+      options: { mode: "auto", include_page_markdown: true },
+      team_id: "team-1",
+      kind: "scrape",
+      refresh: false,
+      source_kind: "pdf",
+      scrape_id: "user-scrape",
+    });
     expect(jobsFetch).not.toHaveBeenCalled();
   });
 
@@ -192,15 +196,66 @@ describe("FirePDF cache background refresh", () => {
     expect(jobsFetch).not.toHaveBeenCalled();
   });
 
-  it("skips a by-reference document and counts it", async () => {
-    answerWith(staleAnswer(true));
-    expect(
-      await lookupCachedResult(makeMeta(), { key: "raw-abc" }, lookupArgs),
-    ).toEqual(staleResult);
+  it.each([
+    ["a by-reference document", { key: "raw-abc" }, "pdf"],
+    ["a raster image", base64, "image"],
+  ] as const)(
+    "does not offer background refresh for %s and ignores a grant",
+    async (_name, input, sourceKind) => {
+      answerWith(staleAnswer(true));
+      await lookupCachedResult(makeMeta(), input as any, {
+        ...lookupArgs,
+        sourceKind,
+      });
+      await settle();
+      expect(lookupFetch.mock.calls[0][0].body).not.toHaveProperty(
+        "background_refresh",
+      );
+      expect(jobsFetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refreshes the variant that was served, not the one requested", async () => {
+    jobsAnswer(202, { status: "queued" });
+    answerWith({
+      ...staleAnswer(true),
+      variant: "ocr-page-markdown-blocks-v1",
+      result: {
+        markdown: "# old",
+        pages: [{ page: 1, markdown: "p1" }],
+        blocks: [],
+      },
+    });
+    await lookupCachedResult(makeMeta(), base64, lookupArgs);
     await settle();
-    expect(jobsFetch).not.toHaveBeenCalled();
-    expect(await refreshCount("skipped_by_reference")).toBe(1);
+    const body = JSON.parse((jobsFetch.mock.calls[0] as any)[1].body);
+    expect(body.options).toMatchObject({
+      mode: "ocr",
+      include_page_markdown: true,
+      include_blocks: true,
+      refresh: true,
+    });
   });
+
+  it.each([
+    ["base", undefined, [undefined, false, false, false]],
+    ["ocr", "auto", ["ocr", false, false, false]],
+    ["page-markdown-v1", "auto", ["auto", true, false, false]],
+    ["blocks-v1", undefined, [undefined, false, true, false]],
+    ["ocr-page-markdown-blocks-v1", "auto", ["ocr", true, true, false]],
+    ["markers-v1", "auto", ["auto", false, false, true]],
+    ["ocr-page-markdown-markers-v1", "auto", ["ocr", true, false, true]],
+  ] as const)(
+    "maps variant %s to its job options",
+    (variant, mode, [m, pages, blocks, markers]) => {
+      expect(refreshOptionsForVariant(variant, mode)).toEqual({
+        mode: m,
+        includePageMarkdown: pages,
+        includeBlocks: blocks,
+        pageMarkers: markers,
+      });
+    },
+  );
 
   it("serves the stale entry unaffected when the submit fails", async () => {
     jobsFetch.mockRejectedValueOnce(new Error("connection refused"));
