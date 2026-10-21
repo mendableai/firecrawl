@@ -5,6 +5,7 @@ const secretHeaders = {
   Authorization: "Bearer secret-value",
   "Proxy-Authorization": "Basic secret-value",
   Cookie: "session=secret-value",
+  "Set-Cookie": "session=secret-value",
   "x-api-key": "secret-value",
   "api-key": "secret-value",
   "X-Auth-Token": "secret-value",
@@ -52,6 +53,7 @@ describe("redactHeaders", () => {
       Authorization: "[REDACTED]",
       "Proxy-Authorization": "[REDACTED]",
       Cookie: "[REDACTED]",
+      "Set-Cookie": "[REDACTED]",
       "x-api-key": "[REDACTED]",
       "api-key": "[REDACTED]",
       "X-Auth-Token": "[REDACTED]",
@@ -99,4 +101,23 @@ describe("robustFetch error logging", () => {
       expect(cause.params.headers["User-Agent"]).toBe("firecrawl");
     },
   );
+
+  it("redacts headers forwarded inside the request body", async () => {
+    const logger = makeLogger();
+
+    const cause = await captureCause(
+      robustFetch({
+        url: "https://upstream.test/run",
+        method: "POST",
+        body: { url: "https://example.com", headers: secretHeaders },
+        logger,
+        mock: mockWith(500, "{}"),
+      }),
+    );
+
+    const serialized = JSON.stringify([cause, logger.debug.mock.calls]);
+    expect(serialized).not.toContain("secret-value");
+    expect(cause.params.body.url).toBe("https://example.com");
+    expect(cause.params.body.headers["User-Agent"]).toBe("firecrawl");
+  });
 });

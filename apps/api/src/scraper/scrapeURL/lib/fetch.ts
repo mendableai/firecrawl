@@ -95,23 +95,29 @@ export async function robustFetch<
   };
 
   // omit pdf file content and credentials from logs
+  const logBody = body?.input
+    ? {
+        ...body,
+        input: {
+          ...body.input,
+          file_content: undefined,
+        },
+      }
+    : body?.pdf
+      ? {
+          ...body,
+          pdf: undefined,
+        }
+      : body;
   const logParams = {
     ...params,
     headers: redactHeaders(headers),
-    body: body?.input
-      ? {
-          ...body,
-          input: {
-            ...body.input,
-            file_content: undefined,
-          },
-        }
-      : body?.pdf
-        ? {
-            ...body,
-            pdf: undefined,
-          }
-        : body,
+    body:
+      logBody?.headers !== null &&
+      typeof logBody?.headers === "object" &&
+      !(logBody instanceof FormData)
+        ? { ...logBody, headers: redactHeaders(logBody.headers) }
+        : logBody,
     logger: undefined,
   };
 
