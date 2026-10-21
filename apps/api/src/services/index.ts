@@ -124,6 +124,7 @@ export async function saveIndexToGCS(
     contentType?: string;
     postprocessorsUsed?: string[];
     proxyUsed?: "basic" | "stealth";
+    firePdfCacheKey?: string;
   },
 ): Promise<void> {
   return await withSpan("firecrawl-index-save-to-gcs", async span => {

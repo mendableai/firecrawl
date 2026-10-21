@@ -5,6 +5,11 @@ import request from "supertest";
 const mocks = vi.hoisted(() => ({
   authChunk: vi.fn(),
   upstreamFetch: vi.fn(),
+  billingCountry: vi.fn(async (): Promise<string | undefined> => undefined),
+}));
+
+vi.mock("../../lib/billing-country", () => ({
+  billingCountryForTeam: mocks.billingCountry,
 }));
 
 vi.mock("../../db/connection", () => ({ db: {}, dbRr: {}, dbIndex: {} }));
@@ -214,6 +219,27 @@ describe("Alexandria connector routes on the Exchange proxy", () => {
       expect(init.headers).not.toHaveProperty("x-exchange-connectors");
     },
   );
+
+  it("forwards the team's billing country only when known, never the caller's own", async () => {
+    keyResolvesAs({});
+    mocks.billingCountry.mockResolvedValueOnce("DE");
+    await request(app)
+      .get("/exchange/team-skills")
+      .set("authorization", `Bearer ${KEY}`)
+      .set("x-exchange-billing-country", "US");
+    expect(upstream().init.headers).toMatchObject({
+      "x-exchange-billing-country": "DE",
+    });
+
+    mocks.upstreamFetch.mockClear();
+    await request(app)
+      .get("/exchange/team-skills")
+      .set("authorization", `Bearer ${KEY}`)
+      .set("x-exchange-billing-country", "US");
+    expect(upstream().init.headers).not.toHaveProperty(
+      "x-exchange-billing-country",
+    );
+  });
 
   it("never forwards a caller's own x-exchange-connectors header", async () => {
     keyResolvesAs({});
