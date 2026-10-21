@@ -13,6 +13,10 @@ import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
 import {
+  discoveryForCalls,
+  recordDiscoveredTools,
+} from "../../lib/alexandria-discovery";
+import {
   callsSchema,
   callSchema,
   answerSchema,
@@ -22,6 +26,26 @@ import {
   retrieveProviders,
 } from "../../services/alexandria/retrieve";
 import type { RequestWithAuth } from "./types";
+
+const FIND_TOOLS_LOGGED_OPTIONS = [
+  "query",
+  "providers",
+  "categories",
+  "groups",
+  "capabilities",
+  "level",
+  "limit",
+  "offset",
+  "expand",
+];
+
+const isFindTools = (call: { provider?: string; capability?: string }) =>
+  call.provider === "firecrawl" && call.capability === "find-tools";
+
+const findToolsItems = (data: unknown): unknown[] => {
+  const items = (data as { items?: unknown } | null)?.items;
+  return Array.isArray(items) ? items : [];
+};
 
 const providerScrapeSchema = z.strictObject({
   alexandria: z.preprocess(
@@ -126,6 +150,13 @@ export async function providerScrapeController(
       .json({ success: false, error: "This endpoint is not available." });
 
   const target = `alexandria:${body.alexandria.map(call => `${call.provider}/${call.capability}`).join(",")}`;
+  const discovery =
+    zeroDataRetention || body.__agentInterop
+      ? Promise.resolve(null)
+      : discoveryForCalls(req.auth.team_id, body.alexandria).catch(error => {
+          logger.warn("Alexandria discovery lookup failed", { error });
+          return null;
+        });
   const startedAt = Date.now();
   let result;
   try {
@@ -176,8 +207,35 @@ export async function providerScrapeController(
     const credits = served.success
       ? served.data.creditsCost
       : failure?.creditsCost;
+    if (served.success && !zeroDataRetention)
+      recordDiscoveredTools(
+        req.auth.team_id,
+        "find_tools",
+        result.scrapeId,
+        served.data.results.flatMap(item =>
+          isFindTools(item)
+            ? findToolsItems(item.data).flatMap(tool => {
+                const { provider, capability } = (tool ?? {}) as {
+                  provider?: unknown;
+                  capability?: unknown;
+                };
+                return typeof provider === "string" &&
+                  typeof capability === "string"
+                  ? [{ provider, capability }]
+                  : [];
+              })
+            : [],
+        ),
+      );
     // Preserve parent/child ordering without delaying the provider response.
     void (async () => {
+      // Bounded so a slow Redis never holds back the activity log.
+      const discovered = await Promise.race([
+        discovery,
+        new Promise<null>(resolve =>
+          setTimeout(() => resolve(null), 500).unref(),
+        ),
+      ]);
       await logRequest({
         id: result.scrapeId,
         kind: "alexandria",
@@ -197,10 +255,35 @@ export async function providerScrapeController(
         target,
         team_id: req.auth.team_id,
         options: {
-          alexandria: body.alexandria.map(({ provider, capability }) => ({
-            provider,
-            capability,
-          })),
+          alexandria: body.alexandria.map(
+            ({ provider, capability, options }, i) => ({
+              provider,
+              capability,
+              ...(isFindTools({ provider, capability })
+                ? {
+                    options: {
+                      ...Object.fromEntries(
+                        Object.entries(options).filter(([key]) =>
+                          FIND_TOOLS_LOGGED_OPTIONS.includes(key),
+                        ),
+                      ),
+                      ...(Array.isArray(options.urls)
+                        ? { urlCount: options.urls.length }
+                        : {}),
+                    },
+                    ...(served.success
+                      ? {
+                          returned: findToolsItems(served.data.results[i]?.data)
+                            .length,
+                        }
+                      : {}),
+                  }
+                : {}),
+              ...(discovered && Object.keys(discovered[i]).length
+                ? { discovery: discovered[i] }
+                : {}),
+            }),
+          ),
         },
         time_taken: timeTaken,
         credits_cost:
