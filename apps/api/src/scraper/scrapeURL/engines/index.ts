@@ -784,10 +784,11 @@ export async function buildFallbackList(meta: Meta): Promise<
     if (
       getPDFPageMarkdown(meta.options.parsers) ||
       getPDFBlocks(meta.options.parsers) ||
-      getPDFPageMarkers(meta.options.parsers)
+      getPDFPageMarkers(meta.options.parsers) ||
+      (config.INDEX_SKIP_ON_PDF_REFRESH && getPDFRefresh(meta.options.parsers))
     ) {
       meta.logger.warn(
-        "agentIndexOnly request demands pageMarkdown/blocks/pageMarkers, which the URL index cannot serve",
+        "agentIndexOnly request demands pageMarkdown/blocks/pageMarkers or a PDF refresh, which the URL index cannot serve",
         { parsers: meta.options.parsers },
       );
       throw new AgentIndexOnlyError();
