@@ -158,6 +158,7 @@ export function buildFirePdfJobOptions(args: {
   includePageMarkdown: boolean;
   includeBlocks: boolean;
   pageMarkers: boolean;
+  tableFormat: string | undefined;
 }): Record<string, unknown> {
   return {
     // fire-pdf accepts only a positive integer here. When the router has no
@@ -179,6 +180,7 @@ export function buildFirePdfJobOptions(args: {
     // `page_markers`. Sending snake_case here would be rejected as an
     // unknown option.
     ...(args.pageMarkers && { pageMarkers: true }),
+    ...(args.tableFormat !== undefined && { tableFormat: args.tableFormat }),
   };
 }
 

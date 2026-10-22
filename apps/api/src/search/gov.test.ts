@@ -33,7 +33,13 @@ describe("searchGovCategory", () => {
     );
 
     await searchGovCategory(
-      { query: "food labeling rules", limit: 7, teamId: "t1", timeout: 500 },
+      {
+        query: "food labeling rules",
+        limit: 7,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: false,
+      },
       logger,
     );
 
@@ -45,6 +51,27 @@ describe("searchGovCategory", () => {
       top_k: 7,
     });
     expect(init.headers["firecrawl-team-id"]).toBe("t1");
+    expect(init.headers["firecrawl-zero-data-retention"]).toBe("false");
+  });
+
+  it("tells the upstream that a zero data retention search must not be kept", async () => {
+    fetchMock.mockResolvedValue(
+      upstreamOk({ success: true, data: { web: [] } }),
+    );
+
+    await searchGovCategory(
+      {
+        query: "private query",
+        limit: 3,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: true,
+      },
+      logger,
+    );
+
+    const [, init] = fetchMock.mock.calls[0] as any[];
+    expect(init.headers["firecrawl-zero-data-retention"]).toBe("true");
   });
 
   it("maps results to the exact web schema and tags the category", async () => {
@@ -72,7 +99,13 @@ describe("searchGovCategory", () => {
     );
 
     const results = await searchGovCategory(
-      { query: "food labeling", limit: 5, teamId: "t1", timeout: 500 },
+      {
+        query: "food labeling",
+        limit: 5,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: false,
+      },
       logger,
     );
 
@@ -104,7 +137,13 @@ describe("searchGovCategory", () => {
 
     await expect(
       searchGovCategory(
-        { query: "zoning", limit: 5, teamId: "t1", timeout: 500 },
+        {
+          query: "zoning",
+          limit: 5,
+          teamId: "t1",
+          timeout: 500,
+          zeroDataRetention: false,
+        },
         logger,
       ),
     ).resolves.toEqual([]);
@@ -116,7 +155,13 @@ describe("searchGovCategory", () => {
 
     await expect(
       searchGovCategory(
-        { query: "zoning", limit: 5, teamId: "t1", timeout: 500 },
+        {
+          query: "zoning",
+          limit: 5,
+          teamId: "t1",
+          timeout: 500,
+          zeroDataRetention: false,
+        },
         logger,
       ),
     ).resolves.toEqual([]);

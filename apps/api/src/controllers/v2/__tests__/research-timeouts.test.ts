@@ -24,6 +24,13 @@ vi.mock("../../../lib/keyless", () => ({
   chargeKeylessCredits: mocks.chargeKeylessCredits,
 }));
 
+// These tests cover routing, billing and retention, not the daily index limit.
+// The limiter needs Redis, so here it admits every call.
+vi.mock("../../../lib/index-daily-limit", () => ({
+  reserveIndexCalls: vi.fn(async () => ({ ok: true, release: async () => {} })),
+  indexDailyLimitRefusal: vi.fn(),
+}));
+
 vi.mock("../../../lib/logger", () => ({
   logger: {
     info: vi.fn(),
@@ -45,7 +52,7 @@ function routeHandler(router: any, path: string) {
     (candidate: any) =>
       candidate.route?.path === path && candidate.route?.methods?.get,
   );
-  return layer.route.stack[0].handle;
+  return layer.route.stack.at(-1).handle;
 }
 
 function makeReq(query: Record<string, unknown>, params = {}) {

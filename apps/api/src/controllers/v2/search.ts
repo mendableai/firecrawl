@@ -53,13 +53,18 @@ import {
 import { wantsDeveloperCategory } from "../../search/developer";
 import { wantsGovCategory } from "../../search/gov";
 import {
-  govIndexDailyLimitMessage,
-  reserveGovIndexCalls,
+  indexDailyLimitRefusal,
+  reserveIndexCalls,
 } from "../../lib/index-daily-limit";
 import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
+import { recordDiscoveredTools } from "../../lib/alexandria-discovery";
+import {
+  autoToolsEnabled,
+  queryInferenceEnabled,
+} from "../../search/tool-intent";
 
 const RESEARCH_CATEGORY_NOTICE: Notice = {
   message:
@@ -152,6 +157,8 @@ async function searchControllerInner(
       typeof req.body?.origin === "string" ? req.body.origin : undefined;
     delete (req.body as Record<string, unknown>)?.objective;
     delete (req.body as Record<string, unknown>)?.clientModel;
+    const sourcesOmitted =
+      (req.body as Record<string, unknown>)?.sources === undefined;
     req.body = searchRequestSchema.parse(req.body);
 
     const wantsTools = req.body.sources.some(
@@ -373,16 +380,18 @@ async function searchControllerInner(
     }
 
     const toolsOnly = isToolsOnlySearch(req.body.sources, req.body.categories);
+    const govSearch = wantsGovCategory(categories);
     const projectedKeylessCredits =
       !isSearchPreview &&
       shouldBill &&
       !toolsOnly &&
-      !wantsGovCategory(categories)
+      (!govSearch || requestedFormats.length > 0)
         ? projectSearchTotalCredits(
             {
               limit: req.body.limit,
               enterprise: req.body.enterprise,
               scrapeOptions: req.body.scrapeOptions,
+              freeSearch: govSearch,
             },
             req.acuc?.flags ?? null,
             zeroDataRetention,
@@ -414,13 +423,22 @@ async function searchControllerInner(
     }
 
     if (wantsGovCategory(categories)) {
-      const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
+      const indexBudget = await reserveIndexCalls(
+        "gov",
+        req.auth.team_id,
+        req.acuc?.rate_limit_multiplier ?? 1,
+        1,
+      );
       if (!indexBudget.ok) {
+        if (reservedKeylessCredits > 0) {
+          await adjustKeylessCredits(req.auth.team_id, -reservedKeylessCredits);
+          reconciledKeylessCredits = true;
+        }
         res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
         return res.status(429).json({
           success: false,
           code: "INDEX_DAILY_LIMIT",
-          error: govIndexDailyLimitMessage(indexBudget),
+          ...indexDailyLimitRefusal("gov", req.auth.team_id, indexBudget),
         });
       }
     }
@@ -444,6 +462,12 @@ async function searchControllerInner(
         highlights: req.body.highlights,
         domainTools: req.body.domainTools,
         toolDetail: req.body.toolDetail,
+        inferToolQuery: queryInferenceEnabled(),
+        autoTools:
+          (sourcesOmitted || req.body.domainTools === true) &&
+          !req.auth.team_id.startsWith("preview_keyless_") &&
+          config.FIRE_EXCHANGE_URL !== undefined &&
+          autoToolsEnabled(req.acuc?.flags),
         timeout: req.body.timeout,
       },
       {
@@ -466,6 +490,33 @@ async function searchControllerInner(
       },
       logger,
     );
+
+    if (toolsOnly && result.toolsUnavailable) {
+      const error =
+        "Tool discovery is temporarily unavailable. Retry the request.";
+      setSpanAttributes(span, { "search.status_code": 503 });
+      logSearch({
+        id: jobId,
+        request_id: agentRequestId ?? jobId,
+        query: req.body.query,
+        is_successful: false,
+        error,
+        results: result.response as any,
+        num_results: 0,
+        time_taken: (Date.now() - middlewareStartTime) / 1000,
+        team_id: req.auth.team_id,
+        options: req.body,
+        credits_cost: 0,
+        zeroDataRetention,
+      }).catch(error => {
+        logger.error("Failed to log search", { error, jobId });
+      });
+      return res.status(503).json({
+        success: false,
+        code: "TOOL_DISCOVERY_UNAVAILABLE",
+        error,
+      });
+    }
 
     // Bill team for search credits only (scrape jobs bill themselves)
     if (!isSearchPreview && shouldBill) {
@@ -506,6 +557,8 @@ async function searchControllerInner(
       error: undefined,
       results: result.response as any,
       num_results: result.totalResultsCount,
+      num_results_by_source: result.resultCountsBySource,
+      result_categories: result.resultCategories,
       time_taken: timeTakenInSeconds,
       team_id: req.auth.team_id,
       options: req.body,
@@ -564,7 +617,15 @@ async function searchControllerInner(
       scrapeful: result.shouldScrape,
     });
 
-    if (result.response.tools) markAlexandriaActivity(req.auth.team_id);
+    if (result.response.tools) {
+      markAlexandriaActivity(req.auth.team_id);
+      recordDiscoveredTools(
+        req.auth.team_id,
+        result.toolsAuto ? "auto_search" : "search",
+        jobId,
+        result.response.tools,
+      );
+    }
     return res.status(200).json({
       success: true,
       data: result.response,

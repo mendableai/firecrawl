@@ -267,6 +267,11 @@ export type Meta = {
     | undefined; // undefined: no prefetch yet, null: prefetch came back empty
   costTracking: CostTracking;
   winnerEngine?: Engine;
+  /** The `raw-` content-cache key of the PDF this scrape looked up through
+   * the fire-pdf cache service, stored with the URL index entry so a later
+   * index hit can ask whether fire-pdf holds a newer parse. A holder shared
+   * by reference, because engines run on a copy of meta. */
+  firePdfCacheKey?: { current?: string };
   abortHandle?: NodeJS.Timeout;
   audioCookies?: BrowserCookie[];
   /** Threat protection decisions made during this scrape, in order (mutable, like logs). */
@@ -582,6 +587,7 @@ async function buildMetaObject(
     imageOcrEnabled,
     costTracking,
     threatDecisions: [],
+    firePdfCacheKey: {},
     largePdfProcessing: {},
   };
 }
@@ -1307,6 +1313,12 @@ export async function scrapeURL(
         }
       }
 
+      // ZDR always verifies TLS, for every engine. Explicit false also wins over
+      // the skip-by-default in applyScrapeOptionsDefaults.
+      if (internalOptions.zeroDataRetention) {
+        options.skipTlsVerification = false;
+      }
+
       const meta = await buildMetaObject(
         id,
         url,
@@ -1852,6 +1864,13 @@ export async function scrapeURL(
           });
         } else if (error instanceof SSLError) {
           errorType = "SSLError";
+          // Engines don't know about ZDR; swap in the message that doesn't
+          // suggest skipTlsVerification, which ZDR overrides above.
+          if (meta.internalOptions.zeroDataRetention) {
+            const zdrError = new SSLError(false, true);
+            zdrError.stack = error.stack;
+            error = zdrError;
+          }
           meta.logger.warn("scrapeURL: SSL error", { error });
         } else if (error instanceof ActionError) {
           errorType = "ActionError";

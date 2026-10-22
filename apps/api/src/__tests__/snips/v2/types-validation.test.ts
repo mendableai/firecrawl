@@ -477,6 +477,16 @@ describe("V2 Types Validation", () => {
       expect(result.integration).toBe("dify");
     });
 
+    it("should accept the lovable integration value", () => {
+      const input: ScrapeRequestInput = {
+        url: "https://example.com",
+        integration: "lovable",
+      };
+
+      const result = scrapeRequestSchema.parse(input);
+      expect(result.integration).toBe("lovable");
+    });
+
     it("should accept integration value starting with underscore", () => {
       const input: ScrapeRequestInput = {
         url: "https://example.com",
@@ -823,6 +833,21 @@ describe("V2 Types Validation", () => {
 
       const result = extractRequestSchema.parse(input);
       expect(result.prompt).toBe("Extract the title");
+    });
+
+    it("should accept an extract schema that uses standard string formats", () => {
+      const input: ExtractRequestInput = {
+        urls: ["https://example.com"],
+        schema: {
+          type: "object",
+          properties: {
+            contact: { type: "string", format: "email" },
+          },
+        },
+      };
+
+      const result = extractRequestSchema.parse(input);
+      expect(result.schema).toBeDefined();
     });
 
     it("should reject extract request without urls or prompt", () => {

@@ -14,6 +14,10 @@ import { searchFeedbackController } from "../controllers/v2/search-feedback";
 import { scrapeController } from "../controllers/v2/scrape";
 import { keylessEligibilityController } from "../controllers/v2/keyless-eligibility";
 import {
+  keylessWorldIdDeviceController,
+  keylessWorldIdTokenController,
+} from "../controllers/v2/keyless-world-id";
+import {
   parseController,
   parseMultipartPayloadMiddleware,
 } from "../controllers/v2/parse";
@@ -45,11 +49,13 @@ import {
   blocklistMiddleware,
   scrapeBlocklistMiddleware,
   countryCheck,
+  restrictedOptionsCountryCheck,
   idempotencyMiddleware,
   requestTimingMiddleware,
   wrap,
   isValidJobId,
   validateJobIdParam,
+  inferIntegrationMiddleware,
 } from "./shared";
 import { queueStatusController } from "../controllers/v2/queue-status";
 import { creditUsageHistoricalController } from "../controllers/v2/credit-usage-historical";
@@ -182,6 +188,11 @@ v2Router.use(requestTimingMiddleware("v2"));
 // inside the controller; no auth middleware.
 v2Router.get("/keyless/eligibility", wrap(keylessEligibilityController));
 
+// World ID verification for the keyless tier: a device flow that ends in a
+// credential for the x-firecrawl-world-id header. 404 unless configured.
+v2Router.post("/keyless/world-id/device", wrap(keylessWorldIdDeviceController));
+v2Router.post("/keyless/world-id/token", wrap(keylessWorldIdTokenController));
+
 registerMcpActionLogReadRoute(
   v2Router,
   authMiddleware(RateLimiterMode.Account),
@@ -194,7 +205,8 @@ v2Router.post(
     allowKeyless: true,
     allowAgentManagedKey: true,
   }),
-  countryCheck,
+  inferIntegrationMiddleware,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(undefined, SEARCH_CREDITS_FEATURE_ID),
   blocklistMiddleware,
   wrap(searchController),
@@ -204,12 +216,14 @@ v2Router.post(
   "/search/:jobId/feedback",
   authMiddleware(RateLimiterMode.Account),
   validateJobIdParam,
+  inferIntegrationMiddleware,
   wrap(searchFeedbackController),
 );
 
 v2Router.post(
   "/feedback",
   authMiddleware(RateLimiterMode.Account),
+  inferIntegrationMiddleware,
   wrap(feedbackController),
 );
 
@@ -222,7 +236,7 @@ v2Router.get(
 v2Router.post(
   "/parse/upload-url",
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   wrap(parseUploadUrlController),
 );
 
@@ -236,9 +250,10 @@ v2Router.put(
 v2Router.post(
   "/parse",
   authMiddleware(RateLimiterMode.Scrape, { allowKeyless: true }),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   parsePayloadMiddleware,
+  inferIntegrationMiddleware,
   wrap(parseController),
 );
 
@@ -248,7 +263,8 @@ v2Router.post(
     allowKeyless: true,
     allowAgentManagedKey: true,
   }),
-  countryCheck,
+  inferIntegrationMiddleware,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   scrapeBlocklistMiddleware,
   wrap(scrapeController),
@@ -264,7 +280,9 @@ v2Router.get(
 v2Router.post(
   "/scrape/:jobId/interact",
   authMiddleware(RateLimiterMode.BrowserExecute, { allowKeyless: true }),
+  countryCheck,
   validateJobIdParam,
+  inferIntegrationMiddleware,
   wrap(scrapeInteractController),
 );
 
@@ -278,7 +296,8 @@ v2Router.delete(
 v2Router.post(
   "/batch/scrape",
   authMiddleware(RateLimiterMode.Scrape, { allowAgentManagedKey: true }),
-  countryCheck,
+  inferIntegrationMiddleware,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(),
   blocklistMiddleware,
   wrap(batchScrapeController),
@@ -287,6 +306,7 @@ v2Router.post(
 v2Router.post(
   "/map",
   authMiddleware(RateLimiterMode.Map),
+  inferIntegrationMiddleware,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(mapController),
@@ -295,7 +315,8 @@ v2Router.post(
 v2Router.post(
   "/crawl",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  inferIntegrationMiddleware,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(),
   scrapeBlocklistMiddleware,
   idempotencyMiddleware,
@@ -381,8 +402,9 @@ v2Router.get(
 v2Router.post(
   "/extract",
   authMiddleware(RateLimiterMode.Extract),
+  inferIntegrationMiddleware,
   deprecationMiddleware("v2_extract"),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(20),
   blocklistMiddleware,
   wrap(extractController),
@@ -412,6 +434,7 @@ v2Router.get(
 v2Router.post(
   "/agent",
   authMiddleware(RateLimiterMode.Extract),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(20),
   blocklistMiddleware,
@@ -546,7 +569,7 @@ v2Router.post(
 v2Router.post(
   "/monitor",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(createMonitorController),
@@ -575,7 +598,7 @@ v2Router.get(
 v2Router.patch(
   "/monitor/:monitorId",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(updateMonitorController),
@@ -590,7 +613,7 @@ v2Router.delete(
 v2Router.post(
   "/monitor/:monitorId/run",
   authMiddleware(RateLimiterMode.Crawl),
-  countryCheck,
+  restrictedOptionsCountryCheck,
   checkCreditsMiddleware(1),
   blocklistMiddleware,
   wrap(runMonitorController),
@@ -638,6 +661,7 @@ v2Router.post("/slack/events", wrap(slackEventsController));
 v2Router.post(
   ["/browser", "/interact"],
   authMiddleware(RateLimiterMode.Browser, { allowAgentManagedKey: true }),
+  inferIntegrationMiddleware,
   countryCheck,
   checkCreditsMiddleware(2),
   wrap(browserCreateController),
@@ -652,6 +676,7 @@ v2Router.get(
 v2Router.post(
   ["/browser/:sessionId/execute", "/interact/:sessionId/execute"],
   authMiddleware(RateLimiterMode.BrowserExecute),
+  countryCheck,
   wrap(browserExecuteController),
 );
 

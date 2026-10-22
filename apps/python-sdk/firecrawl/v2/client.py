@@ -17,6 +17,7 @@ from .types import (
     SearchData,
     DeveloperSearchResponse,
     DeveloperSearchType,
+    GovSearchCourtType,
     GovSearchResponse,
     SourceOption,
     CategoryOption,
@@ -64,6 +65,7 @@ from .types import (
 )
 from .utils.http_client import HttpClient
 from .utils.error_handler import FirecrawlError
+from .utils.v1_compat import call_v1
 from .methods import scrape as scrape_module
 from .methods import parse as parse_module
 from .methods import crawl as crawl_module  
@@ -133,7 +135,10 @@ class FirecrawlClient:
             max_retries: Maximum number of retries for failed requests
             backoff_factor: Exponential backoff factor for retries (e.g. 0.5 means wait 0.5s, then 1s, then 2s between retries)
             origin: Attribution string stamped into API request payloads
-                (defaults to ``python-sdk@<version>``)
+                (defaults to ``python-sdk@<version>``, or
+                ``python-sdk.<package>@<version>`` when an installed package
+                creates the client; set FIRECRAWL_DISABLE_CALLER_ORIGIN=1 to
+                keep the plain default)
         """
         if api_key is None:
             api_key = os.getenv("FIRECRAWL_API_KEY")
@@ -406,45 +411,45 @@ class FirecrawlClient:
         """Deprecated alias for stop_interaction()."""
         return self.stop_interaction(job_id)
 
-    def scrape_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer scrape()."""
-        return self.scrape(url, **kwargs)
+    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for scrape(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.scrape, url, params=params, **kwargs)
 
-    def crawl_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer crawl()."""
-        return self.crawl(url, **kwargs)
+    def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
+        return call_v1(self.crawl, url, params=params, **kwargs)
 
-    def map_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer map()."""
-        return self.map(url, **kwargs)
+    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for map(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.map, url, params=params, **kwargs)
 
-    def async_crawl_url(self, url: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer start_crawl()."""
-        return self.start_crawl(url, **kwargs)
+    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None, **kwargs):
+        """Deprecated v1 alias for start_crawl(); also takes v1 params and returns v1-readable results. v2 crawls take no idempotency_key, so it is ignored."""
+        return call_v1(self.start_crawl, url, params=params, **kwargs)
 
     def check_crawl_status(self, id: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer get_crawl_status()."""
-        return self.get_crawl_status(id, **kwargs)
+        """Deprecated v1 alias for get_crawl_status(); returns v1-readable results."""
+        return call_v1(self.get_crawl_status, id, **kwargs)
 
     def check_crawl_errors(self, id: str):
-        """V1 compatibility alias for agent recovery. Prefer get_crawl_errors()."""
-        return self.get_crawl_errors(id)
+        """Deprecated v1 alias for get_crawl_errors(); returns v1-readable results."""
+        return call_v1(self.get_crawl_errors, id)
 
-    def batch_scrape_urls(self, urls, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer batch_scrape()."""
-        return self.batch_scrape(urls, **kwargs)
+    def batch_scrape_urls(self, urls, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for batch_scrape(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.batch_scrape, urls, params=params, **kwargs)
 
-    def async_batch_scrape_urls(self, urls, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer start_batch_scrape()."""
-        return self.start_batch_scrape(urls, **kwargs)
+    def async_batch_scrape_urls(self, urls, params: Optional[Dict[str, Any]] = None, **kwargs):
+        """Deprecated v1 alias for start_batch_scrape(); also takes v1 params and returns v1-readable results."""
+        return call_v1(self.start_batch_scrape, urls, params=params, **kwargs)
 
     def check_batch_scrape_status(self, id: str, **kwargs):
-        """V1 compatibility alias for agent recovery. Prefer get_batch_scrape_status()."""
-        return self.get_batch_scrape_status(id, **kwargs)
+        """Deprecated v1 alias for get_batch_scrape_status(); returns v1-readable results."""
+        return call_v1(self.get_batch_scrape_status, id, **kwargs)
 
     def check_batch_scrape_errors(self, id: str):
-        """V1 compatibility alias for agent recovery. Prefer get_batch_scrape_errors()."""
-        return self.get_batch_scrape_errors(id)
+        """Deprecated v1 alias for get_batch_scrape_errors(); returns v1-readable results."""
+        return call_v1(self.get_batch_scrape_errors, id)
 
     def parse(
         self,
@@ -595,10 +600,47 @@ class FirecrawlClient:
         self,
         query: str,
         k: Optional[int] = None,
+        *,
+        jurisdiction: Optional[str] = None,
+        court: Optional[str] = None,
+        court_type: Optional[GovSearchCourtType] = None,
+        cites: Optional[str] = None,
+        domain: Optional[str] = None,
     ) -> GovSearchResponse:
-        """Search the Government Index of US primary law and regulatory material."""
+        """
+        Search the Government Index of US primary law and regulatory material.
+
+        Filters keep only pages the index has labeled, so a filtered search can
+        leave out relevant pages, and no results does not mean none exist. Court
+        labels are most complete for federal courts and case-law collections.
+
+        Args:
+            query: Search query string
+            k: Number of results to return, 1-100 (default: 10)
+            jurisdiction: Keep only pages of one jurisdiction: "us" for federal,
+                or "us-" plus a two-letter state or territory code, such as
+                "us-ca" or "us-dc"
+            court: Keep only pages labeled for one court, by CourtListener court
+                id, such as "scotus", "ca9" or "nysd"
+            court_type: Keep only pages from one type of court, such as
+                "federal-appellate" or "state-supreme"
+            cites: Keep only pages that cite one law or case, as a printed
+                citation such as "42 U.S.C. § 1983" or "5 U.S. 137", or a
+                citation id such as "us:usc:42:1983"
+            domain: Keep only pages from one site, such as "irs.gov"
+
+        Returns:
+            GovSearchResponse with ranked results in data.web
+        """
         return gov_module.gov_search(
-            self.http_client, query, k=k
+            self.http_client,
+            query,
+            k=k,
+            jurisdiction=jurisdiction,
+            court=court,
+            court_type=court_type,
+            cites=cites,
+            domain=domain,
         )
     
     def crawl(
@@ -1548,6 +1590,8 @@ class FirecrawlClient:
         thread_id: Optional[str] = None,
         mode: Optional[Literal["extract", "chat"]] = None,
         exchange: Optional[Union[AgentExchangeOptions, Dict[str, Any]]] = None,
+        location: Optional[Dict[str, str]] = None,
+        zero_data_retention: Optional[bool] = None,
     ):
         """Start an agent job (non-blocking).
 
@@ -1566,6 +1610,11 @@ class FirecrawlClient:
             thread_id: Continue an existing thread instead of starting one
             mode: "extract" (default) or "chat"
             exchange: Data provider options, forwarded as sent
+            location: Country for the whole run, as ``{"country": "DE"}``
+                (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied
+                from it, and search results are localized to it without changing
+                where requests come from. The agent cannot change it.
+            zero_data_retention: Run the agent with zero data retention (requires the team to have ZDR enabled)
         Returns:
             Response payload with job id/status (poll with get_agent_status)
         """
@@ -1585,6 +1634,8 @@ class FirecrawlClient:
             thread_id=thread_id,
             mode=mode,
             exchange=exchange,
+            location=location,
+            zero_data_retention=zero_data_retention,
         )
 
     def agent(
@@ -1606,6 +1657,8 @@ class FirecrawlClient:
         thread_id: Optional[str] = None,
         mode: Optional[Literal["extract", "chat"]] = None,
         exchange: Optional[Union[AgentExchangeOptions, Dict[str, Any]]] = None,
+        location: Optional[Dict[str, str]] = None,
+        zero_data_retention: Optional[bool] = None,
     ):
         """Run an agent and wait until completion.
 
@@ -1626,6 +1679,11 @@ class FirecrawlClient:
             thread_id: Continue an existing thread instead of starting one
             mode: "extract" (default) or "chat"
             exchange: Data provider options, forwarded as sent
+            location: Country for the whole run, as ``{"country": "DE"}``
+                (ISO 3166-1 alpha-2). Scrapes and browser sessions are proxied
+                from it, and search results are localized to it without changing
+                where requests come from. The agent cannot change it.
+            zero_data_retention: Run the agent with zero data retention (requires the team to have ZDR enabled)
         Returns:
             Final agent response when completed
         """
@@ -1647,6 +1705,8 @@ class FirecrawlClient:
             thread_id=thread_id,
             mode=mode,
             exchange=exchange,
+            location=location,
+            zero_data_retention=zero_data_retention,
         )
 
     def get_agent_status(self, job_id: str):

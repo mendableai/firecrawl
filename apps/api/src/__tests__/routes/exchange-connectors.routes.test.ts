@@ -5,6 +5,11 @@ import request from "supertest";
 const mocks = vi.hoisted(() => ({
   authChunk: vi.fn(),
   upstreamFetch: vi.fn(),
+  billingCountry: vi.fn(async (): Promise<string | undefined> => undefined),
+}));
+
+vi.mock("../../lib/billing-country", () => ({
+  billingCountryForTeam: mocks.billingCountry,
 }));
 
 vi.mock("../../db/connection", () => ({ db: {}, dbRr: {}, dbIndex: {} }));
@@ -141,6 +146,15 @@ describe("Alexandria connector routes on the Exchange proxy", () => {
       "/exchange/connectors/mcp-deepwiki/tools/read_wiki_structure",
       "/v1/connectors/mcp-deepwiki/tools/read_wiki_structure",
     ],
+    ["get", "/exchange/team-skills", "/v1/team-skills"],
+    ["post", "/exchange/team-skills", "/v1/team-skills"],
+    ["patch", "/exchange/team-skills/item-1", "/v1/team-skills/item-1"],
+    ["delete", "/exchange/team-skills/item-1", "/v1/team-skills/item-1"],
+    [
+      "get",
+      "/exchange/team-skills/references?q=fred",
+      "/v1/team-skills/references?q=fred",
+    ],
   ] as const)(
     "forwards %s %s for a team with exchangeRetrieve, granting connectors",
     async (method, path, upstreamPath) => {
@@ -172,6 +186,86 @@ describe("Alexandria connector routes on the Exchange proxy", () => {
       .set("authorization", `Bearer ${KEY}`)
       .send({ catalogId: "deepwiki" });
     expect(response.status).toBe(403);
+    expect(mocks.upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["get", "/exchange/team-skills", "/v1/team-skills"],
+    ["post", "/exchange/team-skills", "/v1/team-skills"],
+    ["patch", "/exchange/team-skills/item-1", "/v1/team-skills/item-1"],
+    ["delete", "/exchange/team-skills/item-1", "/v1/team-skills/item-1"],
+    [
+      "get",
+      "/exchange/team-skills/references?q=fred",
+      "/v1/team-skills/references?q=fred",
+    ],
+  ] as const)(
+    "forwards %s %s for any team, without granting connectors",
+    async (method, path, upstreamPath) => {
+      keyResolvesAs({});
+      let req = request(app)
+        [method](path)
+        .set("authorization", `Bearer ${KEY}`);
+      if (method !== "get" && method !== "delete")
+        req = req.send({ name: "Digest" });
+      const response = await req;
+      expect(response.status).toBe(200);
+      expect(mocks.upstreamFetch).toHaveBeenCalledTimes(1);
+      const { url, init } = upstream();
+      expect(url).toBe(`https://exchange.test${upstreamPath}`);
+      expect(init.headers).toMatchObject({
+        "x-exchange-team-id": "team-connectors",
+      });
+      expect(init.headers).not.toHaveProperty("x-exchange-connectors");
+    },
+  );
+
+  it("forwards the team's billing country only when known, never the caller's own", async () => {
+    keyResolvesAs({});
+    mocks.billingCountry.mockResolvedValueOnce("DE");
+    await request(app)
+      .get("/exchange/team-skills")
+      .set("authorization", `Bearer ${KEY}`)
+      .set("x-exchange-billing-country", "US");
+    expect(upstream().init.headers).toMatchObject({
+      "x-exchange-billing-country": "DE",
+    });
+
+    mocks.upstreamFetch.mockClear();
+    await request(app)
+      .get("/exchange/team-skills")
+      .set("authorization", `Bearer ${KEY}`)
+      .set("x-exchange-billing-country", "US");
+    expect(upstream().init.headers).not.toHaveProperty(
+      "x-exchange-billing-country",
+    );
+  });
+
+  it("re-encodes path segments before forwarding", async () => {
+    keyResolvesAs({});
+    await request(app)
+      .patch("/exchange/team-skills/item%201")
+      .set("authorization", `Bearer ${KEY}`)
+      .send({ name: "Digest" });
+    expect(mocks.upstreamFetch).toHaveBeenCalledTimes(1);
+    expect(upstream().url).toBe(
+      "https://exchange.test/v1/team-skills/item%201",
+    );
+  });
+
+  it.each([
+    "/exchange/supply/..%2Fretrieve",
+    "/exchange/supply/%2e%2e%2Fretrieve",
+    "/exchange/supply/x%5C..%5Cretrieve",
+    "/exchange/supply/a//b",
+    "/exchange/supply/%E0%A4%A",
+  ])("refuses %s before reaching Exchange", async path => {
+    keyResolvesAs({ exchangeRetrieve: true });
+    const response = await request(app)
+      .post(path)
+      .set("authorization", `Bearer ${KEY}`)
+      .send({});
+    expect(response.status).toBe(400);
     expect(mocks.upstreamFetch).not.toHaveBeenCalled();
   });
 

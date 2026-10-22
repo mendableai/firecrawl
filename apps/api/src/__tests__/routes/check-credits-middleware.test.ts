@@ -252,6 +252,21 @@ describe("checkCreditsMiddleware – Autumn overage handling", () => {
   });
 });
 
+describe("checkCreditsMiddleware – /agent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("leaves the credit decision to the agent controller", async () => {
+    const req = buildReq({ path: "/agent", body: { prompt: "x" } });
+    const { res, nextCalled } = await runMiddleware(req);
+
+    expect(nextCalled).toBe(true);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(checkCreditsMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("checkCreditsMiddleware – agent-key denials", () => {
   beforeEach(() => {
     vi.clearAllMocks();

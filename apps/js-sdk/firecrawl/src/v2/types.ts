@@ -300,7 +300,12 @@ export interface ScrapeOptions {
 }
 
 export type RedactPIIEntity =
-  "PERSON" | "EMAIL" | "PHONE" | "LOCATION" | "FINANCIAL" | "SECRET";
+  | "PERSON"
+  | "EMAIL"
+  | "PHONE"
+  | "LOCATION"
+  | "FINANCIAL"
+  | "SECRET";
 
 export interface RedactPIIOptions {
   /**
@@ -347,7 +352,12 @@ export interface ThreatProtectionOptions {
 }
 
 export type ParseFileData =
-  Blob | File | Buffer | Uint8Array | ArrayBuffer | string;
+  | Blob
+  | File
+  | Buffer
+  | Uint8Array
+  | ArrayBuffer
+  | string;
 
 export interface ParseFile {
   data: ParseFileData;
@@ -395,7 +405,11 @@ export interface WebhookConfig {
 
 // Agent webhook events differ from crawl: has 'action' and 'cancelled', no 'page'
 export type AgentWebhookEvent =
-  "started" | "action" | "completed" | "failed" | "cancelled";
+  | "started"
+  | "action"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 export interface AgentWebhookConfig {
   url: string;
@@ -516,7 +530,10 @@ export interface BrandingProfile {
     headerHeight?: string;
     footerHeight?: string;
     [key: string]:
-      number | string | Record<string, number | string | undefined> | undefined;
+      | number
+      | string
+      | Record<string, number | string | undefined>
+      | undefined;
   };
   tone?: {
     voice?: string;
@@ -814,9 +831,32 @@ export interface DeveloperSearchResponse {
   sources?: DeveloperSearchSourceStatus[];
 }
 
+export type GovSearchCourtType =
+  | "federal-supreme"
+  | "federal-appellate"
+  | "federal-district"
+  | "federal-bankruptcy"
+  | "federal-special"
+  | "military"
+  | "state-supreme"
+  | "state-appellate"
+  | "state-trial"
+  | "state-special"
+  | "state-attorney-general";
+
 export interface GovSearchOptions {
   /** Total ranked results, 1–100 (default 10). */
   k?: number;
+  /** Keep only pages of one jurisdiction: "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc". */
+  jurisdiction?: string;
+  /** Keep only pages labeled for one court, by CourtListener court id, such as "scotus", "ca9" or "nysd". */
+  court?: string;
+  /** Keep only pages from one type of court. */
+  courtType?: GovSearchCourtType;
+  /** Keep only pages that cite one law or case, as a printed citation such as "42 U.S.C. § 1983" or "5 U.S. 137", or a citation id such as "us:usc:42:1983". */
+  cites?: string;
+  /** Keep only pages from one site, such as "irs.gov". */
+  domain?: string;
 }
 
 export interface GovSearchResponse {
@@ -915,10 +955,10 @@ export interface FindToolsOptions {
 }
 
 export interface FindToolsData {
-  level: "providers" | "groups" | "tools";
+  level: "categories" | "providers" | "groups" | "tools";
   items: Array<{
     id: string;
-    name: string;
+    name?: string;
     next?: AlexandriaCall;
     execute?: Pick<AlexandriaCall, "provider" | "capability">;
     [key: string]: unknown;
@@ -1014,7 +1054,10 @@ export interface SearchRequest {
   /** Compact by default; summary adds metadata, full includes contracts. */
   toolDetail?: "compact" | "summary" | "full";
   sources?: Array<
-    "web" | "news" | "images" | "alexandria"
+    | "web"
+    | "news"
+    | "images"
+    | "alexandria"
     | { type: "web" | "news" | "images" | "alexandria" }
   >;
   /**
@@ -1265,7 +1308,9 @@ export interface MonitorSearchTarget {
 }
 
 export type MonitorTarget =
-  MonitorScrapeTarget | MonitorCrawlTarget | MonitorSearchTarget;
+  | MonitorScrapeTarget
+  | MonitorCrawlTarget
+  | MonitorSearchTarget;
 
 export interface CreateMonitorRequest {
   name: string;
@@ -1388,7 +1433,11 @@ export interface MonitorCheck {
   reservedCredits?: number | null;
   actualCredits?: number | null;
   billingStatus:
-    "not_applicable" | "reserved" | "confirmed" | "released" | "failed";
+    | "not_applicable"
+    | "reserved"
+    | "confirmed"
+    | "released"
+    | "failed";
   summary: MonitorSummary;
   targetResults?: MonitorTargetResult[];
   notificationStatus?: unknown;
@@ -1779,7 +1828,10 @@ export interface AgentListOptions {
 }
 
 export type AgentTraceAgentRole =
-  "orchestrator" | "subagent" | "browser" | "system";
+  | "orchestrator"
+  | "subagent"
+  | "browser"
+  | "system";
 
 export interface AgentTraceAgentIdentity {
   id: string;
@@ -1792,6 +1844,7 @@ export interface AgentTraceError {
   code:
     | "cancelled"
     | "credit_limit_reached"
+    | "insufficient_credits"
     | "parent_finished"
     | "refused"
     | "internal";
@@ -1833,7 +1886,11 @@ export interface AgentTraceRunCancelRequestedEvent extends AgentTraceEventBase {
 export interface AgentTraceRunFinishedEvent extends AgentTraceEventBase {
   type: "run.finished";
   outcome:
-    "succeeded" | "failed" | "cancelled" | "refused" | "credit_limit_reached";
+    | "succeeded"
+    | "failed"
+    | "cancelled"
+    | "refused"
+    | "credit_limit_reached";
   /** The canonical schema always writes this key (nullable), but older rows may omit it. */
   error?: AgentTraceError | null;
 }
@@ -1850,12 +1907,14 @@ export interface AgentTraceAgentFinishedEvent extends AgentTraceEventBase {
   error?: AgentTraceError | null;
 }
 
-export interface AgentTraceBrowserSessionStartedEvent extends AgentTraceEventBase {
+export interface AgentTraceBrowserSessionStartedEvent
+  extends AgentTraceEventBase {
   type: "browser.session.started";
   sessionId: string;
 }
 
-export interface AgentTraceBrowserSessionFinishedEvent extends AgentTraceEventBase {
+export interface AgentTraceBrowserSessionFinishedEvent
+  extends AgentTraceEventBase {
   type: "browser.session.finished";
   sessionId: string;
   durationMs: number;
@@ -1929,6 +1988,8 @@ export interface AgentTraceResponse {
   creditsUsed?: number;
   /** Present only when the trace was requested with liveView: true. */
   activeBrowserSessions?: AgentTraceActiveBrowserSession[];
+  /** True for a zero data retention run: events are limited to content-free lifecycle events. */
+  zeroDataRetention?: boolean;
   error?: string;
 }
 
@@ -2028,7 +2089,9 @@ export interface RequiresAction {
   url?: string;
 }
 
-export function parseRequiresAction(value: unknown): RequiresAction | undefined {
+export function parseRequiresAction(
+  value: unknown,
+): RequiresAction | undefined {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   if (typeof record.type !== "string") return undefined;

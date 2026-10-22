@@ -1,7 +1,10 @@
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  # GHSA-27r3-jxmh-p828: allow today's patched release through the age gate.
+  - body-parser@2.4.0
 overrides:
-  "body-parser@>=2.0.0 <2.3.0": "2.3.0"
+  "body-parser@>=2.0.0 <2.4.0": "2.4.0"
   "path-to-regexp@<8.4.0": ">=8.4.0"
   "qs@<6.16.0": ">=6.16.0 <7.0.0"
   "esbuild@>=0.17.0 <0.28.1": "0.28.1"
