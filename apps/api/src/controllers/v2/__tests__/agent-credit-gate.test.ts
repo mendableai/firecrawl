@@ -46,6 +46,32 @@ describe("gateAgentCredits", () => {
     );
   });
 
+  it.each([9.223372036854776e18, Number.MAX_SAFE_INTEGER])(
+    "runs a team with an unlimited balance (%d) as requested without probing past it",
+    async remaining => {
+      checkCredits.mockResolvedValueOnce({ allowed: true, remaining });
+
+      expect(await gate(5000)).toEqual(asRequested(5000));
+      expect(checkCredits).toHaveBeenCalledTimes(1);
+      expect(hasAutoTopUp).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still probes past a large but finite balance", async () => {
+    checkCredits
+      .mockResolvedValueOnce({
+        allowed: true,
+        remaining: Number.MAX_SAFE_INTEGER - 1,
+      })
+      .mockResolvedValueOnce({
+        allowed: true,
+        remaining: Number.MAX_SAFE_INTEGER - 1,
+      });
+
+    expect(await gate()).toEqual(asRequested(undefined));
+    expect(checkCredits).toHaveBeenCalledTimes(2);
+  });
+
   it("blocks a team below the minimum and reports its balance", async () => {
     checkCredits.mockResolvedValueOnce({ allowed: false, remaining: 12 });
 
