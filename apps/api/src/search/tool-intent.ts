@@ -11,7 +11,7 @@ import type { DiscoveredTool } from "../services/alexandria/contracts";
 import { redisRateLimitClient } from "../services/rate-limiter";
 
 const MODEL = "claude-haiku-5-5";
-const INFERENCE_TIMEOUT_MS = 1000;
+const INFERENCE_TIMEOUT_MS = 2500;
 const CACHE_SECONDS = 24 * 60 * 60;
 const MAX_TOOL_QUERIES = 2;
 
