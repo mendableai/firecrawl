@@ -3,6 +3,8 @@ packages:
 injectWorkspacePackages: true
 minimumReleaseAge: 720 # 12 hours
 minimumReleaseAgeExclude:
+  # GHSA-27r3-jxmh-p828: allow today's patched releases through the age gate.
+  - "body-parser@1.20.9 || 2.4.0"
   - fast-xml-parser
   - follow-redirects
   # TypeScript 7 resolves its native platform binaries (e.g.
@@ -12,6 +14,9 @@ minimumReleaseAgeExclude:
   - "@typescript/typescript6"
   - "@typescript/typescript-*"
 overrides:
+  # GHSA-27r3-jxmh-p828: Express 5.2.1 also loads body-parser 2.x.
+  "body-parser@<1.20.9": "1.20.9"
+  "body-parser@>=2.0.0 <2.4.0": "2.4.0"
   "@types/express": "^5.0.6"
   # GHSA-698v-4r3x-3vcv: pin the 8.0 and 8.1 lines to 8.1.6. Cannot resolve to 8.2+.
   "vite@>=8.0.0 <8.1.6": "8.1.6"
