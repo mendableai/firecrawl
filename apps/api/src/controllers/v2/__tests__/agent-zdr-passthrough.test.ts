@@ -25,6 +25,7 @@ vi.mock("../../../lib/browser-sessions", () => ({
 }));
 
 const JOB_ID = "job-123";
+const SNAPSHOT_ID = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 
 function upstream(status: number, body: unknown) {
   vi.mocked(fetch).mockResolvedValue(
@@ -120,11 +121,33 @@ describe("agent passthroughs for zero data retention runs", () => {
     upstream(404, body);
     const res = makeRes();
 
-    await agentSnapshotController(makeReq({ snapshotId: "snap-1" }), res);
+    await agentSnapshotController(makeReq({ snapshotId: SNAPSHOT_ID }), res);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith(body);
+    expect(fetch).toHaveBeenCalledWith(
+      `https://agent.example/internal/extracts/${JOB_ID}/snapshots/${SNAPSHOT_ID}`,
+      {
+        headers: {
+          Authorization: "Bearer test",
+          "x-team-id": "team-123",
+        },
+      },
+    );
   });
+
+  it.each(["snap-1", "..%2F..%2Fother", "../../other", `${SNAPSHOT_ID}/..`])(
+    "snapshot rejects a malformed snapshot id %s",
+    async snapshotId => {
+      const res = makeRes();
+
+      await agentSnapshotController(makeReq({ snapshotId }), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(getAgentJobAccess).not.toHaveBeenCalled();
+    },
+  );
 
   it("skill forwards 410 zdr_expired", async () => {
     const body = { code: "zdr_expired", error: "Expired." };
