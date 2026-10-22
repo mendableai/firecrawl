@@ -20,6 +20,7 @@ from .types import (
     SearchData,
     DeveloperSearchResponse,
     DeveloperSearchType,
+    GovSearchCourtType,
     GovSearchResponse,
     SourceOption,
     FindToolsData,
@@ -368,10 +369,47 @@ class AsyncFirecrawlClient:
         self,
         query: str,
         k: Optional[int] = None,
+        *,
+        jurisdiction: Optional[str] = None,
+        court: Optional[str] = None,
+        court_type: Optional[GovSearchCourtType] = None,
+        cites: Optional[str] = None,
+        domain: Optional[str] = None,
     ) -> GovSearchResponse:
-        """Search the Government Index of US primary law and regulatory material."""
+        """
+        Search the Government Index of US primary law and regulatory material.
+
+        Filters keep only pages the index has labeled, so a filtered search can
+        leave out relevant pages, and no results does not mean none exist. Court
+        labels are most complete for federal courts and case-law collections.
+
+        Args:
+            query: Search query string
+            k: Number of results to return, 1-100 (default: 10)
+            jurisdiction: Keep only pages of one jurisdiction: "us" for federal,
+                or "us-" plus a two-letter state or territory code, such as
+                "us-ca" or "us-dc"
+            court: Keep only pages labeled for one court, by CourtListener court
+                id, such as "scotus", "ca9" or "nysd"
+            court_type: Keep only pages from one type of court, such as
+                "federal-appellate" or "state-supreme"
+            cites: Keep only pages that cite one law or case, as a printed
+                citation such as "42 U.S.C. § 1983" or "5 U.S. 137", or a
+                citation id such as "us:usc:42:1983"
+            domain: Keep only pages from one site, such as "irs.gov"
+
+        Returns:
+            GovSearchResponse with ranked results in data.web
+        """
         return await async_gov.gov_search(
-            self.async_http_client, query, k=k
+            self.async_http_client,
+            query,
+            k=k,
+            jurisdiction=jurisdiction,
+            court=court,
+            court_type=court_type,
+            cites=cites,
+            domain=domain,
         )
 
     async def start_crawl(self, url: str, **kwargs) -> CrawlResponse:
