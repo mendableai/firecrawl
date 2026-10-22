@@ -254,7 +254,7 @@ export function checkCreditsMiddleware(
           return res.status(402).json({
             success: false,
             code: "platform_managed_credits",
-            error: `Insufficient ${currencyName} to perform this request. This account's ${currencyName} are managed by the platform that created it, so contact that platform for more.`,
+            error: `Insufficient ${currencyName} to perform this request. This account's ${currencyName} are managed by the platform that created it, so contact that platform for more ${currencyName}.`,
           });
         }
         if (
