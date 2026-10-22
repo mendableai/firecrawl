@@ -534,20 +534,17 @@ export async function scrapeURLWithFireEngineChromeCDP(
       request.headers = stripCredentialHeaders(request.headers);
     }
 
-    let response: Awaited<ReturnType<typeof performFireEngineScrape>>;
-    try {
-      response = await performFireEngineScrape(
-        meta,
-        meta.logger.child({
-          method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
-          request,
-        }),
+    let response = await performFireEngineScrape(
+      meta,
+      meta.logger.child({
+        method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
         request,
-        meta.mock,
-        meta.abort.asSignal(),
-        true,
-      );
-    } catch (error) {
+      }),
+      request,
+      meta.mock,
+      meta.abort.asSignal(),
+      true,
+    ).catch(error => {
       // Counted apart from `missing`: a failed scrape says nothing about
       // whether captures work, but keeps every requested capture counted.
       if (brandingScreenshotAction) {
@@ -557,7 +554,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
         });
       }
       throw error;
-    }
+    });
 
     // Take ours out, found by its own action's result, before the screenshot
     // format and the user's actions claim theirs.
