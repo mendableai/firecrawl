@@ -164,7 +164,7 @@ export type BrowserCookie = {
 
 export type Meta = {
   /** URL of the page's first screen captured for Jev's branding call (see
-   * BRANDING_JEV_SCREENSHOT_PERCENT). Internal: never part of the document. */
+   * the branding format's __experimental_screenshot). Internal: never part of the document. */
   brandingScreenshot?: string;
   /** That screen's download, started as soon as the engine returns. */
   brandingScreenshotImage?: ReturnType<typeof loadFirstScreen>;

@@ -215,7 +215,6 @@ const jevResponse = (overrides: Record<string, unknown> = {}) => ({
 const saved = {
   key: config.TYPESAFE_API_KEY,
   global: config.BRANDING_JEV,
-  screenshotPercent: config.BRANDING_JEV_SCREENSHOT_PERCENT,
 };
 
 beforeEach(() => {
@@ -249,7 +248,6 @@ afterEach(() => {
   vi.useRealTimers();
   config.TYPESAFE_API_KEY = saved.key;
   config.BRANDING_JEV = saved.global;
-  config.BRANDING_JEV_SCREENSHOT_PERCENT = saved.screenshotPercent;
 });
 
 const respondWith = (body: unknown) =>
@@ -406,13 +404,12 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
   });
 
-  it("captures the first screen for the rollout's share of teams only", () => {
-    config.BRANDING_JEV_SCREENSHOT_PERCENT = 0;
-    expect(wantsBrandingScreenshot("team-jev", false)).toBe(false);
-    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
-    expect(wantsBrandingScreenshot("team-jev", false)).toBe(true);
-    expect(wantsBrandingScreenshot("team-jev", true)).toBe(false);
+  it("captures the first screen only when the request asks for it", () => {
+    expect(wantsBrandingScreenshot(true, false)).toBe(true);
     expect(wantsBrandingScreenshot(undefined, false)).toBe(false);
+    expect(wantsBrandingScreenshot(false, false)).toBe(false);
+    // never for zero data retention
+    expect(wantsBrandingScreenshot(true, true)).toBe(false);
   });
 
   describe("with the page's first screen", () => {
@@ -649,8 +646,7 @@ describe("branding with Jev", () => {
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
     expect(mocks.systemOne).toHaveBeenCalledTimes(5);
     expect(generateObject).toHaveBeenCalledTimes(6);
-    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
-    expect(wantsBrandingScreenshot("team-jev", false)).toBe(false);
+    expect(wantsBrandingScreenshot(true, false)).toBe(false);
 
     // After the cooldown Jev is tried again, and a success keeps it in use.
     vi.setSystemTime(Date.now() + 61_000);

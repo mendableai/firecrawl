@@ -82,33 +82,33 @@ const respondWith = (
   };
 };
 
+// Branding with the experimental first-screen flag.
+const SHOT_BRANDING = { type: "branding", __experimental_screenshot: true };
+
 const sent = () => fake.requests[0].actions as any[];
 
 describe("branding first-screen screenshot", () => {
   const saved = {
     key: config.TYPESAFE_API_KEY,
     jev: config.BRANDING_JEV,
-    percent: config.BRANDING_JEV_SCREENSHOT_PERCENT,
   };
 
   beforeEach(() => {
     fake.requests = [];
     config.TYPESAFE_API_KEY = "ts-test";
     config.BRANDING_JEV = undefined;
-    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
   });
 
   afterEach(() => {
     config.TYPESAFE_API_KEY = saved.key;
     config.BRANDING_JEV = saved.jev;
-    config.BRANDING_JEV_SCREENSHOT_PERCENT = saved.percent;
   });
 
   it("captures a JPEG first screen after the branding scan and keeps it out of the document", async () => {
     respondWith(["https://storage.example/branding.jpg"]);
 
     const result = await scrapeURLWithFireEngineChromeCDP(
-      meta([{ type: "branding" }]),
+      meta([SHOT_BRANDING]),
     );
 
     const types = sent().map(a => a.type);
@@ -134,7 +134,7 @@ describe("branding first-screen screenshot", () => {
     ]);
 
     const result = await scrapeURLWithFireEngineChromeCDP(
-      meta([{ type: "branding" }, { type: "screenshot" }], {
+      meta([SHOT_BRANDING, { type: "screenshot" }], {
         actions: [{ type: "screenshot", fullPage: false }],
       }),
     );
@@ -155,7 +155,7 @@ describe("branding first-screen screenshot", () => {
     );
 
     const result = await scrapeURLWithFireEngineChromeCDP(
-      meta([{ type: "branding" }, { type: "screenshot" }]),
+      meta([SHOT_BRANDING, { type: "screenshot" }]),
     );
 
     expect(result.brandingScreenshot).toBeUndefined();
@@ -173,10 +173,10 @@ describe("branding first-screen screenshot", () => {
     };
 
     respondWith(["https://storage.example/branding.jpg"]);
-    await scrapeURLWithFireEngineChromeCDP(meta([{ type: "branding" }]));
+    await scrapeURLWithFireEngineChromeCDP(meta([SHOT_BRANDING]));
     fake.requests = [];
     respondWith([], a => a.metadata?.__firecrawl_internal);
-    await scrapeURLWithFireEngineChromeCDP(meta([{ type: "branding" }]));
+    await scrapeURLWithFireEngineChromeCDP(meta([SHOT_BRANDING]));
 
     expect(await count("captured")).toBe(before.captured + 1);
     expect(await count("missing")).toBe(before.missing + 1);
@@ -193,28 +193,25 @@ describe("branding first-screen screenshot", () => {
     };
 
     await expect(
-      scrapeURLWithFireEngineChromeCDP(meta([{ type: "branding" }])),
+      scrapeURLWithFireEngineChromeCDP(meta([SHOT_BRANDING])),
     ).rejects.toThrow("engine down");
     expect(await failed()).toBe(before + 1);
   });
 
-  it("captures nothing for zero data retention, teams outside the rollout, when Jev is off, or without branding", async () => {
+  it("captures nothing for zero data retention, branding without the flag, when Jev is off, or without branding", async () => {
     const cases = [
-      () => meta([{ type: "branding" }], { zeroDataRetention: true }),
-      () => {
-        config.BRANDING_JEV_SCREENSHOT_PERCENT = 0;
-        return meta([{ type: "branding" }]);
-      },
+      () => meta([SHOT_BRANDING], { zeroDataRetention: true }),
+      // branding without the flag
+      () => meta([{ type: "branding" }]),
       () => {
         config.BRANDING_JEV = false;
-        return meta([{ type: "branding" }]);
+        return meta([SHOT_BRANDING]);
       },
       () => meta([{ type: "markdown" }]),
     ];
     for (const make of cases) {
       // each case starts from the defaults
       config.BRANDING_JEV = undefined;
-      config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
       fake.requests = [];
       respondWith([]);
       const result = await scrapeURLWithFireEngineChromeCDP(make());

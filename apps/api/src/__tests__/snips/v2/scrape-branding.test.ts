@@ -140,14 +140,15 @@ describe("Branding with Jev", () => {
     scrapeTimeout + 15000,
   );
 
-  // Jev is shown the page's first screen; that capture is internal.
+  // `__experimental_screenshot` shows Jev the page's first screen; that
+  // capture is internal.
   concurrentIf(TEST_PRODUCTION && JEV_ON)(
     "keeps the first screen it shows Jev out of the response",
     async () => {
       const response = await scrape(
         {
           url: "https://firecrawl-test-site.vercel.app/",
-          formats: ["branding"],
+          formats: [{ type: "branding", __experimental_screenshot: true }],
           timeout: scrapeTimeout,
         },
         identity,

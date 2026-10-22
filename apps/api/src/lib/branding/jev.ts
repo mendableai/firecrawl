@@ -22,7 +22,6 @@ import {
   JevCallOutcome,
   JevScreenshotOutcome,
 } from "./metrics";
-import { sampled } from "../rollout";
 import { BrandingEnhancement } from "./schema";
 import { BrandingLLMInput } from "./types";
 
@@ -544,16 +543,18 @@ const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
 // had not drawn yet) is ~6 KB. Smaller than this, Jev answers without it.
 const SCREENSHOT_MIN_BYTES = 10_000;
 
-/** Whether a branding scrape captures a first screen for Jev to look at. */
+/**
+ * Whether a branding scrape captures a first screen for Jev to look at: when
+ * the request asks for it (the branding format's `__experimental_screenshot`).
+ */
 export function wantsBrandingScreenshot(
-  teamId: string | undefined,
+  requested: boolean | undefined,
   zeroDataRetention: boolean | undefined,
 ): boolean {
   return (
+    requested === true &&
     isJevBrandingEnabled() &&
     !zeroDataRetention &&
-    !!teamId &&
-    sampled(`team:${teamId}`, config.BRANDING_JEV_SCREENSHOT_PERCENT) &&
     // Jev won't be called while its breaker is open.
     !isJevBreakerOpen()
   );

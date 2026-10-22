@@ -476,11 +476,13 @@ const queryFormatWithOptions = z.strictObject({
 
 type QueryFormatWithOptions = z.output<typeof queryFormatWithOptions>;
 
-// Accepted for compatibility and ignored: the same engine answers every
-// branding request (lib/branding/jev.ts).
+// `mode` is accepted for compatibility and ignored: the same engine answers
+// every branding request (lib/branding/jev.ts). `__experimental_screenshot`
+// also shows Jev the page's first screen (an extra screenshot action).
 const brandingFormatWithOptions = z.strictObject({
   type: z.literal("branding"),
   mode: z.enum(["auto", "fast", "standard"]).optional(),
+  __experimental_screenshot: z.boolean().optional(),
 });
 
 export type FormatObject =

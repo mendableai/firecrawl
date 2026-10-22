@@ -389,11 +389,12 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // scan (so the scan still measures the real viewport), as a 1280x720 JPEG.
     // TypeSafe accepts at most 1568 px a side; 1280 is what the quality eval
     // used and costs about a third fewer image tokens.
+    const brandingFormat = hasFormatOfType(meta.options.formats, "branding");
     const brandingScreenshotAction =
       !wantsRawBase64 &&
-      !!hasFormatOfType(meta.options.formats, "branding") &&
+      !!brandingFormat &&
       wantsBrandingScreenshot(
-        meta.internalOptions.teamId,
+        brandingFormat.__experimental_screenshot,
         meta.internalOptions.zeroDataRetention,
       )
         ? ({
