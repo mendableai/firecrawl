@@ -1,24 +1,8 @@
 import { config } from "../../../config";
 import { describeIf } from "../lib";
-import { idmux, researchRaw, scrapeTimeout, search } from "./lib";
+import { idmux, researchRaw, scrapeTimeout } from "./lib";
 
-const HAS_GOV =
-  !!config.SEARCH_PLATFORM_URL && !process.env.TEST_SUITE_SELF_HOSTED;
-
-function expectLegalLabelShape(result: any) {
-  for (const key of ["jurisdiction", "court", "court_type"]) {
-    if (result[key] !== undefined) expect(typeof result[key]).toBe("string");
-  }
-  for (const key of ["cites", "cited_as"]) {
-    if (result[key] !== undefined) {
-      expect(Array.isArray(result[key])).toBe(true);
-      for (const id of result[key]) expect(typeof id).toBe("string");
-    }
-  }
-  if (result.updated_at !== undefined) {
-    expect(typeof result.updated_at).toBe("number");
-  }
-}
+const HAS_GOV = !!config.SEARCH_PLATFORM_URL;
 const PATH = "/v2/search/gov";
 
 describeIf(HAS_GOV)("Government Index Search API", () => {
@@ -48,9 +32,9 @@ describeIf(HAS_GOV)("Government Index Search API", () => {
   }, 120000);
 
   it(
-    "filters on the legal labels and returns them on each result",
+    "returns law results with legal labels and keeps web results plain",
     async () => {
-      const identity = await idmux({ name: "gov/labels", credits: 100 });
+      const identity = await idmux({ name: "gov/law", credits: 100 });
 
       const res = await researchRaw(
         PATH,
@@ -58,21 +42,40 @@ describeIf(HAS_GOV)("Government Index Search API", () => {
           query: "qualified immunity excessive force",
           k: 5,
           jurisdiction: "us",
-          courtType: "federal-appellate",
-          cites: "42 U.S.C. § 1983",
+          sources: ["web", "law"],
         },
         identity,
       );
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
-      for (const result of res.body.data.web) {
-        expectLegalLabelShape(result);
+      const { web, law } = res.body.data;
+      expect(Array.isArray(law)).toBe(true);
+      expect(law.length).toBeGreaterThan(0);
+      expect(law.map((r: any) => r.url)).toEqual(web.map((r: any) => r.url));
+      for (const result of web) {
+        for (const key of [
+          "jurisdiction",
+          "court",
+          "court_type",
+          "cites",
+          "cited_as",
+          "updated_at",
+        ]) {
+          expect(result[key]).toBeUndefined();
+        }
+      }
+      for (const result of law) {
+        expect(typeof result.url).toBe("string");
+        expect(typeof result.position).toBe("number");
+        expect(typeof result.updated_at).toBe("number");
         if (result.jurisdiction !== undefined) {
           expect(result.jurisdiction).toBe("us");
         }
-        if (result.court_type !== undefined) {
-          expect(result.court_type).toBe("federal-appellate");
+        for (const key of ["cites", "cited_as"]) {
+          if (result[key] !== undefined) {
+            expect(Array.isArray(result[key])).toBe(true);
+          }
         }
       }
     },
@@ -80,47 +83,18 @@ describeIf(HAS_GOV)("Government Index Search API", () => {
   );
 
   it(
-    "refuses a court type outside the list",
+    "refuses a source other than web or law",
     async () => {
-      const identity = await idmux({
-        name: "gov/bad-court-type",
-        credits: 100,
-      });
+      const identity = await idmux({ name: "gov/bad-source", credits: 100 });
 
       const res = await researchRaw(
         PATH,
-        { query: "zoning", courtType: "county-fair" },
+        { query: "zoning", sources: ["news"] },
         identity,
       );
 
       expect(res.statusCode).toBe(400);
       expect(res.body.success).toBe(false);
-    },
-    scrapeTimeout,
-  );
-
-  it(
-    "returns the legal labels on categories gov results from /v2/search",
-    async () => {
-      const identity = await idmux({
-        name: "gov/category-labels",
-        credits: 100,
-      });
-
-      const data = await search(
-        {
-          query: "qualified immunity excessive force",
-          categories: ["gov"],
-          limit: 5,
-        },
-        identity,
-      );
-
-      expect(Array.isArray(data.web)).toBe(true);
-      for (const result of data.web ?? []) {
-        expect((result as any).category).toBe("gov");
-        expectLegalLabelShape(result);
-      }
     },
     scrapeTimeout,
   );

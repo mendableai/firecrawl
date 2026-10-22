@@ -123,13 +123,6 @@ interface ImageSearchResult {
   position?: number;
   answer?: string;
   highlights?: string;
-  // Government Index labels, present on gov results when the index has them.
-  jurisdiction?: string;
-  court?: string;
-  court_type?: string;
-  cites?: string[];
-  cited_as?: string[];
-  updated_at?: number;
 }
 
 interface NewsSearchResult {
