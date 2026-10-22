@@ -401,7 +401,8 @@ const configSchema = z.object({
   TYPESAFE_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
 
   // Alexandria tool discovery: rewrite search queries with Anthropic before
-  // tool lookup, and add tools to default searches. Each is also a team flag.
+  // tool lookup, and add tools to default searches (also the alexandriaAutoTools
+  // team flag).
   ANTHROPIC_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
   ALEXANDRIA_AUTO_TOOLS: z.stringbool().default(false),
 
