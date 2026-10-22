@@ -926,10 +926,13 @@ describe("authenticateUser", () => {
 
     expect(auth).toMatchObject({ success: true, team_id: "team-1" });
     expect(authCreditUsageChunk).toHaveBeenCalledWith(
-      db,
+      expect.anything(),
       "11111111-1111-1111-8111-111111111111",
       "hosted_mcp_oauth",
     );
+    for (const [database] of vi.mocked(authCreditUsageChunk).mock.calls) {
+      expect(database).toBe(db);
+    }
     expect(authCreditUsageChunk).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
