@@ -1,6 +1,5 @@
 requests
 httpx
-certifi>=2026.10.19
 pytest
 pytest-asyncio
 python-dotenv
