@@ -357,6 +357,7 @@ describe("domain discovery", () => {
       expect.objectContaining({ attempt: 2 }),
     );
   });
+});
 
 it("interleaves results of several queries by rank", async () => {
   const named = (capability: string) => ({ ...tool, capability });
