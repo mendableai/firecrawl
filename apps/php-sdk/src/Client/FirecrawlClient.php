@@ -134,7 +134,7 @@ final class FirecrawlClient
      * Returns `['scrapeId' => ..., 'requestId' => ..., 'alexandria' => [...], 'creditsCost' => ...]`;
      * a failed call carries its `error` in its result instead of throwing.
      * Retries reuse one `x-request-id` so a paid call is not charged twice; pass the
-     * returned `requestId` again after an uncertain outcome for the same payload.
+     * `requestId` you supplied again after an uncertain outcome for the same payload.
      *
      * @param list<array<string, mixed>> $calls
      * @param int|null $timeoutMs Execution timeout, at most 120000 (the API's default).
