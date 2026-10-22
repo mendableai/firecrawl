@@ -480,6 +480,32 @@ describe("HTML Transformer", () => {
       expect(result).not.toContain("width=5");
     });
 
+    it("should keep the commas inside a srcset URL", async () => {
+      // Image CDNs put their transforms in the path, separated by commas.
+      const options: TransformHtmlOptions = {
+        html: `
+          <div>
+            <img
+              src="https://res.cloudinary.com/demo/image/upload/w_100/sample.jpg"
+              srcset="https://res.cloudinary.com/demo/image/upload/w_400,h_300,c_fill/sample.jpg 400w,
+                      https://res.cloudinary.com/demo/image/upload/w_800,h_600,c_fill/sample.jpg 800w">
+            <img srcset="https://cdn.example.com/a,b.png, https://cdn.example.com/c,d.png 2x">
+          </div>
+        `,
+        url: "https://example.com/blog/post",
+        includeTags: [],
+        excludeTags: [],
+        onlyMainContent: false,
+      };
+
+      const result = await transformHtml(options);
+      expect(result).toContain(
+        'src="https://res.cloudinary.com/demo/image/upload/w_800,h_600,c_fill/sample.jpg"',
+      );
+      expect(result).toContain('src="https://cdn.example.com/c,d.png"');
+      expect(result).not.toContain("example.com/blog/");
+    });
+
     it("should fall back to data-src when there is no srcset", async () => {
       const options: TransformHtmlOptions = {
         html: `

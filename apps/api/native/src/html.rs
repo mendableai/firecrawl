@@ -546,37 +546,21 @@ fn _transform_html_inner(
     };
 
     if let Some(srcset) = srcset {
-      let mut sizes: Vec<ImageSource> = srcset
-        .split(',')
-        .filter_map(|x| {
-          let tok: Vec<&str> = x.trim().split(' ').collect();
-          let last_token = tok[tok.len() - 1];
-          let (last_token, last_token_used) = if tok.len() > 1
-            && !last_token.is_empty()
-            && (last_token.ends_with('x') || last_token.ends_with('w'))
-          {
-            (last_token, true)
-          } else {
-            ("1x", false)
-          };
-
-          if let Some((last_index, _)) = last_token.char_indices().last() {
-            if let Ok(parsed_size) = last_token[..last_index].parse() {
-              Some(ImageSource {
-                url: if last_token_used {
-                  tok[0..tok.len() - 1].join(" ")
-                } else {
-                  tok.join(" ")
-                },
-                size: parsed_size,
-                is_x: last_token.ends_with('x'),
-              })
-            } else {
-              None
-            }
-          } else {
-            None
-          }
+      let mut sizes: Vec<ImageSource> = srcset_candidates(&srcset)
+        .into_iter()
+        .filter_map(|(url, descriptors)| {
+          // The width (`800w`) or density (`2x`) descriptor; a candidate without one is `1x`
+          let descriptor = descriptors
+            .split_ascii_whitespace()
+            .last()
+            .filter(|x| x.ends_with('x') || x.ends_with('w'))
+            .unwrap_or("1x");
+          let parsed_size = descriptor[..descriptor.len() - 1].parse().ok()?;
+          Some(ImageSource {
+            url: url.to_string(),
+            size: parsed_size,
+            is_x: descriptor.ends_with('x'),
+          })
         })
         .collect();
 
@@ -654,6 +638,49 @@ fn _transform_html_inner(
   }
 
   Ok(document.to_string())
+}
+
+/// Split a `srcset` into its (URL, descriptors) candidates, as the HTML standard parses it.
+///
+/// A URL runs up to the next whitespace, so a comma inside it (a CDN transform such as
+/// `w_400,h_300`) belongs to the URL; a candidate ends at the comma after its descriptors.
+fn srcset_candidates(srcset: &str) -> Vec<(&str, &str)> {
+  let mut candidates = Vec::new();
+  let mut rest = srcset;
+  loop {
+    rest = rest.trim_start_matches(|c: char| c.is_ascii_whitespace() || c == ',');
+    if rest.is_empty() {
+      return candidates;
+    }
+    let url_end = rest
+      .find(|c: char| c.is_ascii_whitespace())
+      .unwrap_or(rest.len());
+    let url = &rest[..url_end];
+    rest = &rest[url_end..];
+    // A URL that ends in a comma has no descriptors
+    if url.ends_with(',') {
+      candidates.push((url.trim_end_matches(','), ""));
+      continue;
+    }
+    let mut depth = 0usize;
+    let descriptors_end = rest
+      .char_indices()
+      .find(|&(_, c)| match c {
+        '(' => {
+          depth += 1;
+          false
+        }
+        ')' => {
+          depth = depth.saturating_sub(1);
+          false
+        }
+        ',' => depth == 0,
+        _ => false,
+      })
+      .map_or(rest.len(), |(index, _)| index);
+    candidates.push((url, rest[..descriptors_end].trim()));
+    rest = &rest[descriptors_end..];
+  }
 }
 
 /// Transform and clean HTML content based on provided options.
