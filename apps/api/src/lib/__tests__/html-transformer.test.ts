@@ -262,6 +262,31 @@ describe("HTML Transformer", () => {
       expect(metadata).toBeDefined();
     });
 
+    it("should read the title as a browser shows it", async () => {
+      const metadata = await extractMetadata(`
+        <html>
+          <head>
+            <title>
+              Release notes:\tversion  2
+            </title>
+          </head>
+        </html>
+      `);
+      expect(metadata.title).toBe("Release notes: version 2");
+    });
+
+    it("should backfill title from og:title when the title tag is blank", async () => {
+      const metadata = await extractMetadata(`
+        <html>
+          <head>
+            <title>  </title>
+            <meta property="og:title" content="OpenGraph Title">
+          </head>
+        </html>
+      `);
+      expect(metadata.title).toBe("OpenGraph Title");
+    });
+
     it("should backfill title from og:title when title tag is missing", async () => {
       const html = `
         <html>

@@ -159,7 +159,17 @@ fn _extract_metadata(
     .map_err(|_| "Failed to select title")?
     .next()
   {
-    out.insert("title".to_string(), Value::String(title.text_contents()));
+    // As `document.title` reads it: ASCII whitespace stripped and collapsed. An empty title
+    // is left out, so the fallbacks below can fill it
+    let title = title
+      .text_contents()
+      .split(|c: char| matches!(c, '\t' | '\n' | '\x0C' | '\r' | ' '))
+      .filter(|word| !word.is_empty())
+      .collect::<Vec<_>>()
+      .join(" ");
+    if !title.is_empty() {
+      out.insert("title".to_string(), Value::String(title));
+    }
   }
 
   if let Some(favicon_link) = search_root
