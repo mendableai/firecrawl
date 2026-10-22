@@ -169,13 +169,14 @@ export async function providerScrapeController(
             isFindTools(call) &&
             typeof call.options.query === "string" &&
             call.options.query.trim() &&
-            call.options.offset === undefined
+            (call.options.offset === undefined || call.options.offset === 0)
               ? {
                   ...call,
                   options: {
                     ...call.options,
-                    query: (await inferToolIntent(call.options.query, logger))
-                      .toolQueries[0],
+                    query:
+                      (await inferToolIntent(call.options.query, logger))
+                        .toolQueries[0] ?? call.options.query,
                   },
                 }
               : call,

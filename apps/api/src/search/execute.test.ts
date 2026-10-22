@@ -225,6 +225,28 @@ describe("executeSearch tool intent", () => {
     expect(result.response.tools).toBeUndefined();
   });
 
+  it("adds query tools beside domain tools when domainTools is on", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["website traffic statistics of a domain"],
+      domains: [],
+      needsTools: true,
+    });
+    await executeSearch(
+      { ...options([]), autoTools: true, domainTools: true },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledTimes(1);
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queries: ["website traffic statistics of a domain"],
+        urls: ["https://example.com/"],
+      }),
+      logger,
+    );
+  });
+
   it("never adds tools under zero data retention", async () => {
     mocks.search.mockResolvedValue({ web: [webResult] });
     await executeSearch(

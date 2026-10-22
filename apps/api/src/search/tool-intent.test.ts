@@ -6,13 +6,25 @@ const mocks = vi.hoisted(() => ({
   set: vi.fn(),
 }));
 
+const config = vi.hoisted(() => ({
+  ANTHROPIC_API_KEY: undefined as string | undefined,
+  ALEXANDRIA_QUERY_INFERENCE: false,
+  ALEXANDRIA_AUTO_TOOLS: false,
+}));
+
 vi.mock("ai", () => ({ generateObject: mocks.generateObject }));
+vi.mock("../config", () => ({ config }));
 vi.mock("../lib/generic-ai", () => ({ getModel: vi.fn(() => "model") }));
 vi.mock("../services/rate-limiter", () => ({
   redisRateLimitClient: { get: mocks.get, set: mocks.set },
 }));
 
-import { inferToolIntent, parseSearchQuery } from "./tool-intent";
+import {
+  autoToolsEnabled,
+  inferToolIntent,
+  parseSearchQuery,
+  queryInferenceEnabled,
+} from "./tool-intent";
 
 const logger = { warn: vi.fn() } as any;
 
@@ -38,6 +50,7 @@ describe("parseSearchQuery", () => {
       { text: "node.js streams buffers", domains: [] },
     ],
     ["site:https://www.SEC.gov/edgar", { text: "", domains: ["sec.gov"] }],
+    ['site:"cnbc.com" nvidia', { text: "nvidia", domains: ["cnbc.com"] }],
   ])("parses %s", (query, expected) => {
     expect(parseSearchQuery(query)).toEqual(expected);
   });
@@ -90,4 +103,23 @@ describe("inferToolIntent", () => {
       domains: ["cnbc.com"],
     });
   });
+});
+
+describe("feature gates", () => {
+  it("stay off without an Anthropic key, even for flagged teams", () => {
+    config.ANTHROPIC_API_KEY = undefined;
+    const flags = { alexandriaQueryInference: true, alexandriaAutoTools: true };
+    expect(queryInferenceEnabled(flags)).toBe(false);
+    expect(autoToolsEnabled(flags)).toBe(false);
+    config.ANTHROPIC_API_KEY = "key";
+    expect(queryInferenceEnabled(flags)).toBe(true);
+    expect(autoToolsEnabled(flags)).toBe(true);
+    expect(queryInferenceEnabled({})).toBe(false);
+  });
+});
+
+it("sends no semantic query for an operator-only query", async () => {
+  const intent = await inferToolIntent("site:sec.gov filetype:pdf", logger);
+  expect(intent).toEqual({ toolQueries: [], domains: ["sec.gov"] });
+  expect(mocks.generateObject).not.toHaveBeenCalled();
 });

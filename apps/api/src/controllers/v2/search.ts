@@ -459,7 +459,7 @@ async function searchControllerInner(
         toolDetail: req.body.toolDetail,
         inferToolQuery: queryInferenceEnabled(req.acuc?.flags),
         autoTools:
-          sourcesOmitted &&
+          (sourcesOmitted || req.body.domainTools === true) &&
           !req.auth.team_id.startsWith("preview_keyless_") &&
           config.FIRE_EXCHANGE_URL !== undefined &&
           autoToolsEnabled(req.acuc?.flags),
@@ -613,7 +613,7 @@ async function searchControllerInner(
     });
 
     if (result.response.tools) {
-      if (!result.toolsAuto) markAlexandriaActivity(req.auth.team_id);
+      markAlexandriaActivity(req.auth.team_id);
       recordDiscoveredTools(
         req.auth.team_id,
         result.toolsAuto ? "auto_search" : "search",

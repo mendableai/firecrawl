@@ -104,7 +104,7 @@ export function parseSearchQuery(query: string): {
     if (operator && OPERATORS.has(operator[1].toLowerCase())) {
       const host =
         operator[1].toLowerCase() === "site"
-          ? hostnameOf(operator[2])
+          ? hostnameOf(operator[2].replace(/"/g, ""))
           : undefined;
       if (host) domains.add(host);
       continue;
@@ -116,7 +116,10 @@ export function parseSearchQuery(query: string): {
       domains.add(host);
     if (word) words.push(word);
   }
-  return { text: words.join(" "), domains: [...domains] };
+  return {
+    text: words.join(" "),
+    domains: [...domains].slice(0, MAX_TOOL_QUERIES),
+  };
 }
 
 const intentSchema = z.object({
@@ -219,7 +222,7 @@ export async function inferToolIntent(
 ): Promise<ToolIntent> {
   const parsed = parseSearchQuery(query);
   const fallback: ToolIntent = {
-    toolQueries: [parsed.text || query.trim()],
+    toolQueries: parsed.text ? [parsed.text] : [],
     domains: parsed.domains,
   };
   if (!parsed.text) return fallback;

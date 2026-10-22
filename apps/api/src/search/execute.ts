@@ -145,7 +145,10 @@ export async function executeSearch(
                     connectors: flags?.exchangeRetrieve === true,
                     limit,
                     queries: intent.toolQueries,
-                    urls: intent.domains.map(domain => `https://${domain}/`),
+                    urls:
+                      options.domainTools === false
+                        ? []
+                        : intent.domains.map(domain => `https://${domain}/`),
                     timeoutMs: Math.max(
                       1,
                       AUTO_TOOLS_BUDGET_MS - (Date.now() - startedAt),
@@ -333,7 +336,11 @@ export async function executeSearch(
         teamId,
         connectors: flags?.exchangeRetrieve === true,
         limit,
-        queries: wantsTools ? (intent?.toolQueries ?? [query]) : undefined,
+        queries: wantsTools
+          ? (intent?.toolQueries ?? [query])
+          : intent?.needsTools
+            ? intent.toolQueries
+            : undefined,
         urls:
           options.domainTools === false
             ? []
