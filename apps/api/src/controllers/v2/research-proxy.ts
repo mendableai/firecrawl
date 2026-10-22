@@ -166,7 +166,7 @@ const govSearchSchema = z.strictObject({
         'jurisdiction must be "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc"',
     })
     .optional(),
-  court: z.string().min(1).optional(),
+  court: z.string().trim().min(1).optional(),
   courtType: z
     .enum([
       "federal-supreme",
@@ -182,8 +182,8 @@ const govSearchSchema = z.strictObject({
       "state-attorney-general",
     ])
     .optional(),
-  cites: z.string().min(1).optional(),
-  domain: z.string().min(1).optional(),
+  cites: z.string().trim().min(1).optional(),
+  domain: z.string().trim().min(1).optional(),
   ...commonQuery,
 });
 
