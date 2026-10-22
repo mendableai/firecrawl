@@ -285,7 +285,25 @@ law = firecrawl.gov_search("food labeling requirements", k=5)
 
 for result in law.data.web:
     print(result.position, result.title, result.url)
+
+# State supreme court opinions from 2022 on that cite a federal statute:
+cases = firecrawl.gov_search(
+    "qualified immunity",
+    court_type="state-supreme",
+    cites="42 U.S.C. § 1983",
+    year_from=2022,
+)
 ```
+
+Filters, all optional and combined with AND: `jurisdiction` (`"us"` for
+federal, or `"us-"` plus a two-letter state or territory code, such as
+`"us-ca"`), `court` (a CourtListener court id, such as `"scotus"` or `"ca9"`),
+`court_type`, `cites` (one printed citation or citation id, such as
+`"us:usc:42:1983"`), `domain` (one site, such as `"irs.gov"`), and
+`year_from` / `year_to`, which require `court` or `court_type`. Filters keep
+only pages the index has labeled, so a filtered search can leave out relevant
+pages, and no results does not mean none exist. Court labels are most complete
+for federal courts and case-law collections.
 
 ### Research / paper search
 
