@@ -131,14 +131,16 @@ final class FirecrawlClient
      * Run up to 10 data provider tool calls in one request.
      *
      * Each call is `['provider' => ..., 'capability' => ..., 'options' => [...]]`.
-     * Returns `['scrapeId' => ..., 'alexandria' => [...], 'creditsCost' => ...]`;
+     * Returns `['scrapeId' => ..., 'requestId' => ..., 'alexandria' => [...], 'creditsCost' => ...]`;
      * a failed call carries its `error` in its result instead of throwing.
+     * Retries reuse one `x-request-id` so a paid call is not charged twice; pass the
+     * returned `requestId` again after an uncertain outcome for the same payload.
      *
      * @param list<array<string, mixed>> $calls
      * @param int|null $timeoutMs Execution timeout, at most 120000 (the API's default).
-     * @return array{scrapeId: ?string, alexandria: list<array<string, mixed>>, creditsCost: int}
+     * @return array{scrapeId: ?string, requestId: string, alexandria: list<array<string, mixed>>, creditsCost: int}
      */
-    public function scrapeAlexandria(array $calls, ?int $timeoutMs = null): array
+    public function scrapeAlexandria(array $calls, ?int $timeoutMs = null, ?string $requestId = null): array
     {
         if ($calls === [] || count($calls) > 10) {
             throw new \InvalidArgumentException('alexandria accepts 1 to 10 calls');
@@ -159,6 +161,10 @@ final class FirecrawlClient
         if ($timeoutMs !== null && $timeoutMs <= 0) {
             throw new \InvalidArgumentException('timeout must be a positive integer');
         }
+        $requestId ??= bin2hex(random_bytes(16));
+        if (preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $requestId) !== 1) {
+            throw new \InvalidArgumentException('requestId must be 1 to 128 characters of A-Z, a-z, 0-9, ".", "_", ":" or "-"');
+        }
 
         $body = ['alexandria' => $alexandria, 'origin' => 'php-sdk@' . Version::SDK_VERSION];
         if ($timeoutMs !== null) {
@@ -167,13 +173,22 @@ final class FirecrawlClient
         // The API may answer up to 30 seconds after its execution deadline.
         $transportSeconds = (min($timeoutMs ?? 120_000, 120_000) + 30_000) / 1000;
 
-        $response = $this->assertSuccess($this->http->post('/v2/scrape', $body, timeoutSeconds: $transportSeconds));
-        $data = $response['data'] ?? [];
+        $response = $this->assertSuccess($this->http->post(
+            '/v2/scrape',
+            $body,
+            extraHeaders: ['x-request-id' => $requestId],
+            timeoutSeconds: $transportSeconds,
+        ));
+        $data = $response['data'] ?? null;
+        if (!is_array($data) || !is_array($data['alexandria'] ?? null) || !is_int($data['creditsCost'] ?? null) || $data['creditsCost'] < 0) {
+            throw new FirecrawlException("Invalid alexandria response (request ID: {$requestId})");
+        }
 
         return [
             'scrapeId' => $response['scrape_id'] ?? null,
-            'alexandria' => $data['alexandria'] ?? [],
-            'creditsCost' => (int) ($data['creditsCost'] ?? 0),
+            'requestId' => $requestId,
+            'alexandria' => array_values($data['alexandria']),
+            'creditsCost' => $data['creditsCost'],
         ];
     }
 

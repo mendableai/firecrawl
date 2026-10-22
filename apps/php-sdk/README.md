@@ -261,6 +261,8 @@ print_r($call['error'] ?? $call['data']);
 
 Pass `'providers' => [...]`, `'capabilities' => [...]` and `'expand' => ['options', 'examples']` to `findTools` to read a tool's options before you call it.
 
+Each `scrapeAlexandria` request sends an `x-request-id`, reused across the SDK's automatic retries so a paid call is charged once. The result carries it as `requestId`; after an uncertain outcome (a timeout or network error), pass the same ID as `requestId:` with the identical calls to retrieve the original result instead of running it again.
+
 ### Developer search
 
 Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `developerSearch` replaces the deprecated `searchGithub`.

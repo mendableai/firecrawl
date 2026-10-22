@@ -33,6 +33,29 @@ it('finds data provider tools through a find-tools call', function (): void {
         'alexandria' => [['provider' => 'firecrawl', 'capability' => 'find-tools', 'options' => ['query' => 'npm downloads', 'limit' => 1]]],
         'origin' => 'php-sdk@' . Version::SDK_VERSION,
     ]);
+    expect($request->getHeaderLine('x-request-id'))->toMatch('/^[a-f0-9]{32}$/');
+});
+
+it('sends and returns the given request ID', function (): void {
+    $history = new ArrayObject();
+    $client = fakeFirecrawlClient([
+        new Response(200, [], json_encode(['success' => true, 'data' => ['alexandria' => [['provider' => 'npmjs-com', 'capability' => 'packages/get_downloads', 'data' => []]], 'creditsCost' => 5]])),
+    ], $history);
+
+    $result = $client->scrapeAlexandria([['provider' => 'npmjs-com', 'capability' => 'packages/get_downloads']], requestId: 'retry-1');
+
+    expect($result['requestId'])->toBe('retry-1');
+    expect($result['creditsCost'])->toBe(5);
+    expect($history[0]['request']->getHeaderLine('x-request-id'))->toBe('retry-1');
+    expect(fn () => $client->scrapeAlexandria([['provider' => 'a', 'capability' => 'b']], requestId: 'bad id'))->toThrow(InvalidArgumentException::class);
+});
+
+it('rejects a malformed successful response', function (): void {
+    $client = fakeFirecrawlClient([
+        new Response(200, [], json_encode(['success' => true, 'data' => ['creditsCost' => 0]])),
+    ]);
+
+    expect(fn () => $client->scrapeAlexandria([['provider' => 'a', 'capability' => 'b']]))->toThrow(FirecrawlException::class, 'Invalid alexandria response');
 });
 
 it('returns a failed tool call as its result and raises a failed find-tools call', function (): void {
