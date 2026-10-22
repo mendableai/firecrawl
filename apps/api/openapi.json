@@ -12173,7 +12173,7 @@
                     },
                     "updated_at": {
                       "type": "integer",
-                      "description": "When the page was crawled, in Unix milliseconds."
+                      "description": "When the page was crawled, in Unix milliseconds. Always present on law results."
                     }
                   }
                 }
