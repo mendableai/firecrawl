@@ -241,6 +241,26 @@ foreach ($result->getWeb() as $item) {
 }
 ```
 
+### Data provider tools
+
+Find a data provider tool (Alexandria) for a task, then run it. `findTools` is free; a tool run costs that tool's credits (each item's `creditsCost`).
+
+```php
+$tools = $client->findTools(['query' => 'npm package downloads', 'limit' => 3]);
+$tool = $tools['items'][0];
+
+$result = $client->scrapeAlexandria([[
+    'provider' => $tool['provider'],
+    'capability' => $tool['capability'],
+    'options' => ['packages' => ['firecrawl'], 'period' => 'last-week'],
+]]);
+
+$call = $result['alexandria'][0];
+print_r($call['error'] ?? $call['data']);
+```
+
+Pass `'providers' => [...]`, `'capabilities' => [...]` and `'expand' => ['options', 'examples']` to `findTools` to read a tool's options before you call it.
+
 ### Developer search
 
 Search public repositories, GitHub issues, merged pull requests, READMEs and code documentation. `developerSearch` replaces the deprecated `searchGithub`.

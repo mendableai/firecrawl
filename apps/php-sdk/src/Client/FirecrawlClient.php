@@ -123,6 +123,93 @@ final class FirecrawlClient
         return Document::fromArray($response['data'] ?? $response);
     }
 
+    // ================================================================
+    // DATA PROVIDER TOOLS (ALEXANDRIA)
+    // ================================================================
+
+    /**
+     * Run up to 10 data provider tool calls in one request.
+     *
+     * Each call is `['provider' => ..., 'capability' => ..., 'options' => [...]]`.
+     * Returns `['scrapeId' => ..., 'alexandria' => [...], 'creditsCost' => ...]`;
+     * a failed call carries its `error` in its result instead of throwing.
+     *
+     * @param list<array<string, mixed>> $calls
+     * @param int|null $timeoutMs Execution timeout, at most 120000 (the API's default).
+     * @return array{scrapeId: ?string, alexandria: list<array<string, mixed>>, creditsCost: int}
+     */
+    public function scrapeAlexandria(array $calls, ?int $timeoutMs = null): array
+    {
+        if ($calls === [] || count($calls) > 10) {
+            throw new \InvalidArgumentException('alexandria accepts 1 to 10 calls');
+        }
+        $alexandria = [];
+        foreach ($calls as $index => $call) {
+            $provider = trim((string) ($call['provider'] ?? ''));
+            $capability = trim((string) ($call['capability'] ?? ''));
+            if ($provider === '' || $capability === '') {
+                throw new \InvalidArgumentException("alexandria[{$index}] needs a provider and a capability");
+            }
+            $item = ['provider' => $provider, 'capability' => $capability];
+            if (isset($call['options'])) {
+                $item['options'] = $call['options'];
+            }
+            $alexandria[] = $item;
+        }
+        if ($timeoutMs !== null && $timeoutMs <= 0) {
+            throw new \InvalidArgumentException('timeout must be a positive integer');
+        }
+
+        $body = ['alexandria' => $alexandria, 'origin' => 'php-sdk@' . Version::SDK_VERSION];
+        if ($timeoutMs !== null) {
+            $body['timeout'] = $timeoutMs;
+        }
+        // The API may answer up to 30 seconds after its execution deadline.
+        $transportSeconds = (min($timeoutMs ?? 120_000, 120_000) + 30_000) / 1000;
+
+        $response = $this->assertSuccess($this->http->post('/v2/scrape', $body, timeoutSeconds: $transportSeconds));
+        $data = $response['data'] ?? [];
+
+        return [
+            'scrapeId' => $response['scrape_id'] ?? null,
+            'alexandria' => $data['alexandria'] ?? [],
+            'creditsCost' => (int) ($data['creditsCost'] ?? 0),
+        ];
+    }
+
+    /**
+     * Find data provider tools for a task. Free.
+     *
+     * Options are the find-tools options, e.g. `query`, `limit`, `providers`,
+     * `capabilities`, `expand`. Returns `['items' => [...], 'total' => ..., 'next' => ...]`;
+     * each item names the provider and capability to pass to {@see self::scrapeAlexandria()}.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function findTools(array $options = []): array
+    {
+        $result = $this->scrapeAlexandria([[
+            'provider' => 'firecrawl',
+            'capability' => 'find-tools',
+            'options' => $options,
+        ]])['alexandria'][0] ?? null;
+
+        if ($result === null) {
+            throw new FirecrawlException('The API returned no find-tools result.');
+        }
+        if (isset($result['error'])) {
+            $error = $result['error'];
+            throw new FirecrawlException(
+                (string) ($error['message'] ?? 'find-tools failed'),
+                (int) ($error['status'] ?? 0),
+                isset($error['code']) ? (string) $error['code'] : null,
+            );
+        }
+
+        return $result['data'] ?? [];
+    }
+
     /**
      * Search research papers.
      *

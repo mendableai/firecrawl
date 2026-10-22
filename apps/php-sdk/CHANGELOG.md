@@ -5,6 +5,13 @@ All notable changes to the Firecrawl PHP SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `findTools()` finds data provider tools (Alexandria) for a task, free, and
+  `scrapeAlexandria()` runs up to 10 provider tool calls through
+  `POST /v2/scrape`, matching the Go, Ruby and Java SDKs.
+
 ## [1.16.6] - 2026-10-20
 
 ### Added
