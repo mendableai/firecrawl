@@ -19,8 +19,15 @@ const mocks = vi.hoisted(() => {
     refund: vi.fn(),
     billAdd: vi.fn(),
     report: vi.fn(),
+    initCredits: vi.fn(),
+    recordCredits: vi.fn(),
   };
 });
+vi.mock("../../lib/request-credits-store", () => ({
+  AGENT_REQUEST_CREDITS_SHARDS: 8,
+  initializeRequestCredits: mocks.initCredits,
+  recordRequestCredits: mocks.recordCredits,
+}));
 vi.mock("../../config", () => ({ config: mocks.config }));
 vi.mock("../rate-limiter", () => ({ redisRateLimitClient: mocks.redis }));
 vi.mock("./client", () => ({ exchangeRequest: mocks.request }));
@@ -85,6 +92,8 @@ beforeEach(() => {
   mocks.refund.mockResolvedValue(undefined);
   mocks.billAdd.mockResolvedValue({});
   mocks.report.mockResolvedValue(true);
+  mocks.initCredits.mockResolvedValue(true);
+  mocks.recordCredits.mockResolvedValue(true);
   exchangeAnswers(answer);
 });
 
@@ -692,4 +701,55 @@ it("refuses the same x-request-id with a different zero data retention setting",
     expect.objectContaining({ code: "duplicate_request" }),
   );
   expect(executions()).toHaveLength(1);
+});
+
+it("records an agent call's charge on the agent run, once, at Exchange's price", async () => {
+  await run({ agentRequestId: "agent-run", zeroDataRetention: true });
+  expect(mocks.initCredits).not.toHaveBeenCalled();
+  expect(mocks.recordCredits).toHaveBeenCalledTimes(1);
+  expect(mocks.recordCredits).toHaveBeenCalledWith({
+    requestId: "agent-run",
+    jobId: expect.stringMatching(/^alexandria:/),
+    credits: 3,
+  });
+
+  await run({ agentRequestId: "agent-run", zeroDataRetention: true });
+  expect(mocks.recordCredits).toHaveBeenCalledTimes(1);
+});
+
+it("records nothing on the agent run when nothing was charged", async () => {
+  await run({ agentRequestId: "agent-run", bypassBilling: true });
+  mocks.store.clear();
+  mocks.finalize.mockResolvedValueOnce(false);
+  await run({ agentRequestId: "agent-run" });
+  mocks.store.clear();
+  mocks.billAdd.mockRejectedValue(new Error("queue down"));
+  await run({ agentRequestId: "agent-run" });
+  expect(mocks.recordCredits).not.toHaveBeenCalled();
+});
+
+it("still answers when the agent run's credits cannot be recorded", async () => {
+  mocks.recordCredits.mockRejectedValue(new Error("bigtable down"));
+  expect(await run({ agentRequestId: "agent-run" })).toMatchObject({
+    status: 200,
+    executed: true,
+  });
+  expect(mocks.billAdd).toHaveBeenCalledTimes(1);
+});
+
+it("creates the agent run's credit row only when it is missing", async () => {
+  mocks.recordCredits.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  await run({ agentRequestId: "agent-run" });
+  expect(mocks.initCredits).toHaveBeenCalledWith("agent-run", 8);
+  expect(mocks.recordCredits).toHaveBeenCalledTimes(2);
+});
+
+it("does not retry the write when the credit store is unavailable", async () => {
+  mocks.recordCredits.mockResolvedValue(false);
+  mocks.initCredits.mockResolvedValue(false);
+  expect(await run({ agentRequestId: "agent-run" })).toMatchObject({
+    status: 200,
+    executed: true,
+  });
+  expect(mocks.recordCredits).toHaveBeenCalledTimes(1);
 });

@@ -162,6 +162,27 @@ export async function executeSearch(
         })
         .catch(() => null)
     : null;
+  let resolveToolUrls: (urls: string[]) => void = () => {};
+  const baseDiscovery =
+    toolsAllowed && (wantsTools || options.domainTools)
+      ? discoverTools(
+          {
+            toolDetail: options.toolDetail ?? "compact",
+            teamId,
+            connectors: flags?.exchangeRetrieve === true,
+            limit,
+            queries: wantsTools ? [query] : undefined,
+            urls:
+              options.domainTools === false
+                ? []
+                : new Promise<string[]>(resolve => {
+                    resolveToolUrls = resolve;
+                  }),
+            timeoutMs: options.timeout,
+          },
+          logger,
+        )
+      : null;
   const searchTypes = [
     ...new Set(
       sources
@@ -347,27 +368,18 @@ export async function executeSearch(
     }
   };
 
-  if (toolsAllowed && (wantsTools || options.domainTools)) {
-    const base = discoverTools(
-      {
-        toolDetail: options.toolDetail ?? "compact",
-        teamId,
-        connectors: flags?.exchangeRetrieve === true,
-        limit,
-        queries: wantsTools ? [query] : undefined,
-        urls:
-          options.domainTools === false
-            ? []
-            : [
-                ...(searchResponse.web ?? []),
-                ...(searchResponse.news ?? []),
-                ...indexResults,
-              ].flatMap(item => (item.url ? [item.url] : [])),
-        timeoutMs: options.timeout,
-      },
-      logger,
+  if (baseDiscovery) {
+    resolveToolUrls(
+      [
+        ...(searchResponse.web ?? []),
+        ...(searchResponse.news ?? []),
+        ...indexResults,
+      ].flatMap(item => (item.url ? [item.url] : [])),
     );
-    const [discovery, extra] = await Promise.all([base, waitForExtra(base)]);
+    const [discovery, extra] = await Promise.all([
+      baseDiscovery,
+      waitForExtra(baseDiscovery),
+    ]);
     const merged = new Map(
       discovery.items.map(tool => [
         `${tool.provider}/${tool.capability}`,
