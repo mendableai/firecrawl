@@ -157,6 +157,33 @@ const DEVELOPER_SEARCH_QUERY_KEYS = [
 const govSearchSchema = z.strictObject({
   query: z.string().min(1),
   k: kSchema(100),
+  jurisdiction: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^us(-[a-z]{2})?$/, {
+      message:
+        'jurisdiction must be "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc"',
+    })
+    .optional(),
+  court: z.string().trim().min(1).optional(),
+  courtType: z
+    .enum([
+      "federal-supreme",
+      "federal-appellate",
+      "federal-district",
+      "federal-bankruptcy",
+      "federal-special",
+      "military",
+      "state-supreme",
+      "state-appellate",
+      "state-trial",
+      "state-special",
+      "state-attorney-general",
+    ])
+    .optional(),
+  cites: z.string().trim().min(1).optional(),
+  domain: z.string().trim().min(1).optional(),
   ...commonQuery,
 });
 
@@ -443,6 +470,15 @@ function createResearchController(
             : undefined;
       }
 
+      if (
+        endpoint.kind === "gov_search" &&
+        statusCode === 400 &&
+        typeof responseBody?.message === "string"
+      ) {
+        error = responseBody.message;
+        return researchError(res, 400, responseBody.message);
+      }
+
       if (responseBody === null || typeof responseBody === "string") {
         return res.status(statusCode).send(responseBody ?? "");
       }
@@ -654,6 +690,11 @@ export function createGovRouter() {
         fetchGovUpstream({
           query: params.query,
           k: params.k,
+          jurisdiction: params.jurisdiction,
+          court: params.court,
+          courtType: params.courtType,
+          cites: params.cites,
+          domain: params.domain,
           headers,
           timeoutMs: GOV_SEARCH_TIMEOUT_MS,
         }),

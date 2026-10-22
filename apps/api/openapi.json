@@ -6263,6 +6263,7 @@
       "get": {
         "summary": "Search the Government Index",
         "operationId": "govSearch",
+        "description": "Filters keep only pages the index has labeled, so a filtered search can leave out relevant pages, and no results does not mean none exist. Court labels are most complete for federal courts and case-law collections.",
         "tags": ["Government"],
         "security": [
           {
@@ -6291,6 +6292,71 @@
               "maximum": 100,
               "default": 10
             }
+          },
+          {
+            "name": "jurisdiction",
+            "in": "query",
+            "required": false,
+            "description": "Keep only pages of one jurisdiction: `us` for federal, or `us-` plus a two-letter state or territory code, such as `us-ca` or `us-dc`.",
+            "schema": {
+              "type": "string",
+              "example": "us-ca"
+            }
+          },
+          {
+            "name": "court",
+            "in": "query",
+            "required": false,
+            "description": "Keep only pages labeled for one court, by CourtListener court id, such as `scotus`, `ca9` or `nysd`.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "ca9"
+            }
+          },
+          {
+            "name": "courtType",
+            "in": "query",
+            "required": false,
+            "description": "Keep only pages from one type of court.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "federal-supreme",
+                "federal-appellate",
+                "federal-district",
+                "federal-bankruptcy",
+                "federal-special",
+                "military",
+                "state-supreme",
+                "state-appellate",
+                "state-trial",
+                "state-special",
+                "state-attorney-general"
+              ]
+            }
+          },
+          {
+            "name": "cites",
+            "in": "query",
+            "required": false,
+            "description": "Keep only pages that cite one law or case, as a printed citation such as `42 U.S.C. § 1983` or `5 U.S. 137`, or a citation id such as `us:usc:42:1983`.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "42 U.S.C. § 1983"
+            }
+          },
+          {
+            "name": "domain",
+            "in": "query",
+            "required": false,
+            "description": "Keep only pages from one site, such as `irs.gov`.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "irs.gov"
+            }
           }
         ],
         "responses": {
@@ -6318,7 +6384,7 @@
             }
           },
           "400": {
-            "description": "Invalid request, including an unknown field"
+            "description": "Invalid request, including an unknown field or an invalid filter value"
           },
           "401": {
             "description": "Invalid bearer token"
@@ -6337,6 +6403,7 @@
       "post": {
         "summary": "Search the Government Index",
         "operationId": "govSearchPost",
+        "description": "Filters keep only pages the index has labeled, so a filtered search can leave out relevant pages, and no results does not mean none exist. Court labels are most complete for federal courts and case-law collections.",
         "tags": ["Government"],
         "security": [
           {
@@ -6363,6 +6430,46 @@
                     "maximum": 100,
                     "default": 10,
                     "description": "Number of results to return."
+                  },
+                  "jurisdiction": {
+                    "type": "string",
+                    "description": "Keep only pages of one jurisdiction: `us` for federal, or `us-` plus a two-letter state or territory code, such as `us-ca` or `us-dc`.",
+                    "example": "us-ca"
+                  },
+                  "court": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Keep only pages labeled for one court, by CourtListener court id, such as `scotus`, `ca9` or `nysd`.",
+                    "example": "ca9"
+                  },
+                  "courtType": {
+                    "type": "string",
+                    "enum": [
+                      "federal-supreme",
+                      "federal-appellate",
+                      "federal-district",
+                      "federal-bankruptcy",
+                      "federal-special",
+                      "military",
+                      "state-supreme",
+                      "state-appellate",
+                      "state-trial",
+                      "state-special",
+                      "state-attorney-general"
+                    ],
+                    "description": "Keep only pages from one type of court."
+                  },
+                  "cites": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Keep only pages that cite one law or case, as a printed citation such as `42 U.S.C. § 1983` or `5 U.S. 137`, or a citation id such as `us:usc:42:1983`.",
+                    "example": "42 U.S.C. § 1983"
+                  },
+                  "domain": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Keep only pages from one site, such as `irs.gov`.",
+                    "example": "irs.gov"
                   }
                 }
               },
@@ -6385,7 +6492,7 @@
             }
           },
           "400": {
-            "description": "Invalid request, including an unknown field"
+            "description": "Invalid request, including an unknown field or an invalid filter value"
           },
           "401": {
             "description": "Invalid bearer token"
