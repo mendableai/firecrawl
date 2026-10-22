@@ -3,6 +3,35 @@ import type { WebSearchResult } from "../lib/entities";
 import { fetchGovUpstream } from "../lib/research-upstream";
 import { hasCategory, type CategoryOption } from "../lib/search-query-builder";
 
+const optionalString = (value: unknown) =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
+const optionalStrings = (value: unknown) => {
+  const items = Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+  return items.length > 0 ? items : undefined;
+};
+
+// The index's legal labels, kept only when present so unlabeled pages keep
+// the plain web result shape.
+function legalLabels(result: any): Partial<WebSearchResult> {
+  const labels = {
+    jurisdiction: optionalString(result?.jurisdiction),
+    court: optionalString(result?.court),
+    court_type: optionalString(result?.court_type),
+    cites: optionalStrings(result?.cites),
+    cited_as: optionalStrings(result?.cited_as),
+    updated_at:
+      typeof result?.updated_at === "number" && result.updated_at > 0
+        ? result.updated_at
+        : undefined,
+  };
+  return Object.fromEntries(
+    Object.entries(labels).filter(([, value]) => value !== undefined),
+  );
+}
+
 export function wantsGovCategory(categories?: CategoryOption[]): boolean {
   return hasCategory(categories, "gov");
 }
@@ -52,6 +81,7 @@ export async function searchGovCategory(
           typeof result?.description === "string" ? result.description : "",
         position: index + 1,
         category: "gov",
+        ...legalLabels(result),
       }))
       .filter(result => result.url.length > 0);
   } catch (error) {

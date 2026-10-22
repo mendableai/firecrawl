@@ -12094,6 +12094,36 @@
                     "position": {
                       "type": "integer",
                       "description": "1-based rank in the result list."
+                    },
+                    "updated_at": {
+                      "type": "integer",
+                      "description": "When the page was crawled, in Unix milliseconds."
+                    },
+                    "jurisdiction": {
+                      "type": "string",
+                      "description": "Jurisdiction label: `us` for federal, or `us-` plus a two-letter state or territory code. Absent when the index has no label."
+                    },
+                    "court": {
+                      "type": "string",
+                      "description": "CourtListener court id, such as `scotus` or `ca9`. Absent when the index has no label."
+                    },
+                    "court_type": {
+                      "type": "string",
+                      "description": "Type of court, one of the `courtType` filter values. Absent when the index has no label."
+                    },
+                    "cites": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Citation ids of the laws and cases the page cites. Absent when none are known."
+                    },
+                    "cited_as": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Citation ids other pages cite this page by. Pass one as `cites` to find the pages citing it. Absent when none are known."
                     }
                   }
                 }
