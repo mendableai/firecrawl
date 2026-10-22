@@ -2125,6 +2125,7 @@ export const LOCKDOWN_DEFAULT_MAX_AGE_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 export type TeamFlags = {
   exchangeRetrieve?: boolean;
+  alexandriaAutoTools?: boolean;
   ignoreRobots?: "disabled" | "allowed" | "forced";
   customRobotsAgent?: "disabled" | "allowed";
   threatProtection?: "disabled" | "allowed" | "forced";

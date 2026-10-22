@@ -124,10 +124,6 @@ const configSchema = z.object({
   // Express
   EXPRESS_TRUST_PROXY: z.coerce.number().optional(),
 
-  GOV_INDEX_CALLS_PER_DAY: emptyStringAsDefault(
-    z.coerce.number().int().nonnegative().default(500),
-  ),
-
   // Keyless free tier (scrape/search/interact without an API key, per-IP/day).
   // Non-negative integers; 0 means "enabled but no budget", unset means "off".
   KEYLESS_CREDITS_PER_DAY: z.coerce.number().int().nonnegative().optional(),
@@ -399,6 +395,12 @@ const configSchema = z.object({
 
   // TypeSafe (Jev): judges search results for the `safe: true` filter.
   TYPESAFE_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
+
+  // Alexandria tool discovery: rewrite search queries with Anthropic before
+  // tool lookup, and add tools to default searches (also the alexandriaAutoTools
+  // team flag).
+  ANTHROPIC_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
+  ALEXANDRIA_AUTO_TOOLS: z.stringbool().default(false),
 
   // Exchange (routed data sources service)
   FIRE_EXCHANGE_URL: z.url().optional(),

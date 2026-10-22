@@ -125,6 +125,10 @@ export function keylessExhaustionTelemetry(ip: string): Record<string, string> {
 
 export { keylessTeamId, keylessTeamUuid };
 
+export function isKeylessTeamId(teamId: string): boolean {
+  return teamId.startsWith(KEYLESS_TEAM_PREFIX);
+}
+
 // The keyless identity (quota bucket) of a team: a client IP or a World ID
 // identity. Quota keys take it as is; prompts take keylessPromptIp.
 function keylessIpFromTeamId(teamId: string): string | null {
