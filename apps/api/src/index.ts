@@ -38,6 +38,7 @@ import { shutdownWebhookQueue } from "./services/webhook";
 import { shutdownIndexerQueue } from "./services/indexing/indexer-queue";
 import { isKeylessConfigured } from "./lib/keyless";
 import { shutdownPubSubLogging } from "./services/logging/log_job";
+import { adminAccessLog, shutdownAccessEvents } from "./lib/access-events";
 import { notFoundHandler } from "./lib/not-found";
 
 const { createBullBoard } = require("@bull-board/api");
@@ -110,6 +111,8 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   serverAdapter: serverAdapter,
 });
 
+app.use("/admin", adminAccessLog);
+
 if (config.BULL_AUTH_KEY) {
   serverAdapter.setBasePath(`/admin/${config.BULL_AUTH_KEY}/queues`);
   app.use(`/admin/${config.BULL_AUTH_KEY}/queues`, serverAdapter.getRouter());
@@ -174,6 +177,7 @@ async function startServer(port = DEFAULT_PORT) {
         shutdownWebhookQueue().finally(() => {
           shutdownIndexerQueue().finally(async () => {
             await shutdownPubSubLogging();
+            await shutdownAccessEvents();
             await shutdownTracing();
             logger.info("NUQ shutdown complete");
             process.exit(0);
