@@ -609,7 +609,8 @@ const configSchema = z.object({
   // https://api.firecrawl.dev/v2/slack/oauth/callback).
   SLACK_OAUTH_REDIRECT_URL: z.string().optional(),
   // 32-byte key (hex or base64) used to AES-256-GCM encrypt stored bot tokens.
-  // If unset, tokens are stored with a `plain:` prefix (self-hosted only).
+  // Required when ENV=production. Elsewhere, if unset, tokens are stored with a
+  // `plain:` prefix.
   SLACK_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   ALLOW_LOCAL_WEBHOOKS: z.stringbool().optional(),
   WEBHOOK_USE_RABBITMQ: z.stringbool().optional(),
