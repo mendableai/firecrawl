@@ -10,10 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: audit-npm-claude-remediation-${{ github.event.repository.default_branch }}
-  cancel-in-progress: false
-
 jobs:
   scan:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
@@ -24,8 +20,6 @@ jobs:
       pull-requests: read
     outputs:
       has_uncovered: ${{ steps.scan.outputs.has_uncovered }}
-      prompt: ${{ steps.scan.outputs.prompt }}
-      marker: ${{ steps.scan.outputs.marker }}
 
     steps:
       - name: Checkout default branch
@@ -60,6 +54,9 @@ jobs:
     if: ${{ needs.scan.outputs.has_uncovered == 'true' }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 60
+    concurrency:
+      group: audit-npm-claude-remediation-${{ github.event.repository.default_branch }}
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
@@ -83,25 +80,33 @@ jobs:
         with:
           version: 11.4.0
 
+      - name: Rescan default branch audit failures
+        id: scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/audit-ci-vuln-scan.mjs
+
       - name: Run Claude remediation
         id: claude
+        if: ${{ steps.scan.outputs.has_uncovered == 'true' }}
         uses: anthropics/claude-code-action@2cc1ac1331eac7a6a96d716dd204dd2888d0fcd2 # v1
         with:
           anthropic_api_key: ${{ secrets.NPM_AUDIT_CLAUDE_ANTHROPIC_API_KEY }}
           base_branch: ${{ github.event.repository.default_branch }}
           branch_prefix: claude/audit-ci/
-          prompt: ${{ needs.scan.outputs.prompt }}
+          prompt: ${{ steps.scan.outputs.prompt }}
           claude_args: |
             --max-turns 40
             --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebSearch,TodoWrite,Bash(pnpm:*),Bash(npm:*),Bash(node:*),Bash(git:*),Bash(gh:*),Bash(jq:*),Bash(rg:*),Bash(date:*)"
 
       - name: Ensure remediation PR marker
         id: remediation_pr
-        if: ${{ steps.claude.outputs.branch_name != '' }}
+        if: ${{ steps.scan.outputs.has_uncovered == 'true' && steps.claude.outputs.branch_name != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH_NAME: ${{ steps.claude.outputs.branch_name }}
-          MARKER: ${{ needs.scan.outputs.marker }}
+          MARKER: ${{ steps.scan.outputs.marker }}
         run: |
           set -euo pipefail
 
@@ -149,7 +154,7 @@ jobs:
           gh pr edit "$PR_NUMBER" --body-file "$UPDATED_BODY_FILE"
 
       - name: Request code review
-        if: ${{ steps.claude.outputs.branch_name != '' }}
+        if: ${{ steps.scan.outputs.has_uncovered == 'true' && steps.claude.outputs.branch_name != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH_NAME: ${{ steps.claude.outputs.branch_name }}
