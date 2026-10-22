@@ -11,7 +11,8 @@ overrides:
   # GHSA-4Q55-J62X-FR9H: all fixed in >=5.9.3; keep the 5.x line only.
   # The <6.0.0 ceiling cannot resolve to 6.x.
   devalue: ">=5.9.3 <6.0.0"
-  h3: ">=1.15.9"
+  # Keep the 1.x line only; unstorage@1 needs h3@^1.
+  h3: ">=1.15.9 <2.0.0"
   "picomatch@<4.0.4": ">=4.0.4"
   # GHSA-r4xh-jqrq-34v2: pin the 1.x line only. Exact 1.9.0 cannot
   # resolve to 2.x.
