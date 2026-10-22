@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("./tool-intent", () => ({
-  AUTO_TOOLS_BUDGET_MS: 1500,
+  AUTO_TOOLS_WAIT_MS: 300,
   inferToolIntent: mocks.inferToolIntent,
 }));
 
@@ -237,14 +237,36 @@ describe("executeSearch tool intent", () => {
       context,
       logger,
     );
-    expect(mocks.discoverTools).toHaveBeenCalledTimes(1);
+    expect(mocks.discoverTools).toHaveBeenCalledTimes(2);
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({ urls: ["https://example.com/"] }),
+      logger,
+    );
     expect(mocks.discoverTools).toHaveBeenCalledWith(
       expect.objectContaining({
         queries: ["website traffic statistics of a domain"],
-        urls: ["https://example.com/"],
+        urls: [],
       }),
       logger,
     );
+  });
+
+  it("waits at most 300ms past the web results for tools it did not ask for", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["US unemployment rate statistics"],
+      domains: [],
+      needsTools: true,
+    });
+    mocks.discoverTools.mockReturnValue(new Promise(() => {}));
+    const started = Date.now();
+    const result = await executeSearch(
+      { ...options([]), autoTools: true },
+      context,
+      logger,
+    );
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(result.response.tools).toBeUndefined();
   });
 
   it("never adds tools under zero data retention", async () => {

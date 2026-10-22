@@ -1,6 +1,6 @@
 import type { Logger } from "winston";
 import { discoverTools, isAlexandriaSource } from "./alexandria";
-import { AUTO_TOOLS_BUDGET_MS, inferToolIntent } from "./tool-intent";
+import { AUTO_TOOLS_WAIT_MS, inferToolIntent } from "./tool-intent";
 import { search } from "./v2";
 import {
   SearchV2Response,
@@ -122,7 +122,6 @@ export async function executeSearch(
 
   logger.info("Searching for results");
 
-  const startedAt = Date.now();
   const wantsTools = sources.some(isAlexandriaSource);
   const toolsAllowed =
     !zeroDataRetention &&
@@ -134,13 +133,13 @@ export async function executeSearch(
       ? inferToolIntent(query, logger)
       : null;
   const autoDiscovery =
-    toolIntent && !wantsTools && !options.domainTools
+    toolIntent && !wantsTools
       ? toolIntent
           .then(intent =>
             intent.needsTools
               ? discoverTools(
                   {
-                    toolDetail: "compact",
+                    toolDetail: options.toolDetail ?? "compact",
                     teamId,
                     connectors: flags?.exchangeRetrieve === true,
                     limit,
@@ -149,10 +148,7 @@ export async function executeSearch(
                       options.domainTools === false
                         ? []
                         : intent.domains.map(domain => `https://${domain}/`),
-                    timeoutMs: Math.max(
-                      1,
-                      AUTO_TOOLS_BUDGET_MS - (Date.now() - startedAt),
-                    ),
+                    timeoutMs: Math.min(options.timeout, 5000),
                   },
                   logger,
                 )
@@ -328,55 +324,66 @@ export async function executeSearch(
   let toolsUnavailable = false;
   let toolsAuto = false;
 
+  // Query tools a search did not ask for wait at most AUTO_TOOLS_WAIT_MS past the web results.
+  let timer: NodeJS.Timeout | undefined;
+  const readyAutoDiscovery = autoDiscovery
+    ? Promise.race([
+        autoDiscovery,
+        new Promise<null>(resolve => {
+          timer = setTimeout(() => resolve(null), AUTO_TOOLS_WAIT_MS);
+          timer.unref();
+        }),
+      ])
+    : null;
+
   if (toolsAllowed && (wantsTools || options.domainTools)) {
-    const intent = toolIntent ? await toolIntent : null;
-    const discovery = await discoverTools(
-      {
-        toolDetail: options.toolDetail ?? "compact",
-        teamId,
-        connectors: flags?.exchangeRetrieve === true,
-        limit,
-        queries: wantsTools
-          ? (intent?.toolQueries ?? [query])
-          : intent?.needsTools
-            ? intent.toolQueries
-            : undefined,
-        urls:
-          options.domainTools === false
-            ? []
-            : [
-                ...[
-                  ...(searchResponse.web ?? []),
-                  ...(searchResponse.news ?? []),
-                  ...indexResults,
-                ].flatMap(item => (item.url ? [item.url] : [])),
-                ...(intent?.domains ?? []).map(domain => `https://${domain}/`),
-              ],
-        timeoutMs: options.timeout,
-      },
-      logger,
-    );
-    searchResponse.tools = discovery.items;
-    toolsWarning = discovery.warning;
-    toolsUnavailable = discovery.unavailable === true;
-  } else if (autoDiscovery) {
-    let timer: NodeJS.Timeout | undefined;
-    const discovery = await Promise.race([
-      autoDiscovery,
-      new Promise<null>(resolve => {
-        timer = setTimeout(
-          () => resolve(null),
-          Math.max(0, AUTO_TOOLS_BUDGET_MS - (Date.now() - startedAt)),
-        );
-        timer.unref();
-      }),
+    const intent = wantsTools && toolIntent ? await toolIntent : null;
+    const [discovery, auto] = await Promise.all([
+      discoverTools(
+        {
+          toolDetail: options.toolDetail ?? "compact",
+          teamId,
+          connectors: flags?.exchangeRetrieve === true,
+          limit,
+          queries: wantsTools ? (intent?.toolQueries ?? [query]) : undefined,
+          urls:
+            options.domainTools === false
+              ? []
+              : [
+                  ...[
+                    ...(searchResponse.web ?? []),
+                    ...(searchResponse.news ?? []),
+                    ...indexResults,
+                  ].flatMap(item => (item.url ? [item.url] : [])),
+                  ...(intent?.domains ?? []).map(
+                    domain => `https://${domain}/`,
+                  ),
+                ],
+          timeoutMs: options.timeout,
+        },
+        logger,
+      ),
+      readyAutoDiscovery,
     ]);
-    clearTimeout(timer);
+    const seen = new Set(
+      discovery.items.map(tool => `${tool.provider}/${tool.capability}`),
+    );
+    searchResponse.tools = [
+      ...discovery.items,
+      ...(auto?.items ?? []).filter(
+        tool => !seen.has(`${tool.provider}/${tool.capability}`),
+      ),
+    ];
+    toolsWarning = discovery.warning;
+    toolsUnavailable = discovery.unavailable === true && !auto?.items.length;
+  } else if (readyAutoDiscovery) {
+    const discovery = await readyAutoDiscovery;
     if (discovery?.items.length) {
       searchResponse.tools = discovery.items;
       toolsAuto = true;
     }
   }
+  clearTimeout(timer);
 
   const isZDR = options.enterprise?.includes("zdr");
   const creditsPerTenResults = isZDR ? 10 : 2;

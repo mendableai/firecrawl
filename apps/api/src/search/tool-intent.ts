@@ -12,8 +12,8 @@ const INFERENCE_TIMEOUT_MS = 1000;
 const CACHE_SECONDS = 24 * 60 * 60;
 const MAX_TOOL_QUERIES = 3;
 
-/** Total time, from the start of a default search, that automatic tool discovery may take. */
-export const AUTO_TOOLS_BUDGET_MS = 1500;
+/** How long a search waits past its web results for tools it did not ask for. */
+export const AUTO_TOOLS_WAIT_MS = 300;
 
 export type ToolIntent = {
   /** Catalogue-style descriptions to search tools with, best first. */
