@@ -261,7 +261,7 @@ print_r($call['error'] ?? $call['data']);
 
 Pass `'providers' => [...]`, `'capabilities' => [...]` and `'expand' => ['options', 'examples']` to `findTools` to read a tool's options before you call it.
 
-Each `scrapeAlexandria` request sends an `x-request-id`, reused across the SDK's automatic retries so a paid call is not charged twice. The result carries it as `requestId`. A generated ID is only returned on success, so to recover from a timeout or network error, pass your own stable ID as `requestId:` on the first call, then retry with that ID and identical calls: if the original call completed you get its result, and if it is still running or unresolved the API answers 409 `request_in_flight` or 503 `request_unresolved` instead of running it again.
+Each `scrapeAlexandria` request sends an `x-request-id`, reused across the SDK's automatic retries so a paid call is not charged twice. The result carries it as `requestId`. A generated ID is only returned on success, so to recover from a timeout or network error, pass your own stable ID as `requestId:` on the first call, then retry with that ID and identical calls: the API returns the original result if that call completed and its response was retained. Otherwise it answers 409 `request_in_flight` while the call is still running, 503 `request_unresolved` if the outcome is unknown, or 409 `response_not_retained` for a completed zero-data-retention request, and it does not run the call again.
 
 ```php
 $requestId = bin2hex(random_bytes(16));
