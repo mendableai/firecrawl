@@ -17,6 +17,7 @@ vi.mock("../scrape", async importOriginal => ({
 
 import { config } from "../../../../../config";
 import { scrapeURLWithFireEngineChromeCDP } from "../index";
+import { brandingScreenshotCapturesTotal } from "../../../../../lib/branding/metrics";
 
 const logger = {
   debug: vi.fn(),
@@ -87,20 +88,20 @@ describe("branding first-screen screenshot", () => {
   const saved = {
     key: config.TYPESAFE_API_KEY,
     jev: config.BRANDING_JEV,
-    screenshot: config.BRANDING_JEV_SCREENSHOT,
+    percent: config.BRANDING_JEV_SCREENSHOT_PERCENT,
   };
 
   beforeEach(() => {
     fake.requests = [];
     config.TYPESAFE_API_KEY = "ts-test";
     config.BRANDING_JEV = undefined;
-    config.BRANDING_JEV_SCREENSHOT = undefined;
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
   });
 
   afterEach(() => {
     config.TYPESAFE_API_KEY = saved.key;
     config.BRANDING_JEV = saved.jev;
-    config.BRANDING_JEV_SCREENSHOT = saved.screenshot;
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = saved.percent;
   });
 
   it("captures a JPEG first screen after the branding scan and keeps it out of the document", async () => {
@@ -161,11 +162,31 @@ describe("branding first-screen screenshot", () => {
     expect(result.screenshot).toBe("https://storage.example/format.png");
   });
 
-  it("captures nothing for zero data retention, when switched off, when Jev is off, or without branding", async () => {
+  it("counts whether fire-engine returned the capture", async () => {
+    const count = async (outcome: string) =>
+      (await brandingScreenshotCapturesTotal.get()).values.find(
+        v => v.labels.outcome === outcome,
+      )?.value ?? 0;
+    const before = {
+      captured: await count("captured"),
+      missing: await count("missing"),
+    };
+
+    respondWith(["https://storage.example/branding.jpg"]);
+    await scrapeURLWithFireEngineChromeCDP(meta([{ type: "branding" }]));
+    fake.requests = [];
+    respondWith([], a => a.metadata?.__firecrawl_internal);
+    await scrapeURLWithFireEngineChromeCDP(meta([{ type: "branding" }]));
+
+    expect(await count("captured")).toBe(before.captured + 1);
+    expect(await count("missing")).toBe(before.missing + 1);
+  });
+
+  it("captures nothing for zero data retention, teams outside the rollout, when Jev is off, or without branding", async () => {
     const cases = [
       () => meta([{ type: "branding" }], { zeroDataRetention: true }),
       () => {
-        config.BRANDING_JEV_SCREENSHOT = false;
+        config.BRANDING_JEV_SCREENSHOT_PERCENT = 0;
         return meta([{ type: "branding" }]);
       },
       () => {
@@ -177,7 +198,7 @@ describe("branding first-screen screenshot", () => {
     for (const make of cases) {
       // each case starts from the defaults
       config.BRANDING_JEV = undefined;
-      config.BRANDING_JEV_SCREENSHOT = undefined;
+      config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
       fake.requests = [];
       respondWith([]);
       const result = await scrapeURLWithFireEngineChromeCDP(make());

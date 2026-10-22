@@ -57,6 +57,7 @@ import { youtubePostprocessor } from "../../postprocessors/youtube";
 import { withSpan, setSpanAttributes } from "../../../../lib/otel-tracer";
 import { getBrandingScript } from "./brandingScript";
 import { wantsBrandingScreenshot } from "../../../../lib/branding/jev";
+import { brandingScreenshotCapturesTotal } from "../../../../lib/branding/metrics";
 import { abTestFireEngine } from "../../../../services/ab-test";
 import { scheduleABComparison } from "../../../../services/ab-test-comparison";
 
@@ -391,7 +392,10 @@ export async function scrapeURLWithFireEngineChromeCDP(
     const brandingScreenshotAction =
       !wantsRawBase64 &&
       !!hasFormatOfType(meta.options.formats, "branding") &&
-      wantsBrandingScreenshot(meta.internalOptions.zeroDataRetention)
+      wantsBrandingScreenshot(
+        meta.internalOptions.teamId,
+        meta.internalOptions.zeroDataRetention,
+      )
         ? ({
             type: "screenshot" as const,
             fullPage: false,
@@ -559,6 +563,16 @@ export async function scrapeURLWithFireEngineChromeCDP(
       if (at >= 0) {
         brandingScreenshotUrl = response.screenshots![at];
         response.screenshots = response.screenshots!.filter((_, i) => i !== at);
+      }
+    }
+    if (brandingScreenshotAction) {
+      const outcome = brandingScreenshotUrl ? "captured" : "missing";
+      brandingScreenshotCapturesTotal.inc({ outcome });
+      setSpanAttributes(span, { "engine.branding_screenshot": outcome });
+      if (!brandingScreenshotUrl) {
+        meta.logger.warn("Branding screenshot not returned by fire-engine", {
+          actionResults: (response.actionResults ?? []).length,
+        });
       }
     }
 

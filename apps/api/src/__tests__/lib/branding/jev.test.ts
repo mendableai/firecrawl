@@ -29,6 +29,7 @@ import {
   wantsBrandingScreenshot,
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
+import { brandingJevScreenshotTotal } from "../../../lib/branding/metrics";
 import {
   brandingRoutedTotal,
   brandingJevBreakerOpensTotal,
@@ -214,6 +215,7 @@ const jevResponse = (overrides: Record<string, unknown> = {}) => ({
 const saved = {
   key: config.TYPESAFE_API_KEY,
   global: config.BRANDING_JEV,
+  screenshotPercent: config.BRANDING_JEV_SCREENSHOT_PERCENT,
 };
 
 beforeEach(() => {
@@ -247,6 +249,7 @@ afterEach(() => {
   vi.useRealTimers();
   config.TYPESAFE_API_KEY = saved.key;
   config.BRANDING_JEV = saved.global;
+  config.BRANDING_JEV_SCREENSHOT_PERCENT = saved.screenshotPercent;
 });
 
 const respondWith = (body: unknown) =>
@@ -403,10 +406,30 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
   });
 
+  it("captures the first screen for the rollout's share of teams only", () => {
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 0;
+    expect(wantsBrandingScreenshot("team-jev", false)).toBe(false);
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
+    expect(wantsBrandingScreenshot("team-jev", false)).toBe(true);
+    expect(wantsBrandingScreenshot("team-jev", true)).toBe(false);
+    expect(wantsBrandingScreenshot(undefined, false)).toBe(false);
+  });
+
   describe("with the page's first screen", () => {
-    // 1x1 PNG
-    const PNG =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    // A 1x1 PNG padded to a real page's screenshot size: the guard drops
+    // anything under 10 KB as a blank frame.
+    const SHOT = Buffer.concat([
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+      Buffer.alloc(30_000),
+    ]);
+    const PNG = SHOT.toString("base64");
+    const screenshotCount = async (outcome: string) =>
+      (await brandingJevScreenshotTotal.get()).values.find(
+        v => v.labels.outcome === outcome,
+      )?.value ?? 0;
     const sentWith = () => mocks.systemOne.mock.calls[0];
 
     afterEach(() => vi.unstubAllGlobals());
@@ -431,7 +454,7 @@ describe("branding with Jev", () => {
     it("downloads a screenshot fire-engine uploaded", async () => {
       const fetch = vi.fn(
         async () =>
-          new Response(Buffer.from(PNG, "base64"), {
+          new Response(SHOT, {
             status: 200,
             headers: { "content-type": "image/jpeg" },
           }),
@@ -452,7 +475,7 @@ describe("branding with Jev", () => {
     it("uses the download started when the engine returned instead of fetching again", async () => {
       const fetch = vi.fn(
         async () =>
-          new Response(Buffer.from(PNG, "base64"), {
+          new Response(SHOT, {
             status: 200,
             headers: { "content-type": "image/jpeg" },
           }),
@@ -477,7 +500,7 @@ describe("branding with Jev", () => {
       );
       await expect(
         loadFirstScreen("https://storage.example/branding.jpg", logger),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ outcome: "unreadable" });
     });
 
     it("skips a screenshot past the size cap without reading all of it", async () => {
@@ -491,11 +514,39 @@ describe("branding with Jev", () => {
       );
       await expect(
         loadFirstScreen("https://storage.example/huge.jpg", logger),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ outcome: "too_large" });
       const inline = Buffer.alloc(9 * 1024 * 1024).toString("base64");
       await expect(
         loadFirstScreen(`data:image/jpeg;base64,${inline}`, logger),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ outcome: "too_large" });
+    });
+
+    it("answers without a blank frame and counts it", async () => {
+      const blankBefore = await screenshotCount("blank");
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      // a black 1280x720 JPEG is ~6 KB
+      input.firstScreen = `data:image/jpeg;base64,${Buffer.alloc(6_000).toString("base64")}`;
+      await enhanceBrandingWithLLM(input);
+
+      expect(sentWith()[0].assets).toBeUndefined();
+      expect(sentWith()[1].headers).toBeUndefined();
+      expect(await screenshotCount("blank")).toBe(blankBefore + 1);
+    });
+
+    it("counts an attached screenshot, and none when there is no screenshot", async () => {
+      const before = {
+        attached: await screenshotCount("attached"),
+        none: await screenshotCount("none"),
+      };
+      mocks.systemOne.mockResolvedValue(jevResponse());
+      const withShot = baseInput(new CostTracking());
+      withShot.firstScreen = `data:image/png;base64,${PNG}`;
+      await enhanceBrandingWithLLM(withShot);
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+      expect(await screenshotCount("attached")).toBe(before.attached + 1);
+      expect(await screenshotCount("none")).toBe(before.none + 1);
     });
 
     it("answers without it when the screenshot can't be read", async () => {
@@ -598,7 +649,8 @@ describe("branding with Jev", () => {
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
     expect(mocks.systemOne).toHaveBeenCalledTimes(5);
     expect(generateObject).toHaveBeenCalledTimes(6);
-    expect(wantsBrandingScreenshot(false)).toBe(false);
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
+    expect(wantsBrandingScreenshot("team-jev", false)).toBe(false);
 
     // After the cooldown Jev is tried again, and a success keeps it in use.
     vi.setSystemTime(Date.now() + 61_000);

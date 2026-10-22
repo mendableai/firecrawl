@@ -579,9 +579,10 @@ const configSchema = z.object({
   // (lib/branding/jev.ts), with the LLM as fallback. BRANDING_JEV=false sends
   // every branding request to the LLM instead.
   BRANDING_JEV: emptyStringAsUndefined(z.stringbool()),
-  // Branding scrapes also capture the page's first screen for Jev to look at
-  // (an extra screenshot action; never for ZDR scrapes) unless this is false.
-  BRANDING_JEV_SCREENSHOT: emptyStringAsUndefined(z.stringbool()),
+  // Share of teams (0-100, stable per team) whose branding scrapes also
+  // capture the page's first screen for Jev to look at: an extra screenshot
+  // action, never for ZDR scrapes.
+  BRANDING_JEV_SCREENSHOT_PERCENT: z.coerce.number().min(0).max(100).default(0),
   BRANDING_JEV_TIMEOUT_MS: emptyStringAsUndefined(
     z.coerce.number().int().positive(),
   ),

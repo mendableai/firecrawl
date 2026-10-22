@@ -16,8 +16,13 @@ import {
   brandingJevBreakerOpensTotal,
   brandingJevCallsTotal,
   brandingJevDurationSeconds,
+  brandingJevScreenshotTotal,
+  brandingScreenshotBytes,
+  brandingScreenshotLoadSeconds,
   JevCallOutcome,
+  JevScreenshotOutcome,
 } from "./metrics";
+import { sampled } from "../rollout";
 import { BrandingEnhancement } from "./schema";
 import { BrandingLLMInput } from "./types";
 
@@ -535,19 +540,32 @@ type JevRequest = {
 const SCREENSHOT = "<screenshot>";
 const SCREENSHOT_FETCH_TIMEOUT_MS = 3000;
 const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
+// A 1280x720 JPEG of a real page is 25 KB and up; a black frame (the browser
+// had not drawn yet) is ~6 KB. Smaller than this, Jev answers without it.
+const SCREENSHOT_MIN_BYTES = 10_000;
 
 /** Whether a branding scrape captures a first screen for Jev to look at. */
 export function wantsBrandingScreenshot(
+  teamId: string | undefined,
   zeroDataRetention: boolean | undefined,
 ): boolean {
   return (
     isJevBrandingEnabled() &&
-    config.BRANDING_JEV_SCREENSHOT !== false &&
     !zeroDataRetention &&
+    !!teamId &&
+    sampled(`team:${teamId}`, config.BRANDING_JEV_SCREENSHOT_PERCENT) &&
     // Jev won't be called while its breaker is open.
     !isJevBreakerOpen()
   );
 }
+
+/** The first screen read for Jev: the image when usable, and what happened. */
+export type FirstScreen = {
+  image?: Image;
+  outcome: JevScreenshotOutcome;
+  bytes?: number;
+  loadMs: number;
+};
 
 /** The body, or undefined once it passes `max` bytes (the rest isn't read). */
 async function readCapped(
@@ -577,22 +595,47 @@ async function readCapped(
 
 /**
  * The first screen as a TypeSafe image: a PNG/JPEG data URL, or a URL to one
- * (fire-engine uploads screenshots). Undefined when it can't be read in time,
- * so Jev answers from the page data alone.
+ * (fire-engine uploads screenshots). No image when it can't be read in time,
+ * is too large, or is blank, so Jev answers from the page data alone. Never
+ * rejects, so it can start as soon as the engine returns.
  */
 export async function loadFirstScreen(
   firstScreen: string | undefined,
   logger: BrandingLLMInput["logger"],
-): Promise<Image | undefined> {
-  if (!firstScreen) return undefined;
+): Promise<FirstScreen> {
+  if (!firstScreen) return { outcome: "none", loadMs: 0 };
+  const started = Date.now();
+  const done = (
+    outcome: JevScreenshotOutcome,
+    bytes?: Uint8Array,
+  ): FirstScreen => {
+    const loadMs = Date.now() - started;
+    brandingScreenshotLoadSeconds.observe(loadMs / 1000);
+    if (bytes) brandingScreenshotBytes.observe(bytes.byteLength);
+    if (outcome === "blank") {
+      logger.warn("Branding screenshot blank, Jev answers without it", {
+        bytes: bytes?.byteLength,
+      });
+    }
+    return {
+      outcome,
+      loadMs,
+      ...(bytes ? { bytes: bytes.byteLength } : {}),
+      ...(outcome === "attached" && bytes ? { image: new Image(bytes) } : {}),
+    };
+  };
+  const checked = (bytes: Uint8Array) =>
+    done(bytes.byteLength < SCREENSHOT_MIN_BYTES ? "blank" : "attached", bytes);
   try {
     const inline = firstScreen.match(/^data:image\/(?:png|jpeg);base64,(.+)$/);
     if (inline) {
       // base64 is 4 characters per 3 bytes
-      if ((inline[1].length * 3) / 4 > SCREENSHOT_MAX_BYTES) return undefined;
-      return Image.fromBase64(inline[1]);
+      if ((inline[1].length * 3) / 4 > SCREENSHOT_MAX_BYTES) {
+        return done("too_large");
+      }
+      return checked(Buffer.from(inline[1], "base64"));
     }
-    if (!/^https?:\/\//.test(firstScreen)) return undefined;
+    if (!/^https?:\/\//.test(firstScreen)) return done("unreadable");
     const response = await fetch(firstScreen, {
       signal: AbortSignal.timeout(SCREENSHOT_FETCH_TIMEOUT_MS),
     });
@@ -602,19 +645,19 @@ export async function loadFirstScreen(
         status: response.status,
         type,
       });
-      return undefined;
+      return done("unreadable");
     }
     const bytes = await readCapped(response, SCREENSHOT_MAX_BYTES);
-    if (!bytes || bytes.byteLength === 0) {
-      logger.warn("Branding screenshot empty or too large for Jev", {
+    if (!bytes) {
+      logger.warn("Branding screenshot too large for Jev", {
         length: response.headers.get("content-length"),
       });
-      return undefined;
+      return done("too_large");
     }
-    return new Image(bytes);
+    return checked(bytes);
   } catch (error) {
     logger.warn("Branding screenshot could not be read for Jev", { error });
-    return undefined;
+    return done("unreadable");
   }
 }
 
@@ -1130,8 +1173,20 @@ export async function enhanceBrandingWithJev(
     count("breaker_open");
     return null;
   }
-  const screenshot = await (input.firstScreenImage ??
+  const firstScreen = await (input.firstScreenImage ??
     loadFirstScreen(input.firstScreen, input.logger));
+  const screenshot = firstScreen.image;
+  brandingJevScreenshotTotal.inc({ outcome: firstScreen.outcome });
+  const screenshotLabel = { screenshot: screenshot ? "yes" : "no" };
+  const screenshotLog = {
+    screenshot: firstScreen.outcome,
+    ...(firstScreen.bytes !== undefined
+      ? { screenshotBytes: firstScreen.bytes }
+      : {}),
+    ...(firstScreen.outcome !== "none"
+      ? { screenshotLoadMs: firstScreen.loadMs }
+      : {}),
+  };
   const started = Date.now();
   let request: JevRequest;
   let response: JevResponse;
@@ -1174,6 +1229,13 @@ export async function enhanceBrandingWithJev(
           feature: "branding",
           "branding.jev.questions": Object.keys(request.questions).length,
           "branding.jev.screenshot": !!screenshot,
+          "branding.jev.screenshot_outcome": firstScreen.outcome,
+          ...(firstScreen.bytes !== undefined
+            ? { "branding.jev.screenshot_bytes": firstScreen.bytes }
+            : {}),
+          ...(firstScreen.outcome !== "none"
+            ? { "branding.jev.screenshot_load_ms": firstScreen.loadMs }
+            : {}),
           ...(input.scrapeId ? { scrapeId: input.scrapeId } : {}),
           ...(input.teamId ? { teamId: input.teamId } : {}),
         },
@@ -1183,7 +1245,10 @@ export async function enhanceBrandingWithJev(
     // Only TypeSafe's own failures say anything about its health.
     if (called) {
       recordJevFailure(input);
-      brandingJevDurationSeconds.observe((Date.now() - started) / 1000);
+      brandingJevDurationSeconds.observe(
+        screenshotLabel,
+        (Date.now() - started) / 1000,
+      );
       count(
         error instanceof RateLimitError
           ? "rate_limited"
@@ -1195,13 +1260,17 @@ export async function enhanceBrandingWithJev(
     input.logger.warn("Jev branding call failed, falling back to LLM", {
       error,
       elapsedMs: Date.now() - started,
+      ...screenshotLog,
     });
     return null;
   }
   // A call that started before the breaker opened and succeeds late doesn't
   // close it: the next failure after the cooldown should reopen it at once.
   if (!isJevBreakerOpen()) consecutiveFailures = 0;
-  brandingJevDurationSeconds.observe((Date.now() - started) / 1000);
+  brandingJevDurationSeconds.observe(
+    screenshotLabel,
+    (Date.now() - started) / 1000,
+  );
 
   const inputTokens = response.usage?.input_tokens ?? 0;
   const outputTokens = response.usage?.output_tokens ?? 0;
@@ -1232,6 +1301,7 @@ export async function enhanceBrandingWithJev(
     inputTokens,
     questions: Object.keys(request.questions).length,
     logoConfidence: result.logoConfidence,
+    ...screenshotLog,
   });
   return result;
 }
