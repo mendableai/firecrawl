@@ -2,15 +2,17 @@
 
 set -e
 
+if [ "$(id -u)" = 0 ]; then
+  sysctl vm.overcommit_memory=1 || true
+  sysctl net.core.somaxconn=1024 || true
+fi
+
 mkdir -p /data/redis
 if [ "$(id -u)" = 0 ]; then
   chown 1001:1001 /data
   chown -R 1001:1001 /data/redis
   exec /usr/bin/setpriv --reuid=1001 --regid=1001 --clear-groups /usr/bin/start-redis-server.sh
 fi
-
-sysctl vm.overcommit_memory=1 || true
-sysctl net.core.somaxconn=1024 || true
 
 PW_ARG=""
 if [[ ! -z "${REDIS_PASSWORD}" ]]; then
