@@ -21,7 +21,7 @@ jobs:
       - name: Build Redis image
         run: docker build --tag firecrawl-redis:ci ./apps/redis
 
-      - name: Verify startup and disabled RESTORE
+      - name: Verify Redis startup and version
         run: |
           docker run --detach --name redis-image-check \
             --env FLY_VM_MEMORY_MB=256 firecrawl-redis:ci
@@ -36,8 +36,6 @@ jobs:
           test "$(docker exec redis-image-check redis-cli PING)" = PONG
           docker exec redis-image-check redis-cli INFO server \
             | tr -d '\r' | grep -q '^redis_version:8.8.3$'
-          docker exec redis-image-check redis-cli RESTORE test 0 invalid \
-            | grep -q "unknown command 'RESTORE'"
 
       - name: Remove test container
         if: always()

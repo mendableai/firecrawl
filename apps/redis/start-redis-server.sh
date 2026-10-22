@@ -34,5 +34,4 @@ redis-server $PW_ARG \
   --maxmemory-policy $MAXMEMORY_POLICY \
   --appendonly $APPENDONLY \
   --save "$SAVE" \
-  --rename-command RESTORE "" \
   --protected-mode no
