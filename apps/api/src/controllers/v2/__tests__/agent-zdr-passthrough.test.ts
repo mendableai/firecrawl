@@ -127,7 +127,12 @@ describe("agent passthroughs for zero data retention runs", () => {
     expect(res.json).toHaveBeenCalledWith(body);
     expect(fetch).toHaveBeenCalledWith(
       `https://agent.example/internal/extracts/${JOB_ID}/snapshots/${SNAPSHOT_ID}`,
-      expect.anything(),
+      {
+        headers: {
+          Authorization: "Bearer test",
+          "x-team-id": "team-123",
+        },
+      },
     );
   });
 

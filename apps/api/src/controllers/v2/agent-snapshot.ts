@@ -41,6 +41,7 @@ export async function agentSnapshotController(
     {
       headers: {
         Authorization: `Bearer ${config.AGENT_INTEROP_SECRET}`,
+        "x-team-id": req.auth.team_id,
       },
     },
   );
