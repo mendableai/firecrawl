@@ -50,6 +50,25 @@ describe("extractLinks integration", () => {
     expect(links).toContain("https://cdn.example.com/assets/style.css");
   });
 
+  it("should leave out javascript: pseudo-links", async () => {
+    const html = `
+      <html>
+        <body>
+          <a href="javascript:void(0)">Menu</a>
+          <a href="JavaScript:openChat()">Chat</a>
+          <a href=" java	script:;">Spaced</a>
+          <a href="/pricing">Pricing</a>
+          <a href="mailto:sales@example.org">Mail</a>
+        </body>
+      </html>
+    `;
+    const links = await extractLinks(html, "https://example.org/");
+    expect(links).toEqual([
+      "https://example.org/pricing",
+      "mailto:sales@example.org",
+    ]);
+  });
+
   it("should fallback to page URL when no base href", async () => {
     const html = `
       <html>
