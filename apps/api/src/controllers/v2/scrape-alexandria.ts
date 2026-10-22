@@ -47,6 +47,13 @@ const findToolsItems = (data: unknown): unknown[] => {
   return Array.isArray(items) ? items : [];
 };
 
+const agentInteropSchema = z.strictObject({
+  auth: z.string(),
+  requestId: z.string(),
+  shouldBill: z.boolean(),
+  boostConcurrency: z.boolean().optional(),
+});
+
 const providerScrapeSchema = z.strictObject({
   alexandria: z.preprocess(
     value => (Array.isArray(value) ? value : [value]),
@@ -61,14 +68,7 @@ const providerScrapeSchema = z.strictObject({
   origin: z.string().default("api"),
   integration: z.string().nullable().optional(),
   zeroDataRetention: z.boolean().optional(),
-  __agentInterop: z
-    .strictObject({
-      auth: z.string(),
-      requestId: z.string(),
-      shouldBill: z.boolean(),
-      boostConcurrency: z.boolean().optional(),
-    })
-    .optional(),
+  __agentInterop: agentInteropSchema.optional(),
 });
 
 export async function providerScrapeController(
@@ -76,7 +76,10 @@ export async function providerScrapeController(
   res: Response,
   legacy = false,
 ) {
-  const legacyZeroDataRetention = { zeroDataRetention: z.boolean().optional() };
+  const legacyZeroDataRetention = {
+    zeroDataRetention: z.boolean().optional(),
+    __agentInterop: agentInteropSchema.optional(),
+  };
   const legacyBody = legacy
     ? z
         .union([
@@ -87,9 +90,10 @@ export async function providerScrapeController(
     : null;
   const body = providerScrapeSchema.parse(
     legacyBody
-      ? (({ zeroDataRetention, ...rest }) => ({
+      ? (({ zeroDataRetention, __agentInterop, ...rest }) => ({
           alexandria: "requests" in rest ? rest.requests : [rest],
           zeroDataRetention,
+          __agentInterop,
         }))(legacyBody)
       : req.body,
   );
@@ -104,8 +108,7 @@ export async function providerScrapeController(
         .status(403)
         .json({ success: false, error: "Invalid agent interop." });
   }
-  const requestId =
-    body.__agentInterop?.requestId ?? req.get("x-request-id") ?? randomUUID();
+  const requestId = req.get("x-request-id") ?? randomUUID();
   if (REQUEST_ID_PATTERN.test(requestId))
     res.setHeader("x-request-id", requestId);
 
@@ -169,6 +172,7 @@ export async function providerScrapeController(
       calls: body.alexandria,
       resultAuthorization: req.get("authorization"),
       requestId,
+      agentRequestId: body.__agentInterop?.requestId,
       scrapeId: uuidv7(),
       timeoutMs: body.timeout,
       bypassBilling: body.__agentInterop?.shouldBill === false,
