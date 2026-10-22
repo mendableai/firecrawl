@@ -101,10 +101,16 @@ public class FirecrawlClient
     /// </summary>
     /// <param name="calls">The calls, each a provider, a capability and its options.</param>
     /// <param name="timeoutMs">Execution timeout in milliseconds, at most 120000 (the API's default).</param>
+    /// <param name="requestId">
+    /// The <c>x-request-id</c>, reused across automatic retries so a paid call is charged once.
+    /// Generated when omitted; pass a result's <see cref="AlexandriaScrapeData.RequestId"/> again
+    /// with the identical calls after an uncertain outcome.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<AlexandriaScrapeData> ScrapeAlexandriaAsync(
         IReadOnlyList<AlexandriaCall> calls,
         int? timeoutMs = null,
+        string? requestId = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(calls);
@@ -117,6 +123,9 @@ public class FirecrawlClient
         }
         if (timeoutMs is <= 0)
             throw new ArgumentOutOfRangeException(nameof(timeoutMs), "timeout must be positive");
+        requestId ??= Guid.NewGuid().ToString("N");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(requestId, "^[A-Za-z0-9._:-]{1,128}$"))
+            throw new ArgumentException("requestId must be 1 to 128 characters of A-Z, a-z, 0-9, '.', '_', ':' or '-'", nameof(requestId));
 
         var body = new Dictionary<string, object>
         {
@@ -127,16 +136,26 @@ public class FirecrawlClient
             body["timeout"] = timeoutMs.Value;
 
         // The API may answer up to 30 seconds after its execution deadline.
-        var response = await _http.PostAsync<ApiResponse<AlexandriaScrapeData>>(
+        var response = await _http.PostAsync<ApiResponse<AlexandriaResponseData>>(
             "/v2/scrape",
             body,
+            extraHeaders: new Dictionary<string, string> { ["x-request-id"] = requestId },
             cancellationToken: cancellationToken,
             minimumTimeout: TimeSpan.FromMilliseconds(Math.Min(timeoutMs ?? 120_000, 120_000) + 30_000));
 
         if (!response.Success && response.Error is not null)
             throw new FirecrawlException(response.Error, 200, response.Code, response.Details);
 
-        return response.Data ?? throw new FirecrawlException("Alexandria response contained no data");
+        var data = response.Data;
+        if (data?.Alexandria is null || data.CreditsCost is not >= 0)
+            throw new FirecrawlException($"Invalid alexandria response (request ID: {requestId})");
+
+        return new AlexandriaScrapeData
+        {
+            RequestId = requestId,
+            Alexandria = data.Alexandria,
+            CreditsCost = data.CreditsCost.Value,
+        };
     }
 
     /// <summary>

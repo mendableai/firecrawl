@@ -55,13 +55,23 @@ public class AlexandriaResult
 }
 
 /// <summary>
-/// The results of a data provider tool request, in call order, and the credits it cost.
+/// The results of a data provider tool request, in call order, the credits it cost,
+/// and the <c>x-request-id</c> it was sent with.
 /// </summary>
 public class AlexandriaScrapeData
 {
-    [JsonPropertyName("alexandria")]
+    public string RequestId { get; set; } = "";
+
     public List<AlexandriaResult> Alexandria { get; set; } = new();
 
-    [JsonPropertyName("creditsCost")]
     public int CreditsCost { get; set; }
+}
+
+internal class AlexandriaResponseData
+{
+    [JsonPropertyName("alexandria")]
+    public List<AlexandriaResult>? Alexandria { get; set; }
+
+    [JsonPropertyName("creditsCost")]
+    public int? CreditsCost { get; set; }
 }
