@@ -26,8 +26,11 @@ type RobustFetchParams<Schema extends z.Schema<any>> = {
   useCacheableLookup?: boolean;
 };
 
+// Logs only, so err on the side of redacting: any header whose name looks like
+// it could carry a credential (Authorization, X-Auth-*, Cookie, X-Password,
+// X-Session-Id, X-Api-Key, X-Signature, ...).
 const SENSITIVE_HEADER =
-  /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key)$|token|secret/i;
+  /auth|cookie|api[-_]?key|token|secret|passw|credential|session|signature|jwt/i;
 
 export function redactHeaders(
   headers: Record<string, string> | undefined,
