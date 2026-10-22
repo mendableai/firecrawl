@@ -2,7 +2,7 @@ import { redisRateLimitClient } from "../services/rate-limiter";
 import { logger } from "./logger";
 
 const WINDOW_SECONDS = 3600;
-const SOURCES = ["search", "find_tools"] as const;
+const SOURCES = ["search", "auto_search", "find_tools"] as const;
 type DiscoverySource = (typeof SOURCES)[number];
 type ToolRef = { provider: string; capability: string };
 export type CallDiscovery = Partial<

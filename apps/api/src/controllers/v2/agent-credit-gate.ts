@@ -22,7 +22,8 @@ export type AgentCreditGate =
  * asking for a little more than that balance:
  *
  * - below the minimum: refused, as before.
- * - can spend past the balance (overage, unlimited): runs as requested.
+ * - unlimited balance: runs as requested, without probing past it.
+ * - can spend past the balance (overage): runs as requested.
  * - cannot, but has an auto top-up: runs as requested, as before.
  * - otherwise: `maxCredits` is capped at the balance, and the agent service
  *   is told to stop the run if the balance runs out mid-flight.
@@ -60,6 +61,9 @@ export async function gateAgentCredits({
   if (minimum === null) return asRequested;
   if (!minimum.allowed) return { allowed: false, balance: minimum.remaining };
 
+  // An unlimited balance comes back as int64 max. Probing past it overflows
+  // the billing service's integer, so treat it as unlimited and skip the probe.
+  if (minimum.remaining >= Number.MAX_SAFE_INTEGER) return asRequested;
   const balance = Math.floor(minimum.remaining);
   if (!Number.isFinite(balance)) return asRequested;
   const pastBalance = await check(

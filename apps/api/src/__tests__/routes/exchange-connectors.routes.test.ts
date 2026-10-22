@@ -241,6 +241,34 @@ describe("Alexandria connector routes on the Exchange proxy", () => {
     );
   });
 
+  it("re-encodes path segments before forwarding", async () => {
+    keyResolvesAs({});
+    await request(app)
+      .patch("/exchange/team-skills/item%201")
+      .set("authorization", `Bearer ${KEY}`)
+      .send({ name: "Digest" });
+    expect(mocks.upstreamFetch).toHaveBeenCalledTimes(1);
+    expect(upstream().url).toBe(
+      "https://exchange.test/v1/team-skills/item%201",
+    );
+  });
+
+  it.each([
+    "/exchange/supply/..%2Fretrieve",
+    "/exchange/supply/%2e%2e%2Fretrieve",
+    "/exchange/supply/x%5C..%5Cretrieve",
+    "/exchange/supply/a//b",
+    "/exchange/supply/%E0%A4%A",
+  ])("refuses %s before reaching Exchange", async path => {
+    keyResolvesAs({ exchangeRetrieve: true });
+    const response = await request(app)
+      .post(path)
+      .set("authorization", `Bearer ${KEY}`)
+      .send({});
+    expect(response.status).toBe(400);
+    expect(mocks.upstreamFetch).not.toHaveBeenCalled();
+  });
+
   it("never forwards a caller's own x-exchange-connectors header", async () => {
     keyResolvesAs({});
     // A route open without the flag: the header must still not reach Exchange.

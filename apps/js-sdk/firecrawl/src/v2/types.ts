@@ -831,9 +831,32 @@ export interface DeveloperSearchResponse {
   sources?: DeveloperSearchSourceStatus[];
 }
 
+export type GovSearchCourtType =
+  | "federal-supreme"
+  | "federal-appellate"
+  | "federal-district"
+  | "federal-bankruptcy"
+  | "federal-special"
+  | "military"
+  | "state-supreme"
+  | "state-appellate"
+  | "state-trial"
+  | "state-special"
+  | "state-attorney-general";
+
 export interface GovSearchOptions {
   /** Total ranked results, 1–100 (default 10). */
   k?: number;
+  /** Keep only pages of one jurisdiction: "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc". */
+  jurisdiction?: string;
+  /** Keep only pages labeled for one court, by CourtListener court id, such as "scotus", "ca9" or "nysd". */
+  court?: string;
+  /** Keep only pages from one type of court. */
+  courtType?: GovSearchCourtType;
+  /** Keep only pages that cite one law or case, as a printed citation such as "42 U.S.C. § 1983" or "5 U.S. 137", or a citation id such as "us:usc:42:1983". */
+  cites?: string;
+  /** Keep only pages from one site, such as "irs.gov". */
+  domain?: string;
 }
 
 export interface GovSearchResponse {

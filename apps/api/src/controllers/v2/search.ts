@@ -53,14 +53,18 @@ import {
 import { wantsDeveloperCategory } from "../../search/developer";
 import { wantsGovCategory } from "../../search/gov";
 import {
-  govIndexDailyLimitMessage,
-  reserveGovIndexCalls,
+  indexDailyLimitRefusal,
+  reserveIndexCalls,
 } from "../../lib/index-daily-limit";
 import { requestOrigin } from "../../lib/request-origin";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
 import { recordDiscoveredTools } from "../../lib/alexandria-discovery";
+import {
+  autoToolsEnabled,
+  queryInferenceEnabled,
+} from "../../search/tool-intent";
 
 const RESEARCH_CATEGORY_NOTICE: Notice = {
   message:
@@ -153,6 +157,8 @@ async function searchControllerInner(
       typeof req.body?.origin === "string" ? req.body.origin : undefined;
     delete (req.body as Record<string, unknown>)?.objective;
     delete (req.body as Record<string, unknown>)?.clientModel;
+    const sourcesOmitted =
+      (req.body as Record<string, unknown>)?.sources === undefined;
     req.body = searchRequestSchema.parse(req.body);
 
     const wantsTools = req.body.sources.some(
@@ -417,7 +423,12 @@ async function searchControllerInner(
     }
 
     if (wantsGovCategory(categories)) {
-      const indexBudget = await reserveGovIndexCalls(req.auth.team_id, 1);
+      const indexBudget = await reserveIndexCalls(
+        "gov",
+        req.auth.team_id,
+        req.acuc?.rate_limit_multiplier ?? 1,
+        1,
+      );
       if (!indexBudget.ok) {
         if (reservedKeylessCredits > 0) {
           await adjustKeylessCredits(req.auth.team_id, -reservedKeylessCredits);
@@ -427,7 +438,7 @@ async function searchControllerInner(
         return res.status(429).json({
           success: false,
           code: "INDEX_DAILY_LIMIT",
-          error: govIndexDailyLimitMessage(indexBudget),
+          ...indexDailyLimitRefusal("gov", req.auth.team_id, indexBudget),
         });
       }
     }
@@ -451,6 +462,12 @@ async function searchControllerInner(
         highlights: req.body.highlights,
         domainTools: req.body.domainTools,
         toolDetail: req.body.toolDetail,
+        inferToolQuery: queryInferenceEnabled(),
+        autoTools:
+          (sourcesOmitted || req.body.domainTools === true) &&
+          !req.auth.team_id.startsWith("preview_keyless_") &&
+          config.FIRE_EXCHANGE_URL !== undefined &&
+          autoToolsEnabled(req.acuc?.flags),
         timeout: req.body.timeout,
       },
       {
@@ -604,7 +621,7 @@ async function searchControllerInner(
       markAlexandriaActivity(req.auth.team_id);
       recordDiscoveredTools(
         req.auth.team_id,
-        "search",
+        result.toolsAuto ? "auto_search" : "search",
         jobId,
         result.response.tools,
       );

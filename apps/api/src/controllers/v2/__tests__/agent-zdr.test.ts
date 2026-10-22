@@ -176,9 +176,37 @@ describe("agentController zero data retention", () => {
     expect(logRequest).not.toHaveBeenCalled();
   });
 
-  it("rejects exchange options under ZDR", async () => {
+  it.each([
+    [
+      "opted in",
+      { zeroDataRetention: true },
+      { scrapeZDR: "allowed", searchZDR: "allowed" },
+    ],
+    ["forced", {}, { scrapeZDR: "forced", searchZDR: "forced-zdr" }],
+  ])(
+    "forwards exchange options with the ZDR flag when %s",
+    async (_name, body, flags) => {
+      const exchange = { enabled: true, toolkits: ["fred"], maxCalls: 4 };
+      const res = await run({ ...body, exchange }, flags);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(forwardedBody()).toMatchObject({
+        exchange,
+        zeroDataRetention: true,
+      });
+      expect(logRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ zeroDataRetention: true }),
+      );
+    },
+  );
+
+  it("rejects a thread follow-up under ZDR even when it asks for exchange", async () => {
     const res = await run(
-      { zeroDataRetention: true, exchange: { enabled: true } },
+      {
+        zeroDataRetention: true,
+        threadId: "0190e3c8-4b2a-7c3d-8e9f-0a1b2c3d4e5f",
+        exchange: { enabled: true },
+      },
       { scrapeZDR: "allowed", searchZDR: "allowed" },
     );
 
@@ -186,11 +214,19 @@ describe("agentController zero data retention", () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: "zdr_exchange_unsupported",
+        code: "zdr_threads_unsupported",
       }),
     );
     expect(fetch).not.toHaveBeenCalled();
-    expect(logRequest).not.toHaveBeenCalled();
+  });
+
+  it("forwards exchange options unchanged without ZDR", async () => {
+    const exchange = { enabled: true };
+    const res = await run({ exchange }, {});
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(forwardedBody().exchange).toEqual(exchange);
+    expect(forwardedBody()).not.toHaveProperty("zeroDataRetention");
   });
 
   it("marks rejected threat events as ZDR", async () => {

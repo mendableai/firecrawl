@@ -19,7 +19,7 @@ jobs:
             working-directory: './apps/redis'
         steps:
           - name: 'Checkout GitHub Action'
-            uses: actions/checkout@main
+            uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
 
           - name: 'Login to GitHub Container Registry'
             uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
