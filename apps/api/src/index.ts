@@ -175,19 +175,22 @@ function startAdminInternalServer(port: number) {
     },
   );
 
-  return adminApp.listen(port, HOST, (error?: Error) => {
+  const host = config.ADMIN_INTERNAL_HOST;
+  return adminApp.listen(port, host, (error?: Error) => {
     if (error) {
       logger.error("Failed to start internal admin server", {
         error,
         port,
-        host: HOST,
+        host,
       });
       throw error;
     }
 
-    logger.info(
-      `Worker ${process.pid} serving internal admin routes on port ${port}`,
-    );
+    logger.info("Internal admin server listening", {
+      pid: process.pid,
+      port,
+      host,
+    });
   });
 }
 
@@ -225,8 +228,13 @@ async function startServer(port = DEFAULT_PORT) {
       logger.info("Waiting 60s for GCE load balancer drain timeout");
       await new Promise(resolve => setTimeout(resolve, 60000));
     }
-    adminInternalServer?.close();
-    server.close(() => {
+    const adminInternalClosed = new Promise<void>(resolve =>
+      adminInternalServer
+        ? adminInternalServer.close(() => resolve())
+        : resolve(),
+    );
+    server.close(async () => {
+      await adminInternalClosed;
       logger.info("Server closed.");
       nuqShutdown().finally(() => {
         shutdownWebhookQueue().finally(() => {

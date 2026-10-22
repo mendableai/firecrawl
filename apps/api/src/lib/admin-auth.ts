@@ -8,14 +8,16 @@ export function bearerToken(
   value: string | string[] | undefined,
 ): string | null {
   const header = Array.isArray(value) ? value[0] : value;
-  return header?.startsWith("Bearer ") ? header.slice(7) : null;
+  return header?.slice(0, 7).toLowerCase() === "bearer "
+    ? header.slice(7)
+    : null;
 }
 
 export function secretsMatch(
   provided: string | null,
   expected?: string,
 ): boolean {
-  if (!provided || !expected) return false;
+  if (!provided || !expected?.trim()) return false;
   const left = Buffer.from(provided);
   const right = Buffer.from(expected);
   return left.length === right.length && crypto.timingSafeEqual(left, right);
@@ -43,7 +45,9 @@ export function adminAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
-  logger.info(`Admin request ${req.method} ${req.baseUrl}${req.path}`, {
+  logger.info("Admin request authenticated", {
+    method: req.method,
+    path: `${req.baseUrl}${req.path}`,
     matchedKey: current ? "current" : "previous",
   });
   next();

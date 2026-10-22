@@ -234,8 +234,9 @@ const configSchema = z.object({
   BULL_AUTH_KEY_PREVIOUS: emptyStringAsUndefined(z.string()),
   BULL_AUTH_KEY_PATH_ROUTES: emptyStringAsDefault(z.stringbool().default(true)),
   ADMIN_INTERNAL_PORT: emptyStringAsUndefined(
-    z.coerce.number().int().positive(),
+    z.coerce.number().int().positive().max(65535),
   ),
+  ADMIN_INTERNAL_HOST: emptyStringAsDefault(z.string().default("localhost")),
   S2S_FIRECRAWL_INTEGRATIONS_TO_FIRECRAWL_API_KEY: emptyStringAsUndefined(
     z.string().trim().min(1),
   ),

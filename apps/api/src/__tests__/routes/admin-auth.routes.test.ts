@@ -61,6 +61,7 @@ describe("adminAuth", () => {
 
     expect(response.status).toBe(200);
     expect(matchedKeys(info)).toEqual(["previous"]);
+    expect(JSON.stringify(info.mock.calls)).not.toContain(PREVIOUS);
   });
 
   it("rejects the previous key once it is cleared", async () => {
