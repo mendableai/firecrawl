@@ -69,6 +69,22 @@ describe("extractLinks integration", () => {
     ]);
   });
 
+  it("should leave out javascript: pseudo-links in Markdown", async () => {
+    const markdown = [
+      "[Menu](javascript:void(0)) and [Pricing](/pricing).",
+      "",
+      "<javascript:openChat()> and [chat][].",
+      "",
+      "[chat]: JavaScript:openChat()",
+    ].join("\n");
+    const links = await extractLinks(
+      markdown,
+      "https://example.org/",
+      "text/markdown",
+    );
+    expect(links).toEqual(["https://example.org/pricing"]);
+  });
+
   it("should fallback to page URL when no base href", async () => {
     const html = `
       <html>
