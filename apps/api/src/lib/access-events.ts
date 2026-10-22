@@ -40,7 +40,7 @@ const ADMIN_OPEN_SEGMENTS = new Set(["acuc-cache-clear", "integration"]);
 const pod = hostname();
 const keySeenLocal = new Map<string, number>();
 let topic: Topic | null | undefined;
-let pendingPublishes = 0;
+const pendingPublishes = new Set<Promise<unknown>>();
 let lastFailureWarningAt = 0;
 
 function getTopic(): Topic | null {
@@ -64,7 +64,7 @@ function getTopic(): Topic | null {
 
 function publish(event: AccessEvent): void {
   const target = getTopic();
-  if (!target || pendingPublishes >= MAX_PENDING_PUBLISHES) return;
+  if (!target || pendingPublishes.size >= MAX_PENDING_PUBLISHES) return;
 
   const payload = Buffer.from(
     JSON.stringify({
@@ -85,8 +85,7 @@ function publish(event: AccessEvent): void {
     }),
   );
 
-  pendingPublishes++;
-  target
+  const publication = target
     .publishMessage({ data: payload })
     .catch(error => {
       const now = Date.now();
@@ -96,8 +95,9 @@ function publish(event: AccessEvent): void {
       }
     })
     .finally(() => {
-      pendingPublishes--;
+      pendingPublishes.delete(publication);
     });
+  pendingPublishes.add(publication);
 }
 
 /** The network an address belongs to: /24 for IPv4, /48 for IPv6. */
@@ -170,7 +170,8 @@ export function recordKeySeen(req: Request, chunk: AuthCreditUsageChunk): void {
   const localExpiry = keySeenLocal.get(dedupeKey);
   if (localExpiry !== undefined && localExpiry > now) return;
   if (keySeenLocal.size >= KEY_SEEN_LOCAL_MAX) keySeenLocal.clear();
-  keySeenLocal.set(dedupeKey, now + KEY_SEEN_WINDOW_SECONDS * 1000);
+  const expiry = now + KEY_SEEN_WINDOW_SECONDS * 1000;
+  keySeenLocal.set(dedupeKey, expiry);
 
   const fullIp =
     config.ACCESS_EVENTS_FULL_IP_TEAM_IDS?.includes(chunk.team_id) === true;
@@ -191,6 +192,8 @@ export function recordKeySeen(req: Request, chunk: AuthCreditUsageChunk): void {
       if (result === "OK") publish(event);
     })
     .catch(error => {
+      if (keySeenLocal.get(dedupeKey) === expiry)
+        keySeenLocal.delete(dedupeKey);
       logger.debug("Access event dedupe failed", { error });
     });
 }
@@ -245,5 +248,6 @@ export function adminAccessLog(
 }
 
 export async function shutdownAccessEvents(): Promise<void> {
-  if (topic) await topic.flush().catch(() => undefined);
+  if (!topic) return;
+  await Promise.allSettled([topic.flush(), ...pendingPublishes]);
 }

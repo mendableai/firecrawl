@@ -370,7 +370,9 @@ const configSchema = z.object({
     z
       .string()
       .trim()
-      .regex(/^projects\/[^/]+\/topics\/[^/]+$/),
+      .regex(
+        /^projects\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/topics\/[A-Za-z][\w.~+%-]{2,254}$/,
+      ),
   ),
   // Teams whose access events keep the full client IP. Every other team's
   // events carry the /24 (IPv4) or /48 (IPv6) network only.
@@ -856,6 +858,13 @@ const validatedConfigSchema = configSchema.superRefine((value, context) => {
       path: ["EXTRACTION_PROVIDER_SHADOW_PERCENT"],
       message:
         "EXTRACTION_PROVIDER_ROLLOUT_PERCENT + EXTRACTION_PROVIDER_SHADOW_PERCENT must not exceed 100",
+    });
+  }
+  if (value.ACCESS_EVENTS_TOPIC && !value.PUBSUB_CREDENTIALS?.trim()) {
+    context.addIssue({
+      code: "custom",
+      path: ["PUBSUB_CREDENTIALS"],
+      message: "ACCESS_EVENTS_TOPIC requires PUBSUB_CREDENTIALS",
     });
   }
   for (const error of getMcpActionLogConfigErrors(value)) {

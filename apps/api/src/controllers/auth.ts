@@ -918,6 +918,15 @@ async function supaAuthenticateUser(
     }
 
     const resolvedApi = parseApi(delegation.api_key);
+    const resolvedLabel = denylistLabel(resolvedApi);
+    if (resolvedLabel !== undefined) {
+      recordRejectedKey(req, resolvedLabel);
+      return denied(req, "unknown_key", {
+        success: false,
+        error: "Unauthorized: Invalid token",
+        status: 401,
+      });
+    }
     chunk = await getACUC(
       resolvedApi,
       false,
@@ -975,6 +984,15 @@ async function supaAuthenticateUser(
 
     // Use the resolved fc- API key to get the normal ACUC chunk
     const resolvedApi = parseApi(introspection.api_key);
+    const resolvedLabel = denylistLabel(resolvedApi);
+    if (resolvedLabel !== undefined) {
+      recordRejectedKey(req, resolvedLabel);
+      return denied(req, "unknown_key", {
+        success: false,
+        error: "Unauthorized: Invalid token",
+        status: 401,
+      });
+    }
     chunk = await getACUC(
       resolvedApi,
       false,

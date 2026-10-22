@@ -82,6 +82,8 @@ const captureRawBody = (
   }
 };
 
+app.use("/admin", adminAccessLog);
+
 registerMcpActionLogIngestRoute(app);
 
 app.use(bodyParser.urlencoded({ extended: true, verify: captureRawBody }));
@@ -110,8 +112,6 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   ],
   serverAdapter: serverAdapter,
 });
-
-app.use("/admin", adminAccessLog);
 
 if (config.BULL_AUTH_KEY) {
   serverAdapter.setBasePath(`/admin/${config.BULL_AUTH_KEY}/queues`);
