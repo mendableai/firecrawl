@@ -30,9 +30,10 @@ func (c *Converter) ConvertHTMLToMarkdown(html string) (string, error) {
 	return c.converter.ConvertString(html)
 }
 
-// definitionListRules write a <dl> as a definition list: each term on a line of
-// its own and each definition after ": ", with its further lines indented, as
-// Pandoc, PHP Markdown Extra and kramdown read it. The converter has no rule for
+// definitionListRules write a <dl> as Pandoc writes a definition list: each term
+// on a line of its own, then each definition after ":   ", with its further
+// lines indented by four spaces. Terms that share a definition go on
+// consecutive lines, as in PHP Markdown Extra. The converter has no rule for
 // these elements, so a term ran into its definition ("TermDefinition").
 var definitionListRules = []md.Rule{
 	{
@@ -67,7 +68,9 @@ var definitionListRules = []md.Rule{
 					lines[i] = "    " + lines[i]
 				}
 			}
-			return md.String("\n: " + strings.Join(lines, "\n"))
+			// The marker puts the first line at the column of the further lines,
+			// so lists and code blocks in a definition keep their shape.
+			return md.String("\n:   " + strings.Join(lines, "\n"))
 		},
 	},
 }

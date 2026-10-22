@@ -266,7 +266,7 @@ func TestConverter_DefinitionList(t *testing.T) {
 		t.Fatalf("conversion failed: %v", err)
 	}
 
-	expected := "API\n: Application programming interface.\n\nSDK\nKit\n: A set of tools."
+	expected := "API\n:   Application programming interface.\n\nSDK\nKit\n:   A set of tools."
 	if markdown != expected {
 		t.Errorf("expected %q, got %q", expected, markdown)
 	}

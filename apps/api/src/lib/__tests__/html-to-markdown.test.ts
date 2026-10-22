@@ -55,8 +55,8 @@ describe("parseMarkdown", () => {
       "<dt>SDK</dt><dt>Kit</dt><dd>A set of <b>tools</b>.</dd><dd><p>Also a bundle.</p><p>Of tools.</p></dd>" +
       "</dl><p>After.</p>";
     await expect(parseMarkdown(html)).resolves.toBe(
-      "Glossary:\n\nAPI\n: Application programming interface.\n\n" +
-        "SDK\nKit\n: A set of **tools**.\n: Also a bundle.\n\n    Of tools.\n\nAfter.",
+      "Glossary:\n\nAPI\n:   Application programming interface.\n\n" +
+        "SDK\nKit\n:   A set of **tools**.\n:   Also a bundle.\n\n    Of tools.\n\nAfter.",
     );
   });
 });
