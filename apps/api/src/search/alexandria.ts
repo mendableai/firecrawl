@@ -44,7 +44,8 @@ export async function discoverTools(
   input: {
     teamId: string;
     toolDetail?: "compact" | "summary" | "full";
-    query?: string;
+    /** Semantic queries, best first; their results are interleaved by rank. */
+    queries?: string[];
     /** May still be pending; the semantic lookup starts without waiting for it. */
     urls?: string[] | Promise<string[]>;
     limit: number;
@@ -143,11 +144,23 @@ export async function discoverTools(
       }
     }
   };
+  const queries = [...new Set(input.queries ?? [])];
   const semanticDeadline = budget();
-  const semantic = input.query
-    ? leg("Semantic tool discovery unavailable", semanticDeadline, () =>
-        lookup({ query: input.query }, semanticDeadline),
-      )
+  const semantic = queries.length
+    ? leg("Semantic tool discovery unavailable", semanticDeadline, async () => {
+        const settled = await Promise.allSettled(
+          queries.map(query => lookup({ query }, semanticDeadline)),
+        );
+        const lists = settled.flatMap(result =>
+          result.status === "fulfilled" ? [result.value] : [],
+        );
+        if (!lists.length) throw (settled[0] as PromiseRejectedResult).reason;
+        const depth = Math.max(...lists.map(list => list.length));
+        const ordered: (typeof lists)[number] = [];
+        for (let rank = 0; rank < depth; rank++)
+          for (const list of lists) if (list[rank]) ordered.push(list[rank]);
+        return ordered;
+      })
     : undefined;
   const domain = (async () => {
     const urls = [...new Set((await input.urls) ?? [])].filter(value => {
