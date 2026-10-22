@@ -91,6 +91,77 @@ public class FirecrawlClient
         return response.Data ?? throw new FirecrawlException("Scrape response contained no data");
     }
 
+    // ================================================================
+    // DATA PROVIDER TOOLS (ALEXANDRIA)
+    // ================================================================
+
+    /// <summary>
+    /// Runs up to 10 data provider tool calls in one request. A failed call carries
+    /// its <see cref="AlexandriaResult.Error"/> instead of throwing.
+    /// </summary>
+    /// <param name="calls">The calls, each a provider, a capability and its options.</param>
+    /// <param name="timeoutMs">Execution timeout in milliseconds, at most 120000 (the API's default).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<AlexandriaScrapeData> ScrapeAlexandriaAsync(
+        IReadOnlyList<AlexandriaCall> calls,
+        int? timeoutMs = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(calls);
+        if (calls.Count is 0 or > 10)
+            throw new ArgumentException("alexandria accepts 1 to 10 calls", nameof(calls));
+        for (var i = 0; i < calls.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(calls[i].Provider) || string.IsNullOrWhiteSpace(calls[i].Capability))
+                throw new ArgumentException($"alexandria[{i}] needs a provider and a capability", nameof(calls));
+        }
+        if (timeoutMs is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(timeoutMs), "timeout must be positive");
+
+        var body = new Dictionary<string, object>
+        {
+            ["alexandria"] = calls,
+            ["origin"] = SdkOrigin,
+        };
+        if (timeoutMs.HasValue)
+            body["timeout"] = timeoutMs.Value;
+
+        // The API may answer up to 30 seconds after its execution deadline.
+        var response = await _http.PostAsync<ApiResponse<AlexandriaScrapeData>>(
+            "/v2/scrape",
+            body,
+            cancellationToken: cancellationToken,
+            minimumTimeout: TimeSpan.FromMilliseconds(Math.Min(timeoutMs ?? 120_000, 120_000) + 30_000));
+
+        if (!response.Success && response.Error is not null)
+            throw new FirecrawlException(response.Error, 200, response.Code, response.Details);
+
+        return response.Data ?? throw new FirecrawlException("Alexandria response contained no data");
+    }
+
+    /// <summary>
+    /// Finds data provider tools for a task. Free. Returns the find-tools data
+    /// (<c>items</c>, <c>total</c>, <c>next</c>); each item names the provider and
+    /// capability to pass to <see cref="ScrapeAlexandriaAsync"/>.
+    /// </summary>
+    /// <param name="options">Find-tools options such as <c>query</c>, <c>limit</c>, <c>providers</c>, <c>capabilities</c> and <c>expand</c>.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<JsonElement> FindToolsAsync(
+        Dictionary<string, object>? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var data = await ScrapeAlexandriaAsync(
+            new[] { new AlexandriaCall { Provider = "firecrawl", Capability = "find-tools", Options = options ?? new() } },
+            cancellationToken: cancellationToken);
+
+        var result = data.Alexandria.FirstOrDefault()
+            ?? throw new FirecrawlException("Alexandria response contained no find-tools result");
+        if (result.Error is not null)
+            throw new FirecrawlException(result.Error.Message ?? "find-tools failed", result.Error.Status ?? 0, result.Error.Code, null);
+
+        return result.Data ?? throw new FirecrawlException("find-tools result contained no data");
+    }
+
     /// <summary>
     /// Runs code or a natural-language prompt in the browser session of a scrape job.
     /// </summary>

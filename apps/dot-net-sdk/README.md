@@ -324,6 +324,32 @@ foreach (var result in response.Results!)
 }
 ```
 
+### Data Provider Tools
+
+Find a data provider tool (Alexandria) for a task, then run it. `FindToolsAsync` is free; a tool run costs that tool's credits (each item's `creditsCost`).
+
+```csharp
+var tools = await client.FindToolsAsync(new Dictionary<string, object>
+{
+    ["query"] = "npm package downloads",
+    ["limit"] = 3,
+});
+var tool = tools.GetProperty("items")[0];
+
+var result = await client.ScrapeAlexandriaAsync(new[]
+{
+    new AlexandriaCall
+    {
+        Provider = tool.GetProperty("provider").GetString()!,
+        Capability = tool.GetProperty("capability").GetString()!,
+        Options = new() { ["packages"] = new[] { "firecrawl" }, ["period"] = "last-week" },
+    },
+});
+
+var call = result.Alexandria[0];
+Console.WriteLine(call.Error?.Message ?? call.Data.ToString());
+```
+
 ### Usage & Metrics
 
 ```csharp
