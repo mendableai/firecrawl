@@ -13,6 +13,8 @@ export const isAlexandriaSource = (source: { type: string }) =>
 type ToolDiscovery = {
   items: DiscoveredTool[];
   warning?: string;
+  /** Every discovery leg failed and nothing was found. */
+  unavailable?: true;
 };
 
 type SourceLike = string | { type: string };
@@ -46,13 +48,16 @@ export async function discoverTools(
     urls?: string[];
     limit: number;
     timeoutMs: number;
+    /** The team may use its own MCP connectors: their listed tools join its discovery. */
+    connectors?: boolean;
   },
   logger: Logger,
 ): Promise<ToolDiscovery> {
   const deadline = Date.now() + Math.min(10000, input.timeoutMs);
   const items = new Map<string, DetailedDiscoveredTool>();
   const selected = { semantic: new Set<string>(), domain: new Set<string>() };
-  let failed = false;
+  let attempted = 0;
+  let answered = 0;
   const remaining = () => {
     if (Date.now() >= deadline) throw new Error("Tool discovery timed out");
     return deadline - Date.now();
@@ -63,6 +68,7 @@ export async function discoverTools(
       path: "/v1/retrieve",
       timeoutMs: remaining(),
       maximumCredits: 0,
+      connectors: input.connectors === true,
       body: {
         provider: "firecrawl",
         capability: "find-tools",
@@ -119,15 +125,24 @@ export async function discoverTools(
       });
     }
   };
-  if (input.query) {
-    try {
+  const leg = async (message: string, run: () => Promise<void>) => {
+    attempted++;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await run();
+        answered++;
+        return;
+      } catch (error) {
+        logger.warn(message, { error, attempt });
+        if (attempt >= 2 || Date.now() >= deadline) return;
+      }
+    }
+  };
+  if (input.query)
+    await leg("Semantic tool discovery unavailable", async () => {
       for (const tool of await lookup({ query: input.query }))
         merge(tool, "semantic");
-    } catch (error) {
-      failed = true;
-      logger.warn("Semantic tool discovery unavailable", { error });
-    }
-  }
+    });
   const urls = [...new Set(input.urls ?? [])].filter(value => {
     const url = URL.parse(value);
     return (
@@ -138,8 +153,8 @@ export async function discoverTools(
       value.length <= 8192
     );
   });
-  if (urls.length) {
-    try {
+  if (urls.length)
+    await leg("Domain tool discovery unavailable", async () => {
       // Resolve domains once; Exchange owns matching and provider visibility.
       for (let i = 0; i < urls.length; i += 100) {
         const result = await exchangeRequest({
@@ -147,6 +162,7 @@ export async function discoverTools(
           path: "/v1/skills/resolve",
           body: { urls: urls.slice(i, i + 100) },
           timeoutMs: remaining(),
+          connectors: input.connectors === true,
         });
         if (result.status !== 200)
           throw new Error("Domain discovery unavailable");
@@ -208,11 +224,7 @@ export async function discoverTools(
               );
         }
       }
-    } catch (error) {
-      failed = true;
-      logger.warn("Domain tool discovery unavailable", { error });
-    }
-  }
+    });
   return {
     items: [...items.values()].map(tool =>
       input.toolDetail === "compact"
@@ -223,8 +235,11 @@ export async function discoverTools(
           }
         : tool,
     ),
-    ...(failed
+    ...(answered < attempted
       ? { warning: "Some tool discovery results are unavailable." }
+      : {}),
+    ...(attempted && !answered && !items.size
+      ? { unavailable: true as const }
       : {}),
   };
 }

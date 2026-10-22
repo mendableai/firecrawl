@@ -10,6 +10,7 @@
  */
 
 import { vi } from "vitest";
+import { AutumnDefaultError } from "autumn-js";
 
 // ---------------------------------------------------------------------------
 // Mocks — vi.mock is hoisted above the module body, so the mock backing objects
@@ -412,6 +413,74 @@ describe("team org change", () => {
 // ---------------------------------------------------------------------------
 
 describe("lockCredits", () => {
+  function sdkError(status: number, body: string) {
+    return new AutumnDefaultError("Reservation failed", {
+      request: new Request("https://example.com/check"),
+      response: new Response(body, { status }),
+      body,
+    });
+  }
+
+  it("rejects an existing direct reservation without claiming its hold", async () => {
+    mockCheck.mockRejectedValue(
+      sdkError(409, JSON.stringify({ code: "lock_already_exists" })),
+    );
+    await expect(
+      makeService().lockCredits({
+        teamId: "team-1",
+        orgId: "org-1",
+        value: 1,
+        lockId: "monitor_check-1",
+      }),
+    ).rejects.toMatchObject({
+      name: "ExistingCreditsLockError",
+      lockId: "monitor_check-1",
+    });
+    expect(mockFinalize).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [409, JSON.stringify({ code: "other_conflict" })],
+    [409, JSON.stringify({ message: "lock_already_exists" })],
+    [409, "lock_already_exists"],
+    [409, "null"],
+    [500, JSON.stringify({ code: "lock_already_exists" })],
+  ])(
+    "retains the unavailable fallback for status %s and body %s",
+    async (status, body) => {
+      mockCheck.mockRejectedValue(sdkError(status, body));
+      await expect(
+        makeService().lockCredits({
+          teamId: "team-1",
+          orgId: "org-1",
+          value: 1,
+        }),
+      ).resolves.toEqual({ status: "skipped" });
+    },
+  );
+
+  it("does not identify contention from a plain error message", async () => {
+    mockCheck.mockRejectedValue(new Error("409 lock_already_exists"));
+    await expect(
+      makeService().lockCredits({ teamId: "team-1", orgId: "org-1", value: 1 }),
+    ).resolves.toEqual({ status: "skipped" });
+  });
+
+  it("preserves successful zero-credit reservations", async () => {
+    await expect(
+      makeService().lockCredits({
+        teamId: "team-1",
+        orgId: "org-1",
+        value: 0,
+        lockId: "monitor_check-1",
+      }),
+    ).resolves.toEqual({ status: "locked", lockId: "monitor_check-1" });
+    expect(mockCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ requiredBalance: 0 }),
+    );
+  });
+
   it("returns skipped when autumnClient is null", async () => {
     state.autumnClientRef = null;
     const svc = makeService();
@@ -753,6 +822,52 @@ describe("featureIdForBillingEndpoint", () => {
 // ---------------------------------------------------------------------------
 // getTeamLimits (concurrency + rate-limit multiplier)
 // ---------------------------------------------------------------------------
+
+describe("hasAutoTopUp", () => {
+  const customer = (enabled: boolean, billingMethod?: string) => ({
+    billingControls: {
+      autoTopups: [
+        { featureId: "CREDITS", enabled, threshold: 0, quantity: 1000 },
+      ],
+    },
+    balances: {
+      CREDITS: {
+        breakdown: [
+          { planId: "standard", price: null },
+          ...(billingMethod
+            ? [{ planId: "standard", price: { billingMethod } }]
+            : []),
+        ],
+      },
+    },
+  });
+
+  it("is true for an enabled top-up with a prepaid CREDITS item to buy", async () => {
+    mockCustomerGet.mockResolvedValue(customer(true, "prepaid"));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(true);
+    expect(mockCustomerGet).toHaveBeenCalledWith({ customerId: "org-1" });
+  });
+
+  it("is false when the top-up is disabled", async () => {
+    mockCustomerGet.mockResolvedValue(customer(false, "prepaid"));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(false);
+  });
+
+  it("is false for an enabled top-up with nothing prepaid to buy (free plan)", async () => {
+    mockCustomerGet.mockResolvedValue(customer(true));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(false);
+  });
+
+  it("fails open (true) when Autumn errors", async () => {
+    mockCustomerGet.mockRejectedValue(new Error("autumn down"));
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(true);
+  });
+
+  it("fails open (true) without an Autumn client", async () => {
+    state.autumnClientRef = null;
+    expect(await makeService().hasAutoTopUp("org-1")).toBe(true);
+  });
+});
 
 describe("getTeamLimits", () => {
   const lowDefaults = {

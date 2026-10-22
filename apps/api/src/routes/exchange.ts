@@ -1,5 +1,6 @@
 import { bountyBlocklistMiddleware } from "./exchange-blocklist";
 import { providerScrapeController } from "../controllers/v2/scrape-alexandria";
+import { billingCountryForTeam } from "../lib/billing-country";
 import { orgIdFromAcuc } from "../lib/team-org";
 import {
   acceptProviderTerms,
@@ -75,6 +76,7 @@ function exchangeProxy(
     }
 
     const hasBody = req.method !== "GET";
+    const billingCountry = await billingCountryForTeam(authedReq.auth.team_id);
     const path = req.originalUrl.replace(/^\/exchange/, "/v1");
 
     try {
@@ -89,6 +91,14 @@ function exchangeProxy(
           ),
           ...(hasBody ? { "content-type": "application/json" } : {}),
           "x-exchange-team-id": authedReq.auth.team_id,
+          ...(req.ip ? { "x-exchange-client-ip": req.ip } : {}),
+          ...(billingCountry
+            ? { "x-exchange-billing-country": billingCountry }
+            : {}),
+          // Built here, never forwarded from the caller: the connectors whitelist is this flag.
+          ...(authedReq.acuc?.flags?.exchangeRetrieve
+            ? { "x-exchange-connectors": "true" }
+            : {}),
         },
         body: hasBody ? JSON.stringify(req.body ?? {}) : undefined,
         signal: AbortSignal.timeout(timeout),
@@ -220,6 +230,53 @@ exchangeRouter.put(
 );
 exchangeRouter.post(
   "/enrichment/plan",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+
+// A team's own MCP connectors (Alexandria connectors): the catalogue, and adding, listing,
+// syncing, changing and removing its connections. Behind the exchangeRetrieve flag, the same
+// flag that tells Exchange the team may use them. Connecting and syncing reach the team's server
+// and list its tools before answering, so writes get the longer timeout.
+exchangeRouter.get(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+exchangeRouter.post(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(RETRIEVE_TIMEOUT_MS)),
+);
+exchangeRouter.patch(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(RETRIEVE_TIMEOUT_MS)),
+);
+exchangeRouter.delete(
+  "/connectors{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS)),
+);
+
+// Every team may list, read and write its own skills; Exchange scopes them by the stamped team.
+exchangeRouter.get(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+exchangeRouter.post(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+exchangeRouter.patch(
+  "/team-skills{/*path}",
+  authMiddleware(RateLimiterMode.Labs),
+  wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
+);
+exchangeRouter.delete(
+  "/team-skills{/*path}",
   authMiddleware(RateLimiterMode.Labs),
   wrap(exchangeProxy(ANALYTICS_TIMEOUT_MS, { requiresRetrieveFlag: false })),
 );

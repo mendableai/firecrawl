@@ -1,7 +1,14 @@
 import type { Logger } from "winston";
 import { discoverTools, isAlexandriaSource } from "./alexandria";
 import { search } from "./v2";
-import { SearchV2Response, SearchResultType } from "../lib/entities";
+import {
+  SearchV2Response,
+  SearchResultType,
+  SearchResultCountsBySource,
+  SearchResultCategoriesBySource,
+  countSearchResultsBySource,
+  collectSearchResultCategories,
+} from "../lib/entities";
 import {
   buildSearchQuery,
   getCategoryFromUrl,
@@ -74,8 +81,11 @@ interface SearchContext {
 
 interface SearchExecuteResult {
   toolsWarning?: string;
+  toolsUnavailable?: boolean;
   response: SearchV2Response;
   totalResultsCount: number;
+  resultCountsBySource: SearchResultCountsBySource;
+  resultCategories: SearchResultCategoriesBySource;
   indexResultsCount: number;
   searchCredits: number;
   scrapeCredits: number;
@@ -131,7 +141,17 @@ export async function executeSearch(
       : null;
   const indexResultsPromise = indexCategorySearch
     ? indexCategorySearch(
-        { query, limit, teamId, timeout: options.timeout },
+        {
+          query,
+          limit,
+          teamId,
+          timeout: options.timeout,
+          zeroDataRetention:
+            zeroDataRetention === true ||
+            options.enterprise?.some(
+              mode => mode === "zdr" || mode === "anon",
+            ) === true,
+        },
         logger,
       )
     : null;
@@ -207,7 +227,16 @@ export async function executeSearch(
     !zeroDataRetention &&
     !options.enterprise?.some(mode => mode === "zdr" || mode === "anon")
   ) {
-    await removeExplicitResults(searchResponse, limit, logger, teamId);
+    // Index results skip the SERP and its provider-side safe search, so they
+    // are filtered from a response of their own before they are counted,
+    // scraped or returned.
+    const safeTarget: SearchV2Response = indexCategorySearch
+      ? { web: indexResults }
+      : searchResponse;
+    await removeExplicitResults(safeTarget, limit, logger, teamId);
+    if (safeTarget !== searchResponse) {
+      indexResults = safeTarget.web ?? [];
+    }
   }
 
   if (searchResponse.web && searchResponse.web.length > 0) {
@@ -252,6 +281,7 @@ export async function executeSearch(
   const indexResultsCount = indexResults.length;
   totalResultsCount += indexResultsCount;
   let toolsWarning: string | undefined;
+  let toolsUnavailable = false;
 
   if (
     !zeroDataRetention &&
@@ -262,6 +292,7 @@ export async function executeSearch(
       {
         toolDetail: options.toolDetail ?? "compact",
         teamId,
+        connectors: flags?.exchangeRetrieve === true,
         limit,
         query: wantsTools ? query : undefined,
         urls:
@@ -278,6 +309,7 @@ export async function executeSearch(
     );
     searchResponse.tools = discovery.items;
     toolsWarning = discovery.warning;
+    toolsUnavailable = discovery.unavailable === true;
   }
 
   const isZDR = options.enterprise?.includes("zdr");
@@ -300,7 +332,12 @@ export async function executeSearch(
     scrapeOptions?.formats && scrapeOptions.formats.length > 0;
 
   if (shouldScrape && scrapeOptions) {
-    const itemsToScrape = getItemsToScrape(searchResponse, flags, {
+    // Index results only become the web group at the end, so they are
+    // scraped from a response of their own.
+    const scrapeTarget: SearchV2Response = indexCategorySearch
+      ? { web: indexResults }
+      : searchResponse;
+    const itemsToScrape = getItemsToScrape(scrapeTarget, flags, {
       team_id: teamId,
       org_id: orgId ?? null,
       origin,
@@ -331,11 +368,10 @@ export async function executeSearch(
         flags,
       );
 
-      mergeScrapedContent(
-        searchResponse,
-        itemsToScrape,
-        allDocsWithCostTracking,
-      );
+      mergeScrapedContent(scrapeTarget, itemsToScrape, allDocsWithCostTracking);
+      if (scrapeTarget !== searchResponse) {
+        indexResults = scrapeTarget.web ?? [];
+      }
       scrapeCredits = calculateScrapeCredits(allDocsWithCostTracking);
     }
   }
@@ -434,7 +470,15 @@ export async function executeSearch(
   return {
     response: searchResponse,
     toolsWarning,
+    toolsUnavailable,
     totalResultsCount,
+    // Counted from the final response — after scraping and highlights — so it
+    // matches exactly what the client can address by position.
+    resultCountsBySource: countSearchResultsBySource(searchResponse),
+    // Read from the same final response, so a category is keyed by the position
+    // the client sees. Index hits replace the web group above and are
+    // renumbered there, so their positions here are the renumbered ones.
+    resultCategories: collectSearchResultCategories(searchResponse),
     indexResultsCount,
     searchCredits,
     scrapeCredits,

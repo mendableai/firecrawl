@@ -1118,7 +1118,7 @@ class DiscoveredTool(ExchangeSearchResult):
 
 
 class FindToolsData(BaseModel):
-    level: Literal["providers", "groups", "tools"]
+    level: Literal["categories", "providers", "groups", "tools"]
     items: List[Dict[str, Any]]
     total: int
     next: Optional[Dict[str, Any]] = None
@@ -1919,7 +1919,12 @@ class AgentTraceError(BaseModel):
     """Structured error attached to terminal/error trace events."""
 
     code: Literal[
-        "cancelled", "credit_limit_reached", "parent_finished", "refused", "internal"
+        "cancelled",
+        "credit_limit_reached",
+        "insufficient_credits",
+        "parent_finished",
+        "refused",
+        "internal",
     ]
     source: Literal["agent", "tool", "billing", "system"]
     retryable: bool
@@ -2080,6 +2085,9 @@ class AgentTraceResponse(BaseModel):
     credits_used: Optional[int] = Field(default=None, alias="creditsUsed")
     active_browser_sessions: Optional[List[AgentTraceActiveBrowserSession]] = Field(
         default=None, alias="activeBrowserSessions"
+    )
+    zero_data_retention: Optional[bool] = Field(
+        default=None, alias="zeroDataRetention"
     )
     error: Optional[str] = None
 

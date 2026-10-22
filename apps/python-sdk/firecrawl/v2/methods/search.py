@@ -47,10 +47,9 @@ def search(
             out.tools = [DiscoveredTool(**item) for item in data["tools"]]
         return out
     except Exception as err:
-        # If the error is an HTTP error from requests, handle it
-        # (simulate isAxiosError by checking for requests' HTTPError or Response)
-        if hasattr(err, "response"):
-            handle_response_error(getattr(err, "response"), "search")
+        response = getattr(err, "response", None)
+        if response is not None:
+            handle_response_error(response, "search")
         raise err
 
 def _transform_array(arr: List[Any], result_type: Type[T]) -> List[Union[T, 'Document']]:

@@ -16,6 +16,31 @@ const emptyStringAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 const emptyStringAsDefault = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(value => (value === "" ? undefined : value), schema);
 
+const worldIdSubjectList = (name: string) =>
+  emptyStringAsUndefined(
+    z
+      .string()
+      .refine(
+        value =>
+          value
+            .split(",")
+            .every(entry => /^[A-Za-z0-9_-]{43}$/.test(entry.trim())),
+        `${name} must be comma-separated subject hashes`,
+      ),
+  );
+
+// Trim strings and treat blank ones as unset (optional or default schemas).
+const blankStringAsUnset = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(
+    value =>
+      typeof value === "string"
+        ? value.trim() === ""
+          ? undefined
+          : value.trim()
+        : value,
+    schema,
+  );
+
 const RESEARCH_PAPER_OPERATIONS = [
   "search",
   "inspect",
@@ -90,26 +115,6 @@ const configSchema = z.object({
     v => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().trim().optional(),
   ),
-  // Optional external agent hints provider. Inert unless the URL is set.
-  AGENT_HINTS_PROVIDER_URL: emptyStringAsUndefined(
-    z
-      .string()
-      .url()
-      .refine(value => ["http:", "https:"].includes(new URL(value).protocol), {
-        message: "AGENT_HINTS_PROVIDER_URL must be an http(s) URL",
-      }),
-  ),
-  AGENT_HINTS_PROVIDER_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
-  // Never sent to the provider. Keys the keyless team pseudonym; when unset a
-  // random per-process key is used, so pseudonyms are only stable per process.
-  AGENT_HINTS_PROVIDER_PSEUDONYM_KEY: emptyStringAsUndefined(
-    z.string().trim().min(32),
-  ),
-  AGENT_HINTS_PROVIDER_TIMEOUT_MS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(50),
   RESEARCH_PROXY_URL: z.string().url().optional(),
   SEARCH_PLATFORM_URL: z.string().url().optional(),
   RESEARCH_KEYLESS_DISABLED: researchKeylessDisabled,
@@ -118,6 +123,10 @@ const configSchema = z.object({
 
   // Express
   EXPRESS_TRUST_PROXY: z.coerce.number().optional(),
+
+  GOV_INDEX_CALLS_PER_DAY: emptyStringAsDefault(
+    z.coerce.number().int().nonnegative().default(500),
+  ),
 
   // Keyless free tier (scrape/search/interact without an API key, per-IP/day).
   // Non-negative integers; 0 means "enabled but no budget", unset means "off".
@@ -151,6 +160,34 @@ const configSchema = z.object({
   // Keep separate from KEYLESS_PROXY_SECRET because delegated credentials can
   // authorize billed requests for a managed OAuth connection.
   MCP_DELEGATED_CREDENTIAL_SECRET: emptyStringAsUndefined(z.string().min(32)),
+  // World ID verified-human keyless bucket. The issuer defaults to World's; the
+  // feature is off unless the client ID, client secret, credential secret and
+  // subject secret are set.
+  WORLD_ID_ISSUER: emptyStringAsDefault(
+    z
+      .string()
+      .trim()
+      .url()
+      .refine(
+        value => value.startsWith("https://"),
+        "WORLD_ID_ISSUER must be an https URL",
+      )
+      .default("https://auth.world.org"),
+  ),
+  WORLD_ID_CLIENT_ID: emptyStringAsUndefined(z.string().trim().min(1)),
+  WORLD_ID_CLIENT_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
+  WORLD_ID_CREDENTIAL_SECRET: emptyStringAsUndefined(z.string().trim().min(32)),
+  // Keys the subject hashes (bucket ids, allow and deny lists). Kept apart
+  // from the credential secret so rotating that one revokes credentials
+  // without resetting buckets or the lists.
+  WORLD_ID_SUBJECT_SECRET: emptyStringAsUndefined(z.string().trim().min(32)),
+  // Optional comma-separated allowlist of subject hashes. When set, only these
+  // verified humans are issued a credential; unset issues one to anyone who
+  // verifies.
+  WORLD_ID_ALLOWED_SUBJECTS: worldIdSubjectList("WORLD_ID_ALLOWED_SUBJECTS"),
+  // Optional comma-separated subject hashes that are refused: no new
+  // credential, and their existing credentials stop working.
+  WORLD_ID_DENIED_SUBJECTS: worldIdSubjectList("WORLD_ID_DENIED_SUBJECTS"),
   // Optional Spur Context API token (https://docs.spur.us/context-api). When
   // set, keyless requests have their client IP checked against Spur and are
   // refused if the IP fronts anonymizing/rotating infrastructure (VPN/proxy/
@@ -268,6 +305,15 @@ const configSchema = z.object({
   // (e.g. 600000 = 10min) also short-circuits repeat lookups for URLs with no
   // index entry. Kept short so any missed cache-clear self-heals quickly.
   INDEX_CACHE_NEGATIVE_TTL_MS: z.coerce.number().default(0),
+  // `parsers: [{ type: "pdf", refresh: true }]` skips URL index reads, so the
+  // request reaches the PDF engine and its content-cache refresh budget
+  // instead of being answered with the indexed copy of the old parse.
+  INDEX_SKIP_ON_PDF_REFRESH: z.stringbool().default(false),
+  // On a URL index hit for a PDF whose entry recorded its fire-pdf content
+  // key, ask the fire-pdf cache service whether it holds a newer parse; if it
+  // does, the index copy is treated as a miss so the request is answered from
+  // the newer entry (no parse) and re-indexed. Needs FIRE_PDF_CACHE_BASE_URL.
+  INDEX_PDF_SUPERSEDE_CHECK: z.stringbool().default(false),
   REDIS_URL: z.string().optional(),
   REDIS_EVICT_URL: z.string().optional(),
   REDIS_RATE_LIMIT_URL: z.string().optional(),
@@ -452,6 +498,18 @@ const configSchema = z.object({
   // cache service when one is configured; beyond the budget the request is
   // served normally. 0 disables the option.
   FIRE_PDF_CACHE_REFRESH_PER_MINUTE: z.coerce.number().int().min(0).default(10),
+  // /v2/parse sends every PDF (auto/ocr mode) to FirePDF: no direct
+  // text-layer extraction, no FIRE_PDF_PERCENT sampling, no MinerU
+  // diversion. Explicit `mode: "fast"` keeps direct extraction. FirePDF
+  // failures still fall back to MinerU / pdf-parse. Needs FIRE_PDF_ENABLE.
+  PARSE_PDF_ALWAYS_FIRE_PDF: z.stringbool().default(true),
+  // Table rendering FirePDF applies to /v2/parse documents. `dynamic` keeps
+  // pipe tables where they are lossless and HTML where structure needs it
+  // (merged cells, large tables); `off` sends no format (pipe tables).
+  // Any explicit format puts the request outside the FirePDF content cache.
+  PARSE_FIRE_PDF_TABLE_FORMAT: z
+    .enum(["off", "markdown", "html", "dynamic"])
+    .default("dynamic"),
   // Raster image OCR of image URLs and parse uploads through FirePDF (see
   // lib/image-ocr-gate.ts). Needs FIRE_PDF_BASE_URL.
   IMAGE_OCR_ENABLED: z.stringbool().default(false),
@@ -562,24 +620,13 @@ const configSchema = z.object({
   DISABLE_BLOCKLIST: z.stringbool().optional(),
   FORCED_ENGINE_DOMAINS: z.string().optional(),
   DEBUG_BRANDING: z.stringbool().optional(),
-  // TypeSafe Jev for branding decisions (lib/branding/jev.ts); needs
-  // TYPESAFE_API_KEY. BRANDING_JEV turns it on for every team,
-  // BRANDING_JEV_TEAM_IDS (comma-separated) for listed teams, and
-  // BRANDING_JEV_ROLLOUT_PERCENT for a stable share of teams.
+  // TypeSafe Jev answers branding decisions whenever TYPESAFE_API_KEY is set
+  // (lib/branding/jev.ts), with the LLM as fallback. BRANDING_JEV=false sends
+  // every branding request to the LLM instead.
   BRANDING_JEV: emptyStringAsUndefined(z.stringbool()),
-  BRANDING_JEV_TEAM_IDS: delimitedList(",").optional(),
-  BRANDING_JEV_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
   BRANDING_JEV_TIMEOUT_MS: emptyStringAsUndefined(
     z.coerce.number().int().positive(),
   ),
-  // Rerun branding on the LLM when Jev's logo confidence is below this (0-1).
-  BRANDING_JEV_ESCALATE_BELOW: emptyStringAsUndefined(
-    z.coerce.number().min(0).max(1),
-  ),
-  // Share of LLM-answered branding requests (0-100) that also ask Jev in the
-  // background and record how its answer compares (lib/branding/jev-shadow.ts).
-  // Customers always get the LLM's answer.
-  BRANDING_JEV_SHADOW_PERCENT: z.coerce.number().min(0).max(100).default(0),
   // Warn scrapes of search engine results pages (google.*/search, ...) that
   // /search returns those results directly (lib/serp-url.ts).
   // SERP_SCRAPE_WARNING turns it on for every team, SERP_SCRAPE_WARNING_TEAM_IDS
@@ -595,6 +642,44 @@ const configSchema = z.object({
 
   // AI/ML
   MODEL_NAME: z.string().optional(),
+  // Optional OpenAI-compatible provider for JSON extraction. Traffic is routed
+  // by team cohort (stable hash) at ROLLOUT_PERCENT, mirrored without using the
+  // result at SHADOW_PERCENT, and always routed for TEAM_IDS. Any failure falls
+  // back to the default model for that request.
+  EXTRACTION_PROVIDER_BASE_URL: blankStringAsUnset(z.string().url().optional()),
+  EXTRACTION_PROVIDER_API_KEY: blankStringAsUnset(z.string().optional()),
+  EXTRACTION_PROVIDER_MODEL: blankStringAsUnset(
+    z.string().min(1).default("extraction-v1"),
+  ),
+  EXTRACTION_PROVIDER_ROLLOUT_PERCENT: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .default(0),
+  EXTRACTION_PROVIDER_SHADOW_PERCENT: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .default(0),
+  EXTRACTION_PROVIDER_TEAM_IDS: z.string().optional(),
+  // Let any team pick the provider per request (json format `model`); off =
+  // only teams in TEAM_IDS may.
+  EXTRACTION_PROVIDER_REQUEST_OPT_IN: z.stringbool().optional(),
+  EXTRACTION_PROVIDER_MAX_INPUT_BYTES: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(400_000),
+  EXTRACTION_PROVIDER_INPUT_COST_PER_MTOK: z.coerce
+    .number()
+    .nonnegative()
+    .default(0.07),
+  EXTRACTION_PROVIDER_OUTPUT_COST_PER_MTOK: z.coerce
+    .number()
+    .nonnegative()
+    .default(0.2),
   MODEL_EMBEDDING_NAME: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
   VERTEX_CREDENTIALS: z.string().optional(),
@@ -668,12 +753,17 @@ const configSchema = z.object({
   FIREBILL_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
 
   // Miscellaneous
+  // The commit the image was built from, set by the Dockerfile's GIT_SHA.
+  FIRECRAWL_BUILD_SHA: emptyStringAsUndefined(z.string().trim().min(1)),
   IDMUX_URL: z.string().optional(),
   GITHUB_RUN_NUMBER: z.string().optional(),
   GITHUB_REF_NAME: z.string().optional(),
   RESTRICTED_COUNTRIES: delimitedList(",").optional(),
   DISABLE_ENGPICKER: z.stringbool().optional(),
   DISABLE_MONITORING: z.stringbool().default(false),
+
+  // Stamp an inferred `integration` on unlabelled direct callers.
+  INFER_INTEGRATION_ENABLED: z.stringbool().default(true),
 
   EXTRACT_V3_BETA_URL: z.string().url().optional(),
   AGENT_INTEROP_SECRET: z
@@ -720,6 +810,18 @@ const configSchema = z.object({
 });
 
 const validatedConfigSchema = configSchema.superRefine((value, context) => {
+  if (
+    value.EXTRACTION_PROVIDER_ROLLOUT_PERCENT +
+      value.EXTRACTION_PROVIDER_SHADOW_PERCENT >
+    100
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["EXTRACTION_PROVIDER_SHADOW_PERCENT"],
+      message:
+        "EXTRACTION_PROVIDER_ROLLOUT_PERCENT + EXTRACTION_PROVIDER_SHADOW_PERCENT must not exceed 100",
+    });
+  }
   for (const error of getMcpActionLogConfigErrors(value)) {
     context.addIssue({
       code: "custom",

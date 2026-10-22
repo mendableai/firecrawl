@@ -20,6 +20,7 @@ import {
   firePdfCacheRefusedWritesTotal,
 } from "./metrics";
 import { cacheServiceConfigured, lookupCachedResult } from "./cache-service";
+import { firePdfTableFormat } from "./request-metadata";
 import { consumeRefresh, refreshDecisionFor } from "./refresh-budget";
 import {
   firePdfBlockPagesSchema,
@@ -191,6 +192,9 @@ export async function tryGetCached(
   pageMarkers = false,
 ): Promise<PDFProcessorResult | null> {
   if (meta.internalOptions.zeroDataRetention) return null;
+  // Cache entries hold FirePDF's default table rendering; FirePDF itself
+  // neither reads nor writes the cache for an explicit tableFormat.
+  if (firePdfTableFormat(meta) !== undefined) return null;
   const viaService = cacheServiceConfigured();
   // No service and no bucket, no cache: nothing to hash, no refresh budget to spend.
   if (!viaService && !pdfCacheConfigured()) return null;
@@ -412,6 +416,7 @@ export async function maybeSaveResult(args: {
     failedPages,
   } = args;
   if (meta.internalOptions.zeroDataRetention) return;
+  if (firePdfTableFormat(meta) !== undefined) return;
   // With the lookup service in use, fire-pdf writes the result itself.
   if (cacheServiceConfigured()) return;
   if (!pdfCacheConfigured()) return;

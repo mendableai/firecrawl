@@ -18,6 +18,7 @@ import {
 import { InternalOptions } from "../../scraper/scrapeURL";
 import { getURLDepth } from "../../scraper/WebScraper/utils/maxDepthUtils";
 import Ajv from "ajv";
+import addFormats from "ajv-formats";
 import { ErrorCodes } from "../../lib/error";
 import { integrationSchema } from "../../utils/integration";
 import { includesFormat } from "../../lib/format-utils";
@@ -396,6 +397,8 @@ export type InternalAction = Action & {
   metadata?: {
     [key: string]: unknown;
   };
+  /** fire-engine, executeJavascript only. */
+  realViewport?: boolean;
 };
 
 const actionsSchema = z
@@ -742,6 +745,7 @@ export type ScrapeOptions = BaseScrapeOptions & {
 };
 
 const ajv = new Ajv();
+addFormats(ajv);
 
 const extractV1Options = z
   .strictObject({

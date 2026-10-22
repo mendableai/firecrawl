@@ -44,7 +44,13 @@ describe("searchDeveloperCategory", () => {
     fetchMock.mockResolvedValue(upstreamOk({ results: [] }));
 
     await searchDeveloperCategory(
-      { query: '"exact phrase" retries', limit: 7, teamId: "t1", timeout: 500 },
+      {
+        query: '"exact phrase" retries',
+        limit: 7,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: false,
+      },
       logger,
     );
 
@@ -55,7 +61,29 @@ describe("searchDeveloperCategory", () => {
     expect([...url.searchParams.keys()]).toEqual(["query", "k"]);
     expect(url.searchParams.has("skills")).toBe(false);
     expect(firstCall()[1].method).toBe("GET");
-    expect(firstCall()[1].headers).toEqual({ "firecrawl-team-id": "t1" });
+    expect(firstCall()[1].headers).toEqual({
+      "firecrawl-team-id": "t1",
+      "firecrawl-zero-data-retention": "false",
+    });
+  });
+
+  it("tells the upstream that a zero data retention search must not be kept", async () => {
+    fetchMock.mockResolvedValue(upstreamOk({ results: [] }));
+
+    await searchDeveloperCategory(
+      {
+        query: "private query",
+        limit: 3,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: true,
+      },
+      logger,
+    );
+
+    expect(firstCall()[1].headers["firecrawl-zero-data-retention"]).toBe(
+      "true",
+    );
   });
 
   it("maps results to the exact web schema and leaks nothing upstream", async () => {
@@ -78,7 +106,13 @@ describe("searchDeveloperCategory", () => {
     );
 
     const results = await searchDeveloperCategory(
-      { query: "retries", limit: 5, teamId: "t1", timeout: 500 },
+      {
+        query: "retries",
+        limit: 5,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: false,
+      },
       logger,
     );
 
@@ -117,7 +151,13 @@ describe("searchDeveloperCategory", () => {
     );
 
     const results = await searchDeveloperCategory(
-      { query: "retries", limit: 5, teamId: "t1", timeout: 500 },
+      {
+        query: "retries",
+        limit: 5,
+        teamId: "t1",
+        timeout: 500,
+        zeroDataRetention: false,
+      },
       logger,
     );
 
@@ -137,7 +177,13 @@ describe("searchDeveloperCategory", () => {
 
     await expect(
       searchDeveloperCategory(
-        { query: "retries", limit: 5, teamId: "t1", timeout: 500 },
+        {
+          query: "retries",
+          limit: 5,
+          teamId: "t1",
+          timeout: 500,
+          zeroDataRetention: false,
+        },
         logger,
       ),
     ).resolves.toEqual([]);
@@ -149,7 +195,13 @@ describe("searchDeveloperCategory", () => {
 
     await expect(
       searchDeveloperCategory(
-        { query: "retries", limit: 5, teamId: "t1", timeout: 500 },
+        {
+          query: "retries",
+          limit: 5,
+          teamId: "t1",
+          timeout: 500,
+          zeroDataRetention: false,
+        },
         logger,
       ),
     ).resolves.toEqual([]);

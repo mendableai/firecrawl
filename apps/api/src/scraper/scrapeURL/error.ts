@@ -94,13 +94,18 @@ export class RemoveFeatureError extends Error {
 }
 
 export class SSLError extends TransportableError {
-  constructor(public skipTlsVerification: boolean) {
+  constructor(
+    public skipTlsVerification: boolean,
+    public zeroDataRetention = false,
+  ) {
     super(
       "SCRAPE_SSL_ERROR",
       "An SSL/TLS certificate error occurred while trying to establish a secure connection to this website. " +
-        (skipTlsVerification
-          ? "You already have `skipTlsVerification: true` enabled, which means the website's TLS configuration is severely broken (not just an expired or self-signed certificate). Possible solutions: (1) Try the plain HTTP version of the URL (http:// instead of https://), (2) The website may be completely down, or (3) Contact the website administrator about their broken SSL configuration."
-          : "This usually happens when a website has an expired, self-signed, or misconfigured SSL certificate. If you trust this website and are not submitting sensitive data, you can bypass this error by setting `skipTlsVerification: true` in your scrape request. Note: Only do this for trusted sites as it disables certificate validation."),
+        (zeroDataRetention
+          ? "This usually happens when a website has an expired, self-signed, or misconfigured SSL certificate. TLS verification can't be bypassed for zero data retention requests, so `skipTlsVerification` has no effect."
+          : skipTlsVerification
+            ? "You already have `skipTlsVerification: true` enabled, which means the website's TLS configuration is severely broken (not just an expired or self-signed certificate). Possible solutions: (1) Try the plain HTTP version of the URL (http:// instead of https://), (2) The website may be completely down, or (3) Contact the website administrator about their broken SSL configuration."
+            : "This usually happens when a website has an expired, self-signed, or misconfigured SSL certificate. If you trust this website and are not submitting sensitive data, you can bypass this error by setting `skipTlsVerification: true` in your scrape request. Note: Only do this for trusted sites as it disables certificate validation."),
     );
   }
 
@@ -108,6 +113,7 @@ export class SSLError extends TransportableError {
     return {
       ...super.serialize(),
       skipTlsVerification: this.skipTlsVerification,
+      zeroDataRetention: this.zeroDataRetention,
     };
   }
 
@@ -115,7 +121,7 @@ export class SSLError extends TransportableError {
     _: ErrorCodes,
     data: ReturnType<typeof this.prototype.serialize>,
   ) {
-    const x = new SSLError(data.skipTlsVerification);
+    const x = new SSLError(data.skipTlsVerification, data.zeroDataRetention);
     x.stack = data.stack;
     return x;
   }

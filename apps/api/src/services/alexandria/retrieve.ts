@@ -3,12 +3,21 @@ import { z } from "zod";
 import { config } from "../../config";
 import type { TeamFlags } from "../../controllers/v2/types";
 import { reportExchangeUsageBilling } from "../../lib/exchange";
+import {
+  govIndexDailyLimitMessage,
+  reserveGovIndexCalls,
+} from "../../lib/index-daily-limit";
 import { logger } from "../../lib/logger";
 import {
   autumnService,
   featureIdForBillingEndpoint,
 } from "../autumn/autumn.service";
 import type { LockCreditsResult } from "../autumn/types";
+import {
+  AGENT_REQUEST_CREDITS_SHARDS,
+  initializeRequestCredits,
+  recordRequestCredits,
+} from "../../lib/request-credits-store";
 import { getBillingQueue } from "../queue-service";
 import { redisRateLimitClient } from "../rate-limiter";
 import { authorizeProviders } from "./access";
@@ -36,6 +45,8 @@ type Retrieval = {
   lockId?: string;
   maximumCredits?: number;
   response?: ExchangeResponse;
+  // Set instead of response under zero data retention.
+  responseWithheld?: boolean;
   failure?: string;
 };
 
@@ -86,10 +97,15 @@ export async function retrieveProviders(input: {
   flags: TeamFlags | null | undefined;
   calls: ProviderCall[];
   requestId: string;
+  /** The agent run this call belongs to: its credits join that run's call credits. */
+  agentRequestId?: string;
   scrapeId: string;
   timeoutMs: number;
   bypassBilling?: boolean;
   resultAuthorization?: string;
+  zeroDataRetention?: boolean;
+  clientIp?: string;
+  billingCountry?: string;
 }): Promise<ProviderRetrieval> {
   const notExecuted = (response: ExchangeResponse): ProviderRetrieval => ({
     ...response,
@@ -157,11 +173,14 @@ export async function retrieveProviders(input: {
   const billable = !input.bypassBilling;
   const id = hash([input.teamId, input.requestId]);
   const key = `alexandria:retrieve:${id}`;
-  const fingerprint = hash(
-    termsOnly
+  const zeroDataRetention = input.zeroDataRetention === true;
+  // Appended only when set so existing non-ZDR fingerprints stay stable.
+  const fingerprint = hash([
+    ...(termsOnly
       ? [input.calls, billable, termsIdentity ?? null]
-      : [input.calls, billable],
-  );
+      : [input.calls, billable]),
+    ...(zeroDataRetention ? [{ zeroDataRetention }] : []),
+  ]);
   const record: Retrieval = {
     fingerprint,
     phase: "executing",
@@ -186,6 +205,18 @@ export async function retrieveProviders(input: {
   if (claimed !== "OK") {
     const raw = await redisRateLimitClient.get(key);
     const existing: Retrieval | null = raw ? JSON.parse(raw) : null;
+    if (
+      existing?.phase === "done" &&
+      existing.fingerprint === fingerprint &&
+      existing.responseWithheld
+    )
+      return notExecuted(
+        refusal(
+          409,
+          "This provider request already completed. Its response is not kept under zero data retention.",
+          { code: "response_not_retained", chargeId: id },
+        ),
+      );
     if (existing?.phase === "done" && existing.fingerprint === fingerprint)
       return {
         ...existing.response!,
@@ -223,7 +254,9 @@ export async function retrieveProviders(input: {
     apiKeyId: input.apiKeyId,
   };
   const remaining = () => Math.max(1, record.deadline - Date.now());
+  let releaseGovCalls: (() => Promise<void>) | undefined;
   const refuse = async (response: ExchangeResponse, executed = false) => {
+    if (!executed && releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key);
     return { ...response, executed, scrapeId: input.scrapeId };
   };
@@ -237,14 +270,35 @@ export async function retrieveProviders(input: {
       input.calls,
       input.flags,
       input.orgId,
+      input.clientIp,
+      input.billingCountry,
     );
     if (denied) return refuse(denied);
+
+    const govCalls = input.calls.filter(
+      call => call.provider === "firecrawl-gov-index",
+    ).length;
+    if (govCalls > 0) {
+      const indexBudget = await reserveGovIndexCalls(input.teamId, govCalls);
+      if (!indexBudget.ok)
+        return refuse(
+          refusal(429, govIndexDailyLimitMessage(indexBudget), {
+            code: "index_daily_limit",
+            retryAfterSeconds: indexBudget.retryAfterSeconds,
+          }),
+        );
+      releaseGovCalls = indexBudget.release;
+    }
 
     const quote = await exchangeRequest({
       teamId: input.teamId,
       path: "/v1/retrieve/quote",
       body: { requests: input.calls },
       timeoutMs: Math.min(10000, remaining()),
+      clientIp: input.clientIp,
+      billingCountry: input.billingCountry,
+      connectors: input.flags?.exchangeRetrieve === true,
+      ...(zeroDataRetention ? { zeroDataRetention } : {}),
     }).catch(error => {
       logger.warn("Provider quote unavailable", { error, chargeId: id });
       return undefined;
@@ -316,6 +370,7 @@ export async function retrieveProviders(input: {
       lockId = hold.lockId;
     }
   } catch (error) {
+    if (releaseGovCalls) await releaseGovCalls();
     await redisRateLimitClient.del(key).catch(() => {});
     throw error;
   }
@@ -369,12 +424,17 @@ export async function retrieveProviders(input: {
       body: { requests: input.calls },
       timeoutMs: remaining(),
       requestId: id,
+      clientIp: input.clientIp,
+      billingCountry: input.billingCountry,
+      // The team's own MCP connectors (mcp-...) resolve only when Exchange is told it may use them.
+      connectors: input.flags?.exchangeRetrieve === true,
       // Sent with every execution so Exchange tools that call Firecrawl as the caller
       // (the caller pays) can authenticate upstream. Exchange decides which tools read it.
       ...(input.resultAuthorization
         ? { resultAuthorization: input.resultAuthorization }
         : {}),
       ...(termsIdentity ? { termsIdentity } : {}),
+      ...(zeroDataRetention ? { zeroDataRetention } : {}),
       maximumCredits,
     }).catch(error => {
       throw new Error(`Alexandria did not answer: ${error?.message ?? error}`);
@@ -422,6 +482,10 @@ export async function retrieveProviders(input: {
             refundable,
           )
         : settled;
+    const charged =
+      settled && billable && credits > 0 && (recorded || !refundable);
+    if (charged && input.agentRequestId)
+      await recordAgentCredits(input.agentRequestId, id, credits);
     if (!billable || recorded)
       void reportExchangeUsageBilling({
         requestId: id,
@@ -430,10 +494,45 @@ export async function retrieveProviders(input: {
       });
 
     const done: ExchangeResponse = { status: 200, body: answer };
-    await write({ ...record, phase: "done", response: done });
+    await write(
+      zeroDataRetention
+        ? { ...record, phase: "done", responseWithheld: true }
+        : { ...record, phase: "done", response: done },
+    );
     return { ...done, executed: true, scrapeId: input.scrapeId };
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function recordAgentCredits(
+  agentRequestId: string,
+  chargeId: string,
+  credits: number,
+) {
+  const record = () =>
+    recordRequestCredits({
+      requestId: agentRequestId,
+      jobId: `alexandria:${chargeId}`,
+      credits,
+    });
+  try {
+    if (await record()) return;
+    if (
+      !(await initializeRequestCredits(
+        agentRequestId,
+        AGENT_REQUEST_CREDITS_SHARDS,
+      ))
+    )
+      throw new Error("Request credits store is unavailable");
+    await record();
+  } catch (error) {
+    logger.error("Provider credits were not recorded on the agent run", {
+      chargeId,
+      agentRequestId,
+      credits,
+      error,
+    });
   }
 }
 

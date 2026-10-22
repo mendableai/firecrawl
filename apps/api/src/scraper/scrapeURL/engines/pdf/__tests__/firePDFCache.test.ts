@@ -20,6 +20,17 @@ import {
   firePdfCacheRefusedWritesTotal,
 } from "../fire-pdf/metrics";
 import crypto from "crypto";
+import {
+  context,
+  propagation,
+  SpanStatusCode,
+  trace,
+} from "@opentelemetry/api";
+import {
+  InMemorySpanExporter,
+  type NodeTracerProvider,
+} from "@opentelemetry/sdk-trace-node";
+import { createTracerProvider } from "../../../../../lib/otel-tracer";
 import { config } from "../../../../../config";
 import { robustFetch } from "../../../lib/fetch";
 
@@ -1686,5 +1697,217 @@ describe("FirePDF cache through the lookup service", () => {
       failedPages: [],
     });
     expect(saveCached).not.toHaveBeenCalled();
+  });
+
+  describe("lookup span", () => {
+    const exporter = new InMemorySpanExporter();
+    let provider: NodeTracerProvider;
+
+    beforeAll(() => {
+      provider = createTracerProvider({
+        exporter,
+        serviceName: "test-service",
+        serviceInstanceId: "pod-1",
+      });
+      provider.register();
+    });
+
+    afterAll(async () => {
+      await provider.shutdown();
+      trace.disable();
+      context.disable();
+      propagation.disable();
+    });
+
+    beforeEach(() => exporter.reset());
+
+    async function lookupSpanAttributes() {
+      await tryGetCached(
+        serviceMeta(),
+        base64,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        false,
+      ).catch(() => undefined);
+      await provider.forceFlush();
+      const spans = exporter
+        .getFinishedSpans()
+        .filter(span => span.name === "pdf.cache_lookup");
+      expect(spans).toHaveLength(1);
+      return spans[0].attributes;
+    }
+
+    it("records a hit with the entry's variant and generation", async () => {
+      answerWith({
+        outcome: "hit",
+        key: rawKey,
+        variant: "base",
+        generation: "2026-09-16.1",
+        result: { markdown: "# doc" },
+      });
+      expect(await lookupSpanAttributes()).toEqual({
+        "pdf.cache_outcome": "hit",
+        "pdf.cache_reason": "served",
+        "pdf.cache_variant": "base",
+        "pdf.cache_generation": "2026-09-16.1",
+      });
+    });
+
+    it("records a stale serve with its campaign, and whether the re-parse budget was spent", async () => {
+      answerWith({
+        outcome: "stale",
+        key: inlineKey,
+        variant: "base",
+        generation: "unknown",
+        campaign: "c1",
+        result: { markdown: "# old" },
+      });
+      expect(await lookupSpanAttributes()).toEqual({
+        "pdf.cache_outcome": "stale",
+        "pdf.cache_reason": "campaign",
+        "pdf.cache_variant": "base",
+        "pdf.cache_generation": "unknown",
+        "pdf.cache_campaign": "c1",
+      });
+      exporter.reset();
+      answerWith({
+        outcome: "stale",
+        key: inlineKey,
+        variant: "base",
+        generation: "unknown",
+        campaign: "c1",
+        capped: true,
+        result: { markdown: "# old" },
+      });
+      expect(await lookupSpanAttributes()).toMatchObject({
+        "pdf.cache_outcome": "stale",
+        "pdf.cache_reason": "capped",
+      });
+    });
+
+    it("records a miss with the service's reason and campaign", async () => {
+      answerWith({
+        outcome: "miss",
+        reason: "ramp",
+        key: inlineKey,
+        campaign: "c1",
+      });
+      expect(await lookupSpanAttributes()).toEqual({
+        "pdf.cache_outcome": "miss",
+        "pdf.cache_reason": "ramp",
+        "pdf.cache_campaign": "c1",
+      });
+    });
+
+    it("records an entry the request cannot use as a miss", async () => {
+      answerWith({
+        outcome: "hit",
+        key: rawKey,
+        variant: "base",
+        result: { markdown: "# doc" },
+      });
+      await tryGetCached(
+        serviceMeta(),
+        base64,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        true,
+      );
+      await provider.forceFlush();
+      const [span] = exporter
+        .getFinishedSpans()
+        .filter(s => s.name === "pdf.cache_lookup");
+      expect(span.attributes).toMatchObject({
+        "pdf.cache_outcome": "miss",
+        "pdf.cache_reason": "unusable",
+      });
+    });
+
+    it("records a failed lookup as an errored span", async () => {
+      fetchMock.mockRejectedValueOnce(new Error("timed out"));
+      expect(await lookupSpanAttributes()).toEqual({
+        "pdf.cache_outcome": "error",
+      });
+      const [span] = exporter
+        .getFinishedSpans()
+        .filter(s => s.name === "pdf.cache_lookup");
+      expect(span.status).toEqual({
+        code: SpanStatusCode.ERROR,
+        message: "timed out",
+      });
+    });
+  });
+});
+
+describe("FirePDF cache and parse table formats", () => {
+  const originalTableFormat = config.PARSE_FIRE_PDF_TABLE_FORMAT;
+
+  function parseMeta() {
+    const meta = makeMeta();
+    meta.internalOptions.isParse = true;
+    return meta;
+  }
+
+  async function lookupAndSave(meta: any) {
+    const cached = await tryGetCached(
+      meta,
+      "BASE64",
+      "auto",
+      undefined,
+      1,
+      false,
+      false,
+    );
+    await maybeSaveResult({
+      meta,
+      base64Content: "BASE64",
+      mode: "auto",
+      maxPages: undefined,
+      includePageMarkdown: false,
+      includeBlocks: false,
+      result: { markdown: "fresh", html: "<p>fresh</p>", pagesProcessed: 1 },
+    });
+    return cached;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCached.mockResolvedValue({ markdown: "cached", html: "<p>cached</p>" });
+    saveCached.mockResolvedValue("saved-key");
+  });
+
+  afterEach(() => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = originalTableFormat;
+  });
+
+  it("neither reads nor writes for a parse request with a table format", async () => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = "dynamic";
+
+    expect(await lookupAndSave(parseMeta())).toBeNull();
+    expect(getCached).not.toHaveBeenCalled();
+    expect(saveCached).not.toHaveBeenCalled();
+  });
+
+  it("keeps the cache for parse when the table format is off", async () => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = "off";
+
+    expect(await lookupAndSave(parseMeta())).toMatchObject({
+      markdown: "cached",
+    });
+    expect(getCached).toHaveBeenCalled();
+    expect(saveCached).toHaveBeenCalled();
+  });
+
+  it("keeps the cache for scrape requests", async () => {
+    (config as any).PARSE_FIRE_PDF_TABLE_FORMAT = "dynamic";
+
+    expect(await lookupAndSave(makeMeta())).toMatchObject({
+      markdown: "cached",
+    });
+    expect(saveCached).toHaveBeenCalled();
   });
 });

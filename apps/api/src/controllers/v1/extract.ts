@@ -33,6 +33,7 @@ import { calculateThreatScanCredits } from "../../lib/scrape-billing";
 import { billTeam } from "../../services/billing/credit_billing";
 import { emitRejectedScrapeActivityEvents } from "../../lib/siem-logging";
 import { UnsupportedSiteError } from "../../lib/error";
+import { isSdkOrigin } from "../../lib/sdk-origin";
 async function oldExtract(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
   res: Response<ExtractResponse>,
@@ -291,8 +292,7 @@ export async function extractController(
     (await getTeamIdSyncB(req.auth.team_id)) &&
     req.body.origin !== "api-sdk" &&
     req.body.origin !== "website" &&
-    !req.body.origin.startsWith("python-sdk@") &&
-    !req.body.origin.startsWith("js-sdk@")
+    !isSdkOrigin(req.body.origin)
   ) {
     return await oldExtract(req, res, extractId);
   }
