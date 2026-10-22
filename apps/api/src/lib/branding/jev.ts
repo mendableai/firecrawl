@@ -22,6 +22,7 @@ import {
   JevCallOutcome,
   JevScreenshotOutcome,
 } from "./metrics";
+import { sampled } from "../rollout";
 import { BrandingEnhancement } from "./schema";
 import { BrandingLLMInput } from "./types";
 
@@ -544,20 +545,31 @@ const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
 const SCREENSHOT_MIN_BYTES = 10_000;
 
 /**
- * Whether a branding scrape captures a first screen for Jev to look at: when
- * the request asks for it (the branding format's `__experimental_screenshot`).
+ * Whether a branding scrape captures a first screen for Jev to look at, and
+ * why: the request asks for it (the branding format's
+ * `__experimental_screenshot: true`), or its team is in
+ * BRANDING_JEV_SCREENSHOT_PERCENT. `__experimental_screenshot: false` opts a
+ * request out of the rollout.
  */
 export function wantsBrandingScreenshot(
   requested: boolean | undefined,
+  teamId: string | undefined,
   zeroDataRetention: boolean | undefined,
-): boolean {
-  return (
-    requested === true &&
-    isJevBrandingEnabled() &&
-    !zeroDataRetention &&
+): "flag" | "rollout" | undefined {
+  if (
+    requested === false ||
+    !isJevBrandingEnabled() ||
+    zeroDataRetention ||
     // Jev won't be called while its breaker is open.
-    !isJevBreakerOpen()
-  );
+    isJevBreakerOpen()
+  ) {
+    return undefined;
+  }
+  if (requested === true) return "flag";
+  return teamId &&
+    sampled(`team:${teamId}`, config.BRANDING_JEV_SCREENSHOT_PERCENT)
+    ? "rollout"
+    : undefined;
 }
 
 /** The first screen read for Jev: the image when usable, and what happened. */

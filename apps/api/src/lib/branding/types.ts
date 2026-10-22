@@ -88,7 +88,8 @@ export interface BrandingLLMInput {
   }>;
   screenshot?: string;
   /** The page's first screen for Jev (a JPEG/PNG URL or data URL), captured
-   * after the branding scan (see the branding format's __experimental_screenshot). */
+   * after the branding scan (see the branding format's __experimental_screenshot and
+   * BRANDING_JEV_SCREENSHOT_PERCENT). */
   firstScreen?: string;
   /** The first screen already being downloaded since the engine returned, so
    * the download overlaps the transformers that run before branding. */

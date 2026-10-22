@@ -390,23 +390,25 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // TypeSafe accepts at most 1568 px a side; 1280 is what the quality eval
     // used and costs about a third fewer image tokens.
     const brandingFormat = hasFormatOfType(meta.options.formats, "branding");
-    const brandingScreenshotAction =
-      !wantsRawBase64 &&
-      !!brandingFormat &&
-      wantsBrandingScreenshot(
-        brandingFormat.__experimental_screenshot,
-        meta.internalOptions.zeroDataRetention,
-      )
-        ? ({
-            type: "screenshot" as const,
-            fullPage: false,
-            quality: 70,
-            // Spread like the screenshot format's viewport: fire-engine takes
-            // it, the v1 action type doesn't declare it.
-            ...{ viewport: { width: 1280, height: 720 } },
-            metadata: { __firecrawl_internal: true },
-          } as InternalAction)
+    const brandingScreenshotVia =
+      !wantsRawBase64 && brandingFormat
+        ? wantsBrandingScreenshot(
+            brandingFormat.__experimental_screenshot,
+            meta.internalOptions.teamId,
+            meta.internalOptions.zeroDataRetention,
+          )
         : undefined;
+    const brandingScreenshotAction = brandingScreenshotVia
+      ? ({
+          type: "screenshot" as const,
+          fullPage: false,
+          quality: 70,
+          // Spread like the screenshot format's viewport: fire-engine takes
+          // it, the v1 action type doesn't declare it.
+          ...{ viewport: { width: 1280, height: 720 } },
+          metadata: { __firecrawl_internal: true },
+        } as InternalAction)
+      : undefined;
 
     const actions: InternalAction[] = [
       // Transform waitFor option into an action (unsupported by chrome-cdp).
@@ -549,9 +551,13 @@ export async function scrapeURLWithFireEngineChromeCDP(
       // Counted apart from `missing`: a failed scrape says nothing about
       // whether captures work, but keeps every requested capture counted.
       if (brandingScreenshotAction) {
-        brandingScreenshotCapturesTotal.inc({ outcome: "scrape_failed" });
+        brandingScreenshotCapturesTotal.inc({
+          outcome: "scrape_failed",
+          via: brandingScreenshotVia,
+        });
         setSpanAttributes(span, {
           "engine.branding_screenshot": "scrape_failed",
+          "engine.branding_screenshot_via": brandingScreenshotVia,
         });
       }
       throw error;
@@ -578,8 +584,14 @@ export async function scrapeURLWithFireEngineChromeCDP(
     }
     if (brandingScreenshotAction) {
       const outcome = brandingScreenshotUrl ? "captured" : "missing";
-      brandingScreenshotCapturesTotal.inc({ outcome });
-      setSpanAttributes(span, { "engine.branding_screenshot": outcome });
+      brandingScreenshotCapturesTotal.inc({
+        outcome,
+        via: brandingScreenshotVia,
+      });
+      setSpanAttributes(span, {
+        "engine.branding_screenshot": outcome,
+        "engine.branding_screenshot_via": brandingScreenshotVia,
+      });
       if (!brandingScreenshotUrl) {
         meta.logger.warn("Branding screenshot not returned by fire-engine", {
           actionResults: (response.actionResults ?? []).length,

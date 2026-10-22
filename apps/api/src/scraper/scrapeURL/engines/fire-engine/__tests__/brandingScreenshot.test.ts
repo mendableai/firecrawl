@@ -91,17 +91,46 @@ describe("branding first-screen screenshot", () => {
   const saved = {
     key: config.TYPESAFE_API_KEY,
     jev: config.BRANDING_JEV,
+    percent: config.BRANDING_JEV_SCREENSHOT_PERCENT,
   };
 
   beforeEach(() => {
     fake.requests = [];
     config.TYPESAFE_API_KEY = "ts-test";
     config.BRANDING_JEV = undefined;
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 0;
   });
 
   afterEach(() => {
     config.TYPESAFE_API_KEY = saved.key;
     config.BRANDING_JEV = saved.jev;
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = saved.percent;
+  });
+
+  it("captures for teams in the rollout without the flag, unless the request opts out", async () => {
+    const via = async (v: string) =>
+      (await brandingScreenshotCapturesTotal.get()).values.find(
+        x => x.labels.outcome === "captured" && x.labels.via === v,
+      )?.value ?? 0;
+    const before = await via("rollout");
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
+
+    respondWith(["https://storage.example/branding.jpg"]);
+    const result = await scrapeURLWithFireEngineChromeCDP(
+      meta([{ type: "branding" }]),
+    );
+    expect(result.brandingScreenshot).toBe(
+      "https://storage.example/branding.jpg",
+    );
+    expect(await via("rollout")).toBe(before + 1);
+
+    fake.requests = [];
+    respondWith([]);
+    const optedOut = await scrapeURLWithFireEngineChromeCDP(
+      meta([{ type: "branding", __experimental_screenshot: false }]),
+    );
+    expect((sent() ?? []).some(a => a.type === "screenshot")).toBe(false);
+    expect(optedOut.brandingScreenshot).toBeUndefined();
   });
 
   it("captures a JPEG first screen after the branding scan and keeps it out of the document", async () => {
@@ -165,7 +194,7 @@ describe("branding first-screen screenshot", () => {
   it("counts whether fire-engine returned the capture", async () => {
     const count = async (outcome: string) =>
       (await brandingScreenshotCapturesTotal.get()).values.find(
-        v => v.labels.outcome === outcome,
+        v => v.labels.outcome === outcome && v.labels.via === "flag",
       )?.value ?? 0;
     const before = {
       captured: await count("captured"),
@@ -185,7 +214,7 @@ describe("branding first-screen screenshot", () => {
   it("counts a requested capture whose scrape failed apart from a missing one", async () => {
     const failed = async () =>
       (await brandingScreenshotCapturesTotal.get()).values.find(
-        v => v.labels.outcome === "scrape_failed",
+        v => v.labels.outcome === "scrape_failed" && v.labels.via === "flag",
       )?.value ?? 0;
     const before = await failed();
     fake.response = () => {
