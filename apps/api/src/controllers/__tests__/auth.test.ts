@@ -926,7 +926,7 @@ describe("authenticateUser", () => {
 
     expect(auth).toMatchObject({ success: true, team_id: "team-1" });
     expect(authCreditUsageChunk).toHaveBeenCalledWith(
-      expect.anything(),
+      db,
       "11111111-1111-1111-8111-111111111111",
       "hosted_mcp_oauth",
     );
@@ -935,6 +935,14 @@ describe("authenticateUser", () => {
       expect.anything(),
       "general",
     );
+    const cacheKeysRead = vi
+      .mocked(getValue)
+      .mock.calls.map(([key]) => String(key));
+    expect(
+      cacheKeysRead.filter(key =>
+        /^acuc_(general|hosted_mcp_oauth)_/.test(key),
+      ),
+    ).toEqual([]);
   });
 
   it("rejects a managed OAuth credential bound to an MCP audience on the REST token path", async () => {
