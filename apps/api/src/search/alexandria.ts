@@ -44,7 +44,8 @@ export async function discoverTools(
   input: {
     teamId: string;
     toolDetail?: "compact" | "summary" | "full";
-    query?: string;
+    /** Semantic queries, best first; their results are interleaved by rank. */
+    queries?: string[];
     urls?: string[];
     limit: number;
     timeoutMs: number;
@@ -138,10 +139,19 @@ export async function discoverTools(
       }
     }
   };
-  if (input.query)
+  const queries = [...new Set(input.queries ?? [])];
+  if (queries.length)
     await leg("Semantic tool discovery unavailable", async () => {
-      for (const tool of await lookup({ query: input.query }))
-        merge(tool, "semantic");
+      const settled = await Promise.allSettled(
+        queries.map(query => lookup({ query })),
+      );
+      const lists = settled.flatMap(result =>
+        result.status === "fulfilled" ? [result.value] : [],
+      );
+      if (!lists.length) throw (settled[0] as PromiseRejectedResult).reason;
+      const depth = Math.max(...lists.map(list => list.length));
+      for (let rank = 0; rank < depth; rank++)
+        for (const list of lists) if (list[rank]) merge(list[rank], "semantic");
     });
   const urls = [...new Set(input.urls ?? [])].filter(value => {
     const url = URL.parse(value);

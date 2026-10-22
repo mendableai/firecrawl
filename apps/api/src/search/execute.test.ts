@@ -5,6 +5,12 @@ const mocks = vi.hoisted(() => ({
   checkUrlsAgainstThreatPolicy: vi.fn(),
   discoverTools: vi.fn(),
   removeExplicitResults: vi.fn(),
+  inferToolIntent: vi.fn(),
+}));
+
+vi.mock("./tool-intent", () => ({
+  AUTO_TOOLS_BUDGET_MS: 1500,
+  inferToolIntent: mocks.inferToolIntent,
 }));
 
 vi.mock("./alexandria", () => ({
@@ -143,6 +149,92 @@ it("mixed search bills only normal web results", async () => {
   );
   expect(result.searchCredits).toBe(2);
   expect(result.response.tools).toHaveLength(1);
+});
+
+describe("executeSearch tool intent", () => {
+  const webResult = {
+    url: "https://example.com/",
+    title: "Example",
+    description: "An example page.",
+  };
+
+  it("discovers tools with the rewritten queries and inferred domains", async () => {
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["institutional holders of a public company"],
+      domains: ["sec.gov"],
+      needsTools: true,
+    });
+    await executeSearch(
+      {
+        ...options([]),
+        query: "who owns apple stock",
+        sources: [{ type: "alexandria" }],
+        inferToolQuery: true,
+      },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queries: ["institutional holders of a public company"],
+        urls: ["https://sec.gov/"],
+      }),
+      logger,
+    );
+  });
+
+  it("adds tools to a default search when the query needs them", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["US unemployment rate statistics"],
+      domains: [],
+      needsTools: true,
+    });
+    const result = await executeSearch(
+      { ...options([]), autoTools: true },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolDetail: "compact",
+        queries: ["US unemployment rate statistics"],
+        urls: [],
+      }),
+      logger,
+    );
+    expect(result.toolsAuto).toBe(true);
+    expect(result.response.tools).toEqual([{ id: "fred/series/observations" }]);
+    expect(result.searchCredits).toBe(2);
+  });
+
+  it("leaves a default search alone when the query does not need tools", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["CSS layout documentation"],
+      domains: [],
+      needsTools: false,
+    });
+    const result = await executeSearch(
+      { ...options([]), autoTools: true },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).not.toHaveBeenCalled();
+    expect(result.toolsAuto).toBe(false);
+    expect(result.response.tools).toBeUndefined();
+  });
+
+  it("never adds tools under zero data retention", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    await executeSearch(
+      { ...options([]), autoTools: true },
+      { ...context, zeroDataRetention: true },
+      logger,
+    );
+    expect(mocks.inferToolIntent).not.toHaveBeenCalled();
+    expect(mocks.discoverTools).not.toHaveBeenCalled();
+  });
 });
 
 describe("executeSearch safe search", () => {

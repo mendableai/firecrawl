@@ -61,6 +61,10 @@ import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import { applyNotice, type Notice } from "../../lib/deprecations";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
 import { recordDiscoveredTools } from "../../lib/alexandria-discovery";
+import {
+  autoToolsEnabled,
+  queryInferenceEnabled,
+} from "../../search/tool-intent";
 
 const RESEARCH_CATEGORY_NOTICE: Notice = {
   message:
@@ -153,6 +157,8 @@ async function searchControllerInner(
       typeof req.body?.origin === "string" ? req.body.origin : undefined;
     delete (req.body as Record<string, unknown>)?.objective;
     delete (req.body as Record<string, unknown>)?.clientModel;
+    const sourcesOmitted =
+      (req.body as Record<string, unknown>)?.sources === undefined;
     req.body = searchRequestSchema.parse(req.body);
 
     const wantsTools = req.body.sources.some(
@@ -451,6 +457,12 @@ async function searchControllerInner(
         highlights: req.body.highlights,
         domainTools: req.body.domainTools,
         toolDetail: req.body.toolDetail,
+        inferToolQuery: queryInferenceEnabled(req.acuc?.flags),
+        autoTools:
+          sourcesOmitted &&
+          !req.auth.team_id.startsWith("preview_keyless_") &&
+          config.FIRE_EXCHANGE_URL !== undefined &&
+          autoToolsEnabled(req.acuc?.flags),
         timeout: req.body.timeout,
       },
       {
@@ -601,10 +613,10 @@ async function searchControllerInner(
     });
 
     if (result.response.tools) {
-      markAlexandriaActivity(req.auth.team_id);
+      if (!result.toolsAuto) markAlexandriaActivity(req.auth.team_id);
       recordDiscoveredTools(
         req.auth.team_id,
-        "search",
+        result.toolsAuto ? "auto_search" : "search",
         jobId,
         result.response.tools,
       );

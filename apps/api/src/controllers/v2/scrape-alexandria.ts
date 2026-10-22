@@ -13,6 +13,10 @@ import { orgIdFromAcuc } from "../../lib/team-org";
 import { logProviderScrape, logRequest } from "../../services/logging/log_job";
 import { markAlexandriaActivity } from "../../lib/alexandria-activity";
 import {
+  inferToolIntent,
+  queryInferenceEnabled,
+} from "../../search/tool-intent";
+import {
   discoveryForCalls,
   recordDiscoveredTools,
 } from "../../lib/alexandria-discovery";
@@ -157,6 +161,26 @@ export async function providerScrapeController(
           logger.warn("Alexandria discovery lookup failed", { error });
           return null;
         });
+  const calls =
+    zeroDataRetention || !queryInferenceEnabled(req.acuc.flags)
+      ? body.alexandria
+      : await Promise.all(
+          body.alexandria.map(async call =>
+            isFindTools(call) &&
+            typeof call.options.query === "string" &&
+            call.options.query.trim() &&
+            call.options.offset === undefined
+              ? {
+                  ...call,
+                  options: {
+                    ...call.options,
+                    query: (await inferToolIntent(call.options.query, logger))
+                      .toolQueries[0],
+                  },
+                }
+              : call,
+          ),
+        );
   const startedAt = Date.now();
   let result;
   try {
@@ -166,7 +190,8 @@ export async function providerScrapeController(
       apiKeyId: req.acuc.api_key_id ?? null,
       apiKeyIdText: req.acuc.api_key_id_text ?? null,
       flags: req.acuc.flags,
-      calls: body.alexandria,
+      calls,
+      fingerprintCalls: body.alexandria,
       resultAuthorization: req.get("authorization"),
       requestId,
       scrapeId: uuidv7(),
@@ -269,6 +294,9 @@ export async function providerScrapeController(
                       ),
                       ...(Array.isArray(options.urls)
                         ? { urlCount: options.urls.length }
+                        : {}),
+                      ...(calls[i].options.query !== options.query
+                        ? { inferredQuery: calls[i].options.query }
                         : {}),
                     },
                     ...(served.success

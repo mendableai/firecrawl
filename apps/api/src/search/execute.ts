@@ -1,5 +1,6 @@
 import type { Logger } from "winston";
 import { discoverTools, isAlexandriaSource } from "./alexandria";
+import { AUTO_TOOLS_BUDGET_MS, inferToolIntent } from "./tool-intent";
 import { search } from "./v2";
 import {
   SearchV2Response,
@@ -55,6 +56,10 @@ interface SearchOptions {
   highlights?: boolean;
   domainTools?: boolean;
   toolDetail?: "compact" | "summary" | "full";
+  /** Rewrite the query before tool discovery. */
+  inferToolQuery?: boolean;
+  /** Add compact tools to a search that did not ask for them, when the query needs them. */
+  autoTools?: boolean;
   timeout: number;
 }
 
@@ -81,6 +86,8 @@ interface SearchContext {
 
 interface SearchExecuteResult {
   toolsWarning?: string;
+  /** The tools were added automatically, not requested. */
+  toolsAuto?: boolean;
   toolsUnavailable?: boolean;
   response: SearchV2Response;
   totalResultsCount: number;
@@ -115,7 +122,41 @@ export async function executeSearch(
 
   logger.info("Searching for results");
 
+  const startedAt = Date.now();
   const wantsTools = sources.some(isAlexandriaSource);
+  const toolsAllowed =
+    !zeroDataRetention &&
+    !options.enterprise?.some(mode => mode === "zdr" || mode === "anon");
+  const toolIntent =
+    toolsAllowed &&
+    (wantsTools ? options.inferToolQuery : options.autoTools) &&
+    query.trim()
+      ? inferToolIntent(query, logger)
+      : null;
+  const autoDiscovery =
+    toolIntent && !wantsTools && !options.domainTools
+      ? toolIntent
+          .then(intent =>
+            intent.needsTools
+              ? discoverTools(
+                  {
+                    toolDetail: "compact",
+                    teamId,
+                    connectors: flags?.exchangeRetrieve === true,
+                    limit,
+                    queries: intent.toolQueries,
+                    urls: intent.domains.map(domain => `https://${domain}/`),
+                    timeoutMs: Math.max(
+                      1,
+                      AUTO_TOOLS_BUDGET_MS - (Date.now() - startedAt),
+                    ),
+                  },
+                  logger,
+                )
+              : null,
+          )
+          .catch(() => null)
+      : null;
   const searchTypes = [
     ...new Set(
       sources
@@ -282,27 +323,28 @@ export async function executeSearch(
   totalResultsCount += indexResultsCount;
   let toolsWarning: string | undefined;
   let toolsUnavailable = false;
+  let toolsAuto = false;
 
-  if (
-    !zeroDataRetention &&
-    !options.enterprise?.some(mode => mode === "zdr" || mode === "anon") &&
-    (wantsTools || options.domainTools)
-  ) {
+  if (toolsAllowed && (wantsTools || options.domainTools)) {
+    const intent = toolIntent ? await toolIntent : null;
     const discovery = await discoverTools(
       {
         toolDetail: options.toolDetail ?? "compact",
         teamId,
         connectors: flags?.exchangeRetrieve === true,
         limit,
-        query: wantsTools ? query : undefined,
+        queries: wantsTools ? (intent?.toolQueries ?? [query]) : undefined,
         urls:
           options.domainTools === false
             ? []
             : [
-                ...(searchResponse.web ?? []),
-                ...(searchResponse.news ?? []),
-                ...indexResults,
-              ].flatMap(item => (item.url ? [item.url] : [])),
+                ...[
+                  ...(searchResponse.web ?? []),
+                  ...(searchResponse.news ?? []),
+                  ...indexResults,
+                ].flatMap(item => (item.url ? [item.url] : [])),
+                ...(intent?.domains ?? []).map(domain => `https://${domain}/`),
+              ],
         timeoutMs: options.timeout,
       },
       logger,
@@ -310,6 +352,23 @@ export async function executeSearch(
     searchResponse.tools = discovery.items;
     toolsWarning = discovery.warning;
     toolsUnavailable = discovery.unavailable === true;
+  } else if (autoDiscovery) {
+    let timer: NodeJS.Timeout | undefined;
+    const discovery = await Promise.race([
+      autoDiscovery,
+      new Promise<null>(resolve => {
+        timer = setTimeout(
+          () => resolve(null),
+          Math.max(0, AUTO_TOOLS_BUDGET_MS - (Date.now() - startedAt)),
+        );
+        timer.unref();
+      }),
+    ]);
+    clearTimeout(timer);
+    if (discovery?.items.length) {
+      searchResponse.tools = discovery.items;
+      toolsAuto = true;
+    }
   }
 
   const isZDR = options.enterprise?.includes("zdr");
@@ -471,6 +530,7 @@ export async function executeSearch(
     response: searchResponse,
     toolsWarning,
     toolsUnavailable,
+    toolsAuto,
     totalResultsCount,
     // Counted from the final response — after scraping and highlights — so it
     // matches exactly what the client can address by position.

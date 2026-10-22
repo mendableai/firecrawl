@@ -91,6 +91,8 @@ export async function retrieveProviders(input: {
   apiKeyIdText?: string | null;
   flags: TeamFlags | null | undefined;
   calls: ProviderCall[];
+  /** The calls as the caller sent them, when `calls` was rewritten; keys idempotency. */
+  fingerprintCalls?: ProviderCall[];
   requestId: string;
   scrapeId: string;
   timeoutMs: number;
@@ -170,8 +172,8 @@ export async function retrieveProviders(input: {
   // Appended only when set so existing non-ZDR fingerprints stay stable.
   const fingerprint = hash([
     ...(termsOnly
-      ? [input.calls, billable, termsIdentity ?? null]
-      : [input.calls, billable]),
+      ? [input.fingerprintCalls ?? input.calls, billable, termsIdentity ?? null]
+      : [input.fingerprintCalls ?? input.calls, billable]),
     ...(zeroDataRetention ? [{ zeroDataRetention }] : []),
   ]);
   const record: Retrieval = {
