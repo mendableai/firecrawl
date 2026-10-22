@@ -510,16 +510,22 @@ async function recordAgentCredits(
   chargeId: string,
   credits: number,
 ) {
-  try {
-    await initializeRequestCredits(
-      agentRequestId,
-      AGENT_REQUEST_CREDITS_SHARDS,
-    );
-    await recordRequestCredits({
+  const record = () =>
+    recordRequestCredits({
       requestId: agentRequestId,
       jobId: `alexandria:${chargeId}`,
       credits,
     });
+  try {
+    if (await record()) return;
+    if (
+      !(await initializeRequestCredits(
+        agentRequestId,
+        AGENT_REQUEST_CREDITS_SHARDS,
+      ))
+    )
+      throw new Error("Request credits store is unavailable");
+    await record();
   } catch (error) {
     logger.error("Provider credits were not recorded on the agent run", {
       chargeId,

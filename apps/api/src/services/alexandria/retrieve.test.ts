@@ -705,7 +705,7 @@ it("refuses the same x-request-id with a different zero data retention setting",
 
 it("records an agent call's charge on the agent run, once, at Exchange's price", async () => {
   await run({ agentRequestId: "agent-run", zeroDataRetention: true });
-  expect(mocks.initCredits).toHaveBeenCalledWith("agent-run", 8);
+  expect(mocks.initCredits).not.toHaveBeenCalled();
   expect(mocks.recordCredits).toHaveBeenCalledTimes(1);
   expect(mocks.recordCredits).toHaveBeenCalledWith({
     requestId: "agent-run",
@@ -735,4 +735,21 @@ it("still answers when the agent run's credits cannot be recorded", async () => 
     executed: true,
   });
   expect(mocks.billAdd).toHaveBeenCalledTimes(1);
+});
+
+it("creates the agent run's credit row only when it is missing", async () => {
+  mocks.recordCredits.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  await run({ agentRequestId: "agent-run" });
+  expect(mocks.initCredits).toHaveBeenCalledWith("agent-run", 8);
+  expect(mocks.recordCredits).toHaveBeenCalledTimes(2);
+});
+
+it("does not retry the write when the credit store is unavailable", async () => {
+  mocks.recordCredits.mockResolvedValue(false);
+  mocks.initCredits.mockResolvedValue(false);
+  expect(await run({ agentRequestId: "agent-run" })).toMatchObject({
+    status: 200,
+    executed: true,
+  });
+  expect(mocks.recordCredits).toHaveBeenCalledTimes(1);
 });
