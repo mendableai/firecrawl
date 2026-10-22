@@ -154,60 +154,38 @@ const DEVELOPER_SEARCH_QUERY_KEYS = [
   "skills",
 ];
 
-const yearSchema = z.coerce.number().int().min(1000).max(9999).optional();
-
-const govSearchSchema = z
-  .strictObject({
-    query: z.string().min(1),
-    k: kSchema(100),
-    jurisdiction: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .regex(/^us(-[a-z]{2})?$/, {
-        message:
-          'jurisdiction must be "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc"',
-      })
-      .optional(),
-    court: z.string().min(1).optional(),
-    courtType: z
-      .enum([
-        "federal-supreme",
-        "federal-appellate",
-        "federal-district",
-        "federal-bankruptcy",
-        "federal-special",
-        "military",
-        "state-supreme",
-        "state-appellate",
-        "state-trial",
-        "state-special",
-        "state-attorney-general",
-      ])
-      .optional(),
-    cites: z.string().min(1).optional(),
-    domain: z.string().min(1).optional(),
-    yearFrom: yearSchema,
-    yearTo: yearSchema,
-    ...commonQuery,
-  })
-  .refine(
-    value =>
-      (value.yearFrom === undefined && value.yearTo === undefined) ||
-      value.court !== undefined ||
-      value.courtType !== undefined,
-    {
+const govSearchSchema = z.strictObject({
+  query: z.string().min(1),
+  k: kSchema(100),
+  jurisdiction: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^us(-[a-z]{2})?$/, {
       message:
-        "yearFrom and yearTo require court or courtType: most pages other than court documents carry no reliable date, so a year filter alone would leave most of them out",
-    },
-  )
-  .refine(
-    value =>
-      value.yearFrom === undefined ||
-      value.yearTo === undefined ||
-      value.yearFrom <= value.yearTo,
-    { message: "yearFrom must not be after yearTo" },
-  );
+        'jurisdiction must be "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc"',
+    })
+    .optional(),
+  court: z.string().min(1).optional(),
+  courtType: z
+    .enum([
+      "federal-supreme",
+      "federal-appellate",
+      "federal-district",
+      "federal-bankruptcy",
+      "federal-special",
+      "military",
+      "state-supreme",
+      "state-appellate",
+      "state-trial",
+      "state-special",
+      "state-attorney-general",
+    ])
+    .optional(),
+  cites: z.string().min(1).optional(),
+  domain: z.string().min(1).optional(),
+  ...commonQuery,
+});
 
 type ResearchEndpointConfig = {
   kind: ResearchRequestKind;
@@ -717,8 +695,6 @@ export function createGovRouter() {
           courtType: params.courtType,
           cites: params.cites,
           domain: params.domain,
-          yearFrom: params.yearFrom,
-          yearTo: params.yearTo,
           headers,
           timeoutMs: GOV_SEARCH_TIMEOUT_MS,
         }),
