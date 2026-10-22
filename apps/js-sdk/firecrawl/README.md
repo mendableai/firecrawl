@@ -265,11 +265,10 @@ for (const result of law.data.web) {
   console.log(result.position, result.title, result.url);
 }
 
-// State supreme court opinions from 2022 on that cite a federal statute:
+// State supreme court opinions that cite a federal statute:
 const cases = await app.govSearch('qualified immunity', {
   courtType: 'state-supreme',
   cites: '42 U.S.C. § 1983',
-  yearFrom: 2022,
 });
 ```
 
@@ -277,11 +276,10 @@ Filters, all optional and combined with AND: `jurisdiction` (`'us'` for
 federal, or `'us-'` plus a two-letter state or territory code, such as
 `'us-ca'`), `court` (a CourtListener court id, such as `'scotus'` or `'ca9'`),
 `courtType`, `cites` (one printed citation or citation id, such as
-`'us:usc:42:1983'`), `domain` (one site, such as `'irs.gov'`), and
-`yearFrom` / `yearTo`, which require `court` or `courtType`. Filters keep only
-pages the index has labeled, so a filtered search can leave out relevant pages,
-and no results does not mean none exist. Court labels are most complete for
-federal courts and case-law collections.
+`'us:usc:42:1983'`), and `domain` (one site, such as `'irs.gov'`). Filters keep
+only pages the index has labeled, so a filtered search can leave out relevant
+pages, and no results does not mean none exist. Court labels are most complete
+for federal courts and case-law collections.
 
 ### Research / paper search
 

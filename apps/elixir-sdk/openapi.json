@@ -6680,28 +6680,6 @@
               "type": "string",
               "minLength": 1
             }
-          },
-          {
-            "name": "yearFrom",
-            "in": "query",
-            "required": false,
-            "description": "Keep only documents published or filed in this year or later. Requires `court` or `courtType`.",
-            "schema": {
-              "type": "integer",
-              "minimum": 1000,
-              "maximum": 9999
-            }
-          },
-          {
-            "name": "yearTo",
-            "in": "query",
-            "required": false,
-            "description": "Keep only documents published or filed in this year or earlier. Requires `court` or `courtType`.",
-            "schema": {
-              "type": "integer",
-              "minimum": 1000,
-              "maximum": 9999
-            }
           }
         ],
         "responses": {
@@ -6815,18 +6793,6 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "Keep only pages from one site, such as `irs.gov`."
-                  },
-                  "yearFrom": {
-                    "type": "integer",
-                    "minimum": 1000,
-                    "maximum": 9999,
-                    "description": "Keep only documents published or filed in this year or later. Requires `court` or `courtType`."
-                  },
-                  "yearTo": {
-                    "type": "integer",
-                    "minimum": 1000,
-                    "maximum": 9999,
-                    "description": "Keep only documents published or filed in this year or earlier. Requires `court` or `courtType`."
                   }
                 }
               },

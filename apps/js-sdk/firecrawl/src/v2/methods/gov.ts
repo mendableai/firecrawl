@@ -28,8 +28,6 @@ export async function govSearch(
         : {}),
       ...(options.cites !== undefined ? { cites: options.cites } : {}),
       ...(options.domain !== undefined ? { domain: options.domain } : {}),
-      ...(options.yearFrom !== undefined ? { yearFrom: options.yearFrom } : {}),
-      ...(options.yearTo !== undefined ? { yearTo: options.yearTo } : {}),
     });
 
     if (response.status !== 200 || !response.data?.success) {

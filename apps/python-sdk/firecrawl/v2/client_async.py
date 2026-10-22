@@ -375,8 +375,6 @@ class AsyncFirecrawlClient:
         court_type: Optional[GovSearchCourtType] = None,
         cites: Optional[str] = None,
         domain: Optional[str] = None,
-        year_from: Optional[int] = None,
-        year_to: Optional[int] = None,
     ) -> GovSearchResponse:
         """
         Search the Government Index of US primary law and regulatory material.
@@ -399,10 +397,6 @@ class AsyncFirecrawlClient:
                 citation such as "42 U.S.C. § 1983" or "5 U.S. 137", or a
                 citation id such as "us:usc:42:1983"
             domain: Keep only pages from one site, such as "irs.gov"
-            year_from: Keep only documents published or filed in this year or
-                later. Requires court or court_type
-            year_to: Keep only documents published or filed in this year or
-                earlier. Requires court or court_type
 
         Returns:
             GovSearchResponse with ranked results in data.web
@@ -416,8 +410,6 @@ class AsyncFirecrawlClient:
             court_type=court_type,
             cites=cites,
             domain=domain,
-            year_from=year_from,
-            year_to=year_to,
         )
 
     async def start_crawl(self, url: str, **kwargs) -> CrawlResponse:

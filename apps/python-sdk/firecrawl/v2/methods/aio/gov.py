@@ -20,8 +20,6 @@ async def gov_search(
     court_type: Optional[GovSearchCourtType] = None,
     cites: Optional[str] = None,
     domain: Optional[str] = None,
-    year_from: Optional[int] = None,
-    year_to: Optional[int] = None,
 ) -> GovSearchResponse:
     """Search the Government Index asynchronously."""
     if not query or not query.strip():
@@ -35,8 +33,6 @@ async def gov_search(
         court_type=court_type,
         cites=cites,
         domain=domain,
-        year_from=year_from,
-        year_to=year_to,
     )
     response = await client.post(ENDPOINT, request.model_dump(exclude_none=True, by_alias=True))
     if response.status_code != 200:

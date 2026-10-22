@@ -2456,8 +2456,6 @@ class GovSearchRequest(BaseModel):
     court_type: Optional[GovSearchCourtType] = Field(default=None, alias="courtType")
     cites: Optional[str] = None
     domain: Optional[str] = None
-    year_from: Optional[int] = Field(default=None, ge=1000, le=9999, alias="yearFrom")
-    year_to: Optional[int] = Field(default=None, ge=1000, le=9999, alias="yearTo")
 
 
 class GovSearchData(BaseModel):

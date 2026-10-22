@@ -857,10 +857,6 @@ export interface GovSearchOptions {
   cites?: string;
   /** Keep only pages from one site, such as "irs.gov". */
   domain?: string;
-  /** Keep only documents published or filed in this year or later. Requires `court` or `courtType`. */
-  yearFrom?: number;
-  /** Keep only documents published or filed in this year or earlier. Requires `court` or `courtType`. */
-  yearTo?: number;
 }
 
 export interface GovSearchResponse {
