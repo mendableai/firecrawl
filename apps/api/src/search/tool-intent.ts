@@ -207,7 +207,6 @@ async function infer(text: string, logger: Logger): Promise<Inferred> {
     schema: intentSchema,
     system: system(tag),
     prompt: `<${tag}>\n${text.slice(0, 2000)}\n</${tag}>`,
-    temperature: 0,
     maxRetries: 0,
     abortSignal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
   });
