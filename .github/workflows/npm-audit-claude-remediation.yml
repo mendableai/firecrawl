@@ -93,6 +93,8 @@ jobs:
         uses: anthropics/claude-code-action@2cc1ac1331eac7a6a96d716dd204dd2888d0fcd2 # v1
         with:
           anthropic_api_key: ${{ secrets.NPM_AUDIT_CLAUDE_ANTHROPIC_API_KEY }}
+          additional_permissions: |
+            issues: read
           base_branch: ${{ github.event.repository.default_branch }}
           branch_prefix: claude/audit-ci/
           prompt: ${{ steps.scan.outputs.prompt }}
