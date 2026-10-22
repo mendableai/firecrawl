@@ -165,7 +165,7 @@ final class FirecrawlClient
             throw new \InvalidArgumentException('timeout must be between 1 and 120000 milliseconds');
         }
         $requestId ??= bin2hex(random_bytes(16));
-        if (preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $requestId) !== 1) {
+        if (preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $requestId) !== 1) {
             throw new \InvalidArgumentException('requestId must be 1 to 128 characters of A-Z, a-z, 0-9, ".", "_", ":" or "-"');
         }
 
