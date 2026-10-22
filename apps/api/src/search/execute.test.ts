@@ -6,11 +6,13 @@ const mocks = vi.hoisted(() => ({
   discoverTools: vi.fn(),
   removeExplicitResults: vi.fn(),
   inferToolIntent: vi.fn(),
+  verifyTools: vi.fn(),
 }));
 
 vi.mock("./tool-intent", () => ({
   AUTO_TOOLS_WAIT_MS: 300,
   inferToolIntent: mocks.inferToolIntent,
+  verifyTools: mocks.verifyTools,
 }));
 
 vi.mock("./alexandria", () => ({
@@ -109,6 +111,7 @@ beforeEach(() => {
     status: "available",
     items: [{ id: "fred/series/observations" }],
   });
+  mocks.verifyTools.mockImplementation(async (_query, items) => items);
 });
 
 it("tool-only search never runs or bills SERP", async () => {
@@ -158,7 +161,7 @@ describe("executeSearch tool intent", () => {
     description: "An example page.",
   };
 
-  it("discovers tools with the rewritten queries and inferred domains", async () => {
+  it("keeps the raw query and adds verified rewrite and domain tools", async () => {
     mocks.inferToolIntent.mockResolvedValue({
       toolQueries: ["institutional holders of a public company"],
       domains: ["sec.gov"],
@@ -175,12 +178,46 @@ describe("executeSearch tool intent", () => {
       logger,
     );
     expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({ queries: ["who owns apple stock"] }),
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
       expect.objectContaining({
         queries: ["institutional holders of a public company"],
         urls: ["https://sec.gov/"],
       }),
       logger,
     );
+    expect(mocks.verifyTools).toHaveBeenCalledWith(
+      "who owns apple stock",
+      [{ id: "fred/series/observations" }],
+      logger,
+    );
+  });
+
+  it("adds no tool the fit check rejects", async () => {
+    const own = { provider: "sec-gov", capability: "filings/filings" };
+    const extra = { provider: "apps-apple-com", capability: "apps/app" };
+    mocks.discoverTools
+      .mockResolvedValueOnce({ items: [extra] })
+      .mockResolvedValueOnce({ items: [own] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["institutional holders of a public company"],
+      domains: [],
+      needsTools: true,
+    });
+    mocks.verifyTools.mockResolvedValue([]);
+    const result = await executeSearch(
+      {
+        ...options([]),
+        query: "who owns apple stock",
+        sources: [{ type: "alexandria" }],
+        inferToolQuery: true,
+      },
+      context,
+      logger,
+    );
+    expect(result.response.tools).toEqual([own]);
   });
 
   it("adds tools to a default search when the query needs them", async () => {
@@ -198,7 +235,7 @@ describe("executeSearch tool intent", () => {
     expect(mocks.discoverTools).toHaveBeenCalledWith(
       expect.objectContaining({
         toolDetail: "compact",
-        queries: ["US unemployment rate statistics"],
+        queries: ["retries", "US unemployment rate statistics"],
         urls: [],
       }),
       logger,
@@ -244,7 +281,7 @@ describe("executeSearch tool intent", () => {
     );
     expect(mocks.discoverTools).toHaveBeenCalledWith(
       expect.objectContaining({
-        queries: ["website traffic statistics of a domain"],
+        queries: ["retries", "website traffic statistics of a domain"],
         urls: [],
       }),
       logger,

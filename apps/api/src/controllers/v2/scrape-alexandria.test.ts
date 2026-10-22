@@ -10,12 +10,6 @@ const mocks = vi.hoisted(() => ({
   scrapeLog: vi.fn(),
   discovery: vi.fn(),
   recordDiscovered: vi.fn(),
-  inferToolIntent: vi.fn(),
-}));
-vi.mock("../../search/tool-intent", () => ({
-  queryInferenceEnabled: (flags?: Record<string, unknown>) =>
-    flags?.alexandriaQueryInference === true,
-  inferToolIntent: mocks.inferToolIntent,
 }));
 vi.mock("../../lib/alexandria-discovery", () => ({
   discoveryForCalls: mocks.discovery,
@@ -485,65 +479,4 @@ it("neither reads nor records discovery under zero data retention", async () => 
   await vi.waitFor(() => expect(mocks.scrapeLog).toHaveBeenCalledTimes(1));
   expect(mocks.discovery).not.toHaveBeenCalled();
   expect(mocks.recordDiscovered).not.toHaveBeenCalled();
-});
-
-it("rewrites a find-tools query and keeps idempotency on the original call", async () => {
-  flags = { exchangeRetrieve: true, alexandriaQueryInference: true };
-  mocks.inferToolIntent.mockResolvedValue({
-    toolQueries: ["institutional holders of a public company"],
-    domains: [],
-    needsTools: true,
-  });
-  const findTools = {
-    provider: "firecrawl",
-    capability: "find-tools",
-    options: { query: "who owns apple stock" },
-  };
-  const paged = {
-    ...findTools,
-    options: { query: "institutional holders", offset: 20 },
-  };
-  mocks.retrieve.mockResolvedValue(
-    result([
-      { ...findTools, creditsCost: 0, data: { items: [] } },
-      { ...paged, creditsCost: 0, data: { items: [] } },
-    ]),
-  );
-  const response = await request(app)
-    .post("/v2/scrape")
-    .send({ alexandria: [findTools, paged] });
-  expect(response.status).toBe(200);
-  expect(mocks.inferToolIntent).toHaveBeenCalledTimes(1);
-  expect(mocks.retrieve).toHaveBeenCalledWith(
-    expect.objectContaining({
-      calls: [
-        {
-          ...findTools,
-          options: { query: "institutional holders of a public company" },
-        },
-        paged,
-      ],
-      fingerprintCalls: [findTools, paged],
-    }),
-  );
-  await vi.waitFor(() => expect(mocks.scrapeLog).toHaveBeenCalled());
-  expect(
-    mocks.scrapeLog.mock.calls[0][0].options.alexandria[0].options,
-  ).toEqual({
-    query: "who owns apple stock",
-    inferredQuery: "institutional holders of a public company",
-  });
-});
-
-it("forwards find-tools queries unchanged without the flag", async () => {
-  const findTools = {
-    provider: "firecrawl",
-    capability: "find-tools",
-    options: { query: "who owns apple stock" },
-  };
-  await request(app).post("/v2/scrape").send({ alexandria: findTools });
-  expect(mocks.inferToolIntent).not.toHaveBeenCalled();
-  expect(mocks.retrieve).toHaveBeenCalledWith(
-    expect.objectContaining({ calls: [findTools] }),
-  );
 });

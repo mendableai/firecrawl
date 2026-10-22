@@ -8,12 +8,17 @@ const mocks = vi.hoisted(() => ({
 
 const config = vi.hoisted(() => ({
   ANTHROPIC_API_KEY: undefined as string | undefined,
+  TYPESAFE_API_KEY: "key" as string | undefined,
   ALEXANDRIA_QUERY_INFERENCE: false,
   ALEXANDRIA_AUTO_TOOLS: false,
 }));
 
 vi.mock("ai", () => ({ generateObject: mocks.generateObject }));
 vi.mock("../config", () => ({ config }));
+const systemOne = vi.hoisted(() => vi.fn());
+vi.mock("../lib/typesafe", () => ({
+  getTypeSafeClient: () => ({ systemOne }),
+}));
 vi.mock("../lib/generic-ai", () => ({ getModel: vi.fn(() => "model") }));
 vi.mock("../services/rate-limiter", () => ({
   redisRateLimitClient: { get: mocks.get, set: mocks.set },
@@ -24,6 +29,7 @@ import {
   inferToolIntent,
   parseSearchQuery,
   queryInferenceEnabled,
+  verifyTools,
 } from "./tool-intent";
 
 const logger = { warn: vi.fn() } as any;
@@ -115,6 +121,9 @@ describe("feature gates", () => {
     expect(queryInferenceEnabled(flags)).toBe(true);
     expect(autoToolsEnabled(flags)).toBe(true);
     expect(queryInferenceEnabled({})).toBe(false);
+    config.TYPESAFE_API_KEY = undefined;
+    expect(queryInferenceEnabled(flags)).toBe(false);
+    config.TYPESAFE_API_KEY = "key";
   });
 });
 
@@ -122,4 +131,31 @@ it("sends no semantic query for an operator-only query", async () => {
   const intent = await inferToolIntent("site:sec.gov filetype:pdf", logger);
   expect(intent).toEqual({ toolQueries: [], domains: ["sec.gov"] });
   expect(mocks.generateObject).not.toHaveBeenCalled();
+});
+
+it("keeps only the tools Jev judges to fit, and drops unjudged ones", async () => {
+  const tools = [
+    {
+      provider: "fiscal-ai",
+      capability: "ownership/institutional-holders",
+      description: "Holders",
+    },
+    {
+      provider: "apps-apple-com",
+      capability: "apps/app",
+      description: "App Store app",
+    },
+    {
+      provider: "sec-gov",
+      capability: "filings/filings",
+      description: "Filings",
+    },
+  ];
+  systemOne
+    .mockResolvedValueOnce({ answers: { fits: { noul: 0.9 } } })
+    .mockResolvedValueOnce({ answers: { fits: { noul: 0.1 } } })
+    .mockRejectedValueOnce(new Error("timeout"));
+  expect(await verifyTools("who owns apple stock", tools, logger)).toEqual([
+    tools[0],
+  ]);
 });

@@ -1,6 +1,10 @@
 import type { Logger } from "winston";
 import { discoverTools, isAlexandriaSource } from "./alexandria";
-import { AUTO_TOOLS_WAIT_MS, inferToolIntent } from "./tool-intent";
+import {
+  AUTO_TOOLS_WAIT_MS,
+  inferToolIntent,
+  verifyTools,
+} from "./tool-intent";
 import { search } from "./v2";
 import {
   SearchV2Response,
@@ -132,30 +136,32 @@ export async function executeSearch(
     query.trim()
       ? inferToolIntent(query, logger)
       : null;
-  const autoDiscovery =
-    toolIntent && !wantsTools
-      ? toolIntent
-          .then(intent =>
-            intent.needsTools
-              ? discoverTools(
-                  {
-                    toolDetail: options.toolDetail ?? "compact",
-                    teamId,
-                    connectors: flags?.exchangeRetrieve === true,
-                    limit,
-                    queries: intent.toolQueries,
-                    urls:
-                      options.domainTools === false
-                        ? []
-                        : intent.domains.map(domain => `https://${domain}/`),
-                    timeoutMs: Math.min(options.timeout, 3000),
-                  },
-                  logger,
-                )
-              : null,
-          )
-          .catch(() => null)
-      : null;
+  // Tools found only through the rewrite or inferred domains are added after Jev confirms they fit the query.
+  const extraDiscovery = toolIntent
+    ? toolIntent
+        .then(async intent => {
+          if (!wantsTools && !intent.needsTools) return null;
+          const found = await discoverTools(
+            {
+              toolDetail: options.toolDetail ?? "compact",
+              teamId,
+              connectors: flags?.exchangeRetrieve === true,
+              limit,
+              queries: wantsTools
+                ? intent.toolQueries
+                : [query, ...intent.toolQueries],
+              urls:
+                options.domainTools === false
+                  ? []
+                  : intent.domains.map(domain => `https://${domain}/`),
+              timeoutMs: Math.min(options.timeout, 3000),
+            },
+            logger,
+          );
+          return verifyTools(query, found.items, logger);
+        })
+        .catch(() => null)
+    : null;
   const searchTypes = [
     ...new Set(
       sources
@@ -324,54 +330,51 @@ export async function executeSearch(
   let toolsUnavailable = false;
   let toolsAuto = false;
 
-  // Query tools a search did not ask for wait at most AUTO_TOOLS_WAIT_MS past the web results.
-  let timer: NodeJS.Timeout | undefined;
-  const readyAutoDiscovery = autoDiscovery
-    ? Promise.race([
-        autoDiscovery,
-        new Promise<null>(resolve => {
-          timer = setTimeout(() => resolve(null), AUTO_TOOLS_WAIT_MS);
-          timer.unref();
-        }),
-      ])
-    : null;
+  const waitForExtra = async (alongside?: Promise<unknown>) => {
+    if (!extraDiscovery) return null;
+    let timer: NodeJS.Timeout | undefined;
+    const deadline = new Promise<void>(resolve => {
+      timer = setTimeout(resolve, AUTO_TOOLS_WAIT_MS);
+      timer.unref();
+    });
+    try {
+      return await Promise.race([
+        extraDiscovery,
+        Promise.all([deadline, alongside]).then(() => null),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   if (toolsAllowed && (wantsTools || options.domainTools)) {
-    const intent = wantsTools && toolIntent ? await toolIntent : null;
-    const [discovery, auto] = await Promise.all([
-      discoverTools(
-        {
-          toolDetail: options.toolDetail ?? "compact",
-          teamId,
-          connectors: flags?.exchangeRetrieve === true,
-          limit,
-          queries: wantsTools ? (intent?.toolQueries ?? [query]) : undefined,
-          urls:
-            options.domainTools === false
-              ? []
-              : [
-                  ...[
-                    ...(searchResponse.web ?? []),
-                    ...(searchResponse.news ?? []),
-                    ...indexResults,
-                  ].flatMap(item => (item.url ? [item.url] : [])),
-                  ...(intent?.domains ?? []).map(
-                    domain => `https://${domain}/`,
-                  ),
-                ],
-          timeoutMs: options.timeout,
-        },
-        logger,
-      ),
-      readyAutoDiscovery,
-    ]);
+    const base = discoverTools(
+      {
+        toolDetail: options.toolDetail ?? "compact",
+        teamId,
+        connectors: flags?.exchangeRetrieve === true,
+        limit,
+        queries: wantsTools ? [query] : undefined,
+        urls:
+          options.domainTools === false
+            ? []
+            : [
+                ...(searchResponse.web ?? []),
+                ...(searchResponse.news ?? []),
+                ...indexResults,
+              ].flatMap(item => (item.url ? [item.url] : [])),
+        timeoutMs: options.timeout,
+      },
+      logger,
+    );
+    const [discovery, extra] = await Promise.all([base, waitForExtra(base)]);
     const merged = new Map(
       discovery.items.map(tool => [
         `${tool.provider}/${tool.capability}`,
         tool,
       ]),
     );
-    for (const tool of auto?.items ?? []) {
+    for (const tool of extra ?? []) {
       const key = `${tool.provider}/${tool.capability}`;
       const previous = merged.get(key);
       merged.set(
@@ -397,15 +400,14 @@ export async function executeSearch(
     }
     searchResponse.tools = [...merged.values()];
     toolsWarning = discovery.warning;
-    toolsUnavailable = discovery.unavailable === true && !auto?.items.length;
-  } else if (readyAutoDiscovery) {
-    const discovery = await readyAutoDiscovery;
-    if (discovery?.items.length) {
-      searchResponse.tools = discovery.items;
+    toolsUnavailable = discovery.unavailable === true && !extra?.length;
+  } else if (extraDiscovery) {
+    const extra = await waitForExtra();
+    if (extra?.length) {
+      searchResponse.tools = extra;
       toolsAuto = true;
     }
   }
-  clearTimeout(timer);
 
   const isZDR = options.enterprise?.includes("zdr");
   const creditsPerTenResults = isZDR ? 10 : 2;
