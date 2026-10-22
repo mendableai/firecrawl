@@ -287,6 +287,20 @@ describe("HTML Transformer", () => {
       expect(metadata.title).toBe("OpenGraph Title");
     });
 
+    it("should skip a blank meta title and a blank og:title when backfilling the title", async () => {
+      const metadata = await extractMetadata(`
+        <html>
+          <head>
+            <title> </title>
+            <meta name="title" content="">
+            <meta property="og:title" content=" ">
+            <meta name="twitter:title" content="Twitter Title">
+          </head>
+        </html>
+      `);
+      expect(metadata.title).toBe("Twitter Title");
+    });
+
     it("should backfill title from og:title when title tag is missing", async () => {
       const html = `
         <html>
