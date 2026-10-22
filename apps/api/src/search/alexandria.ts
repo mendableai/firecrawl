@@ -54,20 +54,20 @@ export async function discoverTools(
   },
   logger: Logger,
 ): Promise<ToolDiscovery> {
-  const deadline = Date.now() + Math.min(10000, input.timeoutMs);
+  const budget = () => Date.now() + Math.min(10000, input.timeoutMs);
   const items = new Map<string, DetailedDiscoveredTool>();
   const selected = { semantic: new Set<string>(), domain: new Set<string>() };
   let attempted = 0;
   let answered = 0;
-  const remaining = () => {
+  const remaining = (deadline: number) => {
     if (Date.now() >= deadline) throw new Error("Tool discovery timed out");
     return deadline - Date.now();
   };
-  const lookup = async (options: Record<string, unknown>) => {
+  const lookup = async (options: Record<string, unknown>, deadline: number) => {
     const result = await exchangeRequest({
       teamId: input.teamId,
       path: "/v1/retrieve",
-      timeoutMs: remaining(),
+      timeoutMs: remaining(deadline),
       maximumCredits: 0,
       connectors: input.connectors === true,
       body: {
@@ -128,6 +128,7 @@ export async function discoverTools(
   };
   const leg = async <T>(
     message: string,
+    deadline: number,
     run: () => Promise<T>,
   ): Promise<T | undefined> => {
     attempted++;
@@ -142,9 +143,10 @@ export async function discoverTools(
       }
     }
   };
+  const semanticDeadline = budget();
   const semantic = input.query
-    ? leg("Semantic tool discovery unavailable", () =>
-        lookup({ query: input.query }),
+    ? leg("Semantic tool discovery unavailable", semanticDeadline, () =>
+        lookup({ query: input.query }, semanticDeadline),
       )
     : undefined;
   const domain = (async () => {
@@ -159,19 +161,22 @@ export async function discoverTools(
       );
     });
     if (!urls.length) return undefined;
-    return leg("Domain tool discovery unavailable", async () => {
+    // The domain budget starts once the URLs exist, not while the web search runs.
+    const deadline = budget();
+    // Kept across retries so one failing provider does not discard the others.
+    const found: {
+      tool: z.infer<typeof toolSchema> | z.infer<typeof toolSummarySchema>;
+      urls: string[];
+    }[] = [];
+    await leg("Domain tool discovery unavailable", deadline, async () => {
       // Resolve domains once; Exchange owns matching and provider visibility.
-      const found: {
-        tool: z.infer<typeof toolSchema> | z.infer<typeof toolSummarySchema>;
-        urls: string[];
-      }[] = [];
       for (let i = 0; i < urls.length; i += 100) {
         const batch = urls.slice(i, i + 100);
         const result = await exchangeRequest({
           teamId: input.teamId,
           path: "/v1/skills/resolve",
           body: { urls: batch },
-          timeoutMs: remaining(),
+          timeoutMs: remaining(deadline),
           connectors: input.connectors === true,
         });
         if (result.status !== 200)
@@ -191,7 +196,7 @@ export async function discoverTools(
           .parse(result.body).skills;
         const hostOf = (value: string) =>
           new URL(value).hostname.toLowerCase().replace(/\.$/, "");
-        const lists = await Promise.all(
+        const settled = await Promise.allSettled(
           matches.map(async match => {
             const matchedUrls = batch.filter(value => {
               const host = hostOf(value);
@@ -206,9 +211,8 @@ export async function discoverTools(
                 ...new Set([
                   ...(match.domainCapabilities?.[url] ?? []),
                   ...(match.domainCapabilities?.[host] ?? []),
-                  ...(match.domainCapabilities?.[
-                    host.replace(/^www\./, "")
-                  ] ?? []),
+                  ...(match.domainCapabilities?.[host.replace(/^www\./, "")] ??
+                    []),
                 ]),
               ];
             };
@@ -220,10 +224,13 @@ export async function discoverTools(
               (match.domainCapabilities && !capabilities.length)
             )
               return [];
-            const tools = await lookup({
-              providers: [match.id],
-              ...(capabilities.length ? { capabilities } : {}),
-            });
+            const tools = await lookup(
+              {
+                providers: [match.id],
+                ...(capabilities.length ? { capabilities } : {}),
+              },
+              deadline,
+            );
             return tools
               .filter(tool => tool.provider === match.id)
               .map(tool => ({
@@ -236,10 +243,13 @@ export async function discoverTools(
               }));
           }),
         );
-        found.push(...lists.flat());
+        for (const list of settled)
+          if (list.status === "fulfilled") found.push(...list.value);
+        const failed = settled.find(list => list.status === "rejected");
+        if (failed) throw failed.reason;
       }
-      return found;
     });
+    return found;
   })();
   const [semanticTools, domainTools] = await Promise.all([semantic, domain]);
   for (const tool of semanticTools ?? []) merge(tool, "semantic");
