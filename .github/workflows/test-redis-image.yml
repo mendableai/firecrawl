@@ -1,0 +1,44 @@
+name: Redis Image Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/redis/**
+      - .github/workflows/test-redis-image.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke-test:
+    name: Build and test Redis image
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build Redis image
+        run: docker build --tag firecrawl-redis:ci ./apps/redis
+
+      - name: Verify startup and disabled RESTORE
+        run: |
+          docker run --detach --name redis-image-check \
+            --env FLY_VM_MEMORY_MB=256 firecrawl-redis:ci
+
+          for attempt in $(seq 1 30); do
+            if docker exec redis-image-check redis-cli PING | grep -q PONG; then
+              break
+            fi
+            sleep 1
+          done
+
+          test "$(docker exec redis-image-check redis-cli PING)" = PONG
+          docker exec redis-image-check redis-cli INFO server \
+            | tr -d '\r' | grep -q '^redis_version:8.8.3$'
+          docker exec redis-image-check redis-cli RESTORE test 0 invalid \
+            | grep -q "unknown command 'RESTORE'"
+
+      - name: Remove test container
+        if: always()
+        run: docker rm --force redis-image-check 2>/dev/null || true
