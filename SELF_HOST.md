@@ -72,14 +72,15 @@ evidence that these production decisions have been made for you.
 
 ## Admin routes
 
-Routes on the main API port exist only when `BULL_AUTH_KEY` is set. The
+The key-protected routes on the main API port, `/admin/ops/...` and
+`/admin/<key>/...`, exist only when `BULL_AUTH_KEY` is set. The
 internal listener is separate: it starts whenever `ADMIN_INTERNAL_PORT` is set
 and needs no key. The root Compose file passes `BULL_AUTH_KEY` alone; set the
 other variables in the API container's environment.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `BULL_AUTH_KEY` | unset | Turns on admin routes. Routes under `/admin/ops/` accept `Authorization: Bearer <BULL_AUTH_KEY>`. |
+| `BULL_AUTH_KEY` | unset | Turns on the key-protected admin routes. Routes under `/admin/ops/` accept `Authorization: Bearer <BULL_AUTH_KEY>`. |
 | `BULL_AUTH_KEY_PREVIOUS` | unset | A second accepted bearer value, so callers can move to a new key without downtime. Clear it once every caller sends the new key. |
 | `BULL_AUTH_KEY_PATH_ROUTES` | `true` | Keeps the routes that take the key as a path segment, `/admin/<key>/...`, including the queue UI at `/admin/<key>/queues`. Set `false` once callers use `/admin/ops/` or the internal listener. |
 | `ADMIN_INTERNAL_PORT` | unset | Starts a second listener on this port that serves the routes below with no key. Never publish this port. |
