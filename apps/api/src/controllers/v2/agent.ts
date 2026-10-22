@@ -12,7 +12,7 @@ import { logRequest } from "../../services/logging/log_job";
 import { externalRequestId } from "../../lib/external-request-id";
 import { config } from "../../config";
 import { agentConsumeFreeRequestIfLeft } from "../../db/rpc";
-import { getScrapeZDR } from "../../lib/zdr-helpers";
+import { getScrapeZDR, getSearchZDR } from "../../lib/zdr-helpers";
 import {
   checkUrlsAgainstThreatPolicy,
   resolveThreatProtection,
@@ -32,6 +32,33 @@ export async function agentController(
   res: Response<AgentResponse>,
 ) {
   const agentId = uuidv7();
+
+  const originalRequest = { ...req.body };
+  req.body = agentRequestSchema.parse(req.body);
+
+  // An agent run scrapes and searches under ZDR, so it needs both
+  // entitlements up front instead of failing on its first inner call.
+  const scrapeZDR = getScrapeZDR(req.acuc?.flags);
+  const searchZDR = getSearchZDR(req.acuc?.flags);
+  if (
+    (req.body.zeroDataRetention === true || scrapeZDR === "forced") &&
+    !(
+      (scrapeZDR === "allowed" || scrapeZDR === "forced") &&
+      (searchZDR === "allowed" || searchZDR === "forced-zdr")
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      code: "zdr_not_enabled",
+      error:
+        "Zero Data Retention (ZDR) for agent runs requires both scrape ZDR and search ZDR to be enabled for your team. Contact support@firecrawl.com to enable it.",
+    });
+  }
+
+  const zeroDataRetention =
+    scrapeZDR === "forced" ||
+    (req.body.zeroDataRetention === true && scrapeZDR === "allowed");
+
   const logger = _logger.child({
     agentId,
     extractId: agentId,
@@ -40,24 +67,21 @@ export async function agentController(
     team_id: req.auth.team_id,
     module: "api/v2",
     method: "agentController",
-    zeroDataRetention: getScrapeZDR(req.acuc?.flags) === "forced",
+    zeroDataRetention,
   });
 
-  const originalRequest = { ...req.body };
-  req.body = agentRequestSchema.parse(req.body);
-
-  if (getScrapeZDR(req.acuc?.flags) === "forced") {
+  if (zeroDataRetention && req.body.threadId) {
     return res.status(400).json({
       success: false,
+      code: "zdr_threads_unsupported",
       error:
-        "Your team has zero data retention enabled. This is not supported on extract. Please contact support@firecrawl.com to unblock this feature.",
+        "Agent threads are not supported with zero data retention. Remove threadId to start a new run.",
     });
   }
 
-  _logger.info("Agent starting...", {
+  logger.info("Agent starting...", {
     request: req.body,
     originalRequest,
-    zeroDataRetention: getScrapeZDR(req.acuc?.flags) === "forced",
   });
 
   // Threat protection: check the agent's starting URLs before handing off to
@@ -122,7 +146,7 @@ export async function agentController(
           threatDecisions: [blockedUrl.decision],
           origin: req.body.origin ?? "api",
           integration: req.body.integration,
-          zeroDataRetention: false,
+          zeroDataRetention,
         })),
       );
       return res.status(403).json({
@@ -232,7 +256,7 @@ export async function agentController(
     origin: req.body.origin ?? "api",
     integration: req.body.integration,
     target_hint: req.body.urls?.[0] ?? req.body.prompt ?? "",
-    zeroDataRetention: false, // not supported for agent
+    zeroDataRetention,
     api_key_id: req.acuc?.api_key_id ?? null,
     creditsShards: AGENT_REQUEST_CREDITS_SHARDS,
   });
@@ -265,6 +289,7 @@ export async function agentController(
         mode: req.body.mode,
         exchange: req.body.exchange,
         location: req.body.location,
+        ...(zeroDataRetention ? { zeroDataRetention: true } : {}),
       }),
     },
   );

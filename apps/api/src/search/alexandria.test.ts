@@ -348,7 +348,7 @@ describe("domain discovery", () => {
     expect(result.warning).toBeTruthy();
     expect(result.unavailable).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
-      "Domain tool lookup unavailable",
+      "Domain tool discovery unavailable",
       expect.objectContaining({ attempt: 2 }),
     );
   });

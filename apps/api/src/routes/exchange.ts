@@ -25,6 +25,23 @@ const INGEST_TIMEOUT_MS = 50_000;
 
 const FORWARDED_REQUEST_HEADERS = ["accept", "x-request-id"];
 const FORWARDED_RESPONSE_HEADERS = ["content-type", "x-request-id"];
+const FORWARDED_PATH_ROOTS = new Set([
+  "analytics",
+  "applications",
+  "claims",
+  "connectors",
+  "discover",
+  "enrichment",
+  "ingest",
+  "platform",
+  "provider-terms",
+  "publisher",
+  "rates",
+  "records",
+  "skills",
+  "supply",
+  "team-skills",
+]);
 
 function dispatcherFor(timeout: number) {
   return new Agent({
@@ -41,6 +58,32 @@ function exchangeError(res: Response, status: number, error: string) {
 function upstreamBase(): string | null {
   if (!config.FIRE_EXCHANGE_URL) return null;
   return config.FIRE_EXCHANGE_URL.replace(/\/+$/, "");
+}
+
+// Rebuilds the upstream path from validated, re-encoded segments so it always
+// names the route that authorized the request.
+function upstreamPath(req: Request): string | null {
+  const segments = req.path.split("/").slice(1);
+  if (segments.length > 1 && segments.at(-1) === "") segments.pop();
+
+  const decoded: string[] = [];
+  for (const segment of segments) {
+    let value: string;
+    try {
+      value = decodeURIComponent(segment);
+    } catch {
+      return null;
+    }
+    if (!value || value === "." || value === ".." || /[/\\]/.test(value)) {
+      return null;
+    }
+    decoded.push(value);
+  }
+  if (!FORWARDED_PATH_ROOTS.has(decoded[0])) return null;
+
+  const queryStart = req.originalUrl.indexOf("?");
+  const query = queryStart === -1 ? "" : req.originalUrl.slice(queryStart);
+  return "/v1/" + decoded.map(encodeURIComponent).join("/") + query;
 }
 
 function exchangeProxy(
@@ -67,6 +110,11 @@ function exchangeProxy(
       return exchangeError(res, 503, "This endpoint is not available.");
     }
 
+    const path = upstreamPath(req);
+    if (path === null) {
+      return exchangeError(res, 400, "Invalid request path.");
+    }
+
     if (requiresRetrieveFlag && !authedReq.acuc?.flags?.exchangeRetrieve) {
       return exchangeError(
         res,
@@ -77,7 +125,6 @@ function exchangeProxy(
 
     const hasBody = req.method !== "GET";
     const billingCountry = await billingCountryForTeam(authedReq.auth.team_id);
-    const path = req.originalUrl.replace(/^\/exchange/, "/v1");
 
     try {
       const upstream = await fetch(base + path, {

@@ -116,6 +116,30 @@ export async function executeSearch(
   logger.info("Searching for results");
 
   const wantsTools = sources.some(isAlexandriaSource);
+  let resolveToolUrls: (urls: string[]) => void = () => {};
+  const toolDiscovery =
+    !zeroDataRetention &&
+    !options.enterprise?.some(mode => mode === "zdr" || mode === "anon") &&
+    (wantsTools || options.domainTools)
+      ? discoverTools(
+          {
+            toolDetail: options.toolDetail ?? "compact",
+            teamId,
+            connectors: flags?.exchangeRetrieve === true,
+            limit,
+            query: wantsTools ? query : undefined,
+            rankQuery: query,
+            urls:
+              options.domainTools === false
+                ? []
+                : new Promise<string[]>(resolve => {
+                    resolveToolUrls = resolve;
+                  }),
+            timeoutMs: options.timeout,
+          },
+          logger,
+        )
+      : null;
   const searchTypes = [
     ...new Set(
       sources
@@ -283,31 +307,15 @@ export async function executeSearch(
   let toolsWarning: string | undefined;
   let toolsUnavailable = false;
 
-  if (
-    !zeroDataRetention &&
-    !options.enterprise?.some(mode => mode === "zdr" || mode === "anon") &&
-    (wantsTools || options.domainTools)
-  ) {
-    const discovery = await discoverTools(
-      {
-        toolDetail: options.toolDetail ?? "compact",
-        teamId,
-        connectors: flags?.exchangeRetrieve === true,
-        limit,
-        query: wantsTools ? query : undefined,
-        rankQuery: query,
-        urls:
-          options.domainTools === false
-            ? []
-            : [
-                ...(searchResponse.web ?? []),
-                ...(searchResponse.news ?? []),
-                ...indexResults,
-              ].flatMap(item => (item.url ? [item.url] : [])),
-        timeoutMs: options.timeout,
-      },
-      logger,
+  if (toolDiscovery) {
+    resolveToolUrls(
+      [
+        ...(searchResponse.web ?? []),
+        ...(searchResponse.news ?? []),
+        ...indexResults,
+      ].flatMap(item => (item.url ? [item.url] : [])),
     );
+    const discovery = await toolDiscovery;
     searchResponse.tools = discovery.items;
     toolsWarning = discovery.warning;
     toolsUnavailable = discovery.unavailable === true;

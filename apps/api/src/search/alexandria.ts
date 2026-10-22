@@ -48,7 +48,8 @@ export async function discoverTools(
     query?: string;
     /** Ranks domain matches without running semantic discovery. */
     rankQuery?: string;
-    urls?: string[];
+    /** May still be pending; the semantic lookup starts without waiting for it. */
+    urls?: string[] | Promise<string[]>;
     limit: number;
     timeoutMs: number;
     /** The team may use its own MCP connectors: their listed tools join its discovery. */
@@ -56,20 +57,20 @@ export async function discoverTools(
   },
   logger: Logger,
 ): Promise<ToolDiscovery> {
-  const deadline = Date.now() + Math.min(10000, input.timeoutMs);
+  const budget = () => Date.now() + Math.min(10000, input.timeoutMs);
   const items = new Map<string, DetailedDiscoveredTool>();
   const selected = { semantic: new Set<string>(), domain: new Set<string>() };
   let attempted = 0;
   let answered = 0;
-  const remaining = () => {
+  const remaining = (deadline: number) => {
     if (Date.now() >= deadline) throw new Error("Tool discovery timed out");
     return deadline - Date.now();
   };
-  const lookup = async (options: Record<string, unknown>) => {
+  const lookup = async (options: Record<string, unknown>, deadline: number) => {
     const result = await exchangeRequest({
       teamId: input.teamId,
       path: "/v1/retrieve",
-      timeoutMs: remaining(),
+      timeoutMs: remaining(deadline),
       maximumCredits: 0,
       connectors: input.connectors === true,
       body: {
@@ -100,9 +101,8 @@ export async function discoverTools(
       })
       .parse(result.body).data.items;
   };
-  type Tool = Awaited<ReturnType<typeof lookup>>[number];
   const merge = (
-    tool: Tool,
+    tool: z.infer<typeof toolSchema> | z.infer<typeof toolSummarySchema>,
     source: "semantic" | "domain",
     urls: string[] = [],
   ) => {
@@ -131,6 +131,7 @@ export async function discoverTools(
   };
   const leg = async <T>(
     message: string,
+    deadline: number,
     run: () => Promise<T>,
   ): Promise<T | undefined> => {
     attempted++;
@@ -145,118 +146,133 @@ export async function discoverTools(
       }
     }
   };
-  const query = input.query;
-  const semantic = query
-    ? leg("Semantic tool discovery unavailable", () => lookup({ query }))
+  const semanticDeadline = budget();
+  const semantic = input.query
+    ? leg("Semantic tool discovery unavailable", semanticDeadline, () =>
+        lookup({ query: input.query }, semanticDeadline),
+      )
     : undefined;
-  const urls = [...new Set(input.urls ?? [])].filter(value => {
-    const url = URL.parse(value);
-    return (
-      url &&
-      ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      value.length <= 8192
-    );
-  });
-  const rankQuery = input.query ?? input.rankQuery;
-  const domain = urls.length
-    ? leg("Domain tool discovery unavailable", async () => {
+  const domain = (async () => {
+    const urls = [...new Set((await input.urls) ?? [])].filter(value => {
+      const url = URL.parse(value);
+      return (
+        url &&
+        ["http:", "https:"].includes(url.protocol) &&
+        !url.username &&
+        !url.password &&
+        value.length <= 8192
+      );
+    });
+    if (!urls.length) return undefined;
+    // The domain budget starts once the URLs exist, not while the web search runs.
+    const deadline = budget();
+    // Kept across retries so one failing provider does not discard the others.
+    const found = new Map<
+      string,
+      {
+        tool: z.infer<typeof toolSchema> | z.infer<typeof toolSummarySchema>;
+        urls: string[];
+      }[]
+    >();
+    const rankQuery = input.query ?? input.rankQuery;
+    await leg("Domain tool discovery unavailable", deadline, async () => {
+      // Resolve domains once; Exchange owns matching and provider visibility.
+      for (let i = 0; i < urls.length; i += 100) {
+        const batch = urls.slice(i, i + 100);
+        const result = await exchangeRequest({
+          teamId: input.teamId,
+          path: "/v1/skills/resolve",
+          body: { urls: batch },
+          timeoutMs: remaining(deadline),
+          connectors: input.connectors === true,
+        });
+        if (result.status !== 200)
+          throw new Error("Domain discovery unavailable");
+        const matches = z
+          .object({
+            skills: z.array(
+              z.object({
+                id: z.string(),
+                matchedDomains: z.array(z.string()),
+                domainCapabilities: z
+                  .record(z.string(), z.array(z.string()))
+                  .optional(),
+              }),
+            ),
+          })
+          .parse(result.body).skills;
         const hostOf = (value: string) =>
           new URL(value).hostname.toLowerCase().replace(/\.$/, "");
-        const byProvider: { tool: Tool; urls: string[] }[][] = [];
-        // Resolve domains once; Exchange owns matching and provider visibility.
-        for (let i = 0; i < urls.length; i += 100) {
-          const batch = urls.slice(i, i + 100);
-          const result = await exchangeRequest({
-            teamId: input.teamId,
-            path: "/v1/skills/resolve",
-            body: { urls: batch },
-            timeoutMs: remaining(),
-            connectors: input.connectors === true,
-          });
-          if (result.status !== 200)
-            throw new Error("Domain discovery unavailable");
-          const matches = z
-            .object({
-              skills: z.array(
-                z.object({
-                  id: z.string(),
-                  matchedDomains: z.array(z.string()),
-                  domainCapabilities: z
-                    .record(z.string(), z.array(z.string()))
-                    .optional(),
-                }),
-              ),
-            })
-            .parse(result.body).skills;
-          byProvider.push(
-            ...(await Promise.all(
-              matches.map(async match => {
-                const matchedUrls = batch.filter(value => {
-                  const host = hostOf(value);
-                  return (
-                    match.matchedDomains.includes(host) ||
-                    match.matchedDomains.includes(host.replace(/^www\./, ""))
-                  );
-                });
-                const capabilitiesFor = (url: string) => {
-                  const host = hostOf(url);
-                  return [
-                    ...new Set([
-                      ...(match.domainCapabilities?.[url] ?? []),
-                      ...(match.domainCapabilities?.[host] ?? []),
-                      ...(match.domainCapabilities?.[
-                        host.replace(/^www\./, "")
-                      ] ?? []),
-                    ]),
-                  ];
-                };
-                const capabilities = [
-                  ...new Set(matchedUrls.flatMap(capabilitiesFor)),
-                ];
-                if (
-                  !matchedUrls.length ||
-                  (match.domainCapabilities && !capabilities.length)
-                )
-                  return [];
-                const providers = [match.id];
-                // Each provider retries on its own, so one failure keeps the other matches.
-                const tools =
-                  (await leg("Domain tool lookup unavailable", async () => {
-                    // Without a query Exchange lists a provider's tools alphabetically.
-                    const ranked =
-                      !capabilities.length && rankQuery
-                        ? await lookup({ providers, query: rankQuery })
-                        : [];
-                    return ranked.length
-                      ? ranked
-                      : await lookup({
-                          providers,
-                          ...(capabilities.length ? { capabilities } : {}),
-                        });
-                  })) ?? [];
-                return tools
-                  .filter(tool => tool.provider === match.id)
-                  .map(tool => ({
-                    tool,
-                    urls: match.domainCapabilities
-                      ? matchedUrls.filter(url =>
-                          capabilitiesFor(url).includes(tool.capability),
-                        )
-                      : matchedUrls,
-                  }));
-              }),
-            )),
-          );
-        }
-        // Round-robin so one large provider can't take every domain slot.
-        return Array.from(
-          { length: Math.max(0, ...byProvider.map(tools => tools.length)) },
-          (_, rank) => byProvider.flatMap(tools => tools[rank] ?? []),
-        ).flat();
-      })
-    : undefined;
+        const settled = await Promise.allSettled(
+          matches.map(async match => {
+            const matchedUrls = batch.filter(value => {
+              const host = hostOf(value);
+              return (
+                match.matchedDomains.includes(host) ||
+                match.matchedDomains.includes(host.replace(/^www\./, ""))
+              );
+            });
+            const capabilitiesFor = (url: string) => {
+              const host = hostOf(url);
+              return [
+                ...new Set([
+                  ...(match.domainCapabilities?.[url] ?? []),
+                  ...(match.domainCapabilities?.[host] ?? []),
+                  ...(match.domainCapabilities?.[host.replace(/^www\./, "")] ??
+                    []),
+                ]),
+              ];
+            };
+            const capabilities = [
+              ...new Set(matchedUrls.flatMap(capabilitiesFor)),
+            ];
+            if (
+              !matchedUrls.length ||
+              (match.domainCapabilities && !capabilities.length)
+            )
+              return [];
+            const providers = [match.id];
+            // Without a query Exchange lists a provider's tools alphabetically.
+            const ranked =
+              !capabilities.length && rankQuery
+                ? await lookup({ providers, query: rankQuery }, deadline)
+                : [];
+            const tools = ranked.length
+              ? ranked
+              : await lookup(
+                  {
+                    providers,
+                    ...(capabilities.length ? { capabilities } : {}),
+                  },
+                  deadline,
+                );
+            return tools
+              .filter(tool => tool.provider === match.id)
+              .map(tool => ({
+                tool,
+                urls: match.domainCapabilities
+                  ? matchedUrls.filter(url =>
+                      capabilitiesFor(url).includes(tool.capability),
+                    )
+                  : matchedUrls,
+              }));
+          }),
+        );
+        settled.forEach((list, index) => {
+          if (list.status === "fulfilled")
+            found.set(matches[index]!.id, list.value);
+        });
+        const failed = settled.find(list => list.status === "rejected");
+        if (failed) throw failed.reason;
+      }
+    });
+    const byProvider = [...found.values()];
+    // Round-robin so one large provider can't take every domain slot.
+    return Array.from(
+      { length: Math.max(0, ...byProvider.map(tools => tools.length)) },
+      (_, rank) => byProvider.flatMap(tools => tools[rank] ?? []),
+    ).flat();
+  })();
   const [semanticTools, domainTools] = await Promise.all([semantic, domain]);
   for (const tool of semanticTools ?? []) merge(tool, "semantic");
   for (const { tool, urls } of domainTools ?? []) merge(tool, "domain", urls);

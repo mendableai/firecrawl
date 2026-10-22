@@ -13,6 +13,11 @@ import {
   featureIdForBillingEndpoint,
 } from "../autumn/autumn.service";
 import type { LockCreditsResult } from "../autumn/types";
+import {
+  AGENT_REQUEST_CREDITS_SHARDS,
+  initializeRequestCredits,
+  recordRequestCredits,
+} from "../../lib/request-credits-store";
 import { getBillingQueue } from "../queue-service";
 import { redisRateLimitClient } from "../rate-limiter";
 import { authorizeProviders } from "./access";
@@ -92,6 +97,8 @@ export async function retrieveProviders(input: {
   flags: TeamFlags | null | undefined;
   calls: ProviderCall[];
   requestId: string;
+  /** The agent run this call belongs to: its credits join that run's call credits. */
+  agentRequestId?: string;
   scrapeId: string;
   timeoutMs: number;
   bypassBilling?: boolean;
@@ -475,6 +482,10 @@ export async function retrieveProviders(input: {
             refundable,
           )
         : settled;
+    const charged =
+      settled && billable && credits > 0 && (recorded || !refundable);
+    if (charged && input.agentRequestId)
+      await recordAgentCredits(input.agentRequestId, id, credits);
     if (!billable || recorded)
       void reportExchangeUsageBilling({
         requestId: id,
@@ -491,6 +502,37 @@ export async function retrieveProviders(input: {
     return { ...done, executed: true, scrapeId: input.scrapeId };
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function recordAgentCredits(
+  agentRequestId: string,
+  chargeId: string,
+  credits: number,
+) {
+  const record = () =>
+    recordRequestCredits({
+      requestId: agentRequestId,
+      jobId: `alexandria:${chargeId}`,
+      credits,
+    });
+  try {
+    if (await record()) return;
+    if (
+      !(await initializeRequestCredits(
+        agentRequestId,
+        AGENT_REQUEST_CREDITS_SHARDS,
+      ))
+    )
+      throw new Error("Request credits store is unavailable");
+    await record();
+  } catch (error) {
+    logger.error("Provider credits were not recorded on the agent run", {
+      chargeId,
+      agentRequestId,
+      credits,
+      error,
+    });
   }
 }
 
