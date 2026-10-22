@@ -142,7 +142,7 @@ describe("searchGovCategory", () => {
               jurisdiction: "us",
               court: "ca6",
               court_type: "federal-appellate",
-              cites: ["us:usc:42:1983", 7],
+              cites: ["us:usc:42:1983", 7, ""],
               cited_as: ["us:f3d:779:401"],
             },
             {
@@ -150,7 +150,7 @@ describe("searchGovCategory", () => {
               title: "21 CFR Part 101",
               description: "Food labeling",
               position: 2,
-              updated_at: "yesterday",
+              updated_at: 1700000000000.5,
               jurisdiction: "",
               court: null,
               cites: [],

@@ -8,7 +8,9 @@ const optionalString = (value: unknown) =>
 
 const optionalStrings = (value: unknown) => {
   const items = Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
+    ? value.filter(
+        (item): item is string => typeof item === "string" && item.length > 0,
+      )
     : [];
   return items.length > 0 ? items : undefined;
 };
@@ -23,7 +25,7 @@ function legalLabels(result: any): Partial<WebSearchResult> {
     cites: optionalStrings(result?.cites),
     cited_as: optionalStrings(result?.cited_as),
     updated_at:
-      typeof result?.updated_at === "number" && result.updated_at > 0
+      Number.isSafeInteger(result?.updated_at) && result.updated_at > 0
         ? result.updated_at
         : undefined,
   };
