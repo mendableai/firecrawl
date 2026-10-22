@@ -148,7 +148,7 @@ export async function executeSearch(
                       options.domainTools === false
                         ? []
                         : intent.domains.map(domain => `https://${domain}/`),
-                    timeoutMs: Math.min(options.timeout, 5000),
+                    timeoutMs: Math.min(options.timeout, 3000),
                   },
                   logger,
                 )
@@ -365,15 +365,37 @@ export async function executeSearch(
       ),
       readyAutoDiscovery,
     ]);
-    const seen = new Set(
-      discovery.items.map(tool => `${tool.provider}/${tool.capability}`),
+    const merged = new Map(
+      discovery.items.map(tool => [
+        `${tool.provider}/${tool.capability}`,
+        tool,
+      ]),
     );
-    searchResponse.tools = [
-      ...discovery.items,
-      ...(auto?.items ?? []).filter(
-        tool => !seen.has(`${tool.provider}/${tool.capability}`),
-      ),
-    ];
+    for (const tool of auto?.items ?? []) {
+      const key = `${tool.provider}/${tool.capability}`;
+      const previous = merged.get(key);
+      merged.set(
+        key,
+        previous && "matchedBy" in previous && "matchedBy" in tool
+          ? {
+              ...previous,
+              matchedBy: [
+                ...new Set([
+                  ...(previous.matchedBy ?? []),
+                  ...(tool.matchedBy ?? []),
+                ]),
+              ],
+              matchedUrls: [
+                ...new Set([
+                  ...(previous.matchedUrls ?? []),
+                  ...(tool.matchedUrls ?? []),
+                ]),
+              ],
+            }
+          : (previous ?? tool),
+      );
+    }
+    searchResponse.tools = [...merged.values()];
     toolsWarning = discovery.warning;
     toolsUnavailable = discovery.unavailable === true && !auto?.items.length;
   } else if (readyAutoDiscovery) {

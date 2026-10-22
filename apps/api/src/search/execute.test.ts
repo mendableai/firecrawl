@@ -259,14 +259,24 @@ describe("executeSearch tool intent", () => {
       needsTools: true,
     });
     mocks.discoverTools.mockReturnValue(new Promise(() => {}));
-    const started = Date.now();
-    const result = await executeSearch(
-      { ...options([]), autoTools: true },
-      context,
-      logger,
-    );
-    expect(Date.now() - started).toBeLessThan(1000);
-    expect(result.response.tools).toBeUndefined();
+    vi.useFakeTimers();
+    try {
+      let done = false;
+      const pending = executeSearch(
+        { ...options([]), autoTools: true },
+        context,
+        logger,
+      ).finally(() => {
+        done = true;
+      });
+      await vi.advanceTimersByTimeAsync(299);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await pending;
+      expect(result.response.tools).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("never adds tools under zero data retention", async () => {
