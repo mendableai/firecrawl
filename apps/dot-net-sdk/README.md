@@ -350,7 +350,7 @@ var call = result.Alexandria[0];
 Console.WriteLine(call.Error?.Message ?? call.Data.ToString());
 ```
 
-Each `ScrapeAlexandriaAsync` request sends an `x-request-id`, reused across the SDK's automatic retries so a paid call is charged once. The result carries it as `RequestId`; after an uncertain outcome (a timeout or network error), pass the same `requestId` with the identical calls to retrieve the original result instead of running it again. A thrown exception carries the ID in `ex.Data["RequestId"]`. If you pass your own `HttpClient`, give it a `Timeout` of at least the Alexandria timeout plus 30 seconds (150 seconds by default).
+Each `ScrapeAlexandriaAsync` request sends an `x-request-id`, reused across the SDK's automatic retries so a paid call is not charged twice. The result carries it as `RequestId`. After an uncertain outcome (a timeout or network error), pass the same `requestId` and identical calls: if the original call completed you get its result, and if it is still running or unresolved the API answers 409 `request_in_flight` or 503 `request_unresolved` instead of running it again. A thrown exception carries the ID in `ex.Data["RequestId"]`. If you pass your own `HttpClient`, give it a `Timeout` of at least the Alexandria timeout plus 30 seconds (150 seconds by default).
 
 ### Usage & Metrics
 

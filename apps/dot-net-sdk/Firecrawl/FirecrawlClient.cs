@@ -130,7 +130,7 @@ public class FirecrawlClient
         if (timeoutMs is <= 0 or > 120_000)
             throw new ArgumentOutOfRangeException(nameof(timeoutMs), "timeout must be between 1 and 120000 milliseconds");
         requestId ??= Guid.NewGuid().ToString("N");
-        if (!System.Text.RegularExpressions.Regex.IsMatch(requestId, "^[A-Za-z0-9._:-]{1,128}$"))
+        if (!System.Text.RegularExpressions.Regex.IsMatch(requestId, @"^[A-Za-z0-9._:-]{1,128}\z"))
             throw new ArgumentException("requestId must be 1 to 128 characters of A-Z, a-z, 0-9, '.', '_', ':' or '-'", nameof(requestId));
 
         var body = new Dictionary<string, object>
