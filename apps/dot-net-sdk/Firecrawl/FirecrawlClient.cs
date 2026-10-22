@@ -107,6 +107,11 @@ public class FirecrawlClient
     /// with the identical calls after an uncertain outcome.
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// Any exception thrown after validation carries the request ID in <c>Data["RequestId"]</c>.
+    /// A caller-supplied <see cref="HttpClient"/> keeps its own <c>Timeout</c>; allow at least
+    /// <paramref name="timeoutMs"/> plus 30 seconds (150 seconds by default).
+    /// </remarks>
     public async Task<AlexandriaScrapeData> ScrapeAlexandriaAsync(
         IReadOnlyList<AlexandriaCall> calls,
         int? timeoutMs = null,
@@ -136,27 +141,35 @@ public class FirecrawlClient
         if (timeoutMs.HasValue)
             body["timeout"] = timeoutMs.Value;
 
-        // The API may answer up to 30 seconds after its execution deadline.
-        var response = await _http.PostAsync<ApiResponse<AlexandriaResponseData>>(
-            "/v2/scrape",
-            body,
-            extraHeaders: new Dictionary<string, string> { ["x-request-id"] = requestId },
-            cancellationToken: cancellationToken,
-            minimumTimeout: TimeSpan.FromMilliseconds(Math.Min(timeoutMs ?? 120_000, 120_000) + 30_000));
-
-        if (!response.Success && response.Error is not null)
-            throw new FirecrawlException(response.Error, 200, response.Code, response.Details);
-
-        var data = response.Data;
-        if (data?.Alexandria is null || data.CreditsCost is not >= 0)
-            throw new FirecrawlException($"Invalid alexandria response (request ID: {requestId})");
-
-        return new AlexandriaScrapeData
+        try
         {
-            RequestId = requestId,
-            Alexandria = data.Alexandria,
-            CreditsCost = data.CreditsCost.Value,
-        };
+            // The API may answer up to 30 seconds after its execution deadline.
+            var response = await _http.PostAsync<ApiResponse<AlexandriaResponseData>>(
+                "/v2/scrape",
+                body,
+                extraHeaders: new Dictionary<string, string> { ["x-request-id"] = requestId },
+                cancellationToken: cancellationToken,
+                minimumTimeout: TimeSpan.FromMilliseconds((timeoutMs ?? 120_000) + 30_000));
+
+            if (!response.Success && response.Error is not null)
+                throw new FirecrawlException(response.Error, 200, response.Code, response.Details);
+
+            var data = response.Data;
+            if (data?.Alexandria is null || data.CreditsCost is not >= 0)
+                throw new FirecrawlException($"Invalid alexandria response (request ID: {requestId})");
+
+            return new AlexandriaScrapeData
+            {
+                RequestId = requestId,
+                Alexandria = data.Alexandria,
+                CreditsCost = data.CreditsCost.Value,
+            };
+        }
+        catch (Exception ex)
+        {
+            ex.Data["RequestId"] = requestId;
+            throw;
+        }
     }
 
     /// <summary>
