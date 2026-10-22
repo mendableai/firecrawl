@@ -854,13 +854,9 @@ fn _extract_images(
     }
 
     if let Some(srcset) = attrs.get("srcset") {
-      for part in srcset.split(',') {
-        if let Some(url) = part.split_whitespace().next() {
-          if !url.is_empty() {
-            if let Ok(resolved) = resolve_image_url(url) {
-              images.insert(resolved);
-            }
-          }
+      for (url, _) in srcset_candidates(srcset) {
+        if let Ok(resolved) = resolve_image_url(url) {
+          images.insert(resolved);
         }
       }
     }
@@ -877,13 +873,9 @@ fn _extract_images(
 
   for source in source_elements {
     if let Some(srcset) = source.attributes.borrow().get("srcset") {
-      for part in srcset.split(',') {
-        if let Some(url) = part.split_whitespace().next() {
-          if !url.is_empty() {
-            if let Ok(resolved) = resolve_image_url(url) {
-              images.insert(resolved);
-            }
-          }
+      for (url, _) in srcset_candidates(srcset) {
+        if let Ok(resolved) = resolve_image_url(url) {
+          images.insert(resolved);
         }
       }
     }
