@@ -14,6 +14,11 @@ public class AlexandriaCall
     [JsonPropertyName("capability")]
     public string Capability { get; set; } = "";
 
+    /// <summary>The capability version (semver). Omit for the current version.</summary>
+    [JsonPropertyName("version")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Version { get; set; }
+
     [JsonPropertyName("options")]
     public Dictionary<string, object>? Options { get; set; }
 }
@@ -49,6 +54,12 @@ public class AlexandriaResult
 
     [JsonPropertyName("data")]
     public JsonElement? Data { get; set; }
+
+    [JsonPropertyName("records")]
+    public int? Records { get; set; }
+
+    [JsonPropertyName("upstreamStatus")]
+    public int? UpstreamStatus { get; set; }
 
     [JsonPropertyName("error")]
     public AlexandriaError? Error { get; set; }

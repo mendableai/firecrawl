@@ -118,11 +118,12 @@ public class FirecrawlClient
             throw new ArgumentException("alexandria accepts 1 to 10 calls", nameof(calls));
         for (var i = 0; i < calls.Count; i++)
         {
-            if (string.IsNullOrWhiteSpace(calls[i].Provider) || string.IsNullOrWhiteSpace(calls[i].Capability))
+            var call = calls[i];
+            if (call is null || string.IsNullOrWhiteSpace(call.Provider) || string.IsNullOrWhiteSpace(call.Capability))
                 throw new ArgumentException($"alexandria[{i}] needs a provider and a capability", nameof(calls));
         }
-        if (timeoutMs is <= 0)
-            throw new ArgumentOutOfRangeException(nameof(timeoutMs), "timeout must be positive");
+        if (timeoutMs is <= 0 or > 120_000)
+            throw new ArgumentOutOfRangeException(nameof(timeoutMs), "timeout must be between 1 and 120000 milliseconds");
         requestId ??= Guid.NewGuid().ToString("N");
         if (!System.Text.RegularExpressions.Regex.IsMatch(requestId, "^[A-Za-z0-9._:-]{1,128}$"))
             throw new ArgumentException("requestId must be 1 to 128 characters of A-Z, a-z, 0-9, '.', '_', ':' or '-'", nameof(requestId));
