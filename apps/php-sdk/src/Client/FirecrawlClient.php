@@ -130,7 +130,7 @@ final class FirecrawlClient
     /**
      * Run up to 10 data provider tool calls in one request.
      *
-     * Each call is `['provider' => ..., 'capability' => ..., 'options' => [...]]`.
+     * Each call is `['provider' => ..., 'capability' => ..., 'version' => ?, 'options' => [...]]`.
      * Returns `['scrapeId' => ..., 'requestId' => ..., 'alexandria' => [...], 'creditsCost' => ...]`;
      * a failed call carries its `error` in its result instead of throwing.
      * Retries reuse one `x-request-id` so a paid call is not charged twice; pass the
@@ -153,13 +153,16 @@ final class FirecrawlClient
                 throw new \InvalidArgumentException("alexandria[{$index}] needs a provider and a capability");
             }
             $item = ['provider' => $provider, 'capability' => $capability];
+            if (isset($call['version'])) {
+                $item['version'] = (string) $call['version'];
+            }
             if (isset($call['options'])) {
                 $item['options'] = $call['options'];
             }
             $alexandria[] = $item;
         }
-        if ($timeoutMs !== null && $timeoutMs <= 0) {
-            throw new \InvalidArgumentException('timeout must be a positive integer');
+        if ($timeoutMs !== null && ($timeoutMs <= 0 || $timeoutMs > 120_000)) {
+            throw new \InvalidArgumentException('timeout must be between 1 and 120000 milliseconds');
         }
         $requestId ??= bin2hex(random_bytes(16));
         if (preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $requestId) !== 1) {
@@ -171,7 +174,7 @@ final class FirecrawlClient
             $body['timeout'] = $timeoutMs;
         }
         // The API may answer up to 30 seconds after its execution deadline.
-        $transportSeconds = (min($timeoutMs ?? 120_000, 120_000) + 30_000) / 1000;
+        $transportSeconds = (($timeoutMs ?? 120_000) + 30_000) / 1000;
 
         $response = $this->assertSuccess($this->http->post(
             '/v2/scrape',
