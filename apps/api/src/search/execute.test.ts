@@ -198,9 +198,11 @@ describe("executeSearch tool intent", () => {
   it("adds no tool the fit check rejects", async () => {
     const own = { provider: "sec-gov", capability: "filings/filings" };
     const extra = { provider: "apps-apple-com", capability: "apps/app" };
-    mocks.discoverTools
-      .mockResolvedValueOnce({ items: [extra] })
-      .mockResolvedValueOnce({ items: [own] });
+    mocks.discoverTools.mockImplementation(
+      async (input: { queries?: string[] }) => ({
+        items: input.queries?.[0] === "who owns apple stock" ? [own] : [extra],
+      }),
+    );
     mocks.inferToolIntent.mockResolvedValue({
       toolQueries: ["institutional holders of a public company"],
       domains: [],
