@@ -49,6 +49,7 @@ function fireEngineHandoffEligible(meta: Meta): boolean {
 }
 import { fireEngineDelete } from "./delete";
 import { MockState } from "../../lib/mock";
+import { redactRequestBodyForLog } from "../../lib/fetch";
 import { getInnerJson } from "@mendable/firecrawl-rs";
 import { hasFormatOfType } from "../../../../lib/format-utils";
 import { InternalAction } from "../../../../controllers/v1/types";
@@ -513,7 +514,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
       meta,
       meta.logger.child({
         method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
-        request,
+        request: redactRequestBodyForLog(request),
       }),
       request,
       meta.mock,
@@ -673,7 +674,7 @@ export async function scrapeURLWithFireEngineTLSClient(
       meta,
       meta.logger.child({
         method: "scrapeURLWithFireEngineTLSClient/callFireEngine",
-        request,
+        request: redactRequestBodyForLog(request),
       }),
       request,
       meta.mock,

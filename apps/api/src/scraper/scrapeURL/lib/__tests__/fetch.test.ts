@@ -1,4 +1,8 @@
-import { redactHeaders, robustFetch } from "../fetch";
+import {
+  redactHeaders,
+  redactRequestBodyForLog,
+  robustFetch,
+} from "../fetch";
 import type { MockState } from "../mock";
 
 const secretHeaders = {
@@ -68,6 +72,72 @@ describe("redactHeaders", () => {
   });
 });
 
+const secretActions = [
+  { type: "wait", milliseconds: 1000 },
+  { type: "click", selector: "#password", all: false },
+  { type: "write", text: "secret-value" },
+  { type: "press", key: "Enter" },
+  {
+    type: "executeJavascript",
+    script: "window.token = 'secret-value'",
+    metadata: { __firecrawl_internal: true },
+  },
+];
+
+describe("redactRequestBodyForLog", () => {
+  it("redacts credential headers and secret-carrying action payloads", () => {
+    const body = {
+      url: "https://example.com/login",
+      engine: "chrome-cdp",
+      timeout: 30000,
+      mobileProxy: true,
+      headers: secretHeaders,
+      actions: secretActions,
+    };
+
+    const redacted = redactRequestBodyForLog(body);
+
+    expect(redacted).toEqual({
+      url: "https://example.com/login",
+      engine: "chrome-cdp",
+      timeout: 30000,
+      mobileProxy: true,
+      headers: redactHeaders(secretHeaders),
+      actions: [
+        { type: "wait", milliseconds: 1000 },
+        { type: "click", selector: "#password", all: false },
+        { type: "write", text: "[REDACTED]" },
+        { type: "press", key: "Enter" },
+        {
+          type: "executeJavascript",
+          script: "[REDACTED]",
+          metadata: { __firecrawl_internal: true },
+        },
+      ],
+    });
+    expect(JSON.stringify(redacted)).not.toContain("secret-value");
+  });
+
+  it("does not mutate the body that is sent", () => {
+    const body = {
+      headers: { Authorization: "Bearer secret-value" },
+      actions: [{ type: "write", text: "secret-value" }],
+    };
+
+    redactRequestBodyForLog(body);
+
+    expect(body.headers.Authorization).toBe("Bearer secret-value");
+    expect(body.actions[0].text).toBe("secret-value");
+  });
+
+  it("passes through bodies without headers or actions", () => {
+    const body = { url: "https://example.com", engine: "tlsclient" };
+    expect(redactRequestBodyForLog(body)).toEqual(body);
+    expect(redactRequestBodyForLog(undefined)).toBeUndefined();
+    expect(redactRequestBodyForLog("raw")).toBe("raw");
+  });
+});
+
 describe("robustFetch error logging", () => {
   it.each([
     ["a failure status", mockWith(500, "{}"), undefined],
@@ -119,5 +189,25 @@ describe("robustFetch error logging", () => {
     expect(serialized).not.toContain("secret-value");
     expect(cause.params.body.url).toBe("https://example.com");
     expect(cause.params.body.headers["User-Agent"]).toBe("firecrawl");
+  });
+
+  it("redacts action payloads forwarded inside the request body", async () => {
+    const logger = makeLogger();
+
+    const cause = await captureCause(
+      robustFetch({
+        url: "https://upstream.test/run",
+        method: "POST",
+        body: { url: "https://example.com", actions: secretActions },
+        logger,
+        mock: mockWith(500, "{}"),
+      }),
+    );
+
+    const serialized = JSON.stringify([cause, logger.debug.mock.calls]);
+    expect(serialized).not.toContain("secret-value");
+    expect(cause.params.body.actions.map((a: any) => a.type)).toEqual(
+      secretActions.map(a => a.type),
+    );
   });
 });

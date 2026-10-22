@@ -41,6 +41,48 @@ export function redactHeaders(
   );
 }
 
+// Action fields that carry user-typed text or script bodies. `write` text can
+// be a password; `executeJavascript` scripts can embed tokens (and the branding
+// script is large), so neither belongs in logs.
+const SENSITIVE_ACTION_FIELDS = ["text", "script"] as const;
+
+/**
+ * A copy of a scrape request body that is safe to log: credential headers and
+ * secret-carrying action payloads are replaced with "[REDACTED]".
+ */
+export function redactRequestBodyForLog<T>(body: T): T {
+  if (
+    body === null ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    body instanceof FormData
+  ) {
+    return body;
+  }
+  const { headers, actions } = body as {
+    headers?: unknown;
+    actions?: unknown;
+  };
+  return {
+    ...body,
+    ...(headers !== null && typeof headers === "object"
+      ? { headers: redactHeaders(headers as Record<string, string>) }
+      : {}),
+    ...(Array.isArray(actions)
+      ? {
+          actions: actions.map(action => {
+            if (action === null || typeof action !== "object") return action;
+            const redacted: Record<string, unknown> = { ...action };
+            for (const field of SENSITIVE_ACTION_FIELDS) {
+              if (field in redacted) redacted[field] = "[REDACTED]";
+            }
+            return redacted;
+          }),
+        }
+      : {}),
+  };
+}
+
 const robustAgent = new Agent({
   headersTimeout: 0,
   bodyTimeout: 0,
@@ -112,12 +154,7 @@ export async function robustFetch<
   const logParams = {
     ...params,
     headers: redactHeaders(headers),
-    body:
-      logBody?.headers !== null &&
-      typeof logBody?.headers === "object" &&
-      !(logBody instanceof FormData)
-        ? { ...logBody, headers: redactHeaders(logBody.headers) }
-        : logBody,
+    body: redactRequestBodyForLog(logBody),
     logger: undefined,
   };
 
