@@ -272,6 +272,21 @@ func TestConverter_DefinitionList(t *testing.T) {
 	}
 }
 
+func TestConverter_DefinitionListSkipsEmptyTerms(t *testing.T) {
+	converter := NewConverter()
+
+	markdown, err := converter.ConvertHTMLToMarkdown("<dl><dt>A</dt><dd>1</dd><dt></dt><dt>B</dt><dd>2</dd></dl>")
+	if err != nil {
+		t.Fatalf("conversion failed: %v", err)
+	}
+
+	// An empty term writes nothing, so B starts its own entry instead of joining the definition of A.
+	expected := "A\n:   1\n\nB\n:   2"
+	if markdown != expected {
+		t.Errorf("expected %q, got %q", expected, markdown)
+	}
+}
+
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
 	return bytes.Contains([]byte(s), []byte(substr))

@@ -35,6 +35,16 @@ func (c *Converter) ConvertHTMLToMarkdown(html string) (string, error) {
 // lines indented by four spaces. Terms that share a definition go on
 // consecutive lines, as in PHP Markdown Extra. The converter has no rule for
 // these elements, so a term ran into its definition ("TermDefinition").
+// previousNonEmptySibling skips the empty <dt> and <dd> elements before selec,
+// which the rules below write as nothing.
+func previousNonEmptySibling(selec *goquery.Selection) *goquery.Selection {
+	prev := selec.Prev()
+	for prev.Length() > 0 && strings.TrimSpace(prev.Text()) == "" {
+		prev = prev.Prev()
+	}
+	return prev
+}
+
 var definitionListRules = []md.Rule{
 	{
 		Filter: []string{"dl"},
@@ -50,7 +60,7 @@ var definitionListRules = []md.Rule{
 				return md.String("")
 			}
 			// Terms that share a definition stay on consecutive lines.
-			if goquery.NodeName(selec.Prev()) == "dt" {
+			if goquery.NodeName(previousNonEmptySibling(selec)) == "dt" {
 				return md.String("\n" + term)
 			}
 			return md.String("\n\n" + term)
