@@ -71,10 +71,13 @@ public class AlexandriaResult
 /// </summary>
 public class AlexandriaScrapeData
 {
+    [JsonPropertyName("requestId")]
     public string RequestId { get; set; } = "";
 
+    [JsonPropertyName("alexandria")]
     public List<AlexandriaResult> Alexandria { get; set; } = new();
 
+    [JsonPropertyName("creditsCost")]
     public int CreditsCost { get; set; }
 }
 
