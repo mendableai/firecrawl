@@ -403,7 +403,6 @@ const configSchema = z.object({
   // Alexandria tool discovery: rewrite search queries with Anthropic before
   // tool lookup, and add tools to default searches. Each is also a team flag.
   ANTHROPIC_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
-  ALEXANDRIA_QUERY_INFERENCE: z.stringbool().default(false),
   ALEXANDRIA_AUTO_TOOLS: z.stringbool().default(false),
 
   // Exchange (routed data sources service)
