@@ -2,11 +2,6 @@
 
 set -e
 
-if [ "$(id -u)" = 0 ]; then
-  sysctl vm.overcommit_memory=1 || true
-  sysctl net.core.somaxconn=1024 || true
-fi
-
 mkdir -p /data/redis
 if [ "$(id -u)" = 0 ]; then
   chown 1001:1001 /data
