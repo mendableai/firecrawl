@@ -277,10 +277,12 @@ describe("executeSearch tool intent", () => {
       logger,
     );
     expect(mocks.discoverTools).toHaveBeenCalledTimes(2);
-    expect(mocks.discoverTools).toHaveBeenCalledWith(
-      expect.objectContaining({ urls: ["https://example.com/"] }),
-      logger,
+    const domainCall = mocks.discoverTools.mock.calls.find(
+      ([input]) => input.urls instanceof Promise,
     );
+    await expect(domainCall?.[0].urls).resolves.toEqual([
+      "https://example.com/",
+    ]);
     expect(mocks.discoverTools).toHaveBeenCalledWith(
       expect.objectContaining({
         queries: ["retries", "website traffic statistics of a domain"],
