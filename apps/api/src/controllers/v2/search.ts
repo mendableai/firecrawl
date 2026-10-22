@@ -457,7 +457,7 @@ async function searchControllerInner(
         highlights: req.body.highlights,
         domainTools: req.body.domainTools,
         toolDetail: req.body.toolDetail,
-        inferToolQuery: queryInferenceEnabled(req.acuc?.flags),
+        inferToolQuery: queryInferenceEnabled(),
         autoTools:
           (sourcesOmitted || req.body.domainTools === true) &&
           !req.auth.team_id.startsWith("preview_keyless_") &&

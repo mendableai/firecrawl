@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
 const config = vi.hoisted(() => ({
   ANTHROPIC_API_KEY: undefined as string | undefined,
   TYPESAFE_API_KEY: "key" as string | undefined,
-  ALEXANDRIA_QUERY_INFERENCE: false,
   ALEXANDRIA_AUTO_TOOLS: false,
 }));
 
@@ -114,15 +113,15 @@ describe("inferToolIntent", () => {
 describe("feature gates", () => {
   it("stay off without an Anthropic key, even for flagged teams", () => {
     config.ANTHROPIC_API_KEY = undefined;
-    const flags = { alexandriaQueryInference: true, alexandriaAutoTools: true };
-    expect(queryInferenceEnabled(flags)).toBe(false);
+    const flags = { alexandriaAutoTools: true };
+    expect(queryInferenceEnabled()).toBe(false);
     expect(autoToolsEnabled(flags)).toBe(false);
     config.ANTHROPIC_API_KEY = "key";
-    expect(queryInferenceEnabled(flags)).toBe(true);
+    expect(queryInferenceEnabled()).toBe(true);
     expect(autoToolsEnabled(flags)).toBe(true);
-    expect(queryInferenceEnabled({})).toBe(false);
+    expect(autoToolsEnabled({})).toBe(false);
     config.TYPESAFE_API_KEY = undefined;
-    expect(queryInferenceEnabled(flags)).toBe(false);
+    expect(queryInferenceEnabled()).toBe(false);
     config.TYPESAFE_API_KEY = "key";
   });
 });
