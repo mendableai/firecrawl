@@ -549,17 +549,11 @@ fn _transform_html_inner(
       let mut sizes: Vec<ImageSource> = srcset_candidates(&srcset)
         .into_iter()
         .filter_map(|(url, descriptors)| {
-          // The width (`800w`) or density (`2x`) descriptor; a candidate without one is `1x`
-          let descriptor = descriptors
-            .split_ascii_whitespace()
-            .last()
-            .filter(|x| x.ends_with('x') || x.ends_with('w'))
-            .unwrap_or("1x");
-          let parsed_size = descriptor[..descriptor.len() - 1].parse().ok()?;
+          let (size, is_x) = srcset_descriptor_size(descriptors)?;
           Some(ImageSource {
             url: url.to_string(),
-            size: parsed_size,
-            is_x: descriptor.ends_with('x'),
+            size,
+            is_x,
           })
         })
         .collect();
@@ -681,6 +675,64 @@ fn srcset_candidates(srcset: &str) -> Vec<(&str, &str)> {
     candidates.push((url, rest[..descriptors_end].trim()));
     rest = &rest[descriptors_end..];
   }
+}
+
+/// The size that a srcset candidate's descriptors give it, read as the HTML standard's descriptor
+/// parser reads them: a width (`800w`, with an optional height such as `600h`) or a density
+/// (`2x`), and `1x` when there is neither. Any other descriptor, a second width or density, a
+/// width or height of zero, a negative density or a number written another way (`1.`, `+2`)
+/// is an error, and the standard drops the candidate, so `None`.
+fn srcset_descriptor_size(descriptors: &str) -> Option<(f64, bool)> {
+  let (mut width, mut density, mut height) = (None, None, None);
+  for descriptor in descriptors.split_ascii_whitespace() {
+    let (index, unit) = descriptor.char_indices().last()?;
+    let value = &descriptor[..index];
+    match unit {
+      'w' if width.is_none() && density.is_none() => width = Some(positive_integer(value)?),
+      'x' if width.is_none() && density.is_none() && height.is_none() => {
+        density = Some(non_negative_float(value)?)
+      }
+      'h' if height.is_none() && density.is_none() => height = Some(positive_integer(value)?),
+      _ => return None,
+    }
+  }
+  match (width, density, height) {
+    (Some(width), _, _) => Some((width as f64, false)),
+    (None, _, Some(_)) => None,
+    (None, Some(density), None) => Some((density, true)),
+    (None, None, None) => Some((1.0, true)),
+  }
+}
+
+/// A valid non-negative integer, ASCII digits only, that is not zero.
+fn positive_integer(text: &str) -> Option<u64> {
+  if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
+    return None;
+  }
+  text.parse().ok().filter(|&value| value > 0)
+}
+
+/// A valid floating-point number (`2`, `1.5`, `.5`, `1e2`) that is finite and not negative.
+fn non_negative_float(text: &str) -> Option<f64> {
+  let digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+  let unsigned = text.strip_prefix('-').unwrap_or(text);
+  let (mantissa, exponent) = match unsigned.split_once(['e', 'E']) {
+    Some((mantissa, exponent)) => (mantissa, Some(exponent)),
+    None => (unsigned, None),
+  };
+  let mantissa_is_valid = match mantissa.split_once('.') {
+    Some((integer, fraction)) => (integer.is_empty() || digits(integer)) && digits(fraction),
+    None => digits(mantissa),
+  };
+  let exponent_is_valid =
+    exponent.is_none_or(|exponent| digits(exponent.strip_prefix(['+', '-']).unwrap_or(exponent)));
+  if !mantissa_is_valid || !exponent_is_valid {
+    return None;
+  }
+  text
+    .parse::<f64>()
+    .ok()
+    .filter(|value| value.is_finite() && *value >= 0.0)
 }
 
 /// Transform and clean HTML content based on provided options.
@@ -1057,4 +1109,41 @@ fn remove_skip_to_content_links(input: &str) -> String {
   }
 
   out
+}
+
+#[cfg(test)]
+mod tests {
+  use super::srcset_descriptor_size;
+
+  #[test]
+  fn reads_srcset_descriptors_as_the_html_standard_does() {
+    for (descriptors, expected) in [
+      ("", Some((1.0, true))),
+      ("800w", Some((800.0, false))),
+      ("600w 900h", Some((600.0, false))),
+      ("2x", Some((2.0, true))),
+      ("1.5x", Some((1.5, true))),
+      (".5x", Some((0.5, true))),
+      ("1e1x", Some((10.0, true))),
+      ("0x", Some((0.0, true))),
+      ("400w 9999w", None),
+      ("2x 9999w", None),
+      ("2x 3x", None),
+      ("900h", None),
+      ("2x 900h", None),
+      ("0w", None),
+      ("1.x", None),
+      ("+2x", None),
+      ("-1x", None),
+      ("2q", None),
+      ("2\u{d7}", None),
+      ("1e400x", None),
+    ] {
+      assert_eq!(
+        srcset_descriptor_size(descriptors),
+        expected,
+        "{descriptors:?}"
+      );
+    }
+  }
 }

@@ -506,6 +506,32 @@ describe("HTML Transformer", () => {
       expect(result).not.toContain("example.com/blog/");
     });
 
+    it("should drop srcset candidates whose descriptors are invalid", async () => {
+      // A second width, a width beside a density, or an unknown descriptor makes the
+      // candidate an error in the HTML standard, so it must not win the largest-image pick
+      const options: TransformHtmlOptions = {
+        html: `
+          <div>
+            <img
+              src="https://cdn.example.com/fallback.png"
+              srcset="https://cdn.example.com/small.png 400w,
+                      https://cdn.example.com/tall.png 600w 900h,
+                      https://cdn.example.com/large.png 800w,
+                      https://cdn.example.com/two-widths.png 400w 9999w,
+                      https://cdn.example.com/width-and-density.png 2x 9999w,
+                      https://cdn.example.com/unknown.png 9999q">
+          </div>
+        `,
+        url: "https://example.com/blog/post",
+        includeTags: [],
+        excludeTags: [],
+        onlyMainContent: false,
+      };
+
+      const result = await transformHtml(options);
+      expect(result).toContain('src="https://cdn.example.com/large.png"');
+    });
+
     it("should fall back to data-src when there is no srcset", async () => {
       const options: TransformHtmlOptions = {
         html: `
