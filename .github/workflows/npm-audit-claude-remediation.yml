@@ -54,24 +54,24 @@ jobs:
     if: ${{ needs.scan.outputs.has_uncovered == 'true' }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 60
-    environment: remediation-approval
     concurrency:
       group: audit-npm-claude-remediation-${{ github.event.repository.default_branch }}
       cancel-in-progress: false
     permissions:
       contents: write
+      id-token: write
       pull-requests: write
     env:
       NPM_AUDIT_CLAUDE_SLACK_WEBHOOK_URL: ${{ secrets.NPM_AUDIT_CLAUDE_SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Checkout default branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.repository.default_branch }}
 
       - name: Install Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22
 
@@ -93,7 +93,8 @@ jobs:
         uses: anthropics/claude-code-action@2cc1ac1331eac7a6a96d716dd204dd2888d0fcd2 # v1
         with:
           anthropic_api_key: ${{ secrets.NPM_AUDIT_CLAUDE_ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
+          additional_permissions: |
+            issues: read
           base_branch: ${{ github.event.repository.default_branch }}
           branch_prefix: claude/audit-ci/
           prompt: ${{ steps.scan.outputs.prompt }}
