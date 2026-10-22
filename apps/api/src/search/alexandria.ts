@@ -45,7 +45,8 @@ export async function discoverTools(
     teamId: string;
     toolDetail?: "compact" | "summary" | "full";
     query?: string;
-    urls?: string[];
+    /** May still be pending; the semantic lookup starts without waiting for it. */
+    urls?: string[] | Promise<string[]>;
     limit: number;
     timeoutMs: number;
     /** The team may use its own MCP connectors: their listed tools join its discovery. */
@@ -125,42 +126,51 @@ export async function discoverTools(
       });
     }
   };
-  const leg = async (message: string, run: () => Promise<void>) => {
+  const leg = async <T>(
+    message: string,
+    run: () => Promise<T>,
+  ): Promise<T | undefined> => {
     attempted++;
     for (let attempt = 1; ; attempt++) {
       try {
-        await run();
+        const value = await run();
         answered++;
-        return;
+        return value;
       } catch (error) {
         logger.warn(message, { error, attempt });
-        if (attempt >= 2 || Date.now() >= deadline) return;
+        if (attempt >= 2 || Date.now() >= deadline) return undefined;
       }
     }
   };
-  if (input.query)
-    await leg("Semantic tool discovery unavailable", async () => {
-      for (const tool of await lookup({ query: input.query }))
-        merge(tool, "semantic");
+  const semantic = input.query
+    ? leg("Semantic tool discovery unavailable", () =>
+        lookup({ query: input.query }),
+      )
+    : undefined;
+  const domain = (async () => {
+    const urls = [...new Set((await input.urls) ?? [])].filter(value => {
+      const url = URL.parse(value);
+      return (
+        url &&
+        ["http:", "https:"].includes(url.protocol) &&
+        !url.username &&
+        !url.password &&
+        value.length <= 8192
+      );
     });
-  const urls = [...new Set(input.urls ?? [])].filter(value => {
-    const url = URL.parse(value);
-    return (
-      url &&
-      ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      value.length <= 8192
-    );
-  });
-  if (urls.length)
-    await leg("Domain tool discovery unavailable", async () => {
+    if (!urls.length) return undefined;
+    return leg("Domain tool discovery unavailable", async () => {
       // Resolve domains once; Exchange owns matching and provider visibility.
+      const found: {
+        tool: z.infer<typeof toolSchema> | z.infer<typeof toolSummarySchema>;
+        urls: string[];
+      }[] = [];
       for (let i = 0; i < urls.length; i += 100) {
+        const batch = urls.slice(i, i + 100);
         const result = await exchangeRequest({
           teamId: input.teamId,
           path: "/v1/skills/resolve",
-          body: { urls: urls.slice(i, i + 100) },
+          body: { urls: batch },
           timeoutMs: remaining(),
           connectors: input.connectors === true,
         });
@@ -181,50 +191,59 @@ export async function discoverTools(
           .parse(result.body).skills;
         const hostOf = (value: string) =>
           new URL(value).hostname.toLowerCase().replace(/\.$/, "");
-        for (const match of matches) {
-          const matchedUrls = urls.slice(i, i + 100).filter(value => {
-            const host = hostOf(value);
-            return (
-              match.matchedDomains.includes(host) ||
-              match.matchedDomains.includes(host.replace(/^www\./, ""))
-            );
-          });
-          const capabilitiesFor = (url: string) => {
-            const host = hostOf(url);
-            return [
-              ...new Set([
-                ...(match.domainCapabilities?.[url] ?? []),
-                ...(match.domainCapabilities?.[host] ?? []),
-                ...(match.domainCapabilities?.[host.replace(/^www\./, "")] ??
-                  []),
-              ]),
+        const lists = await Promise.all(
+          matches.map(async match => {
+            const matchedUrls = batch.filter(value => {
+              const host = hostOf(value);
+              return (
+                match.matchedDomains.includes(host) ||
+                match.matchedDomains.includes(host.replace(/^www\./, ""))
+              );
+            });
+            const capabilitiesFor = (url: string) => {
+              const host = hostOf(url);
+              return [
+                ...new Set([
+                  ...(match.domainCapabilities?.[url] ?? []),
+                  ...(match.domainCapabilities?.[host] ?? []),
+                  ...(match.domainCapabilities?.[
+                    host.replace(/^www\./, "")
+                  ] ?? []),
+                ]),
+              ];
+            };
+            const capabilities = [
+              ...new Set(matchedUrls.flatMap(capabilitiesFor)),
             ];
-          };
-          const capabilities = [
-            ...new Set(matchedUrls.flatMap(capabilitiesFor)),
-          ];
-          if (
-            !matchedUrls.length ||
-            (match.domainCapabilities && !capabilities.length)
-          )
-            continue;
-          for (const tool of await lookup({
-            providers: [match.id],
-            ...(capabilities.length ? { capabilities } : {}),
-          }))
-            if (tool.provider === match.id)
-              merge(
+            if (
+              !matchedUrls.length ||
+              (match.domainCapabilities && !capabilities.length)
+            )
+              return [];
+            const tools = await lookup({
+              providers: [match.id],
+              ...(capabilities.length ? { capabilities } : {}),
+            });
+            return tools
+              .filter(tool => tool.provider === match.id)
+              .map(tool => ({
                 tool,
-                "domain",
-                match.domainCapabilities
+                urls: match.domainCapabilities
                   ? matchedUrls.filter(url =>
                       capabilitiesFor(url).includes(tool.capability),
                     )
                   : matchedUrls,
-              );
-        }
+              }));
+          }),
+        );
+        found.push(...lists.flat());
       }
+      return found;
     });
+  })();
+  const [semanticTools, domainTools] = await Promise.all([semantic, domain]);
+  for (const tool of semanticTools ?? []) merge(tool, "semantic");
+  for (const { tool, urls } of domainTools ?? []) merge(tool, "domain", urls);
   return {
     items: [...items.values()].map(tool =>
       input.toolDetail === "compact"
