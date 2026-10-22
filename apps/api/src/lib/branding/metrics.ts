@@ -29,7 +29,7 @@ export const brandingJevDurationSeconds = new Histogram({
 
 export const brandingScreenshotCapturesTotal = new Counter({
   name: "firecrawl_branding_screenshot_captures_total",
-  help: "Branding scrapes that asked fire-engine for the page's first screen, by whether it came back (captured) or not (missing)",
+  help: "Branding scrapes that asked fire-engine for the page's first screen, by whether it came back (captured), the scrape succeeded without it (missing), or the scrape failed (scrape_failed)",
   labelNames: ["outcome"],
 });
 
@@ -89,7 +89,7 @@ for (const outcome of [
   brandingJevCallsTotal.inc({ outcome }, 0);
 }
 brandingJevBreakerOpensTotal.inc(0);
-for (const outcome of ["captured", "missing"]) {
+for (const outcome of ["captured", "missing", "scrape_failed"]) {
   brandingScreenshotCapturesTotal.inc({ outcome }, 0);
 }
 for (const outcome of [

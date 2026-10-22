@@ -182,6 +182,22 @@ describe("branding first-screen screenshot", () => {
     expect(await count("missing")).toBe(before.missing + 1);
   });
 
+  it("counts a requested capture whose scrape failed apart from a missing one", async () => {
+    const failed = async () =>
+      (await brandingScreenshotCapturesTotal.get()).values.find(
+        v => v.labels.outcome === "scrape_failed",
+      )?.value ?? 0;
+    const before = await failed();
+    fake.response = () => {
+      throw new Error("engine down");
+    };
+
+    await expect(
+      scrapeURLWithFireEngineChromeCDP(meta([{ type: "branding" }])),
+    ).rejects.toThrow("engine down");
+    expect(await failed()).toBe(before + 1);
+  });
+
   it("captures nothing for zero data retention, teams outside the rollout, when Jev is off, or without branding", async () => {
     const cases = [
       () => meta([{ type: "branding" }], { zeroDataRetention: true }),
