@@ -44,9 +44,9 @@ export async function discoverTools(
   input: {
     teamId: string;
     toolDetail?: "compact" | "summary" | "full";
-    /** Runs semantic discovery and ranks domain matches. */
-    query?: string;
-    /** Ranks domain matches without running semantic discovery. */
+    /** Semantic queries, best first; their results are interleaved by rank. */
+    queries?: string[];
+    /** Ranks domain matches when there is no semantic query. */
     rankQuery?: string;
     /** May still be pending; the semantic lookup starts without waiting for it. */
     urls?: string[] | Promise<string[]>;
@@ -146,11 +146,23 @@ export async function discoverTools(
       }
     }
   };
+  const queries = [...new Set(input.queries ?? [])];
   const semanticDeadline = budget();
-  const semantic = input.query
-    ? leg("Semantic tool discovery unavailable", semanticDeadline, () =>
-        lookup({ query: input.query }, semanticDeadline),
-      )
+  const semantic = queries.length
+    ? leg("Semantic tool discovery unavailable", semanticDeadline, async () => {
+        const settled = await Promise.allSettled(
+          queries.map(query => lookup({ query }, semanticDeadline)),
+        );
+        const lists = settled.flatMap(result =>
+          result.status === "fulfilled" ? [result.value] : [],
+        );
+        if (!lists.length) throw (settled[0] as PromiseRejectedResult).reason;
+        const depth = Math.max(...lists.map(list => list.length));
+        const ordered: (typeof lists)[number] = [];
+        for (let rank = 0; rank < depth; rank++)
+          for (const list of lists) if (list[rank]) ordered.push(list[rank]);
+        return ordered;
+      })
     : undefined;
   const domain = (async () => {
     const urls = [...new Set((await input.urls) ?? [])].filter(value => {
@@ -174,7 +186,7 @@ export async function discoverTools(
         urls: string[];
       }[]
     >();
-    const rankQuery = input.query ?? input.rankQuery;
+    const rankQuery = queries[0] ?? input.rankQuery;
     await leg("Domain tool discovery unavailable", deadline, async () => {
       // Resolve domains once; Exchange owns matching and provider visibility.
       for (let i = 0; i < urls.length; i += 100) {

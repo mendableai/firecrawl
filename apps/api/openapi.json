@@ -4368,7 +4368,7 @@
                         }
                       ]
                     },
-                    "description": "Sources to search. Will determine the arrays available in the response. Defaults to ['web']. The plain string form (e.g. `[\"web\", \"alexandria\"]`) is also accepted. The `alexandria` source returns tool contracts discovered from the Alexandria catalogue in `data.tools` instead of search results; it is free and is never counted in `creditsUsed`. Requires the team's Alexandria access to be enabled (403 otherwise).",
+                    "description": "Sources to search. Will determine the arrays available in the response. Defaults to ['web']. The plain string form (e.g. `[\"web\", \"alexandria\"]`) is also accepted. The `alexandria` source returns tool contracts discovered from the Alexandria catalogue in `data.tools` instead of search results; it is free and is never counted in `creditsUsed`. Requires the team's Alexandria access to be enabled (403 otherwise). When `sources` is omitted, an authenticated search may also return compact tools in `data.tools` for queries that ask for structured data; pass `sources` explicitly to turn this off.",
                     "default": [
                       {
                         "type": "web"
@@ -4753,7 +4753,7 @@
                         },
                         "tools": {
                           "type": "array",
-                          "description": "Tool contracts discovered from the Alexandria catalogue. Present when `alexandria` is among the sources or when `domainTools` was requested; up to `limit` results per discovery source (semantic matches from the `alexandria` source, domain matches from `domainTools`).",
+                          "description": "Tool contracts discovered from the Alexandria catalogue. Present when `alexandria` is among the sources, when `domainTools` was requested, or when `sources` was omitted and the query asks for structured data; up to `limit` results per discovery source (semantic matches from the `alexandria` source, domain matches from `domainTools`).",
                           "items": {
                             "$ref": "#/components/schemas/DiscoveredTool"
                           }
