@@ -79,15 +79,6 @@ export async function agentController(
     });
   }
 
-  if (zeroDataRetention && req.body.exchange) {
-    return res.status(400).json({
-      success: false,
-      code: "zdr_exchange_unsupported",
-      error:
-        "Exchange is not supported with zero data retention. Remove the exchange option.",
-    });
-  }
-
   logger.info("Agent starting...", {
     request: req.body,
     originalRequest,

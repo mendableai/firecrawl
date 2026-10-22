@@ -63,7 +63,6 @@ export type ErrorCodes =
   | "exchange_not_enabled"
   // Agent zero data retention. Lowercase to match the agent service's codes.
   | "zdr_threads_unsupported"
-  | "zdr_exchange_unsupported"
   | "zdr_expired"
   | "zdr_no_snapshots"
   | "zdr_not_enabled";
