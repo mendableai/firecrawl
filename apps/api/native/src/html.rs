@@ -163,7 +163,7 @@ fn _extract_metadata(
     // is left out, so the fallbacks below can fill it
     let title = title
       .text_contents()
-      .split(|c: char| matches!(c, '\t' | '\n' | '\x0C' | '\r' | ' '))
+      .split(['\t', '\n', '\x0C', '\r', ' '])
       .filter(|word| !word.is_empty())
       .collect::<Vec<_>>()
       .join(" ");
