@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "engines": {
-    "node": ">=22.23.4"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "astro dev",
@@ -16,7 +16,7 @@
     "@astrojs/mdx": "^7.0.3",
     "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.2",
-    "astro": "^7.4.2",
+    "astro": "7.3.3",
     "sharp": "^0.35.4"
   },
   "devDependencies": {

@@ -5,6 +5,8 @@ minimumReleaseAge: 720 # 12 hours
 minimumReleaseAgeExclude:
   # GHSA-27r3-jxmh-p828: allow today's patched releases through the age gate.
   - "body-parser@1.20.9 || 2.4.0"
+  # GHSA-rxp7-6hxx-x8q5: patched release published today.
+  - "ip-address@10.7.4"
   - fast-xml-parser
   - follow-redirects
   # TypeScript 7 resolves its native platform binaries (e.g.
@@ -89,9 +91,8 @@ overrides:
   "@opentelemetry/resources@<2.9.0": "2.9.0"
   "@opentelemetry/sdk-metrics@<2.9.0": "2.9.0"
   # GHSA-v2v4-37r5-5v8g / GHSA-mwp4-54f8-5fhr / GHSA-rpw4-54j3-4h4q /
-  # GHSA-j6r3-76f7-8jcv / GHSA-h3mg-xc3c-68pw / GHSA-RXP7-6HXX-X8Q5:
-  # geoip-country@5 still asks for ip-address@^6, but only its updatedb script
-  # loads it; lookup() never does. Pinned to 10.7.4, the same major ceiling.
+  # GHSA-j6r3-76f7-8jcv / GHSA-h3mg-xc3c-68pw: geoip-country@5 still asks for
+  # ip-address@^6, but only its updatedb script loads it; lookup() never does.
   "geoip-country>ip-address": "10.7.4"
 patchedDependencies:
   "node-fetch@2.7.0": "patches/node-fetch@2.7.0.patch"
