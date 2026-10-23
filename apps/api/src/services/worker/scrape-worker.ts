@@ -47,6 +47,11 @@ import {
   addScrapeJobs,
 } from "../queue-jobs";
 import { parseHostname } from "../../lib/url-utils";
+import {
+  detectSerpPage,
+  serpScrapeWarning,
+  serpScrapeWarningEnabled,
+} from "../../lib/serp-url";
 import { getJobPriority } from "../../lib/job-priority";
 import { Document, scrapeOptions, TeamFlags } from "../../controllers/v2/types";
 import { hasFormatOfType } from "../../lib/format-utils";
@@ -539,6 +544,26 @@ async function processJob(job: NuQJob<ScrapeJobSingleUrls>) {
         (doc.warning ? " " + doc.warning : "");
     }
 
+    const billingEndpoint = job.data.billing?.endpoint;
+    if (billingEndpoint === "scrape" || billingEndpoint === "batch_scrape") {
+      const serpPage = detectSerpPage(job.data.url);
+      if (serpPage !== null) {
+        // Logged whether or not the warning is shown, so the rollout can be
+        // compared with teams outside it.
+        const warned = serpScrapeWarningEnabled(job.data.team_id);
+        logger.info("SERP scrape", {
+          serpEngine: serpPage.engine,
+          serpWarningShown: warned,
+          billingEndpoint,
+        });
+        if (warned) {
+          doc.warning =
+            serpScrapeWarning(serpPage.engine) +
+            (doc.warning ? " " + doc.warning : "");
+        }
+      }
+    }
+
     const data = {
       success: true,
       result: {
@@ -856,28 +881,25 @@ async function processJob(job: NuQJob<ScrapeJobSingleUrls>) {
       doc.metadata.creditsUsed = credits_billed ?? undefined;
 
       logger.debug("Logging job to DB...");
-      await logScrape(
-        {
-          id: job.id,
-          request_id: job.data.requestId ?? job.data.crawl_id ?? job.id,
-          url: job.data.url,
-          is_successful: true,
-          doc,
-          time_taken: timeTakenInSeconds,
-          team_id: job.data.team_id,
-          options: job.data.scrapeOptions,
-          cost_tracking: costTracking.toJSON(),
-          pdf_num_pages: doc.metadata.numPages,
-          content_type: doc.metadata.contentType,
-          credits_cost: credits_billed ?? 0,
-          zeroDataRetention: job.data.zeroDataRetention,
-          skipNuq: job.data.skipNuq ?? false,
-          is_parse: Boolean(job.data.internalOptions?.isParse),
-          monitor_id: job.data.monitoring?.monitorId,
-          monitor_check_id: job.data.monitoring?.checkId,
-        },
-        true,
-      );
+      await logScrape({
+        id: job.id,
+        request_id: job.data.requestId ?? job.data.crawl_id ?? job.id,
+        url: job.data.url,
+        is_successful: true,
+        doc,
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        options: job.data.scrapeOptions,
+        cost_tracking: costTracking.toJSON(),
+        pdf_num_pages: doc.metadata.numPages,
+        content_type: doc.metadata.contentType,
+        credits_cost: credits_billed ?? 0,
+        zeroDataRetention: job.data.zeroDataRetention,
+        skipNuq: job.data.skipNuq ?? false,
+        is_parse: Boolean(job.data.internalOptions?.isParse),
+        monitor_id: job.data.monitoring?.monitorId,
+        monitor_check_id: job.data.monitoring?.checkId,
+      });
 
       trackScrape({
         scrapeId: job.id,
@@ -986,7 +1008,6 @@ async function processJob(job: NuQJob<ScrapeJobSingleUrls>) {
           monitor_id: job.data.monitoring?.monitorId,
           monitor_check_id: job.data.monitoring?.checkId,
         },
-        false,
         { onStateWritten: stateWritten },
       );
       // Release the barrier if logging dies before the state write settles.
@@ -1227,30 +1248,27 @@ async function processJob(job: NuQJob<ScrapeJobSingleUrls>) {
     }
 
     logger.debug("Logging job to DB...");
-    await logScrape(
-      {
-        id: job.id,
-        request_id: job.data.requestId ?? job.data.crawl_id ?? job.id,
-        url: job.data.url,
-        is_successful: false,
-        error:
-          typeof error === "string"
-            ? error
-            : (error.message ??
-              "Something went wrong... Contact help@mendable.ai"),
-        time_taken: timeTakenInSeconds,
-        team_id: job.data.team_id,
-        options: job.data.scrapeOptions,
-        cost_tracking: costTracking.toJSON(),
-        credits_cost: credits_billed ?? 0,
-        zeroDataRetention: job.data.zeroDataRetention,
-        skipNuq: job.data.skipNuq ?? false,
-        is_parse: Boolean(job.data.internalOptions?.isParse),
-        monitor_id: job.data.monitoring?.monitorId,
-        monitor_check_id: job.data.monitoring?.checkId,
-      },
-      true,
-    );
+    await logScrape({
+      id: job.id,
+      request_id: job.data.requestId ?? job.data.crawl_id ?? job.id,
+      url: job.data.url,
+      is_successful: false,
+      error:
+        typeof error === "string"
+          ? error
+          : (error.message ??
+            "Something went wrong... Contact help@mendable.ai"),
+      time_taken: timeTakenInSeconds,
+      team_id: job.data.team_id,
+      options: job.data.scrapeOptions,
+      cost_tracking: costTracking.toJSON(),
+      credits_cost: credits_billed ?? 0,
+      zeroDataRetention: job.data.zeroDataRetention,
+      skipNuq: job.data.skipNuq ?? false,
+      is_parse: Boolean(job.data.internalOptions?.isParse),
+      monitor_id: job.data.monitoring?.monitorId,
+      monitor_check_id: job.data.monitoring?.checkId,
+    });
 
     trackScrape({
       scrapeId: job.id,

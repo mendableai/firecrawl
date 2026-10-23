@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { describe, expect, it, vi } from "vitest";
 import { search } from "../../../v2/methods/search";
 import { scrape } from "../../../v2/methods/scrape";
 import { parse } from "../../../v2/methods/parse";
@@ -14,8 +14,9 @@ const hints = [
 ];
 function httpFor(body: object) {
   return {
-    post: jest.fn<any>().mockResolvedValue({ status: 200, data: body }),
-    postMultipart: jest
+    getOrigin: () => "js-sdk@test",
+    post: vi.fn<any>().mockResolvedValue({ status: 200, data: body }),
+    postMultipart: vi
       .fn<any>()
       .mockResolvedValue({ status: 200, data: body }),
   } as any;

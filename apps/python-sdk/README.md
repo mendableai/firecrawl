@@ -1,13 +1,13 @@
 # Firecrawl Python SDK
 
-The Firecrawl Python SDK is a library that lets you easily search, scrape, and interact with the web for AI agents — returning clean Markdown or structured data your agents can ship with. It provides a simple and intuitive interface for the Firecrawl API.
+The Firecrawl Python SDK is the Python client for Firecrawl, the context API for AI agents. Search, scrape, parse, crawl, map, and interact with the web, run Agent and Monitor jobs, and get back clean Markdown or structured data your agents can ship with.
 
 ## Installation
 
 To install the Firecrawl Python SDK, you can use pip:
 
 ```bash 
-pip install firecrawl-py
+pip install firecrawl
 ```
 
 ## Usage
@@ -38,6 +38,16 @@ crawl_status = firecrawl.crawl(
 )
 print(crawl_status)
 ```
+
+### Request origin
+
+Requests carry an `origin` tag that identifies the client. Pass the `origin` argument to set the client default. Per-call overrides are available on methods that explicitly accept an `origin` argument, such as `interact`.
+
+```python
+firecrawl = Firecrawl(api_key="fc-YOUR_API_KEY", origin="python-sdk.my-wrapper@1.0.0")
+```
+
+By default the tag is `python-sdk@<version>`. When the client is created by code inside an installed package (a wrapper library), the default is `python-sdk.<package>@<version>` instead, for example `python-sdk.some-agent@<version>`. Application code, REPLs and notebooks keep the plain default. Detection runs once when the client is created and sends only the installed distribution name, lowercased and sanitized into a slug. Set `FIRECRAWL_DISABLE_CALLER_ORIGIN=1` to always use the plain default.
 
 ### Scraping a URL
 
@@ -275,7 +285,23 @@ law = firecrawl.gov_search("food labeling requirements", k=5)
 
 for result in law.data.web:
     print(result.position, result.title, result.url)
+
+# State supreme court opinions that cite a federal statute:
+cases = firecrawl.gov_search(
+    "qualified immunity",
+    court_type="state-supreme",
+    cites="42 U.S.C. § 1983",
+)
 ```
+
+Filters, all optional and combined with AND: `jurisdiction` (`"us"` for
+federal, or `"us-"` plus a two-letter state or territory code, such as
+`"us-ca"`), `court` (a CourtListener court id, such as `"scotus"` or `"ca9"`),
+`court_type`, `cites` (one printed citation or citation id, such as
+`"us:usc:42:1983"`), and `domain` (one site, such as `"irs.gov"`). Filters
+keep only pages the index has labeled, so a filtered search can leave out
+relevant pages, and no results does not mean none exist. Court labels are most
+complete for federal courts and case-law collections.
 
 ### Research / paper search
 

@@ -9,7 +9,7 @@ import {
 } from "../types";
 import { HttpClient } from "../utils/httpClient";
 import { agentHintMetadata } from "../utils/agentHints";
-import { ensureValidScrapeOptions } from "../utils/validation";
+import { ensureNoV1Options, ensureValidScrapeOptions } from "../utils/validation";
 import {
   throwForBadResponse,
   normalizeAxiosError,
@@ -17,6 +17,7 @@ import {
 
 function prepareSearchPayload(req: SearchRequest): Record<string, unknown> {
   if (!req.query || !req.query.trim()) throw new Error("Query cannot be empty");
+  ensureNoV1Options(req, "search");
   if (req.limit != null && req.limit <= 0)
     throw new Error("limit must be positive");
   if (req.timeout != null && req.timeout <= 0)

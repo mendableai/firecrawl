@@ -5,6 +5,14 @@ const mocks = vi.hoisted(() => ({
   checkUrlsAgainstThreatPolicy: vi.fn(),
   discoverTools: vi.fn(),
   removeExplicitResults: vi.fn(),
+  inferToolIntent: vi.fn(),
+  verifyTools: vi.fn(),
+}));
+
+vi.mock("./tool-intent", () => ({
+  AUTO_TOOLS_WAIT_MS: 300,
+  inferToolIntent: mocks.inferToolIntent,
+  verifyTools: mocks.verifyTools,
 }));
 
 vi.mock("./alexandria", () => ({
@@ -103,6 +111,7 @@ beforeEach(() => {
     status: "available",
     items: [{ id: "fred/series/observations" }],
   });
+  mocks.verifyTools.mockImplementation(async (_query, items) => items);
 });
 
 it("tool-only search never runs or bills SERP", async () => {
@@ -114,6 +123,21 @@ it("tool-only search never runs or bills SERP", async () => {
   expect(mocks.search).not.toHaveBeenCalled();
   expect(result.searchCredits).toBe(0);
   expect(result.response.tools).toEqual([{ id: "fred/series/observations" }]);
+});
+
+it("passes through unavailable tool discovery", async () => {
+  mocks.discoverTools.mockResolvedValue({
+    items: [],
+    warning: "Some tool discovery results are unavailable.",
+    unavailable: true,
+  });
+  const result = await executeSearch(
+    { ...options([]), sources: [{ type: "alexandria" }] },
+    { ...context, flags: { exchangeRetrieve: true } },
+    logger,
+  );
+  expect(result.toolsUnavailable).toBe(true);
+  expect(result.response.tools).toEqual([]);
 });
 
 it("mixed search bills only normal web results", async () => {
@@ -128,6 +152,184 @@ it("mixed search bills only normal web results", async () => {
   );
   expect(result.searchCredits).toBe(2);
   expect(result.response.tools).toHaveLength(1);
+});
+
+describe("executeSearch tool intent", () => {
+  const webResult = {
+    url: "https://example.com/",
+    title: "Example",
+    description: "An example page.",
+  };
+
+  it("keeps the raw query and adds verified rewrite and domain tools", async () => {
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["institutional holders of a public company"],
+      domains: ["sec.gov"],
+      needsTools: true,
+    });
+    await executeSearch(
+      {
+        ...options([]),
+        query: "who owns apple stock",
+        sources: [{ type: "alexandria" }],
+        inferToolQuery: true,
+      },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({ queries: ["who owns apple stock"] }),
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queries: ["institutional holders of a public company"],
+        urls: ["https://sec.gov/"],
+      }),
+      logger,
+    );
+    expect(mocks.verifyTools).toHaveBeenCalledWith(
+      "who owns apple stock",
+      [{ id: "fred/series/observations" }],
+      logger,
+    );
+  });
+
+  it("adds no tool the fit check rejects", async () => {
+    const own = { provider: "sec-gov", capability: "filings/filings" };
+    const extra = { provider: "apps-apple-com", capability: "apps/app" };
+    mocks.discoverTools.mockImplementation(
+      async (input: { queries?: string[] }) => ({
+        items: input.queries?.[0] === "who owns apple stock" ? [own] : [extra],
+      }),
+    );
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["institutional holders of a public company"],
+      domains: [],
+      needsTools: true,
+    });
+    mocks.verifyTools.mockResolvedValue([]);
+    const result = await executeSearch(
+      {
+        ...options([]),
+        query: "who owns apple stock",
+        sources: [{ type: "alexandria" }],
+        inferToolQuery: true,
+      },
+      context,
+      logger,
+    );
+    expect(result.response.tools).toEqual([own]);
+  });
+
+  it("adds tools to a default search when the query needs them", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["US unemployment rate statistics"],
+      domains: [],
+      needsTools: true,
+    });
+    const result = await executeSearch(
+      { ...options([]), autoTools: true },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolDetail: "compact",
+        queries: ["retries", "US unemployment rate statistics"],
+        urls: [],
+      }),
+      logger,
+    );
+    expect(result.toolsAuto).toBe(true);
+    expect(result.response.tools).toEqual([{ id: "fred/series/observations" }]);
+    expect(result.searchCredits).toBe(2);
+  });
+
+  it("leaves a default search alone when the query does not need tools", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["CSS layout documentation"],
+      domains: [],
+      needsTools: false,
+    });
+    const result = await executeSearch(
+      { ...options([]), autoTools: true },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).not.toHaveBeenCalled();
+    expect(result.toolsAuto).toBe(false);
+    expect(result.response.tools).toBeUndefined();
+  });
+
+  it("adds query tools beside domain tools when domainTools is on", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["website traffic statistics of a domain"],
+      domains: [],
+      needsTools: true,
+    });
+    await executeSearch(
+      { ...options([]), autoTools: true, domainTools: true },
+      context,
+      logger,
+    );
+    expect(mocks.discoverTools).toHaveBeenCalledTimes(2);
+    const domainCall = mocks.discoverTools.mock.calls.find(
+      ([input]) => input.urls instanceof Promise,
+    );
+    await expect(domainCall?.[0].urls).resolves.toEqual([
+      "https://example.com/",
+    ]);
+    expect(mocks.discoverTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queries: ["retries", "website traffic statistics of a domain"],
+        urls: [],
+      }),
+      logger,
+    );
+  });
+
+  it("waits at most 300ms past the web results for tools it did not ask for", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    mocks.inferToolIntent.mockResolvedValue({
+      toolQueries: ["US unemployment rate statistics"],
+      domains: [],
+      needsTools: true,
+    });
+    mocks.discoverTools.mockReturnValue(new Promise(() => {}));
+    vi.useFakeTimers();
+    try {
+      let done = false;
+      const pending = executeSearch(
+        { ...options([]), autoTools: true },
+        context,
+        logger,
+      ).finally(() => {
+        done = true;
+      });
+      await vi.advanceTimersByTimeAsync(299);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await pending;
+      expect(result.response.tools).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never adds tools under zero data retention", async () => {
+    mocks.search.mockResolvedValue({ web: [webResult] });
+    await executeSearch(
+      { ...options([]), autoTools: true },
+      { ...context, zeroDataRetention: true },
+      logger,
+    );
+    expect(mocks.inferToolIntent).not.toHaveBeenCalled();
+    expect(mocks.discoverTools).not.toHaveBeenCalled();
+  });
 });
 
 describe("executeSearch safe search", () => {
@@ -192,6 +394,44 @@ describe("executeSearch safe search", () => {
   });
 });
 
+describe("executeSearch zero data retention rate", () => {
+  const results = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      url: `https://result${index}.example/`,
+      title: "Result",
+      description: "A result.",
+    }));
+
+  it.each([
+    { name: "a default search", enterprise: undefined, ten: 2, eleven: 4 },
+    {
+      name: "an enterprise anon search",
+      enterprise: ["anon"],
+      ten: 2,
+      eleven: 4,
+    },
+    {
+      name: "an enterprise zdr search",
+      enterprise: ["zdr"],
+      ten: 10,
+      eleven: 20,
+    },
+  ])("bills $name per ten results", async ({ enterprise, ten, eleven }) => {
+    for (const [count, credits] of [
+      [10, ten],
+      [11, eleven],
+    ]) {
+      mocks.search.mockResolvedValue({ web: results(count) });
+      const result = await executeSearch(
+        { ...options([]), limit: 20, enterprise },
+        context,
+        logger,
+      );
+      expect(result.searchCredits).toBe(credits);
+    }
+  });
+});
+
 describe("executeSearch developer category", () => {
   it("returns sole developer-category results in web without running SERP", async () => {
     const result = await executeSearch(
@@ -204,6 +444,9 @@ describe("executeSearch developer category", () => {
     expect(result.response).toEqual({ web: [developerResult] });
     expect(result.response).not.toHaveProperty("developer");
     expect(result.indexResultsCount).toBe(1);
+    // The vertical that served the result survives the response as a label
+    // keyed by the position the client sees.
+    expect(result.resultCategories).toEqual({ web: { "1": "developer" } });
   });
 
   it("filters blocked developer results via threat protection and renumbers", async () => {
@@ -248,7 +491,75 @@ describe("executeSearch developer category", () => {
       ["https://ok.example/a", 1],
       ["https://ok.example/c", 2],
     ]);
+    // Keyed by the renumbered positions, not the upstream ones — position 2 is
+    // the surviving third result.
+    expect(result.resultCategories).toEqual({
+      web: { "1": "developer", "2": "developer" },
+    });
   });
+
+  it("returns an empty group and no categories when every result is blocked", async () => {
+    mocks.searchDeveloperCategory.mockResolvedValue([
+      {
+        url: "https://blocked.example/a",
+        title: "A",
+        description: "",
+        position: 1,
+        category: "developer",
+      },
+      {
+        url: "https://blocked.example/b",
+        title: "B",
+        description: "",
+        position: 2,
+        category: "developer",
+      },
+    ]);
+    mocks.checkUrlsAgainstThreatPolicy.mockResolvedValue({
+      decisionsByUrl: new Map([
+        ["https://blocked.example/a", { allowed: false }],
+        ["https://blocked.example/b", { allowed: false }],
+      ]),
+    });
+
+    const result = await executeSearch(
+      options([{ type: "developer" }]),
+      { ...context, threatProtectionPolicy: { mode: "block" } } as any,
+      logger,
+    );
+
+    expect(result.response.web ?? []).toEqual([]);
+    // An empty map, not absent: the search ran and tagged nothing, which
+    // feedback must tell apart from a row that predates the column.
+    expect(result.resultCategories).toEqual({});
+  });
+
+  it.each([
+    {
+      name: "a forced team",
+      context: { zeroDataRetention: true },
+      enterprise: [],
+    },
+    { name: "an enterprise zdr request", context: {}, enterprise: ["zdr"] },
+    { name: "an enterprise anon request", context: {}, enterprise: ["anon"] },
+  ])(
+    "marks the developer upstream call zero data retention for $name",
+    async c => {
+      await executeSearch(
+        {
+          ...options([{ type: "developer" }]),
+          enterprise: c.enterprise,
+        } as any,
+        { ...context, ...c.context } as any,
+        logger,
+      );
+
+      expect(mocks.searchDeveloperCategory).toHaveBeenCalledWith(
+        expect.objectContaining({ zeroDataRetention: true }),
+        logger,
+      );
+    },
+  );
 
   it("rejects developer combined with other categories at the schema", () => {
     const mixed = searchRequestSchema.safeParse({
@@ -291,7 +602,13 @@ describe("executeSearch gov category", () => {
     expect(mocks.search).not.toHaveBeenCalled();
     expect(mocks.searchDeveloperCategory).not.toHaveBeenCalled();
     expect(mocks.searchGovCategory).toHaveBeenCalledWith(
-      { query: "retries", limit: 10, teamId: "team-1", timeout: 1_000 },
+      {
+        query: "retries",
+        limit: 10,
+        teamId: "team-1",
+        timeout: 1_000,
+        zeroDataRetention: false,
+      },
       logger,
     );
     expect(result.response).toEqual({ web: [govResult] });

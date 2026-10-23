@@ -37,6 +37,7 @@ export class Firecrawl extends V2 {
     this._v1Opts = {
       apiKey: resolved.apiKey,
       apiUrl: resolved.apiUrl,
+      origin: this.http.getOrigin(),
     };
   }
 

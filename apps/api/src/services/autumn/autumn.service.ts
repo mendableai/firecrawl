@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { AutumnError } from "autumn-js";
 import { logger } from "../../lib/logger";
 import { eq } from "drizzle-orm";
 import { dbRr } from "../../db/connection";
@@ -31,6 +32,7 @@ import type {
   TrackCreditsParams,
   TrackParams,
 } from "./types";
+import { ExistingCreditsLockError } from "./types";
 
 export const TEAM_FEATURE_ID = "TEAM";
 export const CREDITS_FEATURE_ID = "CREDITS";
@@ -564,6 +566,33 @@ export class AutumnService {
   }
 
   /**
+   * Whether the org has an auto top-up that can actually fire for CREDITS: it
+   * is enabled, and the org holds a prepaid CREDITS item for it to buy. Autumn
+   * enables the control on some free orgs, but a free plan has no prepaid item,
+   * so nothing would ever be bought. Answers true when Autumn can't answer, so
+   * callers fail open.
+   */
+  async hasAutoTopUp(orgId: string): Promise<boolean> {
+    if (!autumnClient) return true;
+    try {
+      const customer = await autumnClient.customers.get({ customerId: orgId });
+      const autoTopUp = customer.billingControls?.autoTopups?.some(
+        topUp => topUp.featureId === CREDITS_FEATURE_ID && topUp.enabled,
+      );
+      const prepaid = customer.balances?.[CREDITS_FEATURE_ID]?.breakdown?.some(
+        item => item.price?.billingMethod === "prepaid",
+      );
+      return !!autoTopUp && !!prepaid;
+    } catch (error) {
+      logger.warn("Autumn auto top-up lookup failed, failing open", {
+        orgId,
+        error,
+      });
+      return true;
+    }
+  }
+
+  /**
    * Attempts to reserve a team's credits in Autumn. See {@link LockCreditsResult}.
    */
   async lockCredits({
@@ -645,18 +674,31 @@ export class AutumnService {
         return { status: "denied", reason: "gate_unavailable" };
       }
 
-      const { allowed } = await autumnClient.check({
-        customerId,
-        entityId: teamId,
-        featureId,
-        requiredBalance: value,
-        properties,
-        lock: {
-          enabled: true,
-          lockId: resolvedLockId,
-          expiresAt,
-        },
-      });
+      const { allowed } = await autumnClient
+        .check({
+          customerId,
+          entityId: teamId,
+          featureId,
+          requiredBalance: value,
+          properties,
+          lock: {
+            enabled: true,
+            lockId: resolvedLockId,
+            expiresAt,
+          },
+        })
+        .catch(error => {
+          if (error instanceof AutumnError && error.statusCode === 409) {
+            let body: { code?: unknown } | null = null;
+            try {
+              body = JSON.parse(error.body);
+            } catch {}
+            if (body?.code === "lock_already_exists") {
+              throw new ExistingCreditsLockError(resolvedLockId);
+            }
+          }
+          throw error;
+        });
 
       if (!allowed) {
         logger.info("Autumn lockCredits denied", {
@@ -677,6 +719,7 @@ export class AutumnService {
       });
       return { status: "locked", lockId: resolvedLockId };
     } catch (error) {
+      if (error instanceof ExistingCreditsLockError) throw error;
       logger.error(
         "Autumn lockCredits failed — billing API may be unavailable, falling back",
         {

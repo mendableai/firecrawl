@@ -103,6 +103,8 @@ const errorMap: Record<ErrorCodes, any> = {
   // Zod errors
   BAD_REQUEST: null,
   BAD_REQUEST_INVALID_JSON: null,
+  INDEX_DAILY_LIMIT: null,
+  TOOL_DISCOVERY_UNAVAILABLE: null,
   PARSE_UNSUPPORTED_OPTIONS: null,
 
   // Agent thread rejections are API-level, never transported through workers.
@@ -111,6 +113,12 @@ const errorMap: Record<ErrorCodes, any> = {
   thread_expired: null,
   threads_disabled: null,
   exchange_not_enabled: null,
+
+  // Agent zero data retention rejections are API-level too.
+  zdr_threads_unsupported: null,
+  zdr_expired: null,
+  zdr_no_snapshots: null,
+  zdr_not_enabled: null,
 };
 
 export function serializeTransportableError(error: TransportableError) {

@@ -17,8 +17,19 @@ export async function exchangeRequest(input: {
   maximumCredits?: number;
   resultAuthorization?: string;
   termsIdentity?: { organizationId: string; apiKeyId: string };
+  /** Caller's IP as the API sees it; Exchange resolves what it needs from it. */
+  clientIp?: string;
+  /** Country on the team's billing address, when it has one. */
+  billingCountry?: string;
+  /**
+   * The team may use its own MCP connectors (Alexandria connectors). Sent for teams with the
+   * `exchangeRetrieve` flag, which is the connectors whitelist; Exchange reads it as the grant.
+   */
+  connectors?: boolean;
+  zeroDataRetention?: boolean;
 }): Promise<ExchangeResponse> {
-  if (!config.FIRE_EXCHANGE_URL) throw new Error("Alexandria is not configured");
+  if (!config.FIRE_EXCHANGE_URL)
+    throw new Error("Alexandria is not configured");
   const base = config.FIRE_EXCHANGE_URL.replace(/\/+$/, "");
   const response = await fetch(base + input.path, {
     method: input.body === undefined ? "GET" : "POST",
@@ -38,6 +49,14 @@ export async function exchangeRequest(input: {
           }
         : {}),
       "x-exchange-extended-catalog-access": "true",
+      ...(input.clientIp ? { "x-exchange-client-ip": input.clientIp } : {}),
+      ...(input.billingCountry
+        ? { "x-exchange-billing-country": input.billingCountry }
+        : {}),
+      ...(input.connectors ? { "x-exchange-connectors": "true" } : {}),
+      ...(input.zeroDataRetention
+        ? { "x-exchange-zero-data-retention": "true" }
+        : {}),
       ...(input.requestId ? { "x-request-id": input.requestId } : {}),
       ...(input.maximumCredits === undefined
         ? {}
@@ -45,9 +64,11 @@ export async function exchangeRequest(input: {
             "x-exchange-max-credits": String(input.maximumCredits),
             // Leave the Exchange a margin to answer before our own timeout.
             "x-exchange-deadline": String(
-              Date.now() +
-                input.timeoutMs -
-                Math.min(2000, input.timeoutMs / 10),
+              Math.floor(
+                Date.now() +
+                  input.timeoutMs -
+                  Math.min(2000, input.timeoutMs / 10),
+              ),
             ),
           }),
     },

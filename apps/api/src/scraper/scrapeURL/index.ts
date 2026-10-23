@@ -126,6 +126,7 @@ import {
   SAFE_MODE_LOGIN_ACTIONS,
 } from "../../lib/safe-mode";
 import { resolveThreatProtection } from "../../lib/threat-protection/request";
+import { loadFirstScreen } from "../../lib/branding/jev";
 import { UnsafeDomainBlockedError } from "../../lib/threat-protection/error";
 import { canonicalizeUrl } from "../../lib/threat-protection/providers/web-risk/canonicalize";
 
@@ -162,6 +163,12 @@ export type BrowserCookie = {
 };
 
 export type Meta = {
+  /** URL of the page's first screen captured for Jev's branding call (see
+   * the branding format's __experimental_screenshot and
+   * BRANDING_JEV_SCREENSHOT_PERCENT). Internal: never part of the document. */
+  brandingScreenshot?: string;
+  /** That screen's download, started as soon as the engine returns. */
+  brandingScreenshotImage?: ReturnType<typeof loadFirstScreen>;
   id: string;
   url: string;
   rewrittenUrl?: string;
@@ -267,6 +274,11 @@ export type Meta = {
     | undefined; // undefined: no prefetch yet, null: prefetch came back empty
   costTracking: CostTracking;
   winnerEngine?: Engine;
+  /** The `raw-` content-cache key of the PDF this scrape looked up through
+   * the fire-pdf cache service, stored with the URL index entry so a later
+   * index hit can ask whether fire-pdf holds a newer parse. A holder shared
+   * by reference, because engines run on a copy of meta. */
+  firePdfCacheKey?: { current?: string };
   abortHandle?: NodeJS.Timeout;
   audioCookies?: BrowserCookie[];
   /** Threat protection decisions made during this scrape, in order (mutable, like logs). */
@@ -582,6 +594,7 @@ async function buildMetaObject(
     imageOcrEnabled,
     costTracking,
     threatDecisions: [],
+    firePdfCacheKey: {},
     largePdfProcessing: {},
   };
 }
@@ -1216,6 +1229,12 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           : warning;
     }
 
+    meta.brandingScreenshot = engineResult.brandingScreenshot;
+    // Download it while the transformers before branding run. It never
+    // rejects: an unreadable screen leaves Jev answering from page data.
+    meta.brandingScreenshotImage = engineResult.brandingScreenshot
+      ? loadFirstScreen(engineResult.brandingScreenshot, meta.logger)
+      : undefined;
     document = await executeTransformers(meta, document);
 
     // Set final span attributes
@@ -1305,6 +1324,12 @@ export async function scrapeURL(
           }
           internalOptions.threatProtection = tp.policy ?? undefined;
         }
+      }
+
+      // ZDR always verifies TLS, for every engine. Explicit false also wins over
+      // the skip-by-default in applyScrapeOptionsDefaults.
+      if (internalOptions.zeroDataRetention) {
+        options.skipTlsVerification = false;
       }
 
       const meta = await buildMetaObject(
@@ -1852,6 +1877,13 @@ export async function scrapeURL(
           });
         } else if (error instanceof SSLError) {
           errorType = "SSLError";
+          // Engines don't know about ZDR; swap in the message that doesn't
+          // suggest skipTlsVerification, which ZDR overrides above.
+          if (meta.internalOptions.zeroDataRetention) {
+            const zdrError = new SSLError(false, true);
+            zdrError.stack = error.stack;
+            error = zdrError;
+          }
           meta.logger.warn("scrapeURL: SSL error", { error });
         } else if (error instanceof ActionError) {
           errorType = "ActionError";

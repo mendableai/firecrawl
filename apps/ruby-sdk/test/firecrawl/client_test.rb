@@ -508,6 +508,26 @@ class ClientTest < Minitest::Test
     assert_equal "batch-123", response.id
   end
 
+  def test_start_calls_send_sdk_origin
+    origin = "ruby-sdk@#{Firecrawl::VERSION}"
+    stub_request(:post, "#{BASE_URL}/v2/crawl")
+      .with(body: hash_including("origin" => origin))
+      .to_return(status: 200, body: JSON.generate(id: "crawl-origin"), headers: { "Content-Type" => "application/json" })
+    stub_request(:post, "#{BASE_URL}/v2/batch/scrape")
+      .with(body: hash_including("origin" => origin, "formats" => ["markdown"]))
+      .to_return(status: 200, body: JSON.generate(id: "batch-origin"), headers: { "Content-Type" => "application/json" })
+    stub_request(:post, "#{BASE_URL}/v2/map")
+      .with(body: hash_including("origin" => origin))
+      .to_return(status: 200, body: JSON.generate(data: { links: [] }), headers: { "Content-Type" => "application/json" })
+
+    batch_options = Firecrawl::Models::BatchScrapeOptions.new(
+      options: Firecrawl::Models::ScrapeOptions.new(formats: ["markdown"])
+    )
+    assert_equal "crawl-origin", @client.start_crawl("https://example.com").id
+    assert_equal "batch-origin", @client.start_batch_scrape(["https://a.com"], batch_options).id
+    assert_empty @client.map("https://example.com").links
+  end
+
   def test_batch_scrape_with_idempotency_key
     stub_request(:post, "#{BASE_URL}/v2/batch/scrape")
       .with(headers: { "x-idempotency-key" => "my-key" })
@@ -632,6 +652,82 @@ class ClientTest < Minitest::Test
     options = Firecrawl::Models::SearchOptions.new(limit: 5)
     result = @client.search("test query", options)
     assert_equal 0, result.web.size
+  end
+
+  # ================================================================
+  # DEVELOPER SEARCH
+  # ================================================================
+
+  def test_developer_search_posts_query_and_options
+    origin = "ruby-sdk@#{Firecrawl::VERSION}"
+    stub = stub_request(:post, "#{BASE_URL}/v2/search/developer")
+      .with(body: {
+        "query" => "retry backoff", "k" => 5, "types" => ["issue"], "repos" => ["square/okhttp"],
+        "min_stars" => 100, "archived" => false, "origin" => origin
+      })
+      .to_return(
+        status: 200,
+        body: JSON.generate(
+          success: true,
+          partial: false,
+          results: [
+            {
+              id: "r1", url: "https://github.com/square/okhttp/issues/1", title: "retry",
+              passages: [{ text: "use backoff", citation_url: "https://github.com/square/okhttp/issues/1#c1" }],
+              license: { state: "licensed", spdx_id: "Apache-2.0" }
+            },
+            { id: "r2", url: "https://github.com/square/okhttp", passages: [], license: "Apache-2.0" }
+          ],
+          repos: [{ repo: "square/okhttp", indexed: true, types: { issue: true, pullRequest: true, readme: false } }]
+        ),
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    options = Firecrawl::Models::DeveloperSearchOptions.new(
+      k: 5, types: ["issue"], repos: ["square/okhttp"], min_stars: 100, archived: false
+    )
+    response = @client.developer_search("retry backoff", options)
+
+    assert_requested stub
+    assert_instance_of Firecrawl::Models::DeveloperSearchResponse, response
+    assert response.success
+    refute response.partial
+    assert_equal 2, response.results.size
+    assert_equal "https://github.com/square/okhttp/issues/1#c1", response.results[0].passages[0].citation_url
+    assert_equal "Apache-2.0", response.results[0].license["spdx_id"]
+    assert_equal "Apache-2.0", response.results[1].license
+    assert_nil response.results[1].title
+    assert response.repos[0].indexed?
+    assert response.repos[0].types["pullRequest"]
+    assert_nil response.sources
+  end
+
+  def test_developer_search_without_options_sends_only_query_and_origin
+    stub = stub_request(:post, "#{BASE_URL}/v2/search/developer")
+      .with(body: { "query" => "okhttp interceptor", "origin" => "ruby-sdk@#{Firecrawl::VERSION}" })
+      .to_return(
+        status: 200,
+        body: JSON.generate(success: true, partial: true, results: []),
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    response = @client.developer_search("okhttp interceptor")
+
+    assert_requested stub
+    assert response.partial
+    assert_empty response.results
+  end
+
+  def test_developer_search_options_reject_unknown_keys
+    error = assert_raises(ArgumentError) { Firecrawl::Models::DeveloperSearchOptions.new(min_star: 5) }
+    assert_includes error.message, "min_star"
+  end
+
+  def test_developer_search_rejects_blank_query
+    assert_raises(ArgumentError) { @client.developer_search(nil) }
+    assert_raises(ArgumentError) { @client.developer_search("") }
+    assert_raises(ArgumentError) { @client.developer_search("   ") }
+    assert_not_requested :post, "#{BASE_URL}/v2/search/developer"
   end
 
   # ================================================================
@@ -1345,6 +1441,15 @@ class ClientTest < Minitest::Test
     )
   end
 
+  def test_scrape_options_to_h_check_prompt_injection
+    opts = Firecrawl::Models::ScrapeOptions.new(
+      formats: ["markdown"],
+      check_prompt_injection: true
+    )
+    assert_equal true, opts.to_h["checkPromptInjection"]
+    refute Firecrawl::Models::ScrapeOptions.new.to_h.key?("checkPromptInjection")
+  end
+
   def test_json_format_to_h_keeps_explicit_false
     format = Firecrawl::Models::JsonFormat.new(check_prompt_injection: false)
     assert_equal false, format.to_h["checkPromptInjection"]
@@ -1565,9 +1670,11 @@ class ClientTest < Minitest::Test
       only_main_content: true,
       timeout: 30000,
       proxy: "auto",
-      redact_pii: true
+      redact_pii: true,
+      check_prompt_injection: true
     )
     h = opts.to_h
+    assert_equal true, h["checkPromptInjection"]
     assert_equal ["markdown"], h["formats"]
     assert_equal true, h["onlyMainContent"]
     assert_equal 30000, h["timeout"]

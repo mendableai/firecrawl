@@ -273,15 +273,19 @@ describe("calculateCreditsToBeBilled", () => {
   const billScrape = (args: {
     lockdown?: boolean;
     json?: boolean;
+    deterministicJson?: boolean;
     guard?: boolean;
     guardVerdicts?: ("clean" | "injection" | "none")[];
   }) =>
     calculateCreditsToBeBilled(
       {
         lockdown: args.lockdown,
+        checkPromptInjection: args.guard,
         formats: args.json
-          ? [{ type: "json", schema: {}, checkPromptInjection: args.guard }]
-          : [{ type: "markdown" }],
+          ? [{ type: "json", schema: {} }]
+          : args.deterministicJson
+            ? [{ type: "deterministicJson", schema: {} }]
+            : [{ type: "markdown" }],
       } as any,
       {
         teamId: "team-id",
@@ -325,6 +329,14 @@ describe("calculateCreditsToBeBilled", () => {
     expect(await billScrape({ json: true, guard: true })).toBe(9);
   });
 
+  it("bills the prompt injection guard on a markdown-only scrape (5 credits)", async () => {
+    expect(await billScrape({ guard: true })).toBe(5);
+  });
+
+  it("keeps the guard fee on top of the deterministicJson flat rate", async () => {
+    expect(await billScrape({ deterministicJson: true, guard: true })).toBe(7);
+  });
+
   it("drops the guard fee when any chunk got no verdict", async () => {
     expect(
       await billScrape({
@@ -350,7 +362,8 @@ describe("calculateCreditsToBeBilled", () => {
   ) =>
     calculateCreditsToBeBilled(
       {
-        formats: [{ type: "json", schema: {}, checkPromptInjection: true }],
+        checkPromptInjection: true,
+        formats: [{ type: "markdown" }],
       } as any,
       {
         teamId: "team-id",
@@ -433,6 +446,41 @@ const billWithDecisions = (args: {
 const successDocument = {
   metadata: { statusCode: 200, proxyUsed: "basic" },
 };
+
+describe("calculateCreditsToBeBilled — zero data retention", () => {
+  const bill = (
+    options: Record<string, unknown>,
+    zeroDataRetention: boolean,
+    flags: Record<string, unknown> = {},
+  ) =>
+    calculateCreditsToBeBilled(
+      { formats: [{ type: "markdown" }], ...options } as any,
+      { teamId: "team-id", orgId: null, zeroDataRetention },
+      { metadata: { statusCode: 200, proxyUsed: "basic" } } as any,
+      { totalCost: 0 } as any,
+      flags as any,
+    );
+
+  it("adds 1 credit per page by default", async () => {
+    expect(await bill({}, false)).toBe(1);
+    expect(await bill({}, true)).toBe(2);
+  });
+
+  it("adds the team's zdrCost when it is set", async () => {
+    expect(await bill({}, true, { zdrCost: 3 })).toBe(4);
+    expect(await bill({}, false, { zdrCost: 3 })).toBe(1);
+  });
+
+  it("stacks on format surcharges", async () => {
+    const json = { formats: [{ type: "json", schema: {} }] };
+    expect(await bill(json, false)).toBe(5);
+    expect(await bill(json, true)).toBe(6);
+  });
+
+  it("is not added on top of lockdown", async () => {
+    expect(await bill({ lockdown: true }, true)).toBe(5);
+  });
+});
 
 describe("calculateThreatScanCredits", () => {
   it("bills nothing for no decisions", () => {

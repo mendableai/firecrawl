@@ -2,6 +2,7 @@ import { Response } from "express";
 import { providerScrapeController } from "./scrape-alexandria";
 import { discoverTools } from "../../search/alexandria";
 import { config } from "../../config";
+import { timingSafeSecretEqual } from "../../lib/secret-compare";
 import { logger as _logger } from "../../lib/logger";
 import {
   Document,
@@ -246,9 +247,10 @@ export async function scrapeController(
       const agentRequestId = req.body.__agentInterop?.requestId ?? null;
       const boostConcurrency =
         req.body.__agentInterop?.boostConcurrency ?? false;
-      const isDirectToBullMQ =
-        config.SEARCH_PREVIEW_TOKEN !== undefined &&
-        config.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+      const isDirectToBullMQ = timingSafeSecretEqual(
+        req.body.__searchPreviewToken,
+        config.SEARCH_PREVIEW_TOKEN,
+      );
       const projectedKeylessCredits =
         shouldBill && !isDirectToBullMQ
           ? projectScrapeCredits(
@@ -722,7 +724,8 @@ export async function scrapeController(
         !!hasFormatOfType(req.body.formats, "branding") ||
         !!hasFormatOfType(req.body.formats, "question") ||
         !!hasFormatOfType(req.body.formats, "highlights") ||
-        !!hasFormatOfType(req.body.formats, "query");
+        !!hasFormatOfType(req.body.formats, "query") ||
+        req.body.checkPromptInjection;
 
       if (!usedLlm) {
         const ct = hasFormatOfType(req.body.formats, "changeTracking");
@@ -755,6 +758,7 @@ export async function scrapeController(
           ? await discoverTools(
               {
                 teamId: req.auth.team_id,
+                connectors: req.acuc?.flags?.exchangeRetrieve === true,
                 toolDetail: req.body.toolDetail,
                 urls: [
                   ...new Set(

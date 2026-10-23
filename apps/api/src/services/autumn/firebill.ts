@@ -78,6 +78,30 @@ type FirebillCause =
   | "refused"
   | "ambiguous";
 
+/**
+ * The fields a billing success line carries so a monitor can join it, by
+ * idempotency key, to firebill's own settlement line and to the reconciler's
+ * amount verdicts. `expectedValue` is the amount the operation should bill: a
+ * track's value, a refund's made positive, a confirm's override else its hold,
+ * and 0 for a release, which bills nothing whatever it held.
+ */
+function billingSuccessFields(
+  operation: "track" | "refund" | "finalize",
+  idempotencyKey: string | undefined,
+  expectedValue: number | undefined,
+  properties: Record<string, unknown> | undefined,
+) {
+  const jobId = properties?.jobId;
+  return {
+    operation,
+    outcome: "accepted",
+    idempotencyKey,
+    expectedValue,
+    ...(typeof jobId === "string" ? { jobId } : {}),
+    buildVersion: config.FIRECRAWL_BUILD_SHA ?? "unknown",
+  };
+}
+
 /** What a thrown fetch tells us, once it is unwrapped. */
 type TransportFailure = {
   cause: "timeout" | "connection";
@@ -490,7 +514,15 @@ async function firebillAttempt(
       return { ok: false, reason: "ambiguous", cause: "unusable" };
     }
 
-    logger.info("firebill track succeeded", context);
+    logger.info("firebill track succeeded", {
+      ...context,
+      ...billingSuccessFields(
+        path === "/v1/refund" ? "refund" : "track",
+        idempotencyKey,
+        Math.abs(value),
+        properties,
+      ),
+    });
     return { ok: true };
   } catch (error) {
     // DO NOT fall back to Autumn directly: firebill may have accepted the event
@@ -852,6 +884,11 @@ export async function firebillFinalize({
   heldValue?: number | null;
 }): Promise<boolean> {
   const url = firebillUrl("/v1/finalize");
+  // Deterministic per (lock, action): the lock id is itself caller-chosen and
+  // stable (`monitor_${check.id}`), so a re-finalize of the same settle — e.g.
+  // the reconciler re-running a check it raced — dedupes upstream instead of
+  // settling twice.
+  const idempotencyKey = `fc:finalize:${action}:${lockId}`;
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -866,11 +903,7 @@ export async function firebillFinalize({
           ? { override_value: overrideValue }
           : {}),
         properties,
-        // Deterministic per (lock, action): the lock id is itself caller-chosen
-        // and stable (`monitor_${check.id}`), so a re-finalize of the same
-        // settle — e.g. the reconciler re-running a check it raced — dedupes
-        // upstream instead of settling twice.
-        idempotency_key: `fc:finalize:${action}:${lockId}`,
+        idempotency_key: idempotencyKey,
         // The run token, brought home as this settle's operation id.
         ...(externalRequestId
           ? { external_request_id: externalRequestId }
@@ -934,7 +967,16 @@ export async function firebillFinalize({
       return false;
     }
 
-    logger.info("firebill finalize succeeded", context);
+    logger.info("firebill finalize succeeded", {
+      ...context,
+      ...billingSuccessFields(
+        "finalize",
+        idempotencyKey,
+        // A release bills nothing; a confirm bills its override, else the hold.
+        action === "release" ? 0 : (overrideValue ?? heldValue ?? undefined),
+        properties,
+      ),
+    });
     return true;
   } catch (error) {
     const failure = classifyTransportError(error);

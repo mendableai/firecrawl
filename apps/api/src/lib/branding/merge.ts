@@ -1,5 +1,10 @@
 import { BrandingProfile } from "../../types/branding";
 import {
+  colorDistance,
+  isBrowserLinkColor,
+  isGrayish,
+  isNearBlack,
+  isNeutralDark,
   isUsableBrandPrimary,
   normalizeRoleHex,
   shouldApplyLlmColorRoles,
@@ -233,7 +238,11 @@ export function mergeBrandingResults(
     };
   }
 
-  if (llm.buttonClassification.confidence > 0.5 && buttonSnapshots.length > 0) {
+  // A model that answered gave its most likely buttons. Jev's confidence is a
+  // calibrated probability, often under 0.5 when a page has several plausible
+  // calls to action, and its pick still beats a page without buttons. A
+  // failed call reports 0 and keeps the heuristic result.
+  if (llm.buttonClassification.confidence > 0 && buttonSnapshots.length > 0) {
     const primaryIdx = llm.buttonClassification.primaryButtonIndex;
     const secondaryIdx = llm.buttonClassification.secondaryButtonIndex;
 
@@ -276,9 +285,12 @@ export function mergeBrandingResults(
       merged.colorScheme,
     )
   ) {
-    const llmPrimary = normalizeRoleHex(llm.colorRoles.primaryColor);
-    const llmSecondary = normalizeRoleHex(llm.colorRoles.secondaryColor);
-    const llmAccent = normalizeRoleHex(llm.colorRoles.accentColor);
+    // A browser's default link color is never a brand color.
+    const brandHex = (value?: string | null) =>
+      isBrowserLinkColor(value) ? undefined : normalizeRoleHex(value);
+    const llmPrimary = brandHex(llm.colorRoles.primaryColor);
+    const llmSecondary = brandHex(llm.colorRoles.secondaryColor);
+    const llmAccent = brandHex(llm.colorRoles.accentColor);
     const llmBackground = normalizeRoleHex(llm.colorRoles.backgroundColor);
     const llmText = normalizeRoleHex(llm.colorRoles.textPrimary);
     const usablePrimary =
@@ -295,7 +307,11 @@ export function mergeBrandingResults(
       ...(llmSecondary ? { secondary: llmSecondary } : {}),
       accent: llmAccent || merged.colors?.accent,
       background: llmBackground || merged.colors?.background,
-      textPrimary: llmText || merged.colors?.textPrimary,
+      // Body text is written in a neutral; a saturated pick is usually the
+      // link color, so the measured neutral text color stays.
+      textPrimary: keepsMeasuredText(llmText, merged.colors?.textPrimary)
+        ? merged.colors?.textPrimary
+        : llmText || merged.colors?.textPrimary,
     };
 
     // When the LLM omits secondaryColor, remove the JS-heuristic secondary
@@ -317,6 +333,43 @@ export function mergeBrandingResults(
       };
     }
   }
+
+  // Monochrome brands (black logo and calls to action, color only in links or
+  // artwork) have black as their primary color, which the chrome filters above
+  // reject on light pages. A near-black primary button is that signal, unless
+  // the chosen color also fills a button, as when a brand pairs a black call to
+  // action with colored ones.
+  const primaryFill = normalizeRoleHex(
+    merged.components?.buttonPrimary?.background,
+  );
+  const primaryColor = normalizeRoleHex(merged.colors?.primary);
+  let displaced: string | undefined;
+  if (
+    merged.colorScheme !== "dark" &&
+    primaryFill &&
+    isNeutralDark(primaryFill) &&
+    primaryColor &&
+    primaryColor !== primaryFill &&
+    !buttonSnapshots.some(
+      b =>
+        colorDistance(b.background, primaryColor) < 40 ||
+        colorDistance(b.borderColor, primaryColor) < 40,
+    )
+  ) {
+    merged.colors = {
+      ...merged.colors,
+      primary: primaryFill,
+      accent: merged.colors?.accent ?? primaryColor,
+    };
+    displaced = primaryColor;
+  }
+
+  applyLogoAndMonochromeColors(
+    merged,
+    buttonSnapshots,
+    logoCandidates,
+    displaced,
+  );
 
   if (llm.personality) {
     (merged as any).personality = llm.personality;
@@ -407,4 +460,79 @@ export function mergeBrandingResults(
   };
 
   return merged;
+}
+
+const isNeutral = (hex: string) => isGrayish(hex) || isNearBlack(hex);
+
+function keepsMeasuredText(llmText?: string, measured?: string | null) {
+  const heuristic = normalizeRoleHex(measured);
+  return (
+    !!llmText && !!heuristic && !isGrayish(llmText) && isGrayish(heuristic)
+  );
+}
+
+/**
+ * The logo is the most reliable brand evidence: a clear color in the chosen
+ * logo is the primary when the extracted one is neutral, pale or far from it.
+ * A brand whose primary stays neutral (black call to action) is monochrome: a saturated accent, secondary or link no button uses then comes
+ * from imagery or CSS presets, and the neutral takes its place. The color the
+ * monochrome rule moved out of primary (the brand's link color) is kept.
+ */
+function applyLogoAndMonochromeColors(
+  merged: BrandingProfile,
+  buttonSnapshots: ButtonSnapshot[],
+  logoCandidates: LogoCandidate[] | undefined,
+  displaced: string | undefined,
+): void {
+  if (!merged.colors) return;
+  const scheme = merged.colorScheme;
+  const logoSrc = merged.images?.logo;
+  const logo = logoSrc
+    ? logoCandidates?.find(c => c.src === logoSrc)
+    : undefined;
+  const logoColors = (logo?.colors ?? [])
+    .map(c => ({ hex: normalizeRoleHex(c.color), share: c.share }))
+    .filter((c): c is { hex: string; share: number } => !!c.hex);
+  const onButton = (hex: string) =>
+    buttonSnapshots.some(
+      b =>
+        colorDistance(b.background, hex) < 40 ||
+        colorDistance(b.borderColor, hex) < 40,
+    );
+
+  const logoBrand = logoColors.find(
+    c => c.share >= 0.25 && isUsableBrandPrimary(c.hex, scheme),
+  );
+  const primary = normalizeRoleHex(merged.colors.primary);
+  if (
+    logoBrand &&
+    (!primary ||
+      !isUsableBrandPrimary(primary, scheme) ||
+      logoColors.every(c => colorDistance(c.hex, primary) > 60))
+  ) {
+    merged.colors = { ...merged.colors, primary: logoBrand.hex };
+    return;
+  }
+
+  // A black or white logo alone can't tell a brand accent (Bloomberg's red)
+  // from campaign imagery, and a gray or navy primary may just be chrome, so
+  // only a neutral black primary that is also the primary button's fill (the
+  // black call to action above) marks the brand as monochrome.
+  const neutral =
+    primary &&
+    isNeutralDark(primary) &&
+    colorDistance(merged.components?.buttonPrimary?.background, primary) < 40
+      ? primary
+      : undefined;
+  if (!neutral || scheme === "dark") return;
+
+  const incidental = (value?: string | null) => {
+    const hex = normalizeRoleHex(value);
+    return !!hex && hex !== displaced && !isNeutral(hex) && !onButton(hex);
+  };
+  const colors = { ...merged.colors, primary: neutral };
+  if (incidental(colors.accent)) colors.accent = neutral;
+  if (incidental(colors.link)) colors.link = colors.accent;
+  if (incidental(colors.secondary)) delete colors.secondary;
+  merged.colors = colors;
 }

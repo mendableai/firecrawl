@@ -11,7 +11,7 @@ import {
 } from "../../lib/keyless";
 import { z } from "zod";
 import { config } from "../../config";
-import { RequestWithAuth } from "./types";
+import { countryLocationSchema, RequestWithAuth } from "./types";
 import { integrationSchema } from "../../utils/integration";
 import { isAgentInteropSecretValid } from "../../lib/agent-interop";
 import {
@@ -51,6 +51,7 @@ export const browserCreateRequestSchema = z.object({
       saveChanges: z.boolean().default(true),
     })
     .optional(),
+  location: countryLocationSchema.optional(),
   __agentInterop: z
     .object({
       auth: z.string(),

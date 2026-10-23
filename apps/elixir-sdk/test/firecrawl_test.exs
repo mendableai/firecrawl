@@ -674,6 +674,110 @@ defmodule FirecrawlTest do
     assert body["urls"] == ["https://example.com"]
   end
 
+  test "parse_file sends check_prompt_injection as checkPromptInjection only when set" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    parse_options = fn params ->
+      assert {:ok, %Req.Response{status: 200}} =
+               Firecrawl.parse_file(
+                 [filename: "doc.html", data: "<p>hi</p>", content_type: "text/html"],
+                 params,
+                 api_key: "test-key",
+                 adapter: adapter
+               )
+
+      assert_receive {:request, request}
+      body = request.body |> Enum.to_list() |> IO.iodata_to_binary()
+      [_, options] = Regex.run(~r/name="options"\r\n\r\n(.*?)\r\n--/s, body)
+      Jason.decode!(options)
+    end
+
+    assert parse_options.(check_prompt_injection: true)["checkPromptInjection"] == true
+    refute Map.has_key?(parse_options.([]), "checkPromptInjection")
+  end
+
+  test "scrape maps check_prompt_injection to checkPromptInjection" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "data" => %{}})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.scrape_and_extract_from_url(
+               [url: "https://example.com", check_prompt_injection: true],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["checkPromptInjection"] == true
+    refute Map.has_key?(body, "formats")
+  end
+
+  test "batch scrape maps check_prompt_injection to checkPromptInjection" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "id" => "batch-id"})
+      )
+
+      {request, resp}
+    end
+
+    assert {:ok, %Req.Response{status: 200}} =
+             Firecrawl.scrape_and_extract_from_urls(
+               [urls: ["https://example.com"], check_prompt_injection: true],
+               api_key: "test-key",
+               adapter: adapter
+             )
+
+    assert_receive {:request, request}
+
+    body =
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+
+    assert body["checkPromptInjection"] == true
+    assert body["urls"] == ["https://example.com"]
+  end
+
   test "request endpoints map audit_metadata to auditMetadata" do
     parent = self()
 
@@ -729,6 +833,43 @@ defmodule FirecrawlTest do
 
       assert body["auditMetadata"] == serialized_metadata
     end)
+  end
+
+  test "create_browser_session sends location only when set" do
+    parent = self()
+
+    adapter = fn request ->
+      send(parent, {:request, request})
+
+      resp = Req.Response.new(
+        status: 200,
+        headers: %{"content-type" => ["application/json"]},
+        body: Jason.encode!(%{"success" => true, "id" => "session-1"})
+      )
+
+      {request, resp}
+    end
+
+    sent_body = fn params ->
+      assert {:ok, %Req.Response{status: 200}} =
+               Firecrawl.create_browser_session(params, api_key: "test-key", adapter: adapter)
+
+      assert_receive {:request, request}
+
+      cond do
+        is_binary(request.body) -> Jason.decode!(request.body)
+        is_map(request.body) -> request.body
+        true -> request.options[:json]
+      end
+    end
+
+    assert sent_body.(location: [country: "GB"])["location"] == %{"country" => "GB"}
+    refute Map.has_key?(sent_body.(ttl: 60), "location")
+  end
+
+  test "create_browser_session rejects a location without a country" do
+    assert {:error, %NimbleOptions.ValidationError{}} =
+             Firecrawl.create_browser_session([location: []], api_key: "test-key")
   end
 
   test "audit_metadata rejects unsupported fields" do
@@ -910,6 +1051,154 @@ defmodule FirecrawlTest do
     end
   end
 
+  defp developer_search_body do
+    %{
+      "success" => true,
+      "partial" => false,
+      "results" => [
+        %{
+          "id" => "issue:square/okhttp#4963",
+          "url" => "https://github.com/square/okhttp/issues/4963",
+          "title" => "Issues with retry on connection failure",
+          "passages" => [%{"text" => "OkHttp retries when a client reuses a closed connection."}],
+          "license" => "Apache-2.0"
+        },
+        %{
+          "id" => "doc:okhttp/recipes",
+          "url" => "https://square.github.io/okhttp/recipes/",
+          "passages" => [],
+          "license" => %{"state" => "unknown"}
+        }
+      ],
+      "repos" => [
+        %{
+          "repo" => "square/okhttp",
+          "indexed" => true,
+          "types" => %{"issue" => true, "pullRequest" => true, "readme" => false}
+        }
+      ]
+    }
+  end
+
+  test "search_developer posts the query, filters and origin and returns a typed response" do
+    assert {:ok, %Firecrawl.DeveloperSearch{} = response} =
+             Firecrawl.search_developer(
+               [
+                 query: "http client retry",
+                 k: 3,
+                 passages: 2,
+                 types: ["issue"],
+                 repos: ["square/okhttp"],
+                 sources: ["okhttp-docs"],
+                 language: "Java",
+                 topic: ["http"],
+                 license: "apache-2.0",
+                 min_stars: 100,
+                 max_stars: 100_000,
+                 archived: false,
+                 fork: false,
+                 skills: :only
+               ],
+               api_key: "test-key",
+               adapter: parse_formats_adapter(self(), 200, developer_search_body())
+             )
+
+    assert_receive {:request, request}
+    assert request.method == :post
+    assert URI.to_string(request.url) == "https://api.firecrawl.dev/v2/search/developer"
+    assert request.headers["authorization"] == ["Bearer test-key"]
+
+    assert Jason.decode!(request.body) == %{
+             "query" => "http client retry",
+             "k" => 3,
+             "passages" => 2,
+             "types" => ["issue"],
+             "repos" => ["square/okhttp"],
+             "sources" => ["okhttp-docs"],
+             "language" => "Java",
+             "topic" => ["http"],
+             "license" => "apache-2.0",
+             "min_stars" => 100,
+             "max_stars" => 100_000,
+             "archived" => false,
+             "fork" => false,
+             "skills" => "only",
+             "origin" => "elixir-sdk@" <> Mix.Project.config()[:version]
+           }
+
+    assert %Firecrawl.DeveloperSearch{success: true, partial: false, sources: nil} = response
+
+    assert [
+             %Firecrawl.DeveloperSearch.Result{
+               id: "issue:square/okhttp#4963",
+               title: "Issues with retry on connection failure",
+               passages: ["OkHttp retries when a client reuses a closed connection."],
+               license: "Apache-2.0"
+             },
+             %Firecrawl.DeveloperSearch.Result{title: nil, passages: [], license: %{"state" => "unknown"}}
+           ] = response.results
+
+    assert [
+             %Firecrawl.DeveloperSearch.Repo{
+               repo: "square/okhttp",
+               indexed: true,
+               types: %{issue: true, pull_request: true, readme: false}
+             }
+           ] = response.repos
+  end
+
+  test "search_developer! returns the typed response" do
+    assert %Firecrawl.DeveloperSearch{results: [_, _]} =
+             Firecrawl.search_developer!(
+               [query: "http client retry"],
+               api_key: "test-key",
+               adapter: parse_formats_adapter(self(), 200, developer_search_body())
+             )
+  end
+
+  test "search_developer rejects a blank query before sending a request" do
+    adapter = parse_formats_adapter(self(), 200, developer_search_body())
+
+    for query <- ["", "   "] do
+      assert {:error, %ArgumentError{message: "query cannot be empty"}} =
+               Firecrawl.search_developer([query: query], api_key: "test-key", adapter: adapter)
+
+      assert_raise ArgumentError, "query cannot be empty", fn ->
+        Firecrawl.search_developer!([query: query], api_key: "test-key", adapter: adapter)
+      end
+    end
+
+    assert {:error, %NimbleOptions.ValidationError{}} =
+             Firecrawl.search_developer([], api_key: "test-key", adapter: adapter)
+
+    refute_received {:request, _}
+  end
+
+  test "search_developer returns {:error, %Firecrawl.Error{}} on API errors" do
+    adapter = parse_formats_adapter(self(), 401, %{"success" => false, "error" => "Unauthorized"})
+
+    assert {:error, %Firecrawl.Error{status: 401}} =
+             Firecrawl.search_developer([query: "retry"], api_key: "bad-key", adapter: adapter, retry: false)
+  end
+
+  test "search_developer returns a non-API error for an unexpected success body" do
+    adapter = parse_formats_adapter(self(), 200, %{"success" => true})
+
+    assert {:error, %RuntimeError{message: msg}} =
+             Firecrawl.search_developer([query: "retry"], api_key: "test-key", adapter: adapter)
+
+    assert msg =~ "unexpected POST /search/developer response (HTTP 200)"
+  end
+
+  test "search_developer returns an error tuple for malformed result entries" do
+    adapter = parse_formats_adapter(self(), 200, %{"success" => true, "results" => ["not a map"]})
+
+    assert {:error, exception} =
+             Firecrawl.search_developer([query: "retry"], api_key: "test-key", adapter: adapter)
+
+    assert is_exception(exception)
+  end
+
   test "all expected API functions are defined with bang variants" do
     functions = Firecrawl.__info__(:functions)
 
@@ -947,7 +1236,13 @@ defmodule FirecrawlTest do
       {:get_parse_formats, 0},
       {:get_parse_formats, 1},
       {:get_parse_formats!, 0},
-      {:get_parse_formats!, 1}
+      {:get_parse_formats!, 1},
+      {:search_developer, 0},
+      {:search_developer, 1},
+      {:search_developer, 2},
+      {:search_developer!, 0},
+      {:search_developer!, 1},
+      {:search_developer!, 2}
     ]
 
     for {name, arity} <- expected do

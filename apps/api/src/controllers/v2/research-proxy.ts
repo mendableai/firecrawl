@@ -8,6 +8,11 @@ import {
   fetchResearchUpstream,
 } from "../../lib/research-upstream";
 import { chargeKeylessCredits } from "../../lib/keyless";
+import {
+  indexDailyLimitRefusal,
+  reserveIndexCalls,
+  type IndexName,
+} from "../../lib/index-daily-limit";
 import { billTeam } from "../../services/billing/credit_billing";
 import { getEffectiveSearchForcedKind } from "../../lib/safe-mode";
 import {
@@ -19,12 +24,20 @@ import type {
   ResearchTableName,
 } from "../../services/logging/log_job";
 import type { RequestWithAuth } from "../v1/types";
-import { wrap } from "../../routes/shared";
+import { checkCreditsMiddleware, wrap } from "../../routes/shared";
+import { SEARCH_CREDITS_FEATURE_ID } from "../../services/autumn/autumn.service";
 import { deprecationMiddleware } from "../../lib/deprecations";
-import { integrationSchema } from "../../utils/integration";
+import { integrationSchema, resolveIntegration } from "../../utils/integration";
 import { requestOrigin } from "../../lib/request-origin";
 
 const SEARCH_CREDITS_PER_TEN_RESULTS = 2;
+// Billed developer and GitHub searches are refused up front when the team
+// can't cover the smallest search charge, the same gate /v2/search applies.
+const searchCreditGate = () =>
+  checkCreditsMiddleware(
+    SEARCH_CREDITS_PER_TEN_RESULTS,
+    SEARCH_CREDITS_FEATURE_ID,
+  );
 const ZDR_SEARCH_CREDITS_PER_TEN_RESULTS = 10;
 
 const DEVELOPER_SEARCH_TIMEOUT_MS = 15_000;
@@ -34,6 +47,15 @@ const PAPER_INSPECT_TIMEOUT_MS = 5_000;
 const SIMILAR_PAPERS_TIMEOUT_MS = 10_000;
 const GITHUB_SEARCH_TIMEOUT_MS = 12_000;
 const PAPER_READ_TIMEOUT_MS = 120_000;
+
+// The paper endpoints, all served by the Research Index and limited by its
+// daily budget. GitHub search is billed per search and stays outside it.
+const RESEARCH_INDEX_KINDS = new Set<ResearchRequestKind>([
+  "research_paper_search",
+  "research_related_papers",
+  "research_paper_read",
+  "research_paper_inspect",
+]);
 
 const FORWARDED_REQUEST_HEADERS = ["accept", "x-request-id"];
 const FORWARDED_RESPONSE_HEADERS = ["content-type", "x-request-id"];
@@ -145,6 +167,33 @@ const DEVELOPER_SEARCH_QUERY_KEYS = [
 const govSearchSchema = z.strictObject({
   query: z.string().min(1),
   k: kSchema(100),
+  jurisdiction: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^us(-[a-z]{2})?$/, {
+      message:
+        'jurisdiction must be "us" for federal, or "us-" plus a two-letter state or territory code, such as "us-ca" or "us-dc"',
+    })
+    .optional(),
+  court: z.string().trim().min(1).optional(),
+  courtType: z
+    .enum([
+      "federal-supreme",
+      "federal-appellate",
+      "federal-district",
+      "federal-bankruptcy",
+      "federal-special",
+      "military",
+      "state-supreme",
+      "state-appellate",
+      "state-trial",
+      "state-special",
+      "state-attorney-general",
+    ])
+    .optional(),
+  cites: z.string().trim().min(1).optional(),
+  domain: z.string().trim().min(1).optional(),
   ...commonQuery,
 });
 
@@ -231,18 +280,10 @@ function creditsFor(
   body: any,
   req: RequestWithAuth<any, any, any>,
 ) {
-  // Make certain index accesses free (AI/ML & life-sciences indices and the
-  // gov index). Research paper and gov endpoints should have no credit cost.
-  // Explicit exceptions remain billable: GitHub search and developer/code
-  // search.
-  const freeResearchKinds = new Set([
-    "research_paper_search",
-    "research_related_papers",
-    "research_paper_read",
-    "research_paper_inspect",
-    "gov_search",
-  ]);
-  if (freeResearchKinds.has(config.kind)) return 0;
+  // The Research Index and the Government Index are free. GitHub search and
+  // developer/code search remain billable.
+  if (config.kind === "gov_search" || RESEARCH_INDEX_KINDS.has(config.kind))
+    return 0;
 
   if (config.billAs === "scrape") return 1;
   const forcedKind = getEffectiveSearchForcedKind(req.acuc?.flags, undefined);
@@ -281,6 +322,7 @@ async function fetchForRequest(
   endpoint: ResearchEndpointConfig,
   params: Record<string, any>,
   queryKeys: string[],
+  zeroDataRetention: boolean,
 ) {
   const headers: Record<string, string> = {};
   for (const h of FORWARDED_REQUEST_HEADERS) {
@@ -288,6 +330,7 @@ async function fetchForRequest(
     if (typeof v === "string") headers[h] = v;
   }
   headers["firecrawl-team-id"] = req.auth.team_id;
+  headers["firecrawl-zero-data-retention"] = String(zeroDataRetention);
 
   if ("fetchUpstream" in endpoint) {
     return endpoint.fetchUpstream(params, headers);
@@ -320,6 +363,7 @@ function createResearchController(
       method: endpoint.action,
       jobId,
       teamId: authedReq.auth.team_id,
+      zeroDataRetention,
     });
 
     const source = req.method === "POST" ? (req.body ?? {}) : req.query;
@@ -347,11 +391,37 @@ function createResearchController(
       external_request_id: externalRequestId(authedReq),
       team_id: authedReq.auth.team_id,
       origin: requestOrigin(params, req),
-      integration: params.integration ?? null,
+      integration: resolveIntegration(params.integration, req) ?? null,
       target_hint: targetHint,
       zeroDataRetention,
       api_key_id: authedReq.acuc?.api_key_id ?? null,
     });
+
+    const index: IndexName | null =
+      endpoint.kind === "gov_search"
+        ? "gov"
+        : RESEARCH_INDEX_KINDS.has(endpoint.kind)
+          ? "research"
+          : null;
+    let releaseIndexCall: (() => Promise<void>) | undefined;
+    if (index) {
+      const indexBudget = await reserveIndexCalls(
+        index,
+        authedReq.auth.team_id,
+        authedReq.acuc?.rate_limit_multiplier ?? 1,
+        1,
+      );
+      if (!indexBudget.ok) {
+        chargeKeylessCredits(authedReq.auth.team_id, 0).catch(() => {});
+        res.setHeader("Retry-After", String(indexBudget.retryAfterSeconds));
+        return res.status(429).json({
+          success: false,
+          code: "INDEX_DAILY_LIMIT",
+          ...indexDailyLimitRefusal(index, authedReq.auth.team_id, indexBudget),
+        });
+      }
+      releaseIndexCall = indexBudget.release;
+    }
 
     let statusCode = 500;
     let responseBody: any = null;
@@ -364,8 +434,10 @@ function createResearchController(
         endpoint,
         params,
         queryKeys,
+        zeroDataRetention,
       );
       if (!upstream) {
+        if (releaseIndexCall) await releaseIndexCall();
         statusCode = 404;
         error = "Research service is not configured";
         return res.status(404).end();
@@ -409,6 +481,15 @@ function createResearchController(
           typeof responseBody === "object" && responseBody !== null
             ? (responseBody.detail ?? responseBody.error ?? responseBody.title)
             : undefined;
+      }
+
+      if (
+        endpoint.kind === "gov_search" &&
+        statusCode === 400 &&
+        typeof responseBody?.message === "string"
+      ) {
+        error = responseBody.message;
+        return researchError(res, 400, responseBody.message);
       }
 
       if (responseBody === null || typeof responseBody === "string") {
@@ -469,12 +550,16 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
 
   if (options.legacy) {
     router.use((req, _res, next) => {
+      const authedReq = req as RequestWithAuth<any, any, any>;
       rootLogger.warn("Legacy research endpoint used", {
         module: "api/v2/research",
-        teamId: (req as RequestWithAuth<any, any, any>).auth?.team_id,
+        teamId: authedReq.auth?.team_id,
         method: req.method,
         path: req.originalUrl,
         requestId: req.headers["x-request-id"],
+        zeroDataRetention:
+          getEffectiveSearchForcedKind(authedReq.acuc?.flags, undefined) !==
+          null,
       });
       next();
     });
@@ -551,6 +636,7 @@ export function createResearchRouter(options: { legacy?: boolean } = {}) {
   router.get(
     "/github",
     deprecationMiddleware("v2_research_github_search"),
+    searchCreditGate(),
     wrap(
       createResearchController(
         githubSearchSchema,
@@ -591,12 +677,13 @@ export function createDeveloperRouter(options: { root?: boolean } = {}) {
     ),
   );
 
+  const gate = searchCreditGate();
   if (options.root) {
-    router.get("/", controller);
-    router.post("/", controller);
+    router.get("/", gate, controller);
+    router.post("/", gate, controller);
   } else {
-    router.get("/search", controller);
-    router.post("/search", controller);
+    router.get("/search", gate, controller);
+    router.post("/search", gate, controller);
   }
 
   return router;
@@ -616,6 +703,11 @@ export function createGovRouter() {
         fetchGovUpstream({
           query: params.query,
           k: params.k,
+          jurisdiction: params.jurisdiction,
+          court: params.court,
+          courtType: params.courtType,
+          cites: params.cites,
+          domain: params.domain,
           headers,
           timeoutMs: GOV_SEARCH_TIMEOUT_MS,
         }),

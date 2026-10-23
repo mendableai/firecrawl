@@ -1,5 +1,6 @@
 requests
 httpx2>=2.13.1,<3
+certifi>=2026.10.19
 pytest
 pytest-asyncio
 python-dotenv

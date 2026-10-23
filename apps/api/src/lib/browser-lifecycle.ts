@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { recordRequestCredits } from "./request-credits-store";
+import type { BrowserOptions } from "./browser-options";
 import { upsertBrowserProfile } from "./browser-sessions";
 import { v7 as uuidv7 } from "uuid";
 import { config } from "../config";
@@ -23,8 +24,7 @@ import {
 } from "./browser-sessions";
 import {
   calculateBrowserSessionCredits,
-  BROWSER_CREDITS_PER_HOUR,
-  INTERACT_CREDITS_PER_HOUR,
+  browserCreditsPerHour,
 } from "./browser-billing";
 import { HOBBY_CONCURRENCY_LIMIT } from "./concurrency-limit";
 import {
@@ -118,14 +118,12 @@ export function invalidAgentInteropError(
 
 export async function createBrowserSession(
   req: RequestWithAuth<any, any, any>,
-  options: {
+  options: BrowserOptions & {
     ttl: number;
     activityTtl: number;
     streamWebView: boolean;
     recordSession: boolean;
     zeroDataRetention?: boolean;
-    blockAds: boolean;
-    profile?: { name: string; saveChanges: boolean };
     scrapeId?: string;
     shouldBill?: boolean;
     requestId?: string;
@@ -160,7 +158,10 @@ async function createBrowserSessionInternal(
   if (invalidInterop) throw invalidInterop;
   const shouldBill = options.shouldBill ?? true;
   const estimatedCredits = shouldBill
-    ? calculateBrowserSessionCredits(options.ttl * 1000)
+    ? calculateBrowserSessionCredits(
+        options.ttl * 1000,
+        browserCreditsPerHour(false, zeroDataRetention),
+      )
     : 0;
   const teamLimit =
     req.acuc?.concurrency_limit ?? DEFAULT_TEAM_LIMITS.concurrency_limit;
@@ -324,7 +325,7 @@ async function settleBrowserSessionInternal(
       return current.should_bill
         ? calculateBrowserSessionCredits(
             sessionDurationMs,
-            usedPrompt ? INTERACT_CREDITS_PER_HOUR : BROWSER_CREDITS_PER_HOUR,
+            browserCreditsPerHour(usedPrompt, current.zero_data_retention),
           )
         : 0;
     },
@@ -404,7 +405,7 @@ export async function reserveBrowserPromptCredits(
   if (await didBrowserSessionUsePrompt(session.id)) return;
   const credits = calculateBrowserSessionCredits(
     session.ttl_total * 1000,
-    INTERACT_CREDITS_PER_HOUR,
+    browserCreditsPerHour(true, session.zero_data_retention),
   );
   if (session.should_bill && req.acuc?.org_id) {
     const credit = await autumnService.checkCredits({
