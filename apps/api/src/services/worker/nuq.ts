@@ -959,6 +959,7 @@ class NuQ<JobData = any, JobReturnValue = any> {
 
         const start = Date.now();
         let client: PoolClient | undefined;
+        let discardClient = false;
         try {
           const guardedGroups = [
             ...new Set(
@@ -1097,10 +1098,20 @@ class NuQ<JobData = any, JobReturnValue = any> {
 
           return results;
         } catch (error) {
-          if (client) await client.query("ROLLBACK");
+          if (client) {
+            try {
+              await client.query("ROLLBACK");
+            } catch (rollbackError) {
+              discardClient = true;
+              logger.warn("NuQ enqueue rollback failed", {
+                error: rollbackError,
+                module: "nuq",
+              });
+            }
+          }
           throw error;
         } finally {
-          client?.release();
+          client?.release(discardClient);
           const duration = Date.now() - start;
           setSpanAttributes(span, {
             "nuq.duration_ms": duration,

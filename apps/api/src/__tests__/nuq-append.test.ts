@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 import { config } from "../config";
 import { GroupNotActiveError } from "../services/worker/nuq-group-error";
 
@@ -91,25 +91,66 @@ describeIf("batch append PostgreSQL admission", () => {
     expect(jobs.map(job => job.status)).toEqual(["queued", "backlog"]);
   });
 
+  test("preserves terminal rejection when rollback fails and discards the client", async () => {
+    const id = randomUUID();
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({ rowCount: 0 })
+        .mockRejectedValueOnce(new Error("connection lost during rollback")),
+      release: vi.fn(),
+    };
+    const connect = vi
+      .spyOn(Pool.prototype, "connect")
+      .mockImplementationOnce(() =>
+        Promise.resolve(client as unknown as PoolClient),
+      );
+    try {
+      await expect(scrapeQueue.addJobs([job(id)])).rejects.toBeInstanceOf(
+        GroupNotActiveError,
+      );
+      expect(client.release).toHaveBeenCalledWith(true);
+    } finally {
+      connect.mockRestore();
+    }
+  });
+
   test("rejects registration when a concurrent finisher wins the row lock", async () => {
     const id = await group();
     const finisher = await pool.connect();
+    const finisherPID = (await finisher.query("SELECT pg_backend_pid() AS pid"))
+      .rows[0].pid;
+    let result: Promise<any> | undefined;
     try {
       await finisher.query("BEGIN");
       await finisher.query(
         "UPDATE nuq.group_crawl SET status = 'completed' WHERE id = $1",
         [id],
       );
-      const result = scrapeQueue.addJobs([job(id)]).then(
+      result = scrapeQueue.addJobs([job(id)]).then(
         value => ({ value }),
         error => ({ error }),
       );
+      await expect
+        .poll(
+          async () => {
+            const rows = await pool.query(
+              "SELECT pid FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)) AND application_name = 'nuq' AND wait_event_type = 'Lock'",
+              [finisherPID],
+            );
+            return rows.rowCount;
+          },
+          { timeout: 10_000 },
+        )
+        .toBe(1);
       await finisher.query("COMMIT");
       expect(await result).toMatchObject({
         error: expect.any(GroupNotActiveError),
       });
     } finally {
       await finisher.query("ROLLBACK");
+      await result;
       finisher.release();
     }
   });
@@ -138,26 +179,32 @@ describeIf("batch append PostgreSQL admission", () => {
       await blocker.query("SELECT pg_advisory_lock($1)", [key]);
       adding = scrapeQueue.addJobs([appended]);
       await expect
-        .poll(async () => {
-          const rows = await pool.query(
-            "SELECT pid FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)) AND application_name = 'nuq'",
-            [blockerPID],
-          );
-          return rows.rowCount;
-        })
+        .poll(
+          async () => {
+            const rows = await pool.query(
+              "SELECT pid FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)) AND application_name = 'nuq'",
+              [blockerPID],
+            );
+            return rows.rowCount;
+          },
+          { timeout: 10_000 },
+        )
         .toBe(1);
 
       // The cron statement takes its snapshot before the append is visible,
       // then waits for the group row held by the enqueue transaction.
       finishing = finisher.query(finishSQL);
       await expect
-        .poll(async () => {
-          const result = await pool.query(
-            "SELECT cardinality(pg_blocking_pids($1)) AS count",
-            [finisherPID],
-          );
-          return result.rows[0].count;
-        })
+        .poll(
+          async () => {
+            const result = await pool.query(
+              "SELECT cardinality(pg_blocking_pids($1)) AS count",
+              [finisherPID],
+            );
+            return result.rows[0].count;
+          },
+          { timeout: 10_000 },
+        )
         .toBe(1);
       await blocker.query("SELECT pg_advisory_unlock($1)", [key]);
       await adding;
