@@ -6,6 +6,8 @@ settings:
   injectWorkspacePackages: true
 
 overrides:
+  body-parser@<1.20.9: 1.20.9
+  body-parser@>=2.0.0 <2.4.0: 2.4.0
   '@types/express': ^5.0.6
   vite@>=8.0.0 <8.1.6: 8.1.6
   bigint-buffer: npm:four-flap-bigint-buffer@1.1.6
@@ -52,7 +54,7 @@ overrides:
   '@opentelemetry/core@<2.9.0': 2.9.0
   '@opentelemetry/resources@<2.9.0': 2.9.0
   '@opentelemetry/sdk-metrics@<2.9.0': 2.9.0
-  geoip-country>ip-address: 10.7.3
+  geoip-country>ip-address: 10.7.4
 
 patchedDependencies:
   node-fetch@2.7.0: cf2058381802eaf328e1cb26b185762ba41e2157a5545e7ed9bba56b7de0c49b
@@ -131,8 +133,8 @@ importers:
         specifier: ^8.5.12
         version: 8.5.12
       '@typesafe-ai/sdk':
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.7.0
+        version: 0.7.0
       ai:
         specifier: 6.0.86
         version: 6.0.86(zod@4.1.12)
@@ -2141,9 +2143,9 @@ packages:
   '@types/ws@8.5.12':
     resolution: {integrity: sha512-3tPRkv1EtkDpzlgyKyI8pGsGZAGPEaXeu0DOj5DI25Ja91bdAYddYHbADRYVrZMRbfW+1l5YwXVDKohDJNQxkQ==}
 
-  '@typesafe-ai/sdk@0.6.0':
-    resolution: {integrity: sha512-IddX+Q0XM+VagOUZFeP7wZjaO4SHMdvnh2zEBdrZZnXedWI3BNK1lKhMx3ayrkFWvVLbVcUHJy6AVZlY+e6Jaw==}
-    engines: {node: '>=20'}
+  '@typesafe-ai/sdk@0.7.0':
+    resolution: {integrity: sha512-Yg3OZArCQMJx98ut8QVkhx3rFo9ON7pz8Hjzv8c3FGz69Sk8jYftLOlz+Wf6kq6jol/1m08aBnjRAzJr2x3GoQ==}
+    engines: {node: '>=22'}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -2595,6 +2597,10 @@ packages:
   content-type@1.0.5:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
     engines: {node: '>= 0.6'}
+
+  content-type@2.1.0:
+    resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
+    engines: {node: '>=18'}
 
   content-type@2.1.0:
     resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
@@ -3332,8 +3338,8 @@ packages:
     resolution: {integrity: sha512-UxC0Yv1Y4WRJiGQxQkP0hfdL0/5/6YvdfOOClRgJ0qppSarkhneSa6UvkMkms0AkdGimSH3Ikqm+6mkMmX7vGA==}
     engines: {node: '>=12.22.0'}
 
-  ip-address@10.7.3:
-    resolution: {integrity: sha512-A1kdq/tSb5QjvKvAMgIoEvDBIgL7qaqVP/jkvSwYYRZ9iEzvPpopxp2wQfu3SuZRHtpHNxMn8Fs0bS+gf5Xmwg==}
+  ip-address@10.7.4:
+    resolution: {integrity: sha512-DWBMKyeM25D70nrIiTkgQth59/G+naKOTep6huF9j+GmeK3DMD60Zvxg5d5qQnz+38AHgou6ean2LECX+lrKDg==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -6272,7 +6278,7 @@ snapshots:
     dependencies:
       '@types/node': 24.10.1
 
-  '@typesafe-ai/sdk@0.6.0': {}
+  '@typesafe-ai/sdk@0.7.0': {}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
@@ -6684,6 +6690,8 @@ snapshots:
   content-disposition@1.1.0: {}
 
   content-type@1.0.5: {}
+
+  content-type@2.1.0: {}
 
   content-type@2.1.0: {}
 
@@ -7165,7 +7173,7 @@ snapshots:
     dependencies:
       async: 2.6.4
       countries-list: 3.1.1
-      ip-address: 10.7.3
+      ip-address: 10.7.4
       yauzl: 3.4.0
 
   get-caller-file@2.0.5: {}
@@ -7425,7 +7433,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ip-address@10.7.3: {}
+  ip-address@10.7.4: {}
 
   ipaddr.js@1.9.1: {}
 

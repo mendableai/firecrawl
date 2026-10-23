@@ -206,6 +206,12 @@ async function infer(text: string, logger: Logger): Promise<Inferred> {
     prompt: `<${tag}>\n${text.slice(0, 2000)}\n</${tag}>`,
     maxRetries: 0,
     abortSignal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
+    experimental_telemetry: {
+      isEnabled: true,
+      recordInputs: false,
+      recordOutputs: false,
+      functionId: "inferToolIntent",
+    },
   });
   const inferred = clean(object);
   redisRateLimitClient
