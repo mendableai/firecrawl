@@ -1,4 +1,8 @@
-import { redactHeaders, redactRequestBodyForLog, robustFetch } from "../fetch";
+import {
+  redactHeaders,
+  redactRequestBodyForLog,
+  robustFetch,
+} from "../fetch";
 import type { MockState } from "../mock";
 
 const secretHeaders = {
