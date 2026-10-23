@@ -95,6 +95,7 @@ vi.mock("../v2/types", () => ({
 
 import { batchScrapeController as v1 } from "../v1/batch-scrape";
 import { batchScrapeController as v2 } from "../v2/batch-scrape";
+import { GroupNotActiveError } from "../../services/worker/nuq-group-error";
 
 const TEAM_ID = "11111111-1111-4111-8111-111111111111";
 const BATCH_ID = "22222222-2222-4222-8222-222222222222";
@@ -198,6 +199,28 @@ describe.each([
       crawl_id: BATCH_ID,
       url: "https://example.com/new",
     });
+    expect(mocks.addScrapeJobs.mock.calls[0][1]).toEqual({
+      requireActiveGroup: true,
+    });
+  });
+
+  it("returns 409 when completion wins after the final precheck", async () => {
+    mocks.addScrapeJobs.mockRejectedValueOnce(
+      new GroupNotActiveError(BATCH_ID),
+    );
+    const res = response();
+    await controller(request(), res);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: expect.stringMatching(/new batch/i),
+    });
+  });
+
+  it("propagates unrelated enqueue failures", async () => {
+    const error = new Error("queue unavailable");
+    mocks.addScrapeJobs.mockRejectedValueOnce(error);
+    await expect(controller(request(), response())).rejects.toBe(error);
   });
 
   it.each(["missing crawl", "missing group", "another team"])(

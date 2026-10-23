@@ -106,6 +106,7 @@ async function _addScrapeJobsToConcurrencyQueue(
     priority: number;
     listenable?: boolean;
   }[],
+  requireActiveGroup?: boolean,
 ) {
   await scrapeQueue.addJobs(
     jobs.map(job => ({
@@ -117,6 +118,7 @@ async function _addScrapeJobsToConcurrencyQueue(
         ownerId: job.data.team_id ?? undefined,
         groupId: job.data.crawl_id ?? undefined,
         backlogged: true,
+        requireActiveGroup,
         backloggedTimesOutAt: new Date(Date.now() + backlogTimeoutMs(job.data)),
       },
     })),
@@ -230,6 +232,7 @@ async function _addScrapeJobsToBullMQ(
     priority: number;
     listenable?: boolean;
   }[],
+  requireActiveGroup?: boolean,
 ): Promise<NuQJob<ScrapeJobData>[]> {
   for (const job of jobs) {
     if (job.data.mode === "single_urls") {
@@ -265,6 +268,7 @@ async function _addScrapeJobsToBullMQ(
         listenable: job.listenable ?? false,
         ownerId: job.data.team_id ?? undefined,
         groupId: job.data.crawl_id ?? undefined,
+        requireActiveGroup,
       },
     })),
   );
@@ -542,6 +546,7 @@ export async function addScrapeJobs(
     priority: number;
     listenable?: boolean;
   }[],
+  options?: { requireActiveGroup?: boolean },
 ) {
   if (jobs.length === 0) return true;
 
@@ -594,6 +599,7 @@ export async function addScrapeJobs(
           backlogTimeoutMs: backlogTimeoutMs(job.data),
         })),
         teamId,
+        options,
       );
       if (backloggedCount > 0) {
         await maybeSendConcurrencyNotificationFdb(
@@ -815,6 +821,7 @@ export async function addScrapeJobs(
         priority: job.priority,
         listenable: job.listenable,
       })),
+      options?.requireActiveGroup,
     );
 
     await _addScrapeJobsToBullMQ(
@@ -824,6 +831,7 @@ export async function addScrapeJobs(
         priority: job.priority,
         listenable: job.listenable,
       })),
+      options?.requireActiveGroup,
     );
   }
 }

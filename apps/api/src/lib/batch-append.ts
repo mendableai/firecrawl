@@ -5,6 +5,9 @@ type AppendCheck =
   | { crawl: StoredCrawl }
   | { status: 404 | 409; error: string };
 
+export const TERMINAL_BATCH_APPEND_ERROR =
+  "Cannot append URLs to a completed or cancelled batch. Start a new batch without appendToId.";
+
 /** A terminal batch cannot account for new jobs without a new lifecycle. */
 export async function validateBatchAppend(
   id: string,
@@ -23,8 +26,7 @@ export async function validateBatchAppend(
   if (crawl.cancelled || group.status !== "active") {
     return {
       status: 409,
-      error:
-        "Cannot append URLs to a completed or cancelled batch. Start a new batch without appendToId.",
+      error: TERMINAL_BATCH_APPEND_ERROR,
     };
   }
 

@@ -54,7 +54,11 @@ import {
   initializeRequestCredits,
   requestCreditsShards,
 } from "../../lib/request-credits-store";
-import { validateBatchAppend } from "../../lib/batch-append";
+import {
+  TERMINAL_BATCH_APPEND_ERROR,
+  validateBatchAppend,
+} from "../../lib/batch-append";
+import { GroupNotActiveError } from "../../services/worker/nuq-group-error";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
@@ -528,7 +532,16 @@ export async function batchScrapeController(
     logger,
   );
   logger.debug("Adding scrape jobs to BullMQ...");
-  await addScrapeJobs(jobs);
+  try {
+    await addScrapeJobs(jobs, { requireActiveGroup: !!req.body.appendToId });
+  } catch (error) {
+    if (error instanceof GroupNotActiveError) {
+      return res
+        .status(409)
+        .json({ success: false, error: TERMINAL_BATCH_APPEND_ERROR });
+    }
+    throw error;
+  }
 
   if (req.body.webhook) {
     logger.debug("Calling webhook with batch_scrape.started...", {

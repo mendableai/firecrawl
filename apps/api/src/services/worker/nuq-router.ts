@@ -260,7 +260,7 @@ export async function fdbEnqueueScrapeJobs(
     backlogTimeoutMs: number;
   }[],
   teamId: string,
-  options?: { bypassGate?: boolean },
+  options?: { bypassGate?: boolean; requireActiveGroup?: boolean },
 ): Promise<{
   jobs: (NuQJob<ScrapeJobData> & { backend: "fdb" })[];
   backloggedCount: number;
@@ -316,6 +316,7 @@ export async function fdbEnqueueScrapeJobs(
           listenable: j.listenable ?? false,
           ownerId: j.data.team_id ?? undefined,
           groupId: j.data.crawl_id ?? undefined,
+          requireActiveGroup: options?.requireActiveGroup,
           bypassGate:
             options?.bypassGate ||
             j.data.mode === "kickoff" ||
