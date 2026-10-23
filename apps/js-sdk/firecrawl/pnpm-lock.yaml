@@ -25,9 +25,6 @@ importers:
       firecrawl:
         specifier: 4.49.1
         version: 4.49.1
-      typescript-event-target:
-        specifier: ^1.1.1
-        version: 1.1.1
       zod:
         specifier: ^3.23.8
         version: 3.25.76
