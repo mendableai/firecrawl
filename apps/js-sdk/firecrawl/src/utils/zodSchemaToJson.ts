@@ -1,7 +1,7 @@
 import * as zod from "zod";
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
 
-type SchemaConverter = (schema: unknown) => unknown;
+type SchemaConverter = (schema: unknown, params?: { target?: string }) => unknown;
 
 export function isZodSchema(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
@@ -28,7 +28,7 @@ function tryZodV4Conversion(schema: unknown): Record<string, unknown> | null {
   try {
     const toJSONSchema = (zod as Record<string, unknown>).toJSONSchema;
     if (typeof toJSONSchema === "function") {
-      return (toJSONSchema as SchemaConverter)(schema) as Record<string, unknown>;
+      return (toJSONSchema as SchemaConverter)(schema, { target: "draft-07" }) as Record<string, unknown>;
     }
   } catch {
     // V4 conversion not available
