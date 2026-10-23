@@ -1,5 +1,8 @@
 allowBuilds:
   esbuild: true
+minimumReleaseAge: 4320 # 3 days
+minimumReleaseAgeExclude:
+  - firecrawl
 overrides:
   "@isaacs/brace-expansion@<=5.0.0": ">=5.0.1"
   "minimatch@<10.2.3": ">=10.2.3"
