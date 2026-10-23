@@ -239,7 +239,9 @@ export async function executeSearch(
           logger,
           requestId: context.requestId,
           advanced: false,
-          num_results: num_results_buffer,
+          num_results: operatorPlan.relaxed
+            ? Math.max(num_results_buffer, Math.min(limit * 5, 100))
+            : num_results_buffer,
           tbs: options.tbs,
           filter: options.filter,
           lang: options.lang,
@@ -271,7 +273,10 @@ export async function executeSearch(
   searchResponse.web = keepOperatorMatches(searchResponse.web);
   searchResponse.news = keepOperatorMatches(searchResponse.news);
   searchResponse.images = keepOperatorMatches(searchResponse.images);
-  let indexResults = indexResultsPromise ? await indexResultsPromise : [];
+  let indexResults =
+    keepOperatorMatches(
+      indexResultsPromise ? await indexResultsPromise : undefined,
+    ) ?? [];
 
   // Threat protection: remove blocked results entirely — before
   // slicing/counting, before scraping, and before returning. Checks are

@@ -1,3 +1,5 @@
+import { domainToASCII } from "node:url";
+
 /**
  * Query operators the search API enforces on returned results, because
  * providers apply site: combined with inurl: or intitle: inconsistently.
@@ -20,25 +22,48 @@ export interface OperatorPlan {
   relaxed: boolean;
 }
 
+// A quoted phrase matches first, so operator-like text inside it is skipped.
 const OPERATOR_TOKEN =
-  /(^|[\s(])(-?)(site|inurl|intitle):(?:"([^"]*)"|([^\s()]+))\)*/gi;
+  /("[^"]*")|(^|[\s(])(-?)(site|inurl|intitle):(?:"([^"]*)"|([^\s()]+))(\)*)/gi;
+
+const emptyOperators = (): QueryOperators => ({
+  sites: [],
+  excludedSites: [],
+  inurl: [],
+  intitle: [],
+  excludedInurl: [],
+  excludedIntitle: [],
+});
+
+function normalizeSite(value: string): string {
+  const site = value.replace(/^[a-z]+:\/\//, "").replace(/\/+$/, "");
+  const slash = site.indexOf("/");
+  const host = slash === -1 ? site : site.slice(0, slash);
+  return (
+    (domainToASCII(host) || host) + (slash === -1 ? "" : site.slice(slash))
+  );
+}
+
+/** True when OR joins anything other than site: operators, which the matcher cannot represent. */
+function hasUnsupportedOr(query: string): boolean {
+  const unquoted = query.replace(/"[^"]*"/g, " ");
+  const ors = unquoted.match(/(?:^|[\s(])(?:OR|\|)(?=[\s)(]|$)/g)?.length ?? 0;
+  const siteOrs =
+    unquoted.match(/site:[^\s()]+\)*\s+(?:OR|\|)\s+(?=\(*site:)/gi)?.length ??
+    0;
+  return ors > siteOrs;
+}
 
 export function parseQueryOperators(query: string): QueryOperators {
-  const operators: QueryOperators = {
-    sites: [],
-    excludedSites: [],
-    inurl: [],
-    intitle: [],
-    excludedInurl: [],
-    excludedIntitle: [],
-  };
+  const operators = emptyOperators();
   for (const match of query.matchAll(OPERATOR_TOKEN)) {
-    const value = (match[4] ?? match[5] ?? "").trim().toLowerCase();
+    if (match[1] !== undefined) continue;
+    const value = (match[5] ?? match[6] ?? "").trim().toLowerCase();
     if (!value) continue;
-    const negated = match[2] === "-";
-    switch (match[3].toLowerCase()) {
+    const negated = match[3] === "-";
+    switch (match[4].toLowerCase()) {
       case "site": {
-        const site = value.replace(/^[a-z]+:\/\//, "").replace(/\/+$/, "");
+        const site = normalizeSite(value);
         if (site)
           (negated ? operators.excludedSites : operators.sites).push(site);
         break;
@@ -60,6 +85,9 @@ export function parseQueryOperators(query: string): QueryOperators {
  * terms and the inurl:/intitle: filters are applied to the returned results.
  */
 export function planOperatorQuery(query: string): OperatorPlan {
+  if (hasUnsupportedOr(query)) {
+    return { query, operators: emptyOperators(), relaxed: false };
+  }
   const operators = parseQueryOperators(query);
   const relaxed =
     operators.sites.length > 0 &&
@@ -71,12 +99,14 @@ export function planOperatorQuery(query: string): OperatorPlan {
   if (!relaxed) return { query, operators, relaxed };
 
   const rewritten = query
-    .replace(OPERATOR_TOKEN, (token, lead, negated, name, quoted, bare) => {
-      if (name.toLowerCase() === "site") return token;
-      if (negated) return lead;
-      const closing = token.match(/\)*$/)?.[0] ?? "";
-      return lead + (quoted !== undefined ? `"${quoted}"` : bare) + closing;
-    })
+    .replace(
+      OPERATOR_TOKEN,
+      (token, phrase, lead, negated, name, quoted, bare, closing) => {
+        if (phrase !== undefined || name.toLowerCase() === "site") return token;
+        if (negated) return lead + closing;
+        return lead + (quoted !== undefined ? `"${quoted}"` : bare) + closing;
+      },
+    )
     .replace(/\s+/g, " ")
     .trim();
   return { query: rewritten, operators, relaxed };

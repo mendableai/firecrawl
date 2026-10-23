@@ -746,6 +746,72 @@ describe("executeSearch query operators", () => {
     ]);
   });
 
+  it("enforces site: on image results", async () => {
+    mocks.search.mockResolvedValue({
+      images: [
+        {
+          url: "https://www.news.example/a.html",
+          title: "A",
+          imageUrl: "https://cdn.example/a.jpg",
+        },
+        {
+          url: "https://other.example/b.html",
+          title: "B",
+          imageUrl: "https://cdn.example/b.jpg",
+        },
+      ],
+    });
+
+    const result = await executeSearch(
+      {
+        ...options([]),
+        query: "Acme site:news.example",
+        sources: [{ type: "images" }],
+      },
+      context,
+      logger,
+    );
+
+    expect(result.response.images?.map(x => [x.position, x.url])).toEqual([
+      [1, "https://www.news.example/a.html"],
+    ]);
+  });
+
+  it("enforces site: on category index results", async () => {
+    mocks.searchDeveloperCategory.mockResolvedValue([
+      developerResult,
+      { ...developerResult, url: "https://docs.example/retries", position: 2 },
+    ]);
+
+    const result = await executeSearch(
+      {
+        ...options([{ type: "developer" }]),
+        query: "retries site:docs.example",
+      },
+      context,
+      logger,
+    );
+
+    expect(result.response.web?.map(x => [x.position, x.url])).toEqual([
+      [1, "https://docs.example/retries"],
+    ]);
+    expect(result.indexResultsCount).toBe(1);
+  });
+
+  it("asks the provider for more results when it enforces inurl: or intitle: itself", async () => {
+    mocks.search.mockResolvedValue({ web: [] });
+
+    await executeSearch(
+      { ...options([]), query: "inurl:earnings Contoso site:finance.example" },
+      context,
+      logger,
+    );
+
+    expect(mocks.search).toHaveBeenCalledWith(
+      expect.objectContaining({ num_results: 50 }),
+    );
+  });
+
   it("forwards a custom date range tbs to the web provider unchanged", async () => {
     mocks.search.mockResolvedValue({ web: [] });
     const tbs = "cdr:1,cd_min:1/1/2024,cd_max:1/31/2024";
