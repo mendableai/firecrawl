@@ -52,10 +52,13 @@ export async function discoverTools(
     timeoutMs: number;
     /** The team may use its own MCP connectors: their listed tools join its discovery. */
     connectors?: boolean;
+    /** Epoch ms that caps every leg: no retries, and legs still running then are dropped. */
+    deadline?: number;
   },
   logger: Logger,
 ): Promise<ToolDiscovery> {
-  const budget = () => Date.now() + Math.min(10000, input.timeoutMs);
+  const budget = () =>
+    input.deadline ?? Date.now() + Math.min(10000, input.timeoutMs);
   const items = new Map<string, DetailedDiscoveredTool>();
   const selected = { semantic: new Set<string>(), domain: new Set<string>() };
   let attempted = 0;
@@ -140,7 +143,11 @@ export async function discoverTools(
         return value;
       } catch (error) {
         logger.warn(message, { error, attempt });
-        if (attempt >= 2 || Date.now() >= deadline) return undefined;
+        if (
+          attempt >= (input.deadline === undefined ? 2 : 1) ||
+          Date.now() >= deadline
+        )
+          return undefined;
       }
     }
   };
@@ -264,7 +271,24 @@ export async function discoverTools(
     });
     return found;
   })();
-  const [semanticTools, domainTools] = await Promise.all([semantic, domain]);
+  let semanticTools: Awaited<typeof semantic>;
+  let domainTools: Awaited<typeof domain>;
+  if (input.deadline === undefined) {
+    [semanticTools, domainTools] = await Promise.all([semantic, domain]);
+  } else {
+    let timer: NodeJS.Timeout | undefined;
+    await Promise.race([
+      Promise.all([
+        semantic?.then(value => (semanticTools = value)),
+        domain.then(value => (domainTools = value)),
+      ]),
+      new Promise<void>(resolve => {
+        timer = setTimeout(resolve, Math.max(0, input.deadline! - Date.now()));
+        timer.unref();
+      }),
+    ]);
+    clearTimeout(timer);
+  }
   for (const tool of semanticTools ?? []) merge(tool, "semantic");
   for (const { tool, urls } of domainTools ?? []) merge(tool, "domain", urls);
   return {
