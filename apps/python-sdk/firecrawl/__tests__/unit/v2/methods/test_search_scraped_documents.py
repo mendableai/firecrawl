@@ -5,11 +5,13 @@ from threading import Thread
 import pytest
 
 from firecrawl import AsyncFirecrawl, Firecrawl
+from firecrawl import types as public_types
 from firecrawl.v2.types import (
     Document,
     QuestionFormat,
     ScrapeOptions,
     SearchData,
+    SearchDocument,
     SearchResultImages,
     SearchResultNews,
     SearchResultWeb,
@@ -187,13 +189,45 @@ async def test_search_preserves_plain_result_models(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("async_client", [False, True], ids=["sync", "async"])
-async def test_search_preserves_legacy_documents_without_metadata(search_server, async_client):
+@pytest.mark.parametrize("source", ["web", "news", "images"])
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("markdown", "# Legacy"),
+        ("answer", "$19"),
+        ("answer", ""),
+        ("images", ["https://example.com/product.png"]),
+        ("images", []),
+        ("highlights", "Product details"),
+        ("audio", "https://example.com/audio.mp3"),
+        ("video", "https://example.com/video.mp4"),
+        ("actions", {}),
+        ("warning", "Some content is unavailable"),
+        ("branding", {"color_scheme": "dark"}),
+        ("pages", []),
+        ("blocks", []),
+        ("tools", []),
+        ("agent_hints", ["Try a narrower query"]),
+    ],
+)
+async def test_search_preserves_legacy_documents_without_metadata(
+    search_server, async_client, source, field, value
+):
     api_url, state = search_server
-    state["data"] = {"web": [{**SEARCH_FIELDS["web"], "markdown": "# Legacy"}]}
+    state["data"] = {source: [{**SEARCH_FIELDS[source], field: value}]}
 
     result = await public_search(api_url, async_client)
 
     for response in (result, SearchData.model_validate(result.model_dump(exclude_none=True))):
-        assert isinstance(response.web[0], Document)
-        assert response.web[0].markdown == "# Legacy"
-        assert_search_fields(response.web[0], SEARCH_FIELDS["web"])
+        document = getattr(response, source)[0]
+        assert isinstance(document, SearchDocument)
+        content = getattr(document, field)
+        if hasattr(content, "model_dump"):
+            content = content.model_dump(exclude_none=True)
+        assert content == value
+        assert_search_fields(document, SEARCH_FIELDS[source])
+
+
+def test_search_document_is_available_from_unified_types():
+    assert public_types.SearchDocument is SearchDocument
+    assert "SearchDocument" in public_types.__all__
