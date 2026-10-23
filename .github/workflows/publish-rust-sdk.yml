@@ -48,7 +48,7 @@ jobs:
         if: steps.version_check.outputs.publish == 'true'
         working-directory: ./apps/rust-sdk
         run: |
-          cargo package --no-verify --allow-dirty
+          cargo package --allow-dirty
           crate=$(ls target/package/*.crate)
           echo "sha256=$(sha256sum "$crate" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/dist" && cp "$crate" "$RUNNER_TEMP/dist/"
@@ -78,6 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
+      contents: read
       id-token: write
     steps:
       - name: Checkout repository

@@ -16,7 +16,6 @@ jobs:
         with:
           owner: firecrawl
           name: firecrawl
-          # NOTE: using Personal Access Token
           token: ${{secrets.GITHUB_TOKEN}}
           # Keep latest N untagged images
           untagged-keep-latest: 5
