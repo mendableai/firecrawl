@@ -16,6 +16,19 @@ const emptyStringAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 const emptyStringAsDefault = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(value => (value === "" ? undefined : value), schema);
 
+const worldIdSubjectList = (name: string) =>
+  emptyStringAsUndefined(
+    z
+      .string()
+      .refine(
+        value =>
+          value
+            .split(",")
+            .every(entry => /^[A-Za-z0-9_-]{43}$/.test(entry.trim())),
+        `${name} must be comma-separated subject hashes`,
+      ),
+  );
+
 // Trim strings and treat blank ones as unset (optional or default schemas).
 const blankStringAsUnset = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(
@@ -111,10 +124,6 @@ const configSchema = z.object({
   // Express
   EXPRESS_TRUST_PROXY: z.coerce.number().optional(),
 
-  GOV_INDEX_CALLS_PER_DAY: emptyStringAsDefault(
-    z.coerce.number().int().nonnegative().default(500),
-  ),
-
   // Keyless free tier (scrape/search/interact without an API key, per-IP/day).
   // Non-negative integers; 0 means "enabled but no budget", unset means "off".
   KEYLESS_CREDITS_PER_DAY: z.coerce.number().int().nonnegative().optional(),
@@ -147,6 +156,34 @@ const configSchema = z.object({
   // Keep separate from KEYLESS_PROXY_SECRET because delegated credentials can
   // authorize billed requests for a managed OAuth connection.
   MCP_DELEGATED_CREDENTIAL_SECRET: emptyStringAsUndefined(z.string().min(32)),
+  // World ID verified-human keyless bucket. The issuer defaults to World's; the
+  // feature is off unless the client ID, client secret, credential secret and
+  // subject secret are set.
+  WORLD_ID_ISSUER: emptyStringAsDefault(
+    z
+      .string()
+      .trim()
+      .url()
+      .refine(
+        value => value.startsWith("https://"),
+        "WORLD_ID_ISSUER must be an https URL",
+      )
+      .default("https://auth.world.org"),
+  ),
+  WORLD_ID_CLIENT_ID: emptyStringAsUndefined(z.string().trim().min(1)),
+  WORLD_ID_CLIENT_SECRET: emptyStringAsUndefined(z.string().trim().min(1)),
+  WORLD_ID_CREDENTIAL_SECRET: emptyStringAsUndefined(z.string().trim().min(32)),
+  // Keys the subject hashes (bucket ids, allow and deny lists). Kept apart
+  // from the credential secret so rotating that one revokes credentials
+  // without resetting buckets or the lists.
+  WORLD_ID_SUBJECT_SECRET: emptyStringAsUndefined(z.string().trim().min(32)),
+  // Optional comma-separated allowlist of subject hashes. When set, only these
+  // verified humans are issued a credential; unset issues one to anyone who
+  // verifies.
+  WORLD_ID_ALLOWED_SUBJECTS: worldIdSubjectList("WORLD_ID_ALLOWED_SUBJECTS"),
+  // Optional comma-separated subject hashes that are refused: no new
+  // credential, and their existing credentials stop working.
+  WORLD_ID_DENIED_SUBJECTS: worldIdSubjectList("WORLD_ID_DENIED_SUBJECTS"),
   // Optional Spur Context API token (https://docs.spur.us/context-api). When
   // set, keyless requests have their client IP checked against Spur and are
   // refused if the IP fronts anonymizing/rotating infrastructure (VPN/proxy/
@@ -194,6 +231,12 @@ const configSchema = z.object({
 
   // API Keys & Authentication
   BULL_AUTH_KEY: z.string().optional(),
+  BULL_AUTH_KEY_PREVIOUS: emptyStringAsUndefined(z.string()),
+  BULL_AUTH_KEY_PATH_ROUTES: emptyStringAsDefault(z.stringbool().default(true)),
+  ADMIN_INTERNAL_PORT: emptyStringAsUndefined(
+    z.coerce.number().int().positive().max(65535),
+  ),
+  ADMIN_INTERNAL_HOST: emptyStringAsDefault(z.string().default("localhost")),
   S2S_FIRECRAWL_INTEGRATIONS_TO_FIRECRAWL_API_KEY: emptyStringAsUndefined(
     z.string().trim().min(1),
   ),
@@ -264,6 +307,15 @@ const configSchema = z.object({
   // (e.g. 600000 = 10min) also short-circuits repeat lookups for URLs with no
   // index entry. Kept short so any missed cache-clear self-heals quickly.
   INDEX_CACHE_NEGATIVE_TTL_MS: z.coerce.number().default(0),
+  // `parsers: [{ type: "pdf", refresh: true }]` skips URL index reads, so the
+  // request reaches the PDF engine and its content-cache refresh budget
+  // instead of being answered with the indexed copy of the old parse.
+  INDEX_SKIP_ON_PDF_REFRESH: z.stringbool().default(false),
+  // On a URL index hit for a PDF whose entry recorded its fire-pdf content
+  // key, ask the fire-pdf cache service whether it holds a newer parse; if it
+  // does, the index copy is treated as a miss so the request is answered from
+  // the newer entry (no parse) and re-indexed. Needs FIRE_PDF_CACHE_BASE_URL.
+  INDEX_PDF_SUPERSEDE_CHECK: z.stringbool().default(false),
   REDIS_URL: z.string().optional(),
   REDIS_EVICT_URL: z.string().optional(),
   REDIS_RATE_LIMIT_URL: z.string().optional(),
@@ -349,6 +401,12 @@ const configSchema = z.object({
 
   // TypeSafe (Jev): judges search results for the `safe: true` filter.
   TYPESAFE_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
+
+  // Alexandria tool discovery: rewrite search queries with Anthropic before
+  // tool lookup, and add tools to default searches (also the alexandriaAutoTools
+  // team flag).
+  ANTHROPIC_API_KEY: emptyStringAsUndefined(z.string().trim().min(1)),
+  ALEXANDRIA_AUTO_TOOLS: z.stringbool().default(false),
 
   // Exchange (routed data sources service)
   FIRE_EXCHANGE_URL: z.url().optional(),
@@ -543,7 +601,8 @@ const configSchema = z.object({
   // https://api.firecrawl.dev/v2/slack/oauth/callback).
   SLACK_OAUTH_REDIRECT_URL: z.string().optional(),
   // 32-byte key (hex or base64) used to AES-256-GCM encrypt stored bot tokens.
-  // If unset, tokens are stored with a `plain:` prefix (self-hosted only).
+  // Required when ENV=production. Elsewhere, if unset, tokens are stored with a
+  // `plain:` prefix.
   SLACK_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   ALLOW_LOCAL_WEBHOOKS: z.stringbool().optional(),
   WEBHOOK_USE_RABBITMQ: z.stringbool().optional(),
@@ -556,24 +615,17 @@ const configSchema = z.object({
   DISABLE_BLOCKLIST: z.stringbool().optional(),
   FORCED_ENGINE_DOMAINS: z.string().optional(),
   DEBUG_BRANDING: z.stringbool().optional(),
-  // TypeSafe Jev for branding decisions (lib/branding/jev.ts); needs
-  // TYPESAFE_API_KEY. BRANDING_JEV turns it on for every team,
-  // BRANDING_JEV_TEAM_IDS (comma-separated) for listed teams, and
-  // BRANDING_JEV_ROLLOUT_PERCENT for a stable share of teams.
+  // TypeSafe Jev answers branding decisions whenever TYPESAFE_API_KEY is set
+  // (lib/branding/jev.ts), with the LLM as fallback. BRANDING_JEV=false sends
+  // every branding request to the LLM instead.
   BRANDING_JEV: emptyStringAsUndefined(z.stringbool()),
-  BRANDING_JEV_TEAM_IDS: delimitedList(",").optional(),
-  BRANDING_JEV_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
+  // Share of teams (0-100, stable per team) whose branding scrapes also
+  // capture the page's first screen for Jev, as if they had asked for it with
+  // the branding format's __experimental_screenshot. Never for ZDR scrapes.
+  BRANDING_JEV_SCREENSHOT_PERCENT: z.coerce.number().min(0).max(100).default(0),
   BRANDING_JEV_TIMEOUT_MS: emptyStringAsUndefined(
     z.coerce.number().int().positive(),
   ),
-  // Rerun branding on the LLM when Jev's logo confidence is below this (0-1).
-  BRANDING_JEV_ESCALATE_BELOW: emptyStringAsUndefined(
-    z.coerce.number().min(0).max(1),
-  ),
-  // Share of LLM-answered branding requests (0-100) that also ask Jev in the
-  // background and record how its answer compares (lib/branding/jev-shadow.ts).
-  // Customers always get the LLM's answer.
-  BRANDING_JEV_SHADOW_PERCENT: z.coerce.number().min(0).max(100).default(0),
   // Warn scrapes of search engine results pages (google.*/search, ...) that
   // /search returns those results directly (lib/serp-url.ts).
   // SERP_SCRAPE_WARNING turns it on for every team, SERP_SCRAPE_WARNING_TEAM_IDS

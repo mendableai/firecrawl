@@ -60,7 +60,12 @@ export type ErrorCodes =
   | "thread_busy"
   | "thread_expired"
   | "threads_disabled"
-  | "exchange_not_enabled";
+  | "exchange_not_enabled"
+  // Agent zero data retention. Lowercase to match the agent service's codes.
+  | "zdr_threads_unsupported"
+  | "zdr_expired"
+  | "zdr_no_snapshots"
+  | "zdr_not_enabled";
 
 export class TransportableError extends Error {
   public readonly code: ErrorCodes;

@@ -2086,6 +2086,9 @@ class AgentTraceResponse(BaseModel):
     active_browser_sessions: Optional[List[AgentTraceActiveBrowserSession]] = Field(
         default=None, alias="activeBrowserSessions"
     )
+    zero_data_retention: Optional[bool] = Field(
+        default=None, alias="zeroDataRetention"
+    )
     error: Optional[str] = None
 
 
@@ -2426,11 +2429,33 @@ class DeveloperSearchResponse(BaseModel):
     sources: Optional[List[DeveloperSearchSourceStatus]] = None
 
 
+GovSearchCourtType = Literal[
+    "federal-supreme",
+    "federal-appellate",
+    "federal-district",
+    "federal-bankruptcy",
+    "federal-special",
+    "military",
+    "state-supreme",
+    "state-appellate",
+    "state-trial",
+    "state-special",
+    "state-attorney-general",
+]
+
+
 class GovSearchRequest(BaseModel):
     """Request for the Government Index search endpoint."""
 
+    model_config = {"populate_by_name": True}
+
     query: str
     k: Optional[int] = Field(default=None, ge=1, le=100)
+    jurisdiction: Optional[str] = None
+    court: Optional[str] = None
+    court_type: Optional[GovSearchCourtType] = Field(default=None, alias="courtType")
+    cites: Optional[str] = None
+    domain: Optional[str] = None
 
 
 class GovSearchData(BaseModel):

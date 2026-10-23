@@ -814,6 +814,7 @@ type LoggedProviderScrape = {
   credits_cost: number;
   is_successful: boolean;
   error?: string;
+  zeroDataRetention: boolean;
 };
 
 export async function logProviderScrape(scrape: LoggedProviderScrape) {
@@ -823,7 +824,7 @@ export async function logProviderScrape(scrape: LoggedProviderScrape) {
       table: "scrapes",
       id: scrape.id,
       requestId: scrape.request_id,
-      zeroDataRetention: false,
+      zeroDataRetention: scrape.zeroDataRetention,
     },
     () => logProviderScrapeInternal(scrape),
   );
@@ -848,12 +849,18 @@ async function logProviderScrapeInternal(scrape: LoggedProviderScrape) {
     {
       id: scrape.id,
       request_id: scrape.request_id,
-      url: scrape.target,
+      url: scrape.zeroDataRetention
+        ? "<redacted due to zero data retention>"
+        : scrape.target,
       is_successful: scrape.is_successful,
-      error: scrape.error ?? null,
+      error: scrape.zeroDataRetention
+        ? scrape.error === undefined
+          ? null
+          : "<redacted due to zero data retention>"
+        : (scrape.error ?? null),
       time_taken: scrape.time_taken,
       team_id: storedTeamId,
-      options: scrape.options,
+      options: scrape.zeroDataRetention ? null : scrape.options,
       cost_tracking: null,
       pdf_num_pages: null,
       credits_cost: scrape.credits_cost,

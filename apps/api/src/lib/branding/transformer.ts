@@ -231,6 +231,8 @@ export async function brandingTransformer(
       backgroundCandidates:
         backgroundCandidates.length > 0 ? backgroundCandidates : undefined,
       screenshot: document.screenshot,
+      firstScreen: meta.brandingScreenshot,
+      firstScreenImage: meta.brandingScreenshotImage,
       url: finalUrl || "",
       headerHtmlChunk: headerHtmlChunk || undefined,
       favicon: brandingProfile.images?.favicon ?? undefined,
@@ -240,7 +242,6 @@ export async function brandingTransformer(
       scrapeId: meta.id,
       zeroDataRetention: meta.internalOptions.zeroDataRetention,
       teamFlags: meta.internalOptions.teamFlags,
-      mode: hasFormatOfType(meta.options.formats, "branding")?.mode,
       costTracking: meta.costTracking,
       logger: meta.logger,
     });

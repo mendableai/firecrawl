@@ -24,14 +24,16 @@ import {
   buildJevRequest,
   cleanFontFamily,
   describeColor,
+  loadFirstScreen,
   resetJevBreaker,
+  wantsBrandingScreenshot,
 } from "../../../lib/branding/jev";
 import { enhanceBrandingWithLLM } from "../../../lib/branding/llm";
+import { brandingJevScreenshotTotal } from "../../../lib/branding/metrics";
 import {
   brandingRoutedTotal,
   brandingJevBreakerOpensTotal,
   brandingJevCallsTotal,
-  brandingJevRolloutPercent,
 } from "../../../lib/branding/metrics";
 import { mergeBrandingResults } from "../../../lib/branding/merge";
 import { BrandingLLMInput } from "../../../lib/branding/types";
@@ -105,7 +107,6 @@ const baseInput = (costTracking: CostTracking): BrandingLLMInput => ({
   pageTitle: "Acme | Home",
   url: "https://acme.test/",
   teamId: "team-jev",
-  mode: "fast",
   costTracking,
   logger,
 });
@@ -214,18 +215,13 @@ const jevResponse = (overrides: Record<string, unknown> = {}) => ({
 const saved = {
   key: config.TYPESAFE_API_KEY,
   global: config.BRANDING_JEV,
-  teamIds: config.BRANDING_JEV_TEAM_IDS,
-  rollout: config.BRANDING_JEV_ROLLOUT_PERCENT,
-  escalate: config.BRANDING_JEV_ESCALATE_BELOW,
+  screenshotPercent: config.BRANDING_JEV_SCREENSHOT_PERCENT,
 };
 
 beforeEach(() => {
   resetJevBreaker();
   config.TYPESAFE_API_KEY = "ts-test";
   config.BRANDING_JEV = undefined;
-  config.BRANDING_JEV_TEAM_IDS = ["team-jev"];
-  config.BRANDING_JEV_ROLLOUT_PERCENT = 0;
-  config.BRANDING_JEV_ESCALATE_BELOW = undefined;
   mocks.systemOne.mockReset();
   (generateObject as Mock).mockReset().mockResolvedValue({
     object: {
@@ -253,9 +249,7 @@ afterEach(() => {
   vi.useRealTimers();
   config.TYPESAFE_API_KEY = saved.key;
   config.BRANDING_JEV = saved.global;
-  config.BRANDING_JEV_TEAM_IDS = saved.teamIds;
-  config.BRANDING_JEV_ROLLOUT_PERCENT = saved.rollout;
-  config.BRANDING_JEV_ESCALATE_BELOW = saved.escalate;
+  config.BRANDING_JEV_SCREENSHOT_PERCENT = saved.screenshotPercent;
 });
 
 const respondWith = (body: unknown) =>
@@ -412,6 +406,184 @@ describe("branding with Jev", () => {
     expect(result.buttonClassification.primaryButtonIndex).toBe(-1);
   });
 
+  it("captures the first screen when the request asks, or for the rollout's teams", () => {
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 0;
+    expect(wantsBrandingScreenshot(true, "team-jev", false)).toBe("flag");
+    expect(wantsBrandingScreenshot(undefined, "team-jev", false)).toBe(
+      undefined,
+    );
+
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
+    expect(wantsBrandingScreenshot(undefined, "team-jev", false)).toBe(
+      "rollout",
+    );
+    expect(wantsBrandingScreenshot(true, "team-jev", false)).toBe("flag");
+    // an explicit false opts the request out of the rollout
+    expect(wantsBrandingScreenshot(false, "team-jev", false)).toBe(undefined);
+    expect(wantsBrandingScreenshot(undefined, undefined, false)).toBe(
+      undefined,
+    );
+    // never for zero data retention
+    expect(wantsBrandingScreenshot(true, "team-jev", true)).toBe(undefined);
+    expect(wantsBrandingScreenshot(undefined, "team-jev", true)).toBe(
+      undefined,
+    );
+  });
+
+  describe("with the page's first screen", () => {
+    // A 1x1 PNG padded to a real page's screenshot size: the guard drops
+    // anything under 10 KB as a blank frame.
+    const SHOT = Buffer.concat([
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+      Buffer.alloc(30_000),
+    ]);
+    const PNG = SHOT.toString("base64");
+    const screenshotCount = async (outcome: string) =>
+      (await brandingJevScreenshotTotal.get()).values.find(
+        v => v.labels.outcome === outcome,
+      )?.value ?? 0;
+    const sentWith = () => mocks.systemOne.mock.calls[0];
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("attaches it as an image, opts in, and points the questions at it", async () => {
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = `data:image/png;base64,${PNG}`;
+      await enhanceBrandingWithLLM(input);
+
+      const [request, options] = sentWith();
+      expect(Object.keys(request.assets ?? {})).toEqual(["<screenshot>"]);
+      expect(request.state.page.first_screen).toBe("<screenshot>");
+      expect(request.questions.primary_button.instructions).toContain(
+        "<screenshot>",
+      );
+      expect(options.headers).toEqual({
+        "TypeSafe-Danger-Zone-Images": "true",
+      });
+    });
+
+    it("downloads a screenshot fire-engine uploaded", async () => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(SHOT, {
+            status: 200,
+            headers: { "content-type": "image/jpeg" },
+          }),
+      );
+      vi.stubGlobal("fetch", fetch);
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = "https://storage.example/branding.jpg";
+      await enhanceBrandingWithLLM(input);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://storage.example/branding.jpg",
+        expect.anything(),
+      );
+      expect(Object.keys(sentWith()[0].assets ?? {})).toEqual(["<screenshot>"]);
+    });
+
+    it("uses the download started when the engine returned instead of fetching again", async () => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(SHOT, {
+            status: 200,
+            headers: { "content-type": "image/jpeg" },
+          }),
+      );
+      vi.stubGlobal("fetch", fetch);
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = "https://storage.example/branding.jpg";
+      input.firstScreenImage = loadFirstScreen(input.firstScreen, logger);
+      await enhanceBrandingWithLLM(input);
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(Object.keys(sentWith()[0].assets ?? {})).toEqual(["<screenshot>"]);
+    });
+
+    it("resolves to nothing when the download fails, so an early start can't reject", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new Error("socket hang up");
+        }),
+      );
+      await expect(
+        loadFirstScreen("https://storage.example/branding.jpg", logger),
+      ).resolves.toMatchObject({ outcome: "unreadable" });
+    });
+
+    it("skips a screenshot past the size cap without reading all of it", async () => {
+      const big = new Response(new Uint8Array(9 * 1024 * 1024), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => big),
+      );
+      await expect(
+        loadFirstScreen("https://storage.example/huge.jpg", logger),
+      ).resolves.toMatchObject({ outcome: "too_large" });
+      const inline = Buffer.alloc(9 * 1024 * 1024).toString("base64");
+      await expect(
+        loadFirstScreen(`data:image/jpeg;base64,${inline}`, logger),
+      ).resolves.toMatchObject({ outcome: "too_large" });
+    });
+
+    it("answers without a blank frame and counts it", async () => {
+      const blankBefore = await screenshotCount("blank");
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      // a black 1280x720 JPEG is ~6 KB
+      input.firstScreen = `data:image/jpeg;base64,${Buffer.alloc(6_000).toString("base64")}`;
+      await enhanceBrandingWithLLM(input);
+
+      expect(sentWith()[0].assets).toBeUndefined();
+      expect(sentWith()[1].headers).toBeUndefined();
+      expect(await screenshotCount("blank")).toBe(blankBefore + 1);
+    });
+
+    it("counts an attached screenshot, and none when there is no screenshot", async () => {
+      const before = {
+        attached: await screenshotCount("attached"),
+        none: await screenshotCount("none"),
+      };
+      mocks.systemOne.mockResolvedValue(jevResponse());
+      const withShot = baseInput(new CostTracking());
+      withShot.firstScreen = `data:image/png;base64,${PNG}`;
+      await enhanceBrandingWithLLM(withShot);
+      await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+      expect(await screenshotCount("attached")).toBe(before.attached + 1);
+      expect(await screenshotCount("none")).toBe(before.none + 1);
+    });
+
+    it("answers without it when the screenshot can't be read", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response("gone", { status: 404 })),
+      );
+      mocks.systemOne.mockResolvedValueOnce(jevResponse());
+      const input = baseInput(new CostTracking());
+      input.firstScreen = "https://storage.example/missing.jpg";
+      const result = await enhanceBrandingWithLLM(input);
+
+      const [request, options] = sentWith();
+      expect(request.assets).toBeUndefined();
+      expect(request.state.page.first_screen).toBeUndefined();
+      expect(options.headers).toBeUndefined();
+      expect(
+        result.buttonClassification.primaryButtonIndex,
+      ).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   it("fails fast when TypeSafe asks to back off, and retries a 503 or a timeout once, quickly", async () => {
     // The options Jev passes, run through the real SDK against a fake server.
     mocks.systemOne.mockResolvedValueOnce(jevResponse());
@@ -487,10 +659,16 @@ describe("branding with Jev", () => {
     }
     expect(mocks.systemOne).toHaveBeenCalledTimes(5);
 
-    // Open: answered by the LLM without waiting on Jev.
+    // Open: answered by the LLM without waiting on Jev, and no first screen
+    // is captured for a call that won't happen.
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
     expect(mocks.systemOne).toHaveBeenCalledTimes(5);
     expect(generateObject).toHaveBeenCalledTimes(6);
+    config.BRANDING_JEV_SCREENSHOT_PERCENT = 100;
+    expect(wantsBrandingScreenshot(true, "team-jev", false)).toBe(undefined);
+    expect(wantsBrandingScreenshot(undefined, "team-jev", false)).toBe(
+      undefined,
+    );
 
     // After the cooldown Jev is tried again, and a success keeps it in use.
     vi.setSystemTime(Date.now() + 61_000);
@@ -875,36 +1053,18 @@ describe("branding with Jev", () => {
     ]);
   });
 
-  it("escalates to the LLM when Jev is unsure of the logo", async () => {
-    config.BRANDING_JEV_ESCALATE_BELOW = 0.6;
-    respondWith(
-      jevResponse({
-        logo: {
-          type: "choice",
-          choice: "logo_1",
-          probabilities: { logo_0: 0.45, logo_1: 0.5, none: 0.05 },
-          confidence: 0.3,
-        },
-      }),
-    );
-    const costTracking = new CostTracking();
-
-    await enhanceBrandingWithLLM(baseInput(costTracking));
-
-    expect(generateObject).toHaveBeenCalledTimes(1);
-    expect(costTracking.calls.map(c => c.metadata.method)).toEqual([
-      "enhanceBrandingWithJev",
-      "enhanceBrandingWithLLM",
-    ]);
-  });
-
-  it("keeps unlisted teams off Jev", async () => {
+  it("sends every team to Jev unless it's switched off", async () => {
+    respondWith(jevResponse());
     await enhanceBrandingWithLLM({
       ...baseInput(new CostTracking()),
-      teamId: "team-unlisted",
+      teamId: "team-any",
     });
+    expect(mocks.systemOne).toHaveBeenCalledTimes(1);
+    expect(generateObject).not.toHaveBeenCalled();
 
-    expect(mocks.systemOne).not.toHaveBeenCalled();
+    config.BRANDING_JEV = false;
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+    expect(mocks.systemOne).toHaveBeenCalledTimes(1);
     expect(generateObject).toHaveBeenCalledTimes(1);
   });
 
@@ -940,51 +1100,6 @@ describe("branding with Jev", () => {
       teamId: "team-jev",
     });
     withSpan.mockRestore();
-  });
-
-  it("keeps a listed team on the LLM unless the request asks for fast", async () => {
-    for (const mode of [undefined, "auto", "standard"] as const) {
-      await enhanceBrandingWithLLM({ ...baseInput(new CostTracking()), mode });
-    }
-    expect(mocks.systemOne).not.toHaveBeenCalled();
-    expect(generateObject).toHaveBeenCalledTimes(3);
-
-    respondWith(jevResponse());
-    await enhanceBrandingWithLLM({
-      ...baseInput(new CostTracking()),
-      mode: "fast",
-    });
-    expect(mocks.systemOne).toHaveBeenCalledTimes(1);
-  });
-
-  it("ignores mode for teams that aren't listed", async () => {
-    await enhanceBrandingWithLLM({
-      ...baseInput(new CostTracking()),
-      teamId: "team-unlisted",
-      mode: "fast",
-    });
-    expect(mocks.systemOne).not.toHaveBeenCalled();
-
-    config.BRANDING_JEV = true;
-    respondWith(jevResponse());
-    await enhanceBrandingWithLLM({
-      ...baseInput(new CostTracking()),
-      teamId: "team-unlisted",
-      mode: "standard",
-    });
-    expect(mocks.systemOne).toHaveBeenCalledTimes(1);
-  });
-
-  it("puts a rollout share of teams on Jev without listing them", async () => {
-    const unlisted = { ...baseInput(new CostTracking()), teamId: "team-a" };
-
-    await enhanceBrandingWithLLM(unlisted);
-    expect(mocks.systemOne).not.toHaveBeenCalled();
-
-    config.BRANDING_JEV_ROLLOUT_PERCENT = 100;
-    respondWith(jevResponse());
-    await enhanceBrandingWithLLM(unlisted);
-    expect(mocks.systemOne).toHaveBeenCalledTimes(1);
   });
 
   it("stays on the LLM when no TypeSafe key is configured", async () => {
@@ -1155,10 +1270,10 @@ describe("branding metrics", () => {
     )?.value ?? 0;
 
   it("counts which model answered and how each Jev call ended", async () => {
-    const jevOk = { outcome: "ok", shadow: "false" };
-    const rateLimited = { outcome: "rate_limited", shadow: "false" };
-    const timedOut = { outcome: "timeout", shadow: "false" };
-    const byJev = { model: "jev", reason: "rollout" };
+    const jevOk = { outcome: "ok" };
+    const rateLimited = { outcome: "rate_limited" };
+    const timedOut = { outcome: "timeout" };
+    const byJev = { model: "jev", reason: "jev" };
     const fellBack = { model: "llm", reason: "jev_unavailable" };
     const before = {
       jevOk: await value(brandingJevCallsTotal, jevOk),
@@ -1191,7 +1306,7 @@ describe("branding metrics", () => {
   });
 
   it("counts the breaker opening and the calls it skips", async () => {
-    const skipped = { outcome: "breaker_open", shadow: "false" };
+    const skipped = { outcome: "breaker_open" };
     const opensBefore = await value(brandingJevBreakerOpensTotal);
     const skippedBefore = await value(brandingJevCallsTotal, skipped);
     mocks.systemOne.mockRejectedValue(new Error("529 high traffic"));
@@ -1204,30 +1319,30 @@ describe("branding metrics", () => {
     expect(await value(brandingJevCallsTotal, skipped)).toBe(skippedBefore + 1);
   });
 
-  it("counts teams outside the rollout as answered by the LLM", async () => {
-    const outside = { model: "llm", reason: "not_in_rollout" };
+  it("counts branding sent to the LLM while Jev is switched off", async () => {
+    const outside = { model: "llm", reason: "jev_off" };
     const before = await value(brandingRoutedTotal, outside);
-    config.BRANDING_JEV_TEAM_IDS = [];
+    config.BRANDING_JEV = false;
 
     await enhanceBrandingWithLLM(baseInput(new CostTracking()));
 
     expect(await value(brandingRoutedTotal, outside)).toBe(before + 1);
     expect(mocks.systemOne).not.toHaveBeenCalled();
   });
-});
 
-describe("rollout gauge", () => {
-  it("reports the share of teams this process sends to Jev", async () => {
-    const read = async () =>
-      (await brandingJevRolloutPercent.get()).values[0]?.value;
-
-    config.BRANDING_JEV_ROLLOUT_PERCENT = 75;
-    expect(await read()).toBe(75);
-
-    config.BRANDING_JEV = true;
-    expect(await read()).toBe(100);
-
+  it("counts branding without a TypeSafe key apart from the switch", async () => {
+    const noKey = { model: "llm", reason: "jev_no_key" };
+    const off = { model: "llm", reason: "jev_off" };
+    const [noKeyBefore, offBefore] = [
+      await value(brandingRoutedTotal, noKey),
+      await value(brandingRoutedTotal, off),
+    ];
     config.TYPESAFE_API_KEY = undefined;
-    expect(await read()).toBe(0);
+
+    await enhanceBrandingWithLLM(baseInput(new CostTracking()));
+
+    expect(await value(brandingRoutedTotal, noKey)).toBe(noKeyBefore + 1);
+    expect(await value(brandingRoutedTotal, off)).toBe(offBefore);
+    expect(mocks.systemOne).not.toHaveBeenCalled();
   });
 });

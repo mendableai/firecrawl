@@ -205,6 +205,32 @@ describe("MCP action log contract", () => {
     );
   });
 
+  it("stores an optional coarse error code and rejects anything but snake_case", () => {
+    expect(input().error_code).toBeNull();
+    expect(
+      input({ status: "error", error_code: "rate_limited" }).error_code,
+    ).toBe("rate_limited");
+    expect(
+      input({ status: "error", error_code: "scrape_all_engines_failed" })
+        .error_code,
+    ).toBe("scrape_all_engines_failed");
+    expect(input({ error_code: "" }).error_code).toBeNull();
+    for (const value of [
+      "Rate limit exceeded",
+      "https://example.com",
+      "RATE_LIMITED",
+      "rate_",
+      "rate__limited",
+      "fcmcp_abc123",
+      "x".repeat(65),
+      429,
+    ]) {
+      expect(() => input({ error_code: value })).toThrow(
+        "error_code must be a lowercase snake_case code",
+      );
+    }
+  });
+
   it("stores the optional per-call fields the hosted MCP reads itself", () => {
     expect(input()).toMatchObject({
       mcp_origin: null,
@@ -341,6 +367,7 @@ describe("MCP action log contract", () => {
         input({
           objective: "Find the refund policy",
           api_job_id: REQUEST_ID,
+          error_code: "rate_limited",
           user_agent: "Claude/1.0",
           mcp_origin: "mcp-ua-codex-cli-rs",
           mcp_client: "codex-cli-rs",
@@ -359,6 +386,7 @@ describe("MCP action log contract", () => {
       api_key_id: "123",
       objective: "Find the refund policy",
       api_job_id: REQUEST_ID,
+      error_code: "rate_limited",
       mcp_origin: "mcp-ua-codex-cli-rs",
       mcp_client: "codex-cli-rs",
       mcp_client_source: "user_agent",
