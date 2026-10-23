@@ -173,6 +173,7 @@ async function searchControllerInner(
     // Set by the MCP server when it added alexandria to the caller's sources.
     const forcedAlexandria =
       wantsTools &&
+      rawOrigin?.startsWith("mcp") === true &&
       req.get("x-firecrawl-implicit-alexandria") === "1" &&
       !isToolsOnlySearch(req.body.sources, req.body.categories);
     const discoveryCapArm = forcedDiscoveryCapArm(req.auth.team_id);

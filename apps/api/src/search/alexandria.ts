@@ -169,6 +169,7 @@ export async function discoverTools(
         return ordered;
       })
     : undefined;
+  let domainStarted = false;
   const domain = (async () => {
     const urls = [...new Set((await input.urls) ?? [])].filter(value => {
       const url = URL.parse(value);
@@ -181,6 +182,7 @@ export async function discoverTools(
       );
     });
     if (!urls.length) return undefined;
+    domainStarted = true;
     // The domain budget starts once the URLs exist, not while the web search runs.
     const deadline = budget();
     // Kept across retries so one failing provider does not discard the others.
@@ -277,10 +279,14 @@ export async function discoverTools(
     [semanticTools, domainTools] = await Promise.all([semantic, domain]);
   } else {
     let timer: NodeJS.Timeout | undefined;
+    let domainSettled = false;
     await Promise.race([
       Promise.all([
         semantic?.then(value => (semanticTools = value)),
-        domain.then(value => (domainTools = value)),
+        domain.then(value => {
+          domainSettled = true;
+          domainTools = value;
+        }),
       ]),
       new Promise<void>(resolve => {
         timer = setTimeout(resolve, Math.max(0, input.deadline! - Date.now()));
@@ -288,6 +294,8 @@ export async function discoverTools(
       }),
     ]);
     clearTimeout(timer);
+    // The web results never arrived, so the domain leg never ran.
+    if (!domainSettled && !domainStarted) attempted++;
   }
   for (const tool of semanticTools ?? []) merge(tool, "semantic");
   for (const { tool, urls } of domainTools ?? []) merge(tool, "domain", urls);

@@ -770,6 +770,19 @@ describe("executeSearch forced discovery cap", () => {
     expect(calls("/v1/retrieve")).toBe(1);
   });
 
+  it("warns when the web results arrive after the cap and the domain leg never runs", async () => {
+    exchange({ semantic: [500], resolve: 200, lookup: 100 });
+    mocks.search.mockImplementation(() => after(3_000, { web: [webResult] }));
+    const search = run(Date.now() + FORCED_DISCOVERY_CAP_MS);
+    await vi.advanceTimersByTimeAsync(3_000);
+    const result = await search.pending;
+    expect(result.response.tools).toEqual([compact(semanticTool)]);
+    expect(result.toolsWarning).toBe(
+      "Some tool discovery results are unavailable.",
+    );
+    expect(calls("/v1/skills/resolve")).toBe(0);
+  });
+
   it("leaves caller-requested discovery on its full budget with retries", async () => {
     exchange({ semantic: [null, 3_000], resolve: 2_500, lookup: 100 });
     const search = run();
@@ -803,7 +816,10 @@ describe("executeSearch forced discovery cap", () => {
       );
       config.SEARCH_FORCED_DISCOVERY_CAP_PERCENT = 100;
       const arms = teams.map(forcedDiscoveryCapArm);
-      expect(new Set(arms)).toEqual(new Set(["control", "treatment"]));
+      const treated = arms.filter(arm => arm === "treatment").length;
+      expect(arms.every(arm => arm !== "off")).toBe(true);
+      expect(treated).toBeGreaterThan(70);
+      expect(treated).toBeLessThan(130);
       expect(teams.map(forcedDiscoveryCapArm)).toEqual(arms);
     } finally {
       config.SEARCH_FORCED_DISCOVERY_CAP_PERCENT = original;
