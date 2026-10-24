@@ -140,7 +140,9 @@ export function flareSandboxRunner(): SandboxRunner | undefined {
   const api = config.FLARE_API_URL.replace(/\/+$/, "");
 
   return async job => {
-    const signal = AbortSignal.timeout(SANDBOX_TIMEOUT_MS);
+    const timeout = AbortSignal.timeout(SANDBOX_TIMEOUT_MS);
+    const failed = new AbortController();
+    const signal = AbortSignal.any([timeout, failed.signal]);
     try {
       const sb = (await (
         await call(
@@ -235,7 +237,7 @@ export function flareSandboxRunner(): SandboxRunner | undefined {
                 body: JSON.stringify({ id: frame.id, value, error }) + "\n",
               },
               signal,
-            ).catch(() => {});
+            ).catch(err => failed.abort(err));
           })();
         }
         throw new Error("sandbox output ended without a result");
@@ -243,10 +245,12 @@ export function flareSandboxRunner(): SandboxRunner | undefined {
         await fetch(`${api}/v1/sandboxes/${sb.id}`, {
           method: "DELETE",
           headers: { authorization: `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(5_000),
         }).catch(() => {});
       }
     } catch (err) {
-      if (signal.aborted)
+      if (failed.signal.aborted) throw failed.signal.reason;
+      if (timeout.aborted)
         throw new Error(`sandbox timed out after ${SANDBOX_TIMEOUT_MS}ms`);
       throw err;
     }

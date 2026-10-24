@@ -819,8 +819,8 @@ const configSchema = z.object({
   EXTRACT_CODEGEN_MODEL: z.string().default("gemini-3.1-flash-lite"),
   EXTRACT_ANCHOR_MODEL: z.string().default("openai/gpt-oss-120b"),
   EXTRACT_LIGHT_MODEL: z.string().default("openai/gpt-oss-20b"),
-  FLARE_API_URL: z.string().default("https://api.flare.computer"),
-  FLARE_API_KEY: z.string().optional(),
+  FLARE_API_URL: z.url().default("https://api.flare.computer"),
+  FLARE_API_KEY: z.string().trim().optional(),
 });
 
 const validatedConfigSchema = configSchema.superRefine((value, context) => {
