@@ -376,7 +376,7 @@ python cli.py https://example.com --verbose --artistic van_gogh
 
 ## 📦 Requirements
 
-- Python 3.8+
+- Python 3.11+
 - Active Firecrawl API key
 - Active Google Gemini API key
 - Internet connection
